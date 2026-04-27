@@ -395,6 +395,14 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.register-device-token]
+enabled = true
+verify_jwt = false
+
+[functions.send-test-push]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

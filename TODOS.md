@@ -4,16 +4,16 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/admin-business-approval-functions` branch.
-- [x] Review business application schema and approval flow.
-- [x] Update `REVIEW.md` for admin approval scope.
-- [x] Update `PLAN.md` for admin approval scope.
+- [x] Create `feature/device-token-functions` branch.
+- [x] Review device token schema, notification rules, and Expo push flow.
+- [x] Update `REVIEW.md` for device token scope.
+- [x] Update `PLAN.md` for device token scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add approval/rejection RPC migration.
-- [x] Implement `admin-approve-business`.
-- [x] Implement `admin-reject-business`.
+- [x] Add shared Expo push helper support.
+- [x] Implement `register-device-token`.
+- [x] Implement `send-test-push`.
 - [x] Update config and docs.
-- [x] Run DB reset and approval smoke tests.
+- [x] Run DB reset and push smoke tests.
 - [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

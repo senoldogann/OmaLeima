@@ -9,6 +9,11 @@ export const isOptionalUuid = (value: unknown): value is string | undefined =>
 export const isString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
 
+const expoPushTokenPattern = /^(Expo|Exponent)PushToken\[[^\]]+\]$/;
+
+export const isExpoPushToken = (value: unknown): value is string =>
+  typeof value === "string" && expoPushTokenPattern.test(value);
+
 export const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
 

@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/admin-business-approval-functions`
-- **Yapılan iş:** Faz 2'nin sıradaki admin dilimi tamamlandı: `approve_business_application_atomic` ve `reject_business_application_atomic` RPC'leri ile `admin-approve-business` ve `admin-reject-business` Edge Function'ları eklendi. Business slug collision handling, review metadata güncellemesi ve audit log yazımı bu akışa dahil edildi.
-- **Neden yapıldı:** Platform admin'in bekleyen mekan başvurularını güvenli, atomik ve tekrar çağrılara dayanıklı biçimde onaylayıp reddedebilmesi için business review akışı server-side tamamlanmalıydı.
-- **Doğrulama:** `supabase db reset`; local admin ve organizer password auth; pending business application insert; `admin-approve-business` success; aynı application için repeat approve; `admin-reject-business` empty reason; reject success; repeat reject; invalid bearer token; `ADMIN_NOT_ALLOWED` smoke testleri geçti. DB üzerinden approved/rejected state ve created business slug doğrulandı.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2'nin sonraki küçük branch'ini aç: `feature/device-token-functions` ile `register-device-token` ve ilk push test akışını kur.
-- **Açık risk/blokaj:** Public business application insert akışı local testte `Prefer: return=representation` ile select policy gerektiriyor; minimal-return insert çalışıyor. Gerçek public application UI yapılırken insert response beklentisi buna göre seçilmeli veya ayrı select policy tasarlanmalı. Invite/onboarding tablosu henüz olmadığı için approval şu aşamada business creation + review metadata + audit log ile sınırlı.
+- **Branch:** `feature/device-token-functions`
+- **Yapılan iş:** Faz 2 push foundation dilimi tamamlandı: shared Expo push helper, `register-device-token` ve `send-test-push` Edge Function'ları eklendi. Device token rotation için aynı `device_id` üstünden eski token disable akışı kuruldu. Push send denemeleri `notifications` tablosuna `SENT` veya `FAILED` olarak kaydedilecek hale getirildi.
+- **Neden yapıldı:** Mobil MVP öncesinde Expo push token'larının güvenli biçimde server-side kaydedilmesi ve ilk gerçek push backend yolunun smoke test edilebilir hale gelmesi gerekiyordu.
+- **Doğrulama:** `supabase db reset`; local student ve organizer password auth; `register-device-token` invalid bearer; valid register; invalid Expo token; aynı `device_id` için rotated token; `send-test-push` success; no-device-token `DEVICE_TOKEN_NOT_FOUND`; mock push server kapalıyken `PUSH_SEND_FAILED` smoke testleri geçti. DB üzerinden eski token `enabled=false`, yeni token `enabled=true`, `notifications` içinde `TEST_PUSH|SENT` ve `TEST_PUSH|FAILED` kayıtları doğrulandı.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/scheduled-event-reminders` ya da benzer bir branch ile periyodik reminder / async push job temelini kur. Alternatif olarak Faz 2 checklist'indeki `send-push-notification` adını, artık manuel `send-test-push` foundation tamamlandığı için production fan-out akışına genişlet.
+- **Açık risk/blokaj:** Local mock push testlerinde Edge runtime container host makinedeki `127.0.0.1` endpoint'ine erişemiyor; bu yüzden `host.docker.internal` kullanmak gerekiyor. Ayrıca Faz 2 checklist'indeki `register-device-token` + `send-push-notification` maddesi henüz tam kapanmış sayılmamalı; şu an sadece kayıt + manuel self-test gönderimi tamamlandı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -83,6 +83,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ---
 ### Tamamlanan Görevler (Changelog)
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
+- *2026-04-27*: Faz 2 push foundation tamamlandı; shared Expo push helper ile `register-device-token` ve `send-test-push` Edge Function'ları eklendi, local push smoke testleri geçti.
 - *2026-04-27*: Öğrenci department tag desteği ürün planına eklendi; optional profile tags, official/custom sources ve duplicate merge yaklaşımı roadmap'e işlendi.
 - *2026-04-27*: Faz 2 reward claim Edge Function tamamlandı; `claim-reward` eklendi ve local reward smoke testleri geçti.
 - *2026-04-27*: Faz 2 QR Edge Function ilk dilimi tamamlandı; `generate-qr-token` ve `scan-qr` eklendi, local auth/DB/function smoke testleri geçti.
