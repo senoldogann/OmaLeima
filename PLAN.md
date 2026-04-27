@@ -5,39 +5,38 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-rewards-progress`
-- **Goal:** Add the first real student reward progress surface and reuse it on both the rewards tab and the active QR screen.
+- **Branch:** `feature/mobile-student-leaderboard`
+- **Goal:** Add the first real student leaderboard screen with event selection, Top 10, and current-user rank visibility.
 
 ## Architectural Decisions
 
-- Keep this slice read-only on mobile. Reward claim recording already belongs to the staff-confirmed backend path, so the student app will only explain progress, claimable tiers, claimed tiers, and stock state.
-- Build one shared reward-progress data layer under `apps/mobile/src/features/rewards`:
+- Keep this slice event-scoped and read-only. The screen will select one relevant registered event at a time and fetch one leaderboard RPC for that event, instead of issuing one leaderboard request per registered event.
+- Build one shared leaderboard data layer under `apps/mobile/src/features/leaderboard`:
   1. read the student's registered event ids
   2. load matching public event summaries in one query
-  3. load active reward tiers for those events in one query
-  4. load the student's own reward claims in one query
-  5. load the student's valid stamps in one query and derive per-event counts on the client
-- Derive tier state in pure functions so both `student/rewards` and `student/active-event` render the same source of truth:
-  1. `CLAIMED`
-  2. `CLAIMABLE`
-  3. `MORE_NEEDED`
-  4. `OUT_OF_STOCK`
-- Keep the existing QR token flow unchanged. The QR screen will only swap its simple leima progress block for the new shared reward-progress component.
-- Show claimability clearly, but do not expose a student self-claim button in this slice. The UI should direct the student toward venue or club handoff instead of pretending the claim is completed in-app.
+  3. derive a stable event order: active first, then upcoming, then completed
+  4. fetch the selected event leaderboard through `get_event_leaderboard`
+  5. read `leaderboard_updates` for the selected event so the screen can explain freshness
+- Keep the first UI scope tight:
+  1. event switcher for registered events
+  2. Top 10 list for the selected event
+  3. separate current-user rank card even when the student is outside Top 10
+  4. empty-state copy when the event has no leaderboard rows yet
+- Do not add realtime subscriptions in this slice. The backend refresh job already exists, and the smallest correct step is a reliable fetch surface before adding live updates.
 
 ## Alternatives Considered
 
-- Reusing the event-detail reward tier list directly: rejected because it lacks stamp counts, claim rows, and event-level summary state, which would force duplicate derivation inside screens.
-- Adding a new Supabase RPC just for reward progress reads: rejected for now because the current RLS model already allows the exact reads we need, and this slice should stay minimal.
-- Adding a tappable mobile `claim-reward` action for students: rejected because the existing product flow expects physical staff confirmation before a reward is actually handed over.
+- Reading `leaderboard_scores` directly and ranking on the client: rejected because it would either overfetch all participants or reimplement the exact ranking logic the RPC already owns.
+- Fetching leaderboard data for every registered event at once: rejected because it turns an event-scoped RPC into N+1 network work and does not match the current tab's need.
+- Adding realtime subscriptions now: rejected because we should first land the stable event selection and read model before wiring live updates.
 
 ## Edge Cases
 
-- The student has registered events but no reward tiers on one of them.
-- A tier is already claimed even though the student now has fewer visible stamps than expected after local fixture changes.
-- A tier is eligible by stamps but inventory is depleted.
-- The rewards tab has only one seeded tier by default, so local validation must add at least one more tier and one claimed row to verify all UI states.
-- The active QR screen still needs to render cleanly when reward progress is loading or when the selected event has no active tiers.
+- The student has no registered public event eligible for leaderboard display.
+- The selected event exists but `leaderboard_scores` has not been refreshed yet, so Top 10 is empty.
+- The current student is outside Top 10 and only the separate `currentUser` card reveals their rank.
+- Two students share stamp counts and are ordered by `last_stamp_at`, so local smoke data should cover tie handling.
+- A registered event later becomes invisible to public reads; the tab should not tell the student to join an event again if they still have registrations.
 
 ## Validation Plan
 
@@ -46,7 +45,7 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 - Run `npm run typecheck` in `apps/mobile`.
 - Run `npm run export:web` in `apps/mobile`.
 - Run local Supabase-authenticated smoke checks for:
-  1. seeded registered student reward overview query
-  2. fixture-driven multi-tier states: claimable, claimed, more-needed, out-of-stock
-  3. active-event reward progress query on the selected event
-- Start the local web preview and verify both `/student/rewards` and `/student/active-event` routes render with the shared reward surface.
+  1. registered event leaderboard selection query
+  2. `update_event_leaderboard` + `get_event_leaderboard` with seeded and fixture students
+  3. empty leaderboard state on a registered event with no scores yet
+- Start the local web preview and verify `/student/leaderboard` renders with the live leaderboard screen.
