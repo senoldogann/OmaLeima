@@ -4,14 +4,15 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/department-tags-foundation` branch.
-- [x] Review the master-plan department-tag rules and current database helpers.
-- [x] Update `REVIEW.md` for the schema-foundation scope.
-- [x] Update `PLAN.md` for the schema-foundation scope.
+- [x] Create `feature/mobile-student-profile-tags` branch.
+- [x] Review the profile route, department-tag schema foundation, and current mobile query patterns.
+- [x] Update `REVIEW.md` for the student-profile-tags scope.
+- [x] Update `PLAN.md` for the student-profile-tags scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add the `department_tags` schema migration with constraints, triggers, and RLS.
-- [x] Seed deterministic local department tags and profile tag links.
-- [x] Update database documentation and progress tracking.
-- [x] Run local Supabase reset and auth-backed smoke tests.
+- [x] Add a typed `features/profile` read-model and mutations.
+- [x] Replace the profile placeholder tag note with a real tag-management UI.
+- [x] Keep push registration and sign-out sections coherent inside the updated profile route.
+- [x] Run mobile validation commands and local auth-backed smoke tests.
+- [x] Update `PROGRESS.md`.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

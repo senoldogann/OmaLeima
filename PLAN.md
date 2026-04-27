@@ -5,60 +5,54 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/department-tags-foundation`
-- **Goal:** Add the database foundation for optional student department tags before the profile UI branch starts.
+- **Branch:** `feature/mobile-student-profile-tags`
+- **Goal:** Turn the student profile route into the real department-tag management screen while keeping push registration available.
 
 ## Architectural Decisions
 
-- Keep this slice at the schema layer. The missing piece is durable data modeling and RLS, not the mobile UI yet.
-- Follow the master-plan split directly:
-  1. `department_tags` stores canonical tag records plus origin and moderation state
-  2. `profile_department_tags` stores the student-to-tag attachments
-- Enforce product limits in Postgres instead of trusting the future app layer:
-  1. max 3 tags per profile
-  2. max 1 primary tag per profile
-  3. only active, non-merged tags can be attached
-  4. only student profiles can hold profile department tags
-  5. the max-3 rule must stay safe under concurrent inserts
-- Keep RLS conservative:
-  1. active tags are publicly readable for suggestions
-  2. authenticated users may create only `USER` tags for themselves
-  3. club staff may create official `CLUB` tags only for clubs they manage
-  4. only platform admins may moderate, merge, or broadly manage tags
-  5. profile-to-tag links stay owner-readable and owner-writable for now
-- Seed a small deterministic local dataset so the later mobile profile UI has real examples immediately.
-- Make cross-table repairs automatic when admins merge or block tags, or when a profile stops being an active student.
+- Keep the route structure unchanged. `student/profile` already exists and should become the student’s account plus tag-management surface instead of introducing a new tab or nested route.
+- Add a dedicated `features/profile` module:
+  1. read-model query for profile basics, selected tags, and available active tags
+  2. typed mutations for attach, custom create, primary switch, and remove
+  3. small presentational components for selected-tag cards and suggestion rows
+- Use the existing RLS-backed direct table access for this slice. The new schema foundation already supports self-selected student writes, so we do not need a new Edge Function before shipping the first UI.
+- Keep the behavior tight and product-aligned:
+  1. official tags appear before custom ones
+  2. current tags are shown first
+  3. max 3 and max 1 primary remain visible in the UI
+  4. the first selected tag becomes primary automatically
+  5. removing a primary tag promotes the next remaining tag
+- Preserve the existing push-registration surface as a later section on the same screen so this branch completes the profile route instead of displacing prior work.
 
 ## Alternatives Considered
 
-- Building the mobile department-tag picker first: rejected because the data model, moderation states, and limits would still be undefined.
-- Making tag titles globally unique: rejected because the roadmap explicitly expects duplicates to exist and later be merged into a canonical record.
-- Allowing public reads of every `profile_department_tags` row now: rejected because the current product only needs self-management and future public display is narrower than full tag history.
-- Adding a full create-and-assign RPC in this branch: rejected for now to keep the step focused on schema, constraints, RLS, and seed readiness.
+- Adding a new backend RPC for create-and-attach now: rejected for this slice because the schema already supports direct student writes and the next missing product step is the profile UI.
+- Splitting tags into a separate profile-subscreen: rejected because the current MVP only needs a focused single-screen management flow.
+- Showing every active tag as an equal suggestion list: rejected because the roadmap explicitly wants official suggestions first.
+- Hiding the push section while building tags: rejected because push registration is already part of the completed profile route and should stay accessible.
 
 ## Edge Cases
 
-- A student tries to attach a fourth tag.
-- Two near-simultaneous writes try to claim the third and fourth tag slot at the same time.
-- A student tries to mark multiple tags as primary.
-- A caller tries to attach a blocked or merged tag.
-- A non-student profile tries to own department tags.
-- A student tries to create an official club tag or impersonate another creator.
-- A club organizer tries to create a tag for a club they do not manage.
-- An admin merges a duplicate tag into another tag and future assignments must stop using the merged record.
+- Student has no tags yet.
+- Student is already at the 3-tag limit.
+- Student tries to create a custom tag that already exists as an official or user-created active tag.
+- Student changes primary tag while another mutation is in flight.
+- Student removes the current primary tag and still has at least one remaining tag.
+- Student removes the last remaining tag.
+- Server rejects a mutation because another device changed the same profile state first.
 
 ## Validation Plan
 
-- Create the new migration and update local seed data.
-- Run `supabase db reset`.
-- Use local authenticated PostgREST smoke checks for:
-  1. public read of active tags
-  2. student custom tag creation success
-  3. organizer official tag creation success
-  4. student attempt to create a club tag rejection
-  5. student profile-tag attachment success up to 3 rows
-  6. fourth attachment rejection
-  7. merged-tag attachment rejection through database validation
-  8. concurrent third-slot insert race, where only one write survives
-  9. admin merge or profile-role change repair behavior
-- Update `docs/DATABASE.md`, `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, and `TODOS.md`.
+- Run `apps/mobile` validation:
+  1. `npm run lint`
+  2. `npm run typecheck`
+  3. `npm run export:web`
+- Reset local Supabase and run auth-backed student smoke checks for:
+  1. profile overview query shape
+  2. attach existing official tag
+  3. duplicate attach handling
+  4. custom create plus attach
+  5. primary switch
+  6. remove tag with primary fallback behavior
+- Open the local web preview and verify `/student/profile`.
+- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.

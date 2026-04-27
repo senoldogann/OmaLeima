@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/department-tags-foundation`
-- **Yapılan iş:** Faz 3 profile department tag foundation tamamlandı. `department_tags` ve `profile_department_tags` tabloları, source ve moderation alanları, canonical merge referansı, deterministic local seed verisi, RLS politikaları, profil başına max 3 tag limiti ve max 1 primary tag limiti Supabase tarafında eklendi. Max-3 kuralı slot bazlı unique yapı ile concurrency-safe hale getirildi; ayrıca admin merge/block ve profile role-status değişimlerinde bağlı profile tag satırlarını onaran `after update` trigger'ları eklendi.
-- **Neden yapıldı:** Faz 3 checklist'indeki son açık öğrenci profil işi department tag UI idi; ama onu güvenli ve tutarlı biçimde geliştirmek için önce veri modeli, ownership kuralları ve merge foundation'unun database seviyesinde kurulması gerekiyordu.
-- **Doğrulama:** `supabase db reset` geçti. Local auth-backed smoke testlerde public active tag read, student custom tag create, organizer official club tag create, student club tag create rejection, merged tag attach rejection, second primary rejection, concurrent üçüncü-slot yarışında yalnızca tek insert success kalması, dördüncü tag rejection, admin merge repair ve profile role change sonrası dependent-row cleanup doğrulandı. DB üzerinde sırasıyla `after_concurrency_db:3|...`, `after_merge_repair_db:2|...` ve `after_profile_role_repair_db:0` sonuçları kontrol edildi.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-profile-tags` aç. Bu branch'teki schema ve seed verisini kullanarak profile ekranına tag listesi, custom create ve primary selection UI bağlanmalı.
-- **Açık risk/blokaj:** Bu dilim henüz create-and-assign RPC eklemiyor; ileride club/admin moderation veya slug-collision ergonomisi client direct write yerine daha kontrollü bir RPC yüzeyine taşınabilir. Ayrıca push registration için fiziksel cihazla native smoke test ihtiyacı devam ediyor.
+- **Branch:** `feature/mobile-student-profile-tags`
+- **Yapılan iş:** Faz 3 student profile route gerçek department-tag management ekranına dönüştürüldü. Yeni `features/profile` modülü ile profile overview query, selected tag listesi, official-first suggestion listesi, custom tag creation, primary tag switch ve remove akışları bağlandı. Mevcut push registration ve sign-out bölümleri aynı route içinde korunup ikincil bölümler olarak düzenlendi.
+- **Neden yapıldı:** Department tag schema foundation hazırdı ve Faz 3 checklist'inde kalan son açık öğrenci işi profile ekranının gerçek ürün akışına bağlanmasıydı. Bu adımla student MVP tarafı tamamlandı.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası auth-backed smoke testlerde profile overview read, organizer ile yeni official tag create, student attach official tag, primary switch, primary remove + fallback, student custom tag create + attach ve final DB link state doğrulandı. Local web preview `http://localhost:8093/student/profile` route'u `200 OK` verdi.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-business-auth-and-home` aç. Faz 4'e geçip mekan personeli auth ve yaklaşan etkinlik home akışı başlatılmalı.
+- **Açık risk/blokaj:** Profile tag create-and-attach hâlâ direct client writes ile ilerliyor; ileride club/admin moderation akışı büyüdüğünde daha kontrollü bir RPC yüzeyi mantıklı olabilir. Push registration tarafında gerçek native cihaz testi ihtiyacı da devam ediyor.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -49,7 +49,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [x] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
 - [x] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
-- [ ] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
+- [x] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
 - [x] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
 
 ## Faz 4: Mobil Uygulama - Mekan ve Tarayıcı Akışı (Mobile Business Agent)
@@ -87,6 +87,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 student leaderboard tamamlandı; event-scoped Top 10 ve current-user rank görünürlüğü `student/leaderboard` tabına bağlandı.
 - *2026-04-28*: Faz 3 mobile push registration tamamlandı; student profile tabı native permission + Expo token + backend device-token enrollment akışına bağlandı.
 - *2026-04-28*: Faz 3 department tag schema foundation tamamlandı; `department_tags` ve `profile_department_tags` tabloları, RLS politikaları, seeded local örnekler ve max 3 / max 1 primary kuralları eklendi.
+- *2026-04-28*: Faz 3 student profile tags tamamlandı; `student/profile` gerçek department tag selection, custom create, primary switch ve remove akışına bağlandı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
