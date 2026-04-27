@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-leaderboard`
-- **Scope:** Phase 3 student leaderboard tab with event-scoped Top 10 and current-user rank visibility.
+- **Branch:** `feature/mobile-push-registration`
+- **Scope:** Phase 3 mobile device notification registration from the student profile surface.
 
 ## Affected Files
 
@@ -14,33 +14,33 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/leaderboard.tsx`
-- `apps/mobile/src/features/events/*`
-- `apps/mobile/src/features/leaderboard/*`
+- `apps/mobile/src/app/student/profile.tsx`
+- `apps/mobile/src/features/push/*`
+- `apps/mobile/src/lib/push.ts`
 - `apps/mobile/src/components/*`
 
 ## Risks
 
-- The tab should not trigger one leaderboard RPC per event in a loop; we need a scoped selection model that keeps requests bounded.
-- `get_event_leaderboard` is event-scoped and async refreshed, so the UI must tolerate stale or empty scoreboards without implying a backend failure.
-- Student-visible leaderboard data comes from a security-definer RPC, while event discovery still uses RLS-constrained reads; those two surfaces need consistent empty-state handling.
-- The current profile schema does not expose department tags yet, so leaderboard cards should not promise primary-tag rendering in this slice.
-- Seed data has only one student score by default, so meaningful Top 10 validation requires local fixture rows.
+- The native push registration path is unavailable on web and Expo Go, so the UI must explain that limitation instead of looking broken.
+- Permission-granted and backend-registered are two separate steps; the screen must not imply backend enrollment if token registration fails.
+- `register-device-token` accepts only `IOS | ANDROID`, so the client must never post a web or unknown platform shape.
+- We do not yet have a stable per-device identifier dependency in the app, so this slice should avoid inventing a fake `deviceId`.
+- Real end-to-end validation still requires a development build on a physical device even if local backend smoke tests pass.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections for event-scoped leaderboard fetch and student leaderboard visibility.
+- `LEIMA_APP_MASTER_PLAN.md` sections for student push notification readiness in Phase 3.
 - Existing `apps/mobile` auth foundation and route guard merged in Phase 3.
-- Existing `get_event_leaderboard` RPC, async leaderboard refresh job, and event registration reads in Supabase.
+- Existing `register-device-token` Edge Function, Expo push foundation, and current `preparePushTokenAsync` helper.
 
 ## Existing Logic Checked
 
 - `apps/mobile` already has session bootstrap, route protection, and sign-out, so the events screen can assume authenticated access.
-- The current leaderboard tab is still a placeholder shell with no event selection, no RPC read, and no own-rank surface.
-- `student/events` already knows how to derive active versus upcoming public events for a student session, which is the closest existing pattern for selecting a relevant event scope.
-- `get_event_leaderboard` already returns exactly the two core payloads we need: `top10` and `currentUser`.
-- Leaderboard aggregation is already asynchronous through `scheduled-leaderboard-refresh`, so the mobile slice only needs read-only event selection and clear freshness messaging.
+- The current profile tab already has a button that exercises `preparePushTokenAsync`, but it stops before backend registration.
+- `register-device-token` already exists server-side and enforces authenticated ownership plus platform validation.
+- `app.config.ts` already includes the `expo-notifications` plugin, and `lib/push.ts` already prepares permission + token on supported native devices.
+- The missing product surface is a student-facing action that turns native token preparation into a real backend enrollment result with clear success and failure states.
 
 ## Review Outcome
 
-Implement an event-scoped leaderboard read surface in `apps/mobile`: let the student choose among registered public events, fetch one selected event leaderboard at a time through `get_event_leaderboard`, and show Top 10 plus the current student's own rank with clear empty and stale-data states.
+Implement a student-facing notification enrollment surface in `apps/mobile`: reuse the existing native Expo token preparation helper, post the token to `register-device-token` with the authenticated session, and show clear device, permission, and backend-registration states on the profile tab.
