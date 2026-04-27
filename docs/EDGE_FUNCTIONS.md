@@ -7,6 +7,8 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `generate-qr-token`
 - `scan-qr`
 - `claim-reward`
+- `admin-approve-business`
+- `admin-reject-business`
 
 ## Local Secrets
 
@@ -64,6 +66,49 @@ Response:
   "status": "SUCCESS",
   "rewardClaimId": "uuid",
   "message": "Reward claim recorded successfully."
+}
+```
+
+## `admin-approve-business`
+
+Request:
+
+```json
+{
+  "applicationId": "uuid"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "applicationId": "uuid",
+  "businessId": "uuid",
+  "businessSlug": "slug",
+  "message": "Business application approved successfully."
+}
+```
+
+## `admin-reject-business`
+
+Request:
+
+```json
+{
+  "applicationId": "uuid",
+  "rejectionReason": "Missing event-safe contact details."
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "applicationId": "uuid",
+  "message": "Business application rejected successfully."
 }
 ```
 
@@ -129,6 +174,7 @@ supabase functions serve --env-file supabase/.env.local
 4. Sign in as the seeded scanner and call `scan-qr` using the generated token.
 
 5. Sign in as the seeded organizer and call `claim-reward`.
+6. Sign in as the seeded platform admin and call `admin-approve-business` or `admin-reject-business` on a pending business application.
 
 Expected scan statuses:
 
@@ -147,4 +193,15 @@ SUCCESS
 REWARD_ALREADY_CLAIMED
 NOT_ENOUGH_STAMPS
 CLAIMER_NOT_ALLOWED
+```
+
+Expected business review statuses:
+
+```txt
+SUCCESS
+APPLICATION_NOT_FOUND
+APPLICATION_NOT_PENDING
+ADMIN_NOT_ALLOWED
+REJECTION_REASON_REQUIRED
+BUSINESS_ALREADY_CREATED
 ```

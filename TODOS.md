@@ -4,13 +4,16 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/department-tags-plan` branch.
-- [x] Review profile, club, and student UX sections.
-- [x] Update `REVIEW.md` for department tag planning scope.
-- [x] Update `PLAN.md` for department tag planning scope.
+- [x] Create `feature/admin-business-approval-functions` branch.
+- [x] Review business application schema and approval flow.
+- [x] Update `REVIEW.md` for admin approval scope.
+- [x] Update `PLAN.md` for admin approval scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Update `LEIMA_APP_MASTER_PLAN.md` with product, schema, and roadmap changes.
-- [x] Capture related recommendations in the plan.
-- [x] Update `PROGRESS.md` handoff and roadmap notes.
+- [x] Add approval/rejection RPC migration.
+- [x] Implement `admin-approve-business`.
+- [x] Implement `admin-reject-business`.
+- [x] Update config and docs.
+- [x] Run DB reset and approval smoke tests.
+- [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.
