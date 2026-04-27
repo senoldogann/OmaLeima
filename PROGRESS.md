@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-student-rewards-progress`
-- **Yapılan iş:** Faz 3 öğrenci reward progress ekranı tamamlandı. `student/rewards` artık placeholder değil; registered event'ler için reward tier state, claimable tier bilgisi, claimed state, stock görünürlüğü ve leima ilerlemesi gerçek Supabase verisinden türetiliyor. `apps/mobile/src/features/rewards` altında ortak read-only query ve pure derivation katmanı eklendi. Aynı reward progress surface `student/active-event` içine de bağlandı; böylece QR ekranındaki eski tekil progress hesabı kaldırılıp rewards tab ile aynı source of truth kullanılmaya başlandı.
-- **Neden yapıldı:** QR ekranı tamamlandıktan sonra Faz 3'teki en doğru küçük adım öğrencinin topladığı leimaları ve ödül uygunluğunu gerçekten görebildiği üretim yüzeyini açmaktı. Bunu rewards tab ve QR ekranında ayrı ayrı hesaplamak yerine ortak bir derived-state katmanı ile birleştirmek, sonraki leaderboard ve profile işlerinden önce tutarlı ürün davranışı sağlıyor.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası local fixture ile aynı event üzerinde claimed, claimable, more-needed, out-of-stock ve revoked shape doğrulandı. Smoke akışında ekstra reward tier'lar insert edildi, `scan_stamp_atomic` ile 1 valid leima üretildi, `claim_reward_atomic` ile seeded reward claimed durumuna taşındı, ayrıca bir revoked reward_claim row eklenerek mobile read modelinin bu state'i claimable'a düşürmediği senaryo güvenceye alındı. Local web preview `http://localhost:8088` üzerinde açıldı. `curl -I http://localhost:8088/student/rewards` ve `curl -I http://localhost:8088/student/active-event` ile route'ların HTML cevabı doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-leaderboard` aç. Faz 3 checklist'indeki leaderboard ekranı gerçek `leaderboard_scores` verisiyle bağlanmalı ve öğrencinin kendi sırası görünür hale getirilmeli.
-- **Açık risk/blokaj:** Reward progress şu an read-only student surface. Gerçek claim handoff hala staff-confirmed backend akışına bağlı ve mobilde self-claim butonu yok. Web preview sadece route/render doğrulaması sağlıyor; logged-in görsel state ile native device deneyimi ayrıca test edilmeli.
+- **Branch:** `feature/mobile-student-leaderboard`
+- **Yapılan iş:** Faz 3 öğrenci leaderboard ekranı tamamlandı. `student/leaderboard` artık placeholder değil; öğrencinin registered public event'leri okunuyor, aktif event önce gelecek şekilde seçilebilir event scope listesi kuruluyor ve seçilen event için `get_event_leaderboard` RPC üzerinden Top 10 ile current-user rank aynı ekranda gösteriliyor. Bu dilimde `get_event_leaderboard` RPC'si de aynı snapshot'tan `refreshedAt` ve `version` dönecek şekilde genişletildi; böylece freshness bilgisi leaderboard satırlarıyla tutarlı kaldı. Yeni shared read model `apps/mobile/src/features/leaderboard` altına taşındı.
+- **Neden yapıldı:** Reward progress sonrası Faz 3 checklist'indeki en doğru küçük adım leaderboard görünürlüğünü açmaktı. Bu ekran event-scoped tutuldu; böylece her registered event için N+1 RPC çağrısı yapmadan, öğrencinin gerçekten takip ettiği tek event leaderboard'u güvenli ve sade bir surface ile sunuluyor.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası local fixture ile bir aktif event için çoklu participant leaderboard kurulup `update_event_leaderboard` çağrıldı; `get_event_leaderboard` çıktısında Top 10 + currentUser rank ve tie-order doğrulandı. Ayrıca registered ama skorsuz future event fixture'ı ile empty leaderboard state doğrulandı. Local web preview `http://localhost:8089` üzerinde açıldı. `curl -I http://localhost:8089/student/leaderboard` ile route'un HTML cevabı doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-push-registration` aç. Faz 3 checklist'indeki mobil bildirim izni ve `register-device-token` entegrasyonu tamamlanmalı. Department tag UI başlamadan önce de ayrı olarak `feature/department-tags-foundation` schema branch'i açılmalı.
+- **Açık risk/blokaj:** Leaderboard şu an fetch-based; realtime subscription henüz yok. Web preview route/render doğrulaması sağlıyor ama logged-in görsel state ile event switcher davranışı native cihaz veya browser session içinde ayrıca test edilmeli.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -48,7 +48,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
 - [x] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [x] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
-- [ ] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
+- [x] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
 - [ ] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
 - [ ] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
 
@@ -84,6 +84,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ### Tamamlanan Görevler (Changelog)
 - *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
 - *2026-04-28*: Faz 3 student reward progress tamamlandı; rewards tabı gerçek reward tier state gösteriyor ve active-event QR ekranı ile shared reward progress surface kullanıyor.
+- *2026-04-28*: Faz 3 student leaderboard tamamlandı; event-scoped Top 10 ve current-user rank görünürlüğü `student/leaderboard` tabına bağlandı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
