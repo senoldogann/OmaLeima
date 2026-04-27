@@ -4,16 +4,15 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/leaderboard-refresh-job` branch.
-- [x] Review leaderboard RPCs, cron needs, and dirty-event detection path.
-- [x] Update `REVIEW.md` for leaderboard refresh scope.
-- [x] Update `PLAN.md` for leaderboard refresh scope.
+- [x] Create `feature/send-push-notification` branch.
+- [x] Review promotion push rules, auth boundaries, and recipient selection path.
+- [x] Update `REVIEW.md` for send-push-notification scope.
+- [x] Update `PLAN.md` for send-push-notification scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Extract shared scheduled auth helper.
-- [x] Implement `scheduled-leaderboard-refresh`.
-- [x] Update scheduled reminder function only if needed to use shared helper.
+- [x] Add any missing notification-specific error codes or helper types.
+- [x] Implement `send-push-notification`.
 - [x] Update config and docs.
-- [x] Run DB reset and leaderboard cron smoke tests.
+- [x] Run DB reset and promotion push smoke tests.
 - [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

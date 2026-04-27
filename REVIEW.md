@@ -4,9 +4,9 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 
 ## Current Review
 
-- **Date:** 2026-04-27
-- **Branch:** `feature/leaderboard-refresh-job`
-- **Scope:** Phase 2 asynchronous leaderboard refresh cron job.
+- **Date:** 2026-04-28
+- **Branch:** `feature/send-push-notification`
+- **Scope:** Phase 2 controlled promotion push notification endpoint.
 
 ## Affected Files
 
@@ -19,32 +19,31 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `supabase/config.toml`
 - `supabase/functions/_shared/env.ts`
 - `supabase/functions/_shared/http.ts`
-- `supabase/functions/_shared/scheduled.ts`
-- `supabase/functions/scheduled-event-reminders/index.ts`
-- `supabase/functions/scheduled-leaderboard-refresh/index.ts`
+- `supabase/functions/_shared/expoPush.ts`
+- `supabase/functions/send-push-notification/index.ts`
 
 ## Risks
 
-- Leaderboard refresh must stay asynchronous and avoid adding contention back into the scan flow.
-- Scheduled functions should not be callable by arbitrary public clients.
-- The refresh job should not full-scan irrelevant historical events on every cron run.
-- Events with no new valid stamps since the last refresh should be skipped deterministically.
-- The job should update the same leaderboard state that mobile clients already read through `get_event_leaderboard`.
+- Promotion pushes must only reach registered participants of the linked event.
+- Business staff must only be allowed to send pushes for their own business promotions; platform admin can be the only global override.
+- The anti-spam rule in the master plan says maximum two promotions per event per business.
+- Re-sending the same promotion should not create duplicate notifications.
+- Users may have multiple device tokens, but notification history should stay user-scoped.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` asynchronous leaderboard and cron sections.
-- Existing `stamps`, `events`, `leaderboard_scores`, and `leaderboard_updates` tables.
-- Existing `update_event_leaderboard` and `get_event_leaderboard` RPC functions.
-- Existing scheduled secret pattern introduced for `scheduled-event-reminders`.
+- `LEIMA_APP_MASTER_PLAN.md` notification category, anti-spam, and promotion rules.
+- Existing `promotions`, `event_venues`, `event_registrations`, `device_tokens`, `notifications`, and `business_staff` tables.
+- Existing shared Edge Function helpers for auth, HTTP, and Expo push sending.
+- Current official Expo push batching guidance and current Supabase explicit function auth guidance.
 
 ## Existing Logic Checked
 
-- `scan_stamp_atomic` no longer updates leaderboard synchronously by design.
-- `update_event_leaderboard(p_event_id)` already rebuilds one event leaderboard and bumps `leaderboard_updates.version`.
-- `leaderboard_scores` only stores `EVENT` scope in the current implementation.
-- No scheduled Edge Function exists yet for leaderboard refresh.
+- `register-device-token` already maintains push recipients at the token layer.
+- `send-test-push` already proves single-user push delivery and notification writeback.
+- `scheduled-event-reminders` already uses batched Expo sends and one notification row per user.
+- `promotions` exists, is business-owned, and can be linked directly to an event.
 
 ## Review Outcome
 
-Implement the remaining Phase 2 cron slice with one scheduled leaderboard refresh function: secure scheduled invocation, dirty-event detection from valid stamps versus `leaderboard_updates`, and controlled per-event RPC refresh execution.
+Implement the remaining Phase 2 push slice with one controlled endpoint: `send-push-notification` should send `PROMOTION` pushes for an active event-linked promotion, target only registered participants with enabled tokens, enforce duplicate protection plus the max-2 business/event rule, and record one `PROMOTION` notification row per user.
