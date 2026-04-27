@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-qr-screen`
-- **Scope:** Phase 3 student QR screen with secure token refresh and capture-protection surface.
+- **Branch:** `feature/mobile-student-rewards-progress`
+- **Scope:** Phase 3 student reward progress and claimable tier visibility across QR and rewards surfaces.
 
 ## Affected Files
 
@@ -14,36 +14,35 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/package.json`
-- `apps/mobile/package-lock.json`
-- `supabase/functions/generate-qr-token/index.ts`
+- `apps/mobile/src/app/student/rewards.tsx`
 - `apps/mobile/src/app/student/active-event.tsx`
 - `apps/mobile/src/features/events/*`
+- `apps/mobile/src/features/rewards/*`
 - `apps/mobile/src/features/qr/*`
 - `apps/mobile/src/components/*`
 
 ## Risks
 
-- QR refresh cadence is inconsistent in the master plan text, so the screen must follow the backend response contract instead of hard-coding its own interval.
-- The QR screen must never expose token creation logic or signing behavior on the client.
-- The app should not keep refreshing QR codes while backgrounded or while no registered active event is available.
-- Screen-capture protection should not rely on extra Android media permissions unless we intentionally add screenshot-listener behavior.
-- The screen should remain useful even when the student is registered only for an upcoming event or when QR refresh fails temporarily.
+- Reward progress must reflect real stamp counts and real `reward_claims`, not optimistic client assumptions.
+- Claimable status should not imply that the student can self-claim from mobile; physical handoff still belongs to club staff.
+- The QR screen already has a simple progress block, so this branch should unify surfaces instead of drifting into duplicate reward logic.
+- Reward visibility should respect existing RLS: own claims only, public active tiers only, own registrations only.
+- Seed data contains only one reward tier on one event, so multi-tier and claimed-state validation needs local fixture rows.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections for dynamic QR behavior, active event tab, and anti-screenshot guidance.
+- `LEIMA_APP_MASTER_PLAN.md` sections for student reward UX, reward progress, and claim eligibility visibility.
 - Existing `apps/mobile` auth foundation and route guard merged in Phase 3.
-- Current `generate-qr-token` Edge Function contract and the event registration flow already enforced in Phase 3.
+- Current reward tier, reward claim, stamp, and registration RLS behavior in Supabase.
 
 ## Existing Logic Checked
 
 - `apps/mobile` already has session bootstrap, route protection, and sign-out, so the events screen can assume authenticated access.
-- Student event detail and secure join flow are already live, so the QR screen can assume a student reaches it after registration or from an already joined seed event.
-- `generate-qr-token` now uses the shared registration rule path and returns `refreshAfterSeconds` plus `expiresAt`, which is enough to drive the client refresh loop.
-- The current active-event tab is still a placeholder shell with no live query, no token refresh, and no capture protection.
-- Expo ScreenCapture can block screenshots and recordings without adding screenshot-listener permissions when we only need prevention, not screenshot callbacks.
+- Student event detail already reads reward tiers but only as static metadata.
+- The QR screen now shows stamp progress for one active event, but it does not yet explain claimable versus claimed reward states.
+- `claim_reward_atomic` and `claim-reward` already exist and have local smoke coverage, so the student app only needs read-only progress and eligibility visibility in this slice.
+- `reward_claims` RLS already allows students to read only their own claims, which is enough to derive claimed-state badges on mobile.
 
 ## Review Outcome
 
-Implement the first real QR surface in `apps/mobile`: determine the student's active registered event, fetch dynamic QR payloads from `generate-qr-token`, refresh based on backend cadence while foregrounded, block screen capture on supported platforms, and show clear standby or error states when no active event is currently scannable.
+Implement a shared reward-progress read surface in `apps/mobile`: derive stamp progress, claimable state, more-needed counts, claimed state, and stock visibility from Supabase reads, then reuse that surface on both the rewards tab and the active QR screen.

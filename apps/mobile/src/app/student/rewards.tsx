@@ -1,39 +1,86 @@
-import { StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
+
+import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
+import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
+import { useSession } from "@/providers/session-provider";
 
 export default function StudentRewardsScreen() {
+  const router = useRouter();
+  const { session } = useSession();
+  const studentId = session?.user.id ?? null;
+  const rewardOverviewQuery = useStudentRewardOverviewQuery({
+    studentId: studentId ?? "",
+    isEnabled: studentId !== null,
+  });
+  const events = rewardOverviewQuery.data?.events ?? [];
+  const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
+  const claimableEventCount = events.filter((event) => event.claimableTierCount > 0).length;
+
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="Rewards shell">
+      <InfoCard eyebrow="Student" title="Reward progress">
         <Text style={styles.bodyText}>
-          Reward state will come from the existing claim and stamp backend. This tab is ready for tier progress and claim eligibility UI.
+          Track event rewards here. Claimable tiers still require club or venue staff handoff even when the mobile app shows that you are eligible.
         </Text>
       </InfoCard>
 
-      <FoundationStatusCard
-        eyebrow="Dependencies"
-        title="Reward flow status"
-        items={[
-          {
-            label: "Claim RPC",
-            value: "claim_reward_atomic is already merged and smoke tested.",
-            state: "ready",
-          },
-          {
-            label: "Tier progress UI",
-            value: "Arrives once event detail and stamp queries are wired.",
-            state: "pending",
-          },
-          {
-            label: "Club handoff",
-            value: "Physical reward confirmation belongs to the club staff slice.",
-            state: "pending",
-          },
-        ]}
-      />
+      {rewardOverviewQuery.isLoading ? (
+        <InfoCard eyebrow="Loading" title="Opening rewards">
+          <Text style={styles.bodyText}>Loading registered events, reward tiers, claims, and leima counts.</Text>
+        </InfoCard>
+      ) : null}
+
+      {rewardOverviewQuery.error ? (
+        <InfoCard eyebrow="Error" title="Could not load rewards">
+          <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
+          <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Retry</Text>
+          </Pressable>
+        </InfoCard>
+      ) : null}
+
+      {!rewardOverviewQuery.isLoading && !rewardOverviewQuery.error && events.length === 0 ? (
+        <InfoCard eyebrow="Standby" title="No reward progress yet">
+          {registeredEventCount === 0 ? (
+            <>
+              <Text style={styles.bodyText}>
+                Join an event first. Once you are registered, this tab will show stamp progress and reward eligibility per event.
+              </Text>
+              <Pressable onPress={() => router.push("/student/events")} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Open events</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.bodyText}>
+              You already have registered events, but none of them currently expose reward progress in the student view. Check again if the organizer republishes or reopens the event.
+            </Text>
+          )}
+        </InfoCard>
+      ) : null}
+
+      {events.length > 0 ? (
+        <InfoCard eyebrow="Summary" title="Reward status">
+          <Text style={styles.bodyText}>
+            {claimableEventCount > 0
+              ? `${claimableEventCount} event${claimableEventCount === 1 ? "" : "s"} currently has at least one claimable reward tier.`
+              : "No claimable reward tiers yet. Keep collecting leima at participating venues."}
+          </Text>
+        </InfoCard>
+      ) : null}
+
+      {events.map((event) => (
+        <RewardProgressCard
+          key={event.id}
+          event={event}
+          onOpenEvent={(eventId: string) => {
+            router.push(`/student/events/${eventId}`);
+          }}
+        />
+      ))}
     </AppScreen>
   );
 }
@@ -43,5 +90,18 @@ const styles = StyleSheet.create({
     color: "#CBD5E1",
     fontSize: 14,
     lineHeight: 20,
+  },
+  secondaryButton: {
+    alignItems: "center",
+    borderColor: "#334155",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: "#F8FAFC",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
