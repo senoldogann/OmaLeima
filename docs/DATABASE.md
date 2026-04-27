@@ -12,6 +12,8 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260427181000_scan_stamp_atomic.sql`
 - `supabase/migrations/20260427181100_leaderboard_functions.sql`
 - `supabase/migrations/20260427181200_claim_reward_atomic.sql`
+- `supabase/migrations/20260427201500_approve_business_application.sql`
+- `supabase/migrations/20260427201600_reject_business_application.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -29,6 +31,8 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `update_event_leaderboard`
   - `get_event_leaderboard`
   - `claim_reward_atomic`
+  - `approve_business_application_atomic`
+  - `reject_business_application_atomic`
 
 ## Critical Write Rules
 
@@ -133,4 +137,73 @@ Running the same reward claim again should return:
 
 ```json
 {"status": "REWARD_ALREADY_CLAIMED"}
+```
+
+Approve a pending business application:
+
+```sql
+insert into public.business_applications (
+  id,
+  business_name,
+  contact_name,
+  contact_email,
+  address,
+  city,
+  status
+)
+values (
+  '50000000-0000-0000-0000-000000000001',
+  'Approval Test Venue',
+  'Alice Admin',
+  'alice@example.test',
+  'Approval Street 1',
+  'Espoo',
+  'PENDING'
+);
+
+select public.approve_business_application_atomic(
+  '50000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000001'
+);
+```
+
+Expected status:
+
+```json
+{"status": "SUCCESS"}
+```
+
+Reject a pending business application:
+
+```sql
+insert into public.business_applications (
+  id,
+  business_name,
+  contact_name,
+  contact_email,
+  address,
+  city,
+  status
+)
+values (
+  '50000000-0000-0000-0000-000000000002',
+  'Reject Test Venue',
+  'Rita Admin',
+  'rita@example.test',
+  'Reject Road 2',
+  'Tampere',
+  'PENDING'
+);
+
+select public.reject_business_application_atomic(
+  '50000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
+  'Missing event-safe contact details.'
+);
+```
+
+Expected status:
+
+```json
+{"status": "SUCCESS"}
 ```

@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/department-tags-plan`
-- **Yapılan iş:** Ürün planına opsiyonel öğrenci department tag desteği eklendi. Master plan artık official tag + user-created custom tag ayrımını, canonical merge yaklaşımını, `department_tags` ve `profile_department_tags` veri modelini, öğrenci profile UX'ini ve club/admin ownership kurallarını içeriyor.
-- **Neden yapıldı:** Kullanıcı öğrencilerin bölüm/program etiketlerini görünür ve seçilebilir yapmak istedi. Bu ihtiyaç mobil profile, leaderboard görünümü ve kulüp topluluk kimliği için erken aşamada planlanmazsa ileride dağınık free-text veri ve zayıf UX üretir.
-- **Doğrulama:** Dokümantasyon/roadmap güncellemesi. Diff review yeterli; kod testi gerekmiyor.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2'ye devam edilebilir. Ancak Faz 3 öğrenci profile UI başlamadan önce ayrı bir schema branch'i açılmalı: `feature/department-tags-foundation` ile yeni tablolar, RLS ve read model eklenmeli.
-- **Açık risk/blokaj:** Bölüm etiketi kapsamı auth veya event eligibility için kullanılmamalı. Duplicate tag cleanup için club-level creation tek başına yetmez; admin merge akışı gerekecek.
+- **Branch:** `feature/admin-business-approval-functions`
+- **Yapılan iş:** Faz 2'nin sıradaki admin dilimi tamamlandı: `approve_business_application_atomic` ve `reject_business_application_atomic` RPC'leri ile `admin-approve-business` ve `admin-reject-business` Edge Function'ları eklendi. Business slug collision handling, review metadata güncellemesi ve audit log yazımı bu akışa dahil edildi.
+- **Neden yapıldı:** Platform admin'in bekleyen mekan başvurularını güvenli, atomik ve tekrar çağrılara dayanıklı biçimde onaylayıp reddedebilmesi için business review akışı server-side tamamlanmalıydı.
+- **Doğrulama:** `supabase db reset`; local admin ve organizer password auth; pending business application insert; `admin-approve-business` success; aynı application için repeat approve; `admin-reject-business` empty reason; reject success; repeat reject; invalid bearer token; `ADMIN_NOT_ALLOWED` smoke testleri geçti. DB üzerinden approved/rejected state ve created business slug doğrulandı.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2'nin sonraki küçük branch'ini aç: `feature/device-token-functions` ile `register-device-token` ve ilk push test akışını kur.
+- **Açık risk/blokaj:** Public business application insert akışı local testte `Prefer: return=representation` ile select policy gerektiriyor; minimal-return insert çalışıyor. Gerçek public application UI yapılırken insert response beklentisi buna göre seçilmeli veya ayrı select policy tasarlanmalı. Invite/onboarding tablosu henüz olmadığı için approval şu aşamada business creation + review metadata + audit log ile sınırlı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -36,7 +36,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] `generate-qr-token` API'sinin yazılması (Maksimum katılımcı kontrolü ve JWT imzalaması dahil)
 - [x] `scan-qr` API'sinin yazılması (Zaman aşımı, tekrar kullanımı engelleme ve mekan doğrulama)
 - [x] `claim-reward` API'sinin yazılması
-- [ ] `admin-approve-business` ve `admin-reject-business` API'lerinin yazılması
+- [x] `admin-approve-business` ve `admin-reject-business` API'lerinin yazılması
 - [ ] `register-device-token` ve `send-push-notification` API'lerinin yazılması
 - [ ] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
 
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
 - *2026-04-27*: Öğrenci department tag desteği ürün planına eklendi; optional profile tags, official/custom sources ve duplicate merge yaklaşımı roadmap'e işlendi.
 - *2026-04-27*: Faz 2 reward claim Edge Function tamamlandı; `claim-reward` eklendi ve local reward smoke testleri geçti.
 - *2026-04-27*: Faz 2 QR Edge Function ilk dilimi tamamlandı; `generate-qr-token` ve `scan-qr` eklendi, local auth/DB/function smoke testleri geçti.

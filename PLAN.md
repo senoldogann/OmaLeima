@@ -5,36 +5,39 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/department-tags-plan`
-- **Goal:** Add optional student department tags to the product and implementation roadmap before the next major feature step.
+- **Branch:** `feature/admin-business-approval-functions`
+- **Goal:** Implement `admin-approve-business` and `admin-reject-business` with atomic database-side state transitions.
 
 ## Architectural Decisions
 
-- Keep department tags optional and profile-oriented.
-- Separate canonical tag catalog data from per-student selected tags.
-- Allow two creation sources: official tags from clubs/admin and custom tags from users.
-- Allow one primary tag and a small bounded number of total tags per student.
-- Treat tags as discovery/community metadata only, not permissions or eligibility data.
-- Add duplicate-control planning now: slug normalization, merge path, and admin cleanup workflow.
+- Add two security-definer RPCs so review state changes and business creation happen atomically in Postgres.
+- Keep Edge Functions thin: authenticate bearer token, validate request body, call RPC, map status to message.
+- Generate the new business slug inside the approval RPC from `business_name`, appending numeric suffixes on collision.
+- Treat invitation/contact onboarding as deferred; do not invent a half-modeled invite system in this slice.
+- Return stable statuses for `APPLICATION_NOT_FOUND`, `APPLICATION_NOT_PENDING`, `ADMIN_NOT_ALLOWED`, and success cases.
 
 ## Alternatives Considered
 
-- A single free-text `department_name` column on `profiles`: rejected because it cannot distinguish official vs custom entries and will create duplicate spelling variants quickly.
-- Reusing `clubs` directly as tags: rejected because a club and a study/programme label are related but not the same domain object.
-- Admin-only creation: rejected because the user explicitly wants both organization-created and user-created tags.
+- Direct client-side insert into `businesses`: rejected because approval must remain audit-logged and admin-controlled.
+- Implementing approval only in Edge Functions without RPC: rejected because status change and business creation should be one transaction.
+- Adding an invite table now: deferred because the current schema and roadmap do not yet define the invite lifecycle.
 
 ## Edge Cases
 
 - Missing or malformed JSON body.
-- Duplicate tags such as `Tieto ja viestintätekniikka` vs `Tieto- ja viestintätekniikka`.
-- The same programme name existing across multiple universities.
-- Users wanting to keep more than one identity label.
-- Clubs wanting official tags without becoming gatekeepers over all custom tags.
-- Businesses seeing unnecessary student identity data.
+- Missing or malformed `applicationId`.
+- Re-review of an already approved or rejected application.
+- Slug collision with an existing business.
+- Reject request without a useful reason.
+- Admin token valid but profile no longer active or no longer platform admin.
+- Application approved after a business with the same source application already exists.
 
 ## Validation Plan
 
-- Update the master plan with a future schema for canonical tags and profile-tag links.
-- Update student UX, public read model, and admin/club acceptance criteria.
-- Update `PROGRESS.md` so the next agent understands the new scope and sequencing.
-- Review the diff for consistency with the phased roadmap.
+- Run `supabase db reset`.
+- Start `supabase functions serve`.
+- Insert or create a pending business application for smoke tests.
+- Call `admin-approve-business` with the seeded admin account and verify business creation.
+- Call approval again and verify a stable non-success status.
+- Call `admin-reject-business` on a fresh application and verify review metadata is written.
+- Verify invalid Bearer token and non-admin user both fail safely.
