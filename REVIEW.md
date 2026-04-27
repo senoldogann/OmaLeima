@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/department-tags-foundation`
-- **Scope:** Phase 3 student department tag foundation at the database and seed layer.
+- **Branch:** `feature/mobile-student-profile-tags`
+- **Scope:** Phase 3 student profile screen for department-tag discovery, custom creation, primary selection, and self-management.
 
 ## Affected Files
 
@@ -14,34 +14,31 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `docs/DATABASE.md`
-- `LEIMA_APP_MASTER_PLAN.md`
-- `supabase/migrations/*department_tags*.sql`
-- `supabase/seed.sql`
+- `apps/mobile/src/app/student/profile.tsx`
+- `apps/mobile/src/features/profile/*`
+- `apps/mobile/src/components/*`
 
 ## Risks
 
-- Department tags are optional discovery metadata, so the schema must not accidentally turn them into authorization or event-eligibility data.
-- Students need free-text custom tags, but duplicate labels will still happen; the foundation must preserve canonical merge support instead of forcing unsafe hard uniqueness on titles.
-- Profile tags need product limits at the database level. UI-only limits would drift and create inconsistent state under concurrent writes.
-- Merge, block, or profile-role changes can invalidate existing rows later, so this foundation cannot stop at insert-time checks only.
-- Club-created official tags must stay scoped to clubs that the caller actually manages.
-- Public display will eventually show only safe metadata, so the first RLS pass should stay conservative around profile-to-tag links.
+- The database foundation exists, but there is still no single RPC for create-and-attach, so the mobile flow must make the direct-write path feel reliable and explicit.
+- Students can hold only 3 tags and 1 primary tag, so the UI must keep those constraints obvious before the server rejects writes.
+- Official tags should appear before custom tags, otherwise the student flow will push duplicate custom tag growth too aggressively.
+- Primary-tag switching is a two-step write with the current RLS model, so refetch behavior must keep the screen coherent after mutations.
+- The screen already owns push registration, so the new profile surface must add tag management without turning the route into a confusing wall of unrelated states.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections `6.4.a`, `6.4.b`, `13.1`, and the admin/club rules for official tags and duplicate merges.
-- Existing `profiles` and `club_members` tables plus helper functions `is_platform_admin` and `is_club_staff_for`.
-- Existing local auth seed users for admin, organizer, and student smoke validation.
+- Existing Phase 3 mobile auth/session bootstrap and current `student/profile` route.
+- Newly merged `department_tags` and `profile_department_tags` schema foundation plus RLS policies.
+- Existing local student seed data and push-registration flow already on the profile tab.
 
 ## Existing Logic Checked
 
-- `student/profile` already reserves the department-tag surface and explicitly waits for this schema branch.
-- Current database foundation already has reusable role helpers and RLS patterns for user-owned rows, club-scoped permissions, and admin-only moderation.
-- The first draft of this branch proved that insert-time validation alone is not enough; the final shape also needs atomic slot allocation and dependent-row repair triggers.
-- There is no current department-tag schema, seed data, or policy layer, so the next correct step is a dedicated migration before Phase 3 profile UI work starts.
-- The master plan already defines the desired tables, product limits, and merge model, which means this branch should implement the database shape instead of inventing a new product direction.
+- `student/profile` currently still contains a placeholder tag note and the real push-registration section.
+- The app already has good patterns for Supabase-backed read models with React Query in events, rewards, and leaderboard modules.
+- The new database foundation allows direct student reads and `SELF_SELECTED` writes through RLS, so this slice can stay inside the mobile app without adding a new backend function first.
+- Push registration should remain on this screen, but the tag-management surface now deserves to become the primary focus of the route.
 
 ## Review Outcome
 
-Add a dedicated Supabase migration for `department_tags` and `profile_department_tags`, enforce profile tag limits and canonical merge safety at the database layer, seed a small local dataset, and document the resulting RLS/write rules before the Phase 3 profile UI branch begins.
+Build a dedicated `features/profile` module that reads the current student profile plus available department tags, lets the student attach up to 3 tags, create a custom tag when needed, switch the primary tag, remove self-selected tags, and leaves the existing push-registration block intact as a secondary section.
