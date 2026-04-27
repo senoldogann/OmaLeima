@@ -2,24 +2,34 @@
 
 Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevlerini ve merge edilen PR'ları takip etmek için kullanılır. AI Ajanları, görevlerini `LEIMA_APP_MASTER_PLAN.md` içerisindeki mimariye uygun olarak eksiksiz tamamladıktan sonra burayı güncellemekle yükümlüdür. Diğer ajanlar kod yazmaya başlamadan önce bu dosyayı okuyarak projenin mevcut durumunu analiz etmelidir.
 
+## Son Ajan Devri (Latest Agent Handoff)
+
+- **Tarih:** 2026-04-27
+- **Branch:** `feature/db-schema`
+- **Yapılan iş:** Ürün konumlandırması netleştirildi ve Faz 1 Supabase veritabanı temeli tamamlandı: remote Supabase project link, local config, schema/RLS migrationları, atomic RPC migrationları, seed dosyası ve `docs/DATABASE.md` eklendi.
+- **Neden yapıldı:** Sonraki ajanların ürünü generic QR stamp app veya generic bar app gibi değil, Finnish student overalls events için etkinlik altyapısı olarak geliştirmesi ve Faz 1'e veritabanından başlaması gerekiyor.
+- **Doğrulama:** `supabase start` ile local stack ayağa kalktı; migration ve seed dosyaları başarıyla uygulandı. `scan_stamp_atomic` için success, QR replay ve duplicate stamp smoke testleri geçti. `update_event_leaderboard`, `get_event_leaderboard`, `claim_reward_atomic` ve duplicate reward claim smoke testleri geçti.
+- **Sıradaki önerilen adım:** Değişiklikleri review edip commit/merge sürecine almak; ardından Faz 2 için `generate-qr-token` ve `scan-qr` Edge Function branch'i açmak.
+- **Açık risk/blokaj:** RLS politikaları basic production foundation seviyesinde. Faz 2 ve QA sırasında kötü niyetli client senaryolarıyla ayrıntılı RLS testleri genişletilmeli.
+
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
 - [x] AI ajanları için kesin geliştirme kurallarının belirlenmesi (`AGENTS.md`)
 - [x] İlerleme takip dosyasının detaylı alt fazlarla oluşturulması (`PROGRESS.md`)
 
 ## Faz 1: Veritabanı ve Temel Altyapı (Database Agent)
-- [ ] Profil (`profiles`), Kulüp (`clubs`) ve Mekan (`businesses`) tablolarının oluşturulması
-- [ ] Etkinlik (`events`), Mekan Katılımı (`event_venues`) ve Öğrenci Kayıt (`event_registrations`) tablolarının oluşturulması
-- [ ] QR Kullanım (`qr_token_uses`) ve Damga/Leima (`stamps`) tablolarının oluşturulması
-- [ ] Leaderboard (`leaderboard_scores`) ve Ödül (`reward_tiers`, `reward_claims`) tablolarının oluşturulması
-- [ ] Bildirim (`notifications`) ve Fraud/Güvenlik (`fraud_signals`, `audit_logs`) tablolarının oluşturulması
-- [ ] Tüm tablolara özel Foreign Key ve veri bütünlüğü için Unique Constraint'lerin eklenmesi
-- [ ] İlgili Index'lerin (Performans iyileştirmeleri) oluşturulması
-- [ ] Row Level Security (RLS) politikalarının (Güvenlik matrisine uygun şekilde) yazılması
-- [ ] Atomik Damga İşlemi: `scan_stamp_atomic` RPC (Remote Procedure Call) fonksiyonunun kodlanması
-- [ ] Puan Tablosu: Skor hesaplama (asenkron periyodik) ve listeleme (`get_event_leaderboard`) RPC'lerinin kodlanması
-- [ ] Ödül talep (`claim_reward_atomic`) RPC fonksiyonunun kodlanması
-- [ ] Test senaryoları için `seed.sql` başlangıç veri dosyasının hazırlanması
+- [x] Profil (`profiles`), Kulüp (`clubs`) ve Mekan (`businesses`) tablolarının oluşturulması
+- [x] Etkinlik (`events`), Mekan Katılımı (`event_venues`) ve Öğrenci Kayıt (`event_registrations`) tablolarının oluşturulması
+- [x] QR Kullanım (`qr_token_uses`) ve Damga/Leima (`stamps`) tablolarının oluşturulması
+- [x] Leaderboard (`leaderboard_scores`) ve Ödül (`reward_tiers`, `reward_claims`) tablolarının oluşturulması
+- [x] Bildirim (`notifications`) ve Fraud/Güvenlik (`fraud_signals`, `audit_logs`) tablolarının oluşturulması
+- [x] Tüm tablolara özel Foreign Key ve veri bütünlüğü için Unique Constraint'lerin eklenmesi
+- [x] İlgili Index'lerin (Performans iyileştirmeleri) oluşturulması
+- [x] Row Level Security (RLS) politikalarının (Güvenlik matrisine uygun şekilde) yazılması
+- [x] Atomik Damga İşlemi: `scan_stamp_atomic` RPC (Remote Procedure Call) fonksiyonunun kodlanması
+- [x] Puan Tablosu: Skor hesaplama (asenkron periyodik) ve listeleme (`get_event_leaderboard`) RPC'lerinin kodlanması
+- [x] Ödül talep (`claim_reward_atomic`) RPC fonksiyonunun kodlanması
+- [x] Test senaryoları için `seed.sql` başlangıç veri dosyasının hazırlanması
 
 ## Faz 2: Edge Functions, Güvenlik ve API Mantığı (Security/QR Agent)
 - [ ] Proje genelinde kullanılacak TypeScript tiplerinin (Shared Types) oluşturulması
@@ -69,4 +79,5 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-27*: Ürün konumlandırması "Digital leima pass for Finnish student overalls events" olarak netleştirildi. Faz 1 Supabase database foundation tamamlandı; local migration/seed ve RPC smoke testleri geçti.
 - *2026-04-26*: Ana mimari planlama, kural dosyaları (`AGENTS.md`) ve detaylı proje takip listesi (`PROGRESS.md`) mükemmeliyet odaklı oluşturuldu. Faz 0 tamamlandı.
