@@ -8,6 +8,34 @@
 
 ## 0. Product Context
 
+### 0.0 Product positioning
+
+OmaLeima is positioned as a digital leima pass for Finnish student overalls events.
+
+The product should not be presented as a generic QR stamp app or a generic bar app. It is the digital infrastructure for existing Finnish student event culture: haalarit, haalarimerkki, appro, pub crawl, baarikierros, guild events, ainejarjestot events, and student club parties.
+
+Primary adoption target:
+
+```txt
+ainejarjestot, guilds, student clubs, student unions, and event organizers
+```
+
+Student users are the visible and viral side of the product, but the main operational customer is the organizer who manages venues, stamps, rewards, fraud prevention, and event-day logistics.
+
+Core launch message:
+
+```txt
+Digital leima pass for Finnish student overalls events.
+```
+
+Product promise:
+
+```txt
+Run appro and student pub crawl events without paper stamp cards.
+Students collect leimat with QR, unlock haalarimerkki / patches / rewards,
+and organizers track the whole event securely.
+```
+
 ### 0.1 Gerçek dünya akışı
 
 Geleneksel sistem:
@@ -3046,4 +3074,3 @@ Analytics -> warehouse
 ```
 
 Until then, keep the architecture simple, secure, and cheap.
-

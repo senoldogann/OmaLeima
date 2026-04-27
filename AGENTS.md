@@ -22,6 +22,9 @@ Bir faz (ve altındaki görevler) tamamen bitip test edilmeden ve onaylanmadan d
 - Projedeki tüm tamamlanmış işler **`PROGRESS.md`** dosyasına kaydedilmelidir.
 - Ajanlar her yeni göreve başlamadan önce, projenin hangi aşamada olduğunu anlamak için `PROGRESS.md` dosyasını okumalıdır.
 - Bir branch main'e merge edildiğinde (özellik tamamlandığında), Ajan mutlaka `PROGRESS.md` dosyasını güncelleyerek neyin tamamlandığını (tarihiyle birlikte) listeye eklemelidir.
+- Her ajan, işi bitirmeden veya başka ajana devredilecek durumda bırakmadan önce `PROGRESS.md` içindeki **Son Ajan Devri (Latest Agent Handoff)** bölümünü güncellemelidir.
+- Devir notu en az şunları içermelidir: tarih, branch, yapılan iş, neden yapıldığı, doğrulama durumu, sıradaki önerilen adım ve varsa açık riskler/blokajlar.
+- Devir notları kısa, güncel durum odaklı ve eyleme geçirilebilir olmalıdır; geçmiş changelog'un tekrarı gibi yazılmamalıdır.
 
 ## 4. Kod Kalitesi, Mimari ve Ölçeklenebilirlik (Code Quality & Scalability)
 Bu proje 2 yıl sonra binlerce anlık kullanıcının yükü altında çökmeyecek, bakımı kolay ve profesyonel standartlarda yazılacaktır:
