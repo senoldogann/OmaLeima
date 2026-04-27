@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/scheduled-event-reminders`
-- **Yapılan iş:** Faz 2'nin ilk cron dilimi tamamlandı: `scheduled-event-reminders` Edge Function eklendi. Function `24h` ve `2h` event reminder window'larını seçiyor, `EVENT_REMINDER` duplicate'lerini başarılı notification history üzerinden engelliyor, çoklu device token'lara Expo batch push atıyor ve kullanıcı başına tek notification row yazıyor. Shared Expo push helper da batch send + retry davranışıyla genişletildi. Reminder query yolları için `idx_device_tokens_user_enabled` ve `idx_notifications_event_type_user` index'leri eklendi.
-- **Neden yapıldı:** Push foundation tamamlandıktan sonra ürün planındaki zamanlanmış etkinlik hatırlatmaları server-side ve cron uyumlu şekilde çalışır hale gelmeliydi. Aynı zamanda generic push batching yolu gerçek reminder yüküne yaklaşan ilk kullanımı aldı.
-- **Doğrulama:** `supabase db reset`; local student auth ile `register-device-token`; `send-test-push` regression success; service-role ile 24h ve 2h due event insert; `scheduled-event-reminders` invalid secret -> `UNAUTHORIZED`; valid secret -> 2 `EVENT_REMINDER|SENT`; ikinci run -> duplicate skip; mock push server kapalıyken yeni due event için `PARTIAL_SUCCESS` ve `EVENT_REMINDER|FAILED`. DB üzerinden reminder payload window values ve yeni index'ler doğrulandı. Function loglarında retry warning'leri görüldü.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/leaderboard-refresh-job` ile asenkron leaderboard update cron function'ını tamamla. Sonrasında gerekirse `feature/send-push-notification` ile organizer/admin kaynaklı controlled push endpoint'i eklenebilir.
-- **Açık risk/blokaj:** Scheduled function şu an custom `x-scheduled-job-secret` header bekliyor; hosted cron kurulurken bu secret Supabase Vault veya project secrets üzerinden güvenli biçimde job request header'ına bağlanmalı. Faz 2 checklist'indeki cron maddesi henüz tam kapanmış sayılmamalı; event reminder tarafı tamamlandı ama leaderboard refresh job hâlâ eksik.
+- **Branch:** `feature/leaderboard-refresh-job`
+- **Yapılan iş:** Faz 2 cron tarafı tamamlandı: `scheduled-leaderboard-refresh` Edge Function eklendi. Function son geçerli stamp zamanı ile `leaderboard_updates.updated_at` alanını karşılaştırıp sadece dirty event'leri buluyor ve mevcut `update_event_leaderboard` RPC'sini çağırarak refresh ediyor. Scheduled secret doğrulaması da shared helper'a alındı; `scheduled-event-reminders` aynı helper'ı kullanacak şekilde hizalandı.
+- **Neden yapıldı:** Master plan gereği leaderboard aggregation scan anında değil, periyodik cron job ile yapılmalıydı. Reminder job tamamlandıktan sonra Faz 2 cron checklist'inin kalan parçası buydu.
+- **Doğrulama:** `supabase db reset`; seeded student/scanner auth; `generate-qr-token` success; `scan-qr` success ile gerçek stamp üretimi; `scheduled-leaderboard-refresh` invalid secret -> `UNAUTHORIZED`; valid secret -> `updatedEvents=1`; ikinci run -> `skippedAlreadyFresh=1`. DB üzerinden `leaderboard_scores` içinde `EVENT|event_id|student_id|1` ve `leaderboard_updates` içinde `version=1` doğrulandı. Shared helper regression için `scheduled-event-reminders` invalid secret ve zero-due success çağrıları da geçti.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/send-push-notification` ile organizer/admin kaynaklı controlled push endpoint'i ekle ve böylece `register-device-token` + `send-push-notification` checklist maddesini kapat.
+- **Açık risk/blokaj:** Scheduled job'lar hâlâ `x-scheduled-job-secret` header'ına bağlı; hosted cron kurulumunda bu secret Supabase Vault veya project secrets ile yönetilmeli. Leaderboard refresh şu an event scope için çalışıyor; weekly/monthly/yearly scope istenirse ayrı DB/RPC genişletmesi gerekecek.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -38,7 +38,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] `claim-reward` API'sinin yazılması
 - [x] `admin-approve-business` ve `admin-reject-business` API'lerinin yazılması
 - [ ] `register-device-token` ve `send-push-notification` API'lerinin yazılması
-- [ ] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
+- [x] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
 
 ## Faz 3: Mobil Uygulama MVP - Öğrenci Akışı (Mobile Student Agent)
 - [ ] Expo projesinin başlatılması, klasör yapısı (app, src/features) ve kütüphanelerin kurulumu
@@ -83,6 +83,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ---
 ### Tamamlanan Görevler (Changelog)
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
+- *2026-04-27*: Faz 2 leaderboard refresh cron job tamamlandı; `scheduled-leaderboard-refresh` eklendi ve async leaderboard smoke testleri geçti.
 - *2026-04-27*: Faz 2 scheduled reminder cron foundation tamamlandı; `scheduled-event-reminders`, Expo batch/retry helper ve reminder query index'leri eklendi, local cron smoke testleri geçti.
 - *2026-04-27*: Faz 2 push foundation tamamlandı; shared Expo push helper ile `register-device-token` ve `send-test-push` Edge Function'ları eklendi, local push smoke testleri geçti.
 - *2026-04-27*: Öğrenci department tag desteği ürün planına eklendi; optional profile tags, official/custom sources ve duplicate merge yaklaşımı roadmap'e işlendi.

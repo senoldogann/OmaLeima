@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/scheduled-event-reminders`
-- **Scope:** Phase 2 scheduled event reminder job and production-shaped push fan-out.
+- **Branch:** `feature/leaderboard-refresh-job`
+- **Scope:** Phase 2 asynchronous leaderboard refresh cron job.
 
 ## Affected Files
 
@@ -16,36 +16,35 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PROGRESS.md`
 - `docs/EDGE_FUNCTIONS.md`
 - `docs/DATABASE.md`
-- `supabase/migrations/*notification_indexes*.sql`
 - `supabase/config.toml`
 - `supabase/functions/_shared/env.ts`
 - `supabase/functions/_shared/http.ts`
-- `supabase/functions/_shared/expoPush.ts`
-- `supabase/functions/send-test-push/index.ts`
+- `supabase/functions/_shared/scheduled.ts`
 - `supabase/functions/scheduled-event-reminders/index.ts`
+- `supabase/functions/scheduled-leaderboard-refresh/index.ts`
 
 ## Risks
 
-- Reminder jobs must never spam users with duplicate 24h or 2h reminders for the same event.
+- Leaderboard refresh must stay asynchronous and avoid adding contention back into the scan flow.
 - Scheduled functions should not be callable by arbitrary public clients.
-- Expo push fan-out should respect current Expo guidance for batch sending and temporary failure retries.
-- Users may have zero, one, or multiple enabled device tokens, so reminder writes should stay user-scoped while push delivery stays token-scoped.
-- Failed delivery attempts should be retryable on the next cron run instead of being treated as a permanent success.
+- The refresh job should not full-scan irrelevant historical events on every cron run.
+- Events with no new valid stamps since the last refresh should be skipped deterministically.
+- The job should update the same leaderboard state that mobile clients already read through `get_event_leaderboard`.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` scheduled reminder, push notification, and anti-spam sections.
-- Existing `events`, `event_registrations`, `device_tokens`, `notifications`, and `profiles` tables.
-- Existing shared Edge Function helpers for env, HTTP, and Expo push sending.
-- Current official Supabase scheduled Edge Function guidance and current Expo Push API guidance.
+- `LEIMA_APP_MASTER_PLAN.md` asynchronous leaderboard and cron sections.
+- Existing `stamps`, `events`, `leaderboard_scores`, and `leaderboard_updates` tables.
+- Existing `update_event_leaderboard` and `get_event_leaderboard` RPC functions.
+- Existing scheduled secret pattern introduced for `scheduled-event-reminders`.
 
 ## Existing Logic Checked
 
-- `register-device-token` already maintains enabled token state per user and device.
-- `send-test-push` already records push outcomes into `notifications`.
-- `notifications` currently lacks an event/type/user-focused index for reminder dedupe checks.
-- No scheduled Edge Function exists yet for reminder delivery.
+- `scan_stamp_atomic` no longer updates leaderboard synchronously by design.
+- `update_event_leaderboard(p_event_id)` already rebuilds one event leaderboard and bumps `leaderboard_updates.version`.
+- `leaderboard_scores` only stores `EVENT` scope in the current implementation.
+- No scheduled Edge Function exists yet for leaderboard refresh.
 
 ## Review Outcome
 
-Implement the next Phase 2 slice with one cron-ready reminder function: secure scheduled invocation, due-event selection for 24h and 2h windows, Expo batch delivery with retry support, and duplicate protection through notification history checks.
+Implement the remaining Phase 2 cron slice with one scheduled leaderboard refresh function: secure scheduled invocation, dirty-event detection from valid stamps versus `leaderboard_updates`, and controlled per-event RPC refresh execution.
