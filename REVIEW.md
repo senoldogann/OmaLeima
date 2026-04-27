@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/device-token-functions`
-- **Scope:** Phase 2 device token registration and first push test flow.
+- **Branch:** `feature/scheduled-event-reminders`
+- **Scope:** Phase 2 scheduled event reminder job and production-shaped push fan-out.
 
 ## Affected Files
 
@@ -16,35 +16,36 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PROGRESS.md`
 - `docs/EDGE_FUNCTIONS.md`
 - `docs/DATABASE.md`
+- `supabase/migrations/*notification_indexes*.sql`
 - `supabase/config.toml`
 - `supabase/functions/_shared/env.ts`
 - `supabase/functions/_shared/http.ts`
-- `supabase/functions/_shared/validation.ts`
 - `supabase/functions/_shared/expoPush.ts`
-- `supabase/functions/register-device-token/index.ts`
 - `supabase/functions/send-test-push/index.ts`
+- `supabase/functions/scheduled-event-reminders/index.ts`
 
 ## Risks
 
-- Device token registration must stay tied to the authenticated user and should not silently duplicate stale tokens.
-- Expo push token handling should follow current Expo docs: client gets `ExpoPushToken`, server stores it, and push requests go to Expo Push API.
-- We should not require a real mobile device for local smoke tests, so the first push flow needs a mockable push endpoint.
-- Push test sends must stay narrow and safe; the first slice should only target the authenticated user's own enabled tokens.
-- Notification spam rules exist in the product plan, so the test flow should remain explicitly manual and non-broadcast.
+- Reminder jobs must never spam users with duplicate 24h or 2h reminders for the same event.
+- Scheduled functions should not be callable by arbitrary public clients.
+- Expo push fan-out should respect current Expo guidance for batch sending and temporary failure retries.
+- Users may have zero, one, or multiple enabled device tokens, so reminder writes should stay user-scoped while push delivery stays token-scoped.
+- Failed delivery attempts should be retryable on the next cron run instead of being treated as a permanent success.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` push notifications, device token flow, and Edge Function sections.
-- Existing `device_tokens`, `notifications`, `profiles`, and audit log tables.
-- Existing shared Edge Function helpers for auth, HTTP, and validation.
-- Current official Expo documentation for `getExpoPushTokenAsync` and Expo Push API sending.
+- `LEIMA_APP_MASTER_PLAN.md` scheduled reminder, push notification, and anti-spam sections.
+- Existing `events`, `event_registrations`, `device_tokens`, `notifications`, and `profiles` tables.
+- Existing shared Edge Function helpers for env, HTTP, and Expo push sending.
+- Current official Supabase scheduled Edge Function guidance and current Expo Push API guidance.
 
 ## Existing Logic Checked
 
-- `device_tokens` already supports `expo_push_token`, `platform`, `device_id`, `enabled`, and `last_seen_at`.
-- RLS already allows users to manage their own device tokens directly, but Phase 2 requires the registration flow to move through Edge Functions.
-- No push-related Edge Functions exist yet.
+- `register-device-token` already maintains enabled token state per user and device.
+- `send-test-push` already records push outcomes into `notifications`.
+- `notifications` currently lacks an event/type/user-focused index for reminder dedupe checks.
+- No scheduled Edge Function exists yet for reminder delivery.
 
 ## Review Outcome
 
-Implement the next Phase 2 slice with a narrow but real push backend: `register-device-token`, a shared Expo push helper, and a manual `send-test-push` flow that can be smoke-tested locally.
+Implement the next Phase 2 slice with one cron-ready reminder function: secure scheduled invocation, due-event selection for 24h and 2h windows, Expo batch delivery with retry support, and duplicate protection through notification history checks.

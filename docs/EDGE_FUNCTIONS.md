@@ -11,6 +11,7 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `admin-reject-business`
 - `register-device-token`
 - `send-test-push`
+- `scheduled-event-reminders`
 
 ## Local Secrets
 
@@ -25,6 +26,7 @@ Push testing also supports these optional environment variables:
 ```txt
 EXPO_PUSH_API_URL
 EXPO_PUSH_ACCESS_TOKEN
+SCHEDULED_JOB_SECRET
 ```
 
 For local development, run the function server with an environment file that is not committed:
@@ -39,6 +41,7 @@ Example `supabase/.env.local` content:
 QR_SIGNING_SECRET=replace-with-a-long-random-local-secret
 EXPO_PUSH_API_URL=http://host.docker.internal:8789
 EXPO_PUSH_ACCESS_TOKEN=replace-with-local-test-token
+SCHEDULED_JOB_SECRET=replace-with-local-scheduled-secret
 ```
 
 `host.docker.internal` matters for local mock push testing because the Edge runtime runs in a container and cannot reach a host-only `127.0.0.1` server.
@@ -54,6 +57,7 @@ Optional push settings can be set the same way:
 ```bash
 supabase secrets set EXPO_PUSH_API_URL=https://exp.host/--/api/v2/push/send
 supabase secrets set EXPO_PUSH_ACCESS_TOKEN=replace-with-production-access-token
+supabase secrets set SCHEDULED_JOB_SECRET=replace-with-production-scheduled-secret
 ```
 
 ## Auth Model
@@ -155,6 +159,43 @@ Behavior notes:
 - The function reads the authenticated user's enabled `device_tokens`.
 - It writes a `notifications` row with `SENT` or `FAILED` and stores the Expo response body in `payload.expoPushResponse`.
 - Transport or Expo API failures return `PUSH_SEND_FAILED`.
+
+## `scheduled-event-reminders`
+
+Request headers:
+
+```txt
+x-scheduled-job-secret: <scheduled-job-secret>
+```
+
+Request body:
+
+```json
+{}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "dueEvents": 2,
+  "reminderCandidates": 2,
+  "remindersSkippedAlreadySent": 0,
+  "remindersSkippedNoDeviceToken": 0,
+  "notificationsCreated": 2,
+  "notificationsSent": 2,
+  "notificationsFailed": 0
+}
+```
+
+Behavior notes:
+
+- This function is designed for cron-style invocation, not browser use.
+- It selects events due in the next `24h` and `2h` reminder windows, each with a fixed `30-minute` tolerance.
+- It skips reminders already recorded as successful for the same `user_id + event_id + reminderWindowHours`.
+- It writes one `EVENT_REMINDER` notification row per user reminder, even when the user has multiple tokens.
+- Expo push sending now uses batched requests with limited retry handling for transport, `429`, and `5xx` failures.
 
 ## `admin-approve-business`
 
@@ -268,6 +309,11 @@ supabase functions serve --env-file supabase/.env.local
 9. Re-register the same `deviceId` with a rotated Expo token and verify the old token becomes disabled.
 10. Call `send-test-push` and verify a `notifications` row is written.
 11. Stop the mock push server once and verify `send-test-push` returns `PUSH_SEND_FAILED`.
+12. Insert one event due in the next 24 hours and one event due in the next 2 hours.
+13. Call `scheduled-event-reminders` with an invalid secret and verify it returns `UNAUTHORIZED`.
+14. Call `scheduled-event-reminders` with the valid secret and verify `EVENT_REMINDER` rows are written.
+15. Call it again and verify duplicate reminders are skipped.
+16. Stop the mock push server once and verify a due reminder is written as `FAILED`.
 
 Expected scan statuses:
 
@@ -313,5 +359,13 @@ Expected test push statuses:
 SUCCESS
 DEVICE_TOKEN_NOT_FOUND
 PUSH_SEND_FAILED
+UNAUTHORIZED
+```
+
+Expected scheduled reminder statuses:
+
+```txt
+SUCCESS
+PARTIAL_SUCCESS
 UNAUTHORIZED
 ```

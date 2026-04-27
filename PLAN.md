@@ -5,41 +5,42 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/device-token-functions`
-- **Goal:** Implement `register-device-token` and the first server-side Expo push test flow.
+- **Branch:** `feature/scheduled-event-reminders`
+- **Goal:** Implement the first cron-ready event reminder delivery flow.
 
 ## Architectural Decisions
 
-- Keep registration and push logic in Edge Functions, with the database as the device token source of truth.
-- Reuse the shared auth/http helper pattern and add one Expo push helper for token validation and HTTP sending.
-- Make token registration idempotent by upserting on `expo_push_token` and refreshing `last_seen_at`.
-- If `deviceId` is supplied, disable older tokens for the same user/device pair to reduce stale duplicates.
-- Keep the first send flow manual and self-targeted: authenticated user triggers a test push to their own enabled tokens.
-- Make Expo Push API URL and access token configurable so local smoke tests can target a mock server.
+- Keep scheduled reminder delivery in a dedicated Edge Function so the job can be called by Supabase Cron without coupling it to user-auth endpoints.
+- Protect the scheduled function with a shared secret header stored in function environment variables.
+- Reuse the shared Expo push module, but extend it for batch sends and limited retry behavior on transport, `429`, and `5xx` failures.
+- Query due events in two explicit windows: `24h` and `2h`, each with a fixed 30-minute tolerance so repeated cron runs remain deterministic.
+- Deduplicate reminders by reading successful notification history for the same `user_id + event_id + reminderWindowHours`.
+- Write one `notifications` row per user reminder, even if the user has multiple device tokens.
+- Add narrow reminder-related indexes instead of introducing new tables.
 
 ## Alternatives Considered
 
-- Relying only on direct client writes to `device_tokens`: rejected because Phase 2 is where we standardize server-owned write surfaces.
-- Sending real pushes to Expo in local smoke tests: rejected because it requires real device tokens and credentials, which makes the test fragile.
-- Building the full scheduled notification engine now: rejected because the next smallest useful slice is registration plus one manual push path.
+- Reusing `send-test-push` for cron delivery: rejected because it is user-scoped and intentionally manual.
+- Making the scheduled function public with `verify_jwt = false` and no extra guard: rejected because cron endpoints should not be anonymously callable.
+- Creating a new reminder ledger table: rejected because `notifications` already provides the history we need for duplicate protection.
 
 ## Edge Cases
 
-- Missing or malformed JSON body.
-- Missing or malformed `expoPushToken`.
-- Token string that is not an Expo push token.
-- Same user re-registering the same token repeatedly.
-- Same device re-registering with a rotated token.
-- User triggering a test push with no enabled tokens.
-- Expo Push API returning an application-level error ticket.
+- Missing or invalid scheduled job secret.
+- No events currently due for either reminder window.
+- Registered user has no enabled device token.
+- Event reminder already sent successfully in an earlier cron run.
+- Expo Push API transport outage during one cron run and success on the next retry or next cron run.
+- One user having multiple enabled tokens with mixed success and failure results.
 
 ## Validation Plan
 
 - Run `supabase db reset`.
-- Start `supabase functions serve`.
 - Start a local mock push server reachable from the Edge runtime container.
-- Call `register-device-token` with the seeded student account and verify the DB row is created or updated.
-- Re-register the same device with a rotated token and verify the old token is disabled.
-- Call `send-test-push` with the seeded student account and verify a `notifications` row is written with `SENT`.
-- Stop the mock push server once to verify transport failures return `PUSH_SEND_FAILED`.
-- Verify invalid Bearer token and invalid token format both fail safely.
+- Start `supabase functions serve`.
+- Register a device token for the seeded student account.
+- Insert one event due in the next 24 hours and one event due in the next 2 hours, both with registered student participation.
+- Call `scheduled-event-reminders` with an invalid secret and verify it fails safely.
+- Call `scheduled-event-reminders` with the valid secret and verify both reminders are sent and written to `notifications`.
+- Call the same function again and verify duplicate reminders are skipped.
+- Stop the mock push server once and verify a due reminder writes `FAILED` and returns retryable failure counts.

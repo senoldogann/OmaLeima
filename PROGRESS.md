@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/device-token-functions`
-- **Yapılan iş:** Faz 2 push foundation dilimi tamamlandı: shared Expo push helper, `register-device-token` ve `send-test-push` Edge Function'ları eklendi. Device token rotation için aynı `device_id` üstünden eski token disable akışı kuruldu. Push send denemeleri `notifications` tablosuna `SENT` veya `FAILED` olarak kaydedilecek hale getirildi.
-- **Neden yapıldı:** Mobil MVP öncesinde Expo push token'larının güvenli biçimde server-side kaydedilmesi ve ilk gerçek push backend yolunun smoke test edilebilir hale gelmesi gerekiyordu.
-- **Doğrulama:** `supabase db reset`; local student ve organizer password auth; `register-device-token` invalid bearer; valid register; invalid Expo token; aynı `device_id` için rotated token; `send-test-push` success; no-device-token `DEVICE_TOKEN_NOT_FOUND`; mock push server kapalıyken `PUSH_SEND_FAILED` smoke testleri geçti. DB üzerinden eski token `enabled=false`, yeni token `enabled=true`, `notifications` içinde `TEST_PUSH|SENT` ve `TEST_PUSH|FAILED` kayıtları doğrulandı.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/scheduled-event-reminders` ya da benzer bir branch ile periyodik reminder / async push job temelini kur. Alternatif olarak Faz 2 checklist'indeki `send-push-notification` adını, artık manuel `send-test-push` foundation tamamlandığı için production fan-out akışına genişlet.
-- **Açık risk/blokaj:** Local mock push testlerinde Edge runtime container host makinedeki `127.0.0.1` endpoint'ine erişemiyor; bu yüzden `host.docker.internal` kullanmak gerekiyor. Ayrıca Faz 2 checklist'indeki `register-device-token` + `send-push-notification` maddesi henüz tam kapanmış sayılmamalı; şu an sadece kayıt + manuel self-test gönderimi tamamlandı.
+- **Branch:** `feature/scheduled-event-reminders`
+- **Yapılan iş:** Faz 2'nin ilk cron dilimi tamamlandı: `scheduled-event-reminders` Edge Function eklendi. Function `24h` ve `2h` event reminder window'larını seçiyor, `EVENT_REMINDER` duplicate'lerini başarılı notification history üzerinden engelliyor, çoklu device token'lara Expo batch push atıyor ve kullanıcı başına tek notification row yazıyor. Shared Expo push helper da batch send + retry davranışıyla genişletildi. Reminder query yolları için `idx_device_tokens_user_enabled` ve `idx_notifications_event_type_user` index'leri eklendi.
+- **Neden yapıldı:** Push foundation tamamlandıktan sonra ürün planındaki zamanlanmış etkinlik hatırlatmaları server-side ve cron uyumlu şekilde çalışır hale gelmeliydi. Aynı zamanda generic push batching yolu gerçek reminder yüküne yaklaşan ilk kullanımı aldı.
+- **Doğrulama:** `supabase db reset`; local student auth ile `register-device-token`; `send-test-push` regression success; service-role ile 24h ve 2h due event insert; `scheduled-event-reminders` invalid secret -> `UNAUTHORIZED`; valid secret -> 2 `EVENT_REMINDER|SENT`; ikinci run -> duplicate skip; mock push server kapalıyken yeni due event için `PARTIAL_SUCCESS` ve `EVENT_REMINDER|FAILED`. DB üzerinden reminder payload window values ve yeni index'ler doğrulandı. Function loglarında retry warning'leri görüldü.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/leaderboard-refresh-job` ile asenkron leaderboard update cron function'ını tamamla. Sonrasında gerekirse `feature/send-push-notification` ile organizer/admin kaynaklı controlled push endpoint'i eklenebilir.
+- **Açık risk/blokaj:** Scheduled function şu an custom `x-scheduled-job-secret` header bekliyor; hosted cron kurulurken bu secret Supabase Vault veya project secrets üzerinden güvenli biçimde job request header'ına bağlanmalı. Faz 2 checklist'indeki cron maddesi henüz tam kapanmış sayılmamalı; event reminder tarafı tamamlandı ama leaderboard refresh job hâlâ eksik.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -83,6 +83,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ---
 ### Tamamlanan Görevler (Changelog)
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
+- *2026-04-27*: Faz 2 scheduled reminder cron foundation tamamlandı; `scheduled-event-reminders`, Expo batch/retry helper ve reminder query index'leri eklendi, local cron smoke testleri geçti.
 - *2026-04-27*: Faz 2 push foundation tamamlandı; shared Expo push helper ile `register-device-token` ve `send-test-push` Edge Function'ları eklendi, local push smoke testleri geçti.
 - *2026-04-27*: Öğrenci department tag desteği ürün planına eklendi; optional profile tags, official/custom sources ve duplicate merge yaklaşımı roadmap'e işlendi.
 - *2026-04-27*: Faz 2 reward claim Edge Function tamamlandı; `claim-reward` eklendi ve local reward smoke testleri geçti.
