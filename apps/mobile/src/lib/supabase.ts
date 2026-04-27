@@ -1,32 +1,63 @@
 import "react-native-url-polyfill/auto";
-import "expo-sqlite/localStorage/install";
 
 import { createClient } from "@supabase/supabase-js";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 import { publicEnv } from "@/lib/env";
 
-const isStorageAvailable = (): boolean => typeof globalThis.localStorage !== "undefined";
+type SupportedStorage = {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+};
+
+const isBrowserStorageAvailable = (): boolean => typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const createBrowserStorage = (): SupportedStorage => ({
+  getItem: async (key: string): Promise<string | null> => {
+    if (!isBrowserStorageAvailable()) {
+      return null;
+    }
+
+    return window.localStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (!isBrowserStorageAvailable()) {
+      return;
+    }
+
+    window.localStorage.setItem(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (!isBrowserStorageAvailable()) {
+      return;
+    }
+
+    window.localStorage.removeItem(key);
+  },
+});
+
+const createNativeStorage = (): SupportedStorage => ({
+  getItem: (key: string): Promise<string | null> => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string): Promise<void> => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string): Promise<void> => SecureStore.deleteItemAsync(key),
+});
+
+const storage: SupportedStorage = Platform.OS === "web" ? createBrowserStorage() : createNativeStorage();
 
 const createSupabaseClient = () =>
   createClient(
     publicEnv.EXPO_PUBLIC_SUPABASE_URL,
     publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    isStorageAvailable()
-      ? {
-          auth: {
-            storage: globalThis.localStorage,
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: false,
-          },
-        }
-      : {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false,
-          },
-        }
+    {
+      auth: {
+        storage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    }
   );
 
 export const supabase = createSupabaseClient();

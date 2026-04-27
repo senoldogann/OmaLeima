@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-expo-foundation`
-- **Yapılan iş:** Faz 3 mobile foundation başlatıldı. `apps/mobile` altında Expo SDK 55 tabanlı uygulama kuruldu; demo template temizlenip `auth/login` ile `student` tab shell rotaları yerleştirildi. `app.config.ts`, `eas.json`, `.env.example`, strict public env parsing, shared Supabase client, auth session provider, React Query provider ve native push permission / Expo token hazırlık helper'ı eklendi. Login ekranı ve student tabları artık ürünün gerçek bilgi mimarisine göre placeholder shell olarak hazır.
-- **Neden yapıldı:** Faz 2 tamamen kapandıktan sonra en doğru küçük adım Faz 3'ün altyapı dilimiydi. Google auth, event sorguları ve QR ekranı gibi daha riskli mobil işlerin sağlıklı ilerleyebilmesi için önce route yapısı, env disiplini, session bootstrap ve push hazırlığının ayrıştırılması gerekiyordu.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Export sırasında `localStorage is not defined` hatası yakalanıp Supabase client SSR-safe hale getirildi. Local web dev server `http://localhost:8082` üzerinde açıldı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-google-auth` aç ve Supabase Auth + Google sign-in akışını gerçek login ekranına bağla. Bu slice içinde login redirect, session persistence doğrulaması ve ilk authenticated route guard tamamlanmalı.
-- **Açık risk/blokaj:** Push helper sadece local/native preparation seviyesinde. Gerçek Expo token doğrulaması ve `register-device-token` entegrasyonu için development build + fiziksel cihaz gerekiyor. Student tabları şu an shell seviyesinde; gerçek event data ve RLS doğrulaması bir sonraki auth/data slice'a bırakıldı.
+- **Branch:** `feature/mobile-google-auth`
+- **Yapılan iş:** Faz 3 auth client slice eklendi. Login ekranı artık Supabase Google OAuth akışını başlatıyor; `auth/callback` route'u PKCE `code` değerini `exchangeCodeForSession` ile session'a çeviriyor; `student/*` tab layout'u anonim kullanıcıları `auth/login` sayfasına geri yönlendiriyor; profile ekranına sign-out butonu eklendi. Bu sırada mobile foundation'da ortaya çıkan web dev server kırığı da düzeltildi: session persistence `expo-sqlite/localStorage/install` yerine `expo-secure-store` + browser localStorage adapter ile çalışacak şekilde taşındı.
+- **Neden yapıldı:** Mobile foundation sonrası Faz 3'teki en doğru küçük adım gerçek login akışıydı. Event listesi, QR ve reward ekranları ancak ilk authenticated route guard yerleştikten sonra güvenle ilerletilebilir.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Local web preview `http://localhost:8084` üzerinde açıldı. `curl -I http://localhost:8084/auth/login` ve `curl -I http://localhost:8084/student/events` ile route'ların HTML cevabı doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-events-list` aç ve authenticated student için upcoming/active event liste sorgusunu Supabase'a bağla. Bu slice içinde gerçek route guard üstünde ilk data fetch, loading/error state ve event kartları tamamlanmalı.
+- **Açık risk/blokaj:** Google OAuth client code hazır olsa da gerçek roundtrip doğrulaması için Supabase dashboard'da Google provider'ın ve redirect allow-list'lerin yapılandırılmış olması gerekiyor. Native tarafta gerçek login testi development build veya fiziksel cihaz ile yapılmalı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
 - *2026-04-28*: Faz 3 mobile foundation tamamlandı; `apps/mobile` Expo shell'i, Supabase client/session provider, React Query provider ve push preparation helper eklendi.
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
 - *2026-04-28*: Faz 2 controlled push endpoint tamamlandı; `send-push-notification` eklendi ve `PROMOTION` anti-spam rule smoke testleri geçti.

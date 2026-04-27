@@ -1,6 +1,27 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
+import { StyleSheet, Text } from "react-native";
+
+import { AppScreen } from "@/components/app-screen";
+import { InfoCard } from "@/components/info-card";
+import { useSession } from "@/providers/session-provider";
 
 export default function StudentTabsLayout() {
+  const { isAuthenticated, isLoading } = useSession();
+
+  if (isLoading) {
+    return (
+      <AppScreen>
+        <InfoCard eyebrow="Student" title="Checking session">
+          <Text style={styles.bodyText}>Confirming that the student area has an authenticated session.</Text>
+        </InfoCard>
+      </AppScreen>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/auth/login" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -24,3 +45,11 @@ export default function StudentTabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  bodyText: {
+    color: "#CBD5E1",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+});

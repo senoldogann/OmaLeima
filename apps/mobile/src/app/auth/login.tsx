@@ -1,23 +1,29 @@
-import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Redirect } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
 import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { LoginHero } from "@/features/auth/components/login-hero";
+import { createGoogleRedirectUri } from "@/lib/auth";
 import { publicEnv } from "@/lib/env";
 import { useSession } from "@/providers/session-provider";
 
 export default function LoginScreen() {
-  const { bootstrapError, isLoading } = useSession();
+  const { bootstrapError, isAuthenticated, isLoading } = useSession();
+
+  if (!isLoading && isAuthenticated) {
+    return <Redirect href="/student/events" />;
+  }
 
   return (
     <AppScreen>
       <LoginHero />
 
       <FoundationStatusCard
-        eyebrow="Foundation"
-        title="Mobile foundation status"
+        eyebrow="Auth"
+        title="Google login status"
         items={[
           {
             label: "Supabase URL",
@@ -35,26 +41,22 @@ export default function LoginScreen() {
             state: bootstrapError ? "error" : isLoading ? "loading" : "ready",
           },
           {
-            label: "Google sign-in",
-            value: "Planned for the next feature slice.",
+            label: "Redirect URI",
+            value: createGoogleRedirectUri(),
             state: "pending",
           },
         ]}
       />
 
-      <InfoCard eyebrow="Preview" title="Student shell">
+      <InfoCard eyebrow="Sign in" title="Continue with Google">
         <Text style={styles.bodyText}>
-          The student tab structure is already mounted so future event, QR, leaderboard, reward, and profile work can land without reshaping navigation.
+          Google OAuth is handled by Supabase and comes back through the app callback route. The first authenticated guard is already wired to the student tab layout.
         </Text>
-        <Link href="/student/events" asChild>
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Open student preview</Text>
-          </Pressable>
-        </Link>
+        <GoogleSignInButton />
       </InfoCard>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Branch scope stops before real login and token registration.</Text>
+        <Text style={styles.footerText}>Local web preview still works even before provider credentials are fully configured.</Text>
       </View>
     </AppScreen>
   );
@@ -65,18 +67,6 @@ const styles = StyleSheet.create({
     color: "#CBD5E1",
     fontSize: 14,
     lineHeight: 20,
-  },
-  primaryButton: {
-    borderRadius: 8,
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#F8FAFC",
-    fontSize: 14,
-    fontWeight: "700",
   },
   footer: {
     paddingBottom: 8,

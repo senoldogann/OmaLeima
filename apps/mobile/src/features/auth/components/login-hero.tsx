@@ -5,7 +5,7 @@ export const LoginHero = () => (
     <Text style={styles.kicker}>OmaLeima</Text>
     <Text style={styles.title}>Digital leima pass for Finnish student overalls events.</Text>
     <Text style={styles.subtitle}>
-      Expo shell, Supabase session bootstrap, and push preparation are ready. Google sign-in lands in the next slice.
+      Google sign-in is now wired through Supabase OAuth. After the callback completes, the student area opens through the first real route guard.
     </Text>
   </View>
 );
