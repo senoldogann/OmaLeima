@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-google-auth`
-- **Scope:** Phase 3 Google sign-in and the first authenticated route guard for the student app.
+- **Branch:** `feature/mobile-student-events-list`
+- **Scope:** Phase 3 authenticated student events list with real Supabase reads.
 
 ## Affected Files
 
@@ -14,42 +14,31 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/app.config.ts`
-- `apps/mobile/.env.example`
-- `apps/mobile/package.json`
-- `apps/mobile/package-lock.json`
-- `apps/mobile/src/app/_layout.tsx`
-- `apps/mobile/src/app/auth/*`
-- `apps/mobile/src/app/student/*`
+- `apps/mobile/src/app/student/events.tsx`
+- `apps/mobile/src/features/events/*`
 - `apps/mobile/src/components/*`
-- `apps/mobile/src/features/auth/*`
-- `apps/mobile/src/lib/*`
-- `apps/mobile/src/providers/*`
-- `apps/mobile/src/types/*`
-- `PROGRESS.md`
 
 ## Risks
 
-- Google OAuth in Expo is sensitive to redirect URI shape, app scheme configuration, and Supabase redirect allow-lists.
-- The flow must work without silently depending on browser-only behavior, because the product target is mobile first.
-- We can validate the client flow and callback handling locally, but an end-to-end Google sign-in still depends on external provider configuration in Supabase and Google Cloud.
-- Web preview should keep working even if Google OAuth is not fully configured in the local environment.
-- Route protection should not create redirect loops while session bootstrap is still loading.
+- Events list must only use data already visible to authenticated students under current RLS rules.
+- The first query should not sprawl into detail screen, join mutations, or venue/reward overfetch.
+- We need loading, empty, and error states that still make sense even before Google OAuth is fully configured in external dashboards.
+- Seed data currently has one active event; query logic should still handle upcoming-only and empty results cleanly.
+- Event timing and registration status should be derived on the client without inventing permissions or availability rules.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections for Google login, protected student navigation, and mobile auth flow.
-- Current official Supabase guidance for Expo social auth and Google social login.
-- Current official Expo guidance for browser-based OAuth, redirect URI handling, and `expo-web-browser`.
-- Existing `apps/mobile` foundation branch already merged to `main`.
+- `LEIMA_APP_MASTER_PLAN.md` sections for student home screen, event discovery, and later event registration flow.
+- Existing `apps/mobile` auth foundation and route guard merged in Phase 3.
+- Current Supabase client query surface and existing RLS policies on `events` and `event_registrations`.
 
 ## Existing Logic Checked
 
-- `apps/mobile` already has strict env parsing, Supabase client bootstrap, React Query provider, and route shell tabs.
-- `@supabase/auth-js` in local `node_modules` confirms `skipBrowserRedirect` is available and that `exchangeCodeForSession` is the correct PKCE completion API.
-- Login screen currently has no real sign-in action and student tabs are not yet protected from anonymous access.
-- `expo-web-browser` is installed already, but the plugin configuration for auth launcher behavior is not set yet.
+- `apps/mobile` already has session bootstrap, route protection, and sign-out, so the events screen can assume authenticated access.
+- `events.tsx` is still a placeholder shell with no live query.
+- RLS allows public reads of `PUBLISHED`, `ACTIVE`, and `COMPLETED` public events, and students can read only their own `event_registrations`.
+- Seed data currently includes one registered student and one active public event, which is enough for a smoke query against the live local backend.
 
 ## Review Outcome
 
-Implement the first real auth slice in `apps/mobile`: add a Google sign-in action backed by `supabase.auth.signInWithOAuth`, introduce an OAuth callback route that exchanges the PKCE code for a session, protect the student tab layout from anonymous access, and add a sign-out path so the route guard can be validated end to end once provider configuration is ready.
+Implement the first real student data surface in `apps/mobile`: query active and upcoming events from Supabase for an authenticated student, include the user's registration state, render clear loading/error/empty states, and keep the data model ready for the next event detail and join slice. Registration state should be fetched without accidentally filtering out visible public events.

@@ -4,17 +4,15 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/mobile-google-auth` branch.
-- [x] Review the current mobile foundation and current Expo/Supabase auth guidance.
-- [x] Update `REVIEW.md` for the mobile Google auth scope.
-- [x] Update `PLAN.md` for the mobile Google auth scope.
+- [x] Create `feature/mobile-student-events-list` branch.
+- [x] Review the current mobile auth state, event schema, and list requirements.
+- [x] Update `REVIEW.md` for the student events list scope.
+- [x] Update `PLAN.md` for the student events list scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add OAuth redirect helpers and callback route.
-- [x] Implement the Google sign-in button flow on the login screen.
-- [x] Add authenticated route protection and login redirect handling.
-- [x] Add sign-out handling for session validation.
-- [x] Update app config and env docs for Google auth.
-- [x] Run mobile validation commands.
-- [x] Update `PROGRESS.md` with the mobile auth handoff.
+- [x] Add typed student events query helpers under `src/features/events`.
+- [x] Replace the placeholder student events screen with live loading/error/empty/content states.
+- [x] Add event cards that surface active/upcoming timing and registration state.
+- [x] Run mobile validation commands and a seeded-student Supabase query smoke test.
+- [x] Update `PROGRESS.md` with the student events list handoff.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

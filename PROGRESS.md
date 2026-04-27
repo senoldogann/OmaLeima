@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-google-auth`
-- **Yapılan iş:** Faz 3 auth client slice eklendi. Login ekranı artık Supabase Google OAuth akışını başlatıyor; `auth/callback` route'u PKCE `code` değerini `exchangeCodeForSession` ile session'a çeviriyor; `student/*` tab layout'u anonim kullanıcıları `auth/login` sayfasına geri yönlendiriyor; profile ekranına sign-out butonu eklendi. Bu sırada mobile foundation'da ortaya çıkan web dev server kırığı da düzeltildi: session persistence `expo-sqlite/localStorage/install` yerine `expo-secure-store` + browser localStorage adapter ile çalışacak şekilde taşındı.
-- **Neden yapıldı:** Mobile foundation sonrası Faz 3'teki en doğru küçük adım gerçek login akışıydı. Event listesi, QR ve reward ekranları ancak ilk authenticated route guard yerleştikten sonra güvenle ilerletilebilir.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Local web preview `http://localhost:8084` üzerinde açıldı. `curl -I http://localhost:8084/auth/login` ve `curl -I http://localhost:8084/student/events` ile route'ların HTML cevabı doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-events-list` aç ve authenticated student için upcoming/active event liste sorgusunu Supabase'a bağla. Bu slice içinde gerçek route guard üstünde ilk data fetch, loading/error state ve event kartları tamamlanmalı.
-- **Açık risk/blokaj:** Google OAuth client code hazır olsa da gerçek roundtrip doğrulaması için Supabase dashboard'da Google provider'ın ve redirect allow-list'lerin yapılandırılmış olması gerekiyor. Native tarafta gerçek login testi development build veya fiziksel cihaz ile yapılmalı.
+- **Branch:** `feature/mobile-student-events-list`
+- **Yapılan iş:** Faz 3 öğrenci ana ekranının ilk gerçek veri dilimi eklendi. `apps/mobile/src/features/events` altında typed query helper'ları ve event card component'i oluşturuldu; `student/events` ekranı placeholder durumundan çıkıp Supabase'ten public `ACTIVE` ve `PUBLISHED` event'leri, ayrıca oturumdaki öğrencinin kendi registration kayıtlarını okuyup birleştiren gerçek liste ekranına dönüştü. Ekran artık loading, error, empty, live now ve coming up durumlarını gösteriyor; kartlar da registration badge, join deadline, capacity ve minimum leima bilgisini gösteriyor.
+- **Neden yapıldı:** Google auth ve route guard sonrası Faz 3'teki en doğru küçük adım öğrenci için ilk gerçek veri yüzeyini açmaktı. Event detail, join mutation, QR ve rewards akışlarına geçmeden önce event discovery ekranının güvenli veri okumayla oturması gerekiyordu.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Seeded student ile local Supabase sign-in yapılıp public event listesi ve `event_registrations` query smoke test'i çalıştırıldı; `ACTIVE` event ile `REGISTERED` state doğrulandı. Local web preview `http://localhost:8085` üzerinde açıldı. `curl -I http://localhost:8085/auth/login` ve `curl -I http://localhost:8085/student/events` ile route'ların HTML cevabı doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-event-detail-and-join` aç. Bu slice içinde event detail ekranı, join CTA, join deadline ve capacity rule surface'i, ardından uygun backend mutation entegrasyonu hazırlanmalı.
+- **Açık risk/blokaj:** Google OAuth client code hazır olsa da gerçek roundtrip doğrulaması için Supabase dashboard'da Google provider'ın ve redirect allow-list'lerin yapılandırılmış olması gerekiyor. Student events list ekranı gerçek Supabase verisini okuyor, ancak native tarafta gerçek login ve refresh davranışı development build veya fiziksel cihaz ile ayrıca doğrulanmalı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -42,9 +42,9 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ## Faz 3: Mobil Uygulama MVP - Öğrenci Akışı (Mobile Student Agent)
 - [x] Expo projesinin başlatılması, klasör yapısı (app, src/features) ve kütüphanelerin kurulumu
-- [ ] Supabase Auth ile Google Login entegrasyonunun sağlanması
+- [x] Supabase Auth ile Google Login entegrasyonunun sağlanması
 - [x] Global State (Örn: Zustand/Tanstack Query) ve Supabase Client bağlantısının kurulması
-- [ ] Öğrenci Ana Ekran: Yaklaşan/Aktif etkinliklerin listelenmesi
+- [x] Öğrenci Ana Ekran: Yaklaşan/Aktif etkinliklerin listelenmesi
 - [ ] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
 - [ ] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [ ] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
 - *2026-04-28*: Faz 3 mobile foundation tamamlandı; `apps/mobile` Expo shell'i, Supabase client/session provider, React Query provider ve push preparation helper eklendi.
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
