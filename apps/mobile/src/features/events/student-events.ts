@@ -6,6 +6,7 @@ import type {
   EventRegistrationState,
   EventRegistrationStatus,
   EventTimelineState,
+  StudentEventsBuckets,
   StudentEventSummary,
 } from "@/features/events/types";
 
@@ -29,15 +30,12 @@ type EventRegistrationRow = {
   status: EventRegistrationStatus;
 };
 
-type StudentEventsBuckets = {
-  activeEvents: StudentEventSummary[];
-  upcomingEvents: StudentEventSummary[];
-};
-
 type UseStudentEventsQueryParams = {
   studentId: string;
   isEnabled: boolean;
 };
+
+export const studentEventsQueryKey = (studentId: string) => ["student-events", studentId] as const;
 
 const createRegistrationMap = (
   registrations: EventRegistrationRow[]
@@ -157,7 +155,7 @@ export const useStudentEventsQuery = ({
   isEnabled,
 }: UseStudentEventsQueryParams): UseQueryResult<StudentEventsBuckets, Error> =>
   useQuery({
-    queryKey: ["student-events", studentId],
+    queryKey: studentEventsQueryKey(studentId),
     queryFn: async () => fetchStudentEventsAsync(studentId),
     enabled: isEnabled,
   });

@@ -17,7 +17,32 @@ type EventRow = {
   id: string;
   status: string;
   end_at: string;
-  max_participants: number | null;
+};
+
+type EventRegistrationRow = {
+  id: string;
+  status: "REGISTERED" | "CANCELLED" | "BANNED";
+};
+
+type RegisterEventAtomicResult = {
+  status:
+    | "SUCCESS"
+    | "ALREADY_REGISTERED"
+    | "AUTH_REQUIRED"
+    | "ACTOR_NOT_ALLOWED"
+    | "PROFILE_NOT_FOUND"
+    | "PROFILE_NOT_ACTIVE"
+    | "ROLE_NOT_ALLOWED"
+    | "EVENT_NOT_FOUND"
+    | "EVENT_NOT_AVAILABLE"
+    | "EVENT_REGISTRATION_CLOSED"
+    | "EVENT_FULL"
+    | "STUDENT_BANNED";
+  registrationId?: string;
+  startAt?: string;
+  joinDeadlineAt?: string;
+  maxParticipants?: number;
+  currentRegistrations?: number;
 };
 
 const parseRequestBody = (body: Record<string, unknown>): GenerateQrTokenRequest => {
@@ -79,7 +104,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     const { data: event, error: eventError } = await supabase
       .from("events")
-      .select("id,status,end_at,max_participants")
+      .select("id,status,end_at")
       .eq("id", body.eventId)
       .single<EventRow>();
 
@@ -109,7 +134,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       .select("id,status")
       .eq("event_id", event.id)
       .eq("student_id", user.id)
-      .maybeSingle();
+      .maybeSingle<EventRegistrationRow>();
 
     if (registrationError !== null) {
       return errorResponse(500, "INTERNAL_ERROR", "Failed to read event registration.", {
@@ -119,44 +144,86 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
-    if (registration === null) {
-      if (event.max_participants !== null) {
-        const { count, error: countError } = await supabase
-          .from("event_registrations")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", event.id)
-          .eq("status", "REGISTERED");
+    if (registration?.status === "BANNED") {
+      return errorResponse(403, "STUDENT_BANNED", "Student is banned from this event.", {
+        eventId: event.id,
+        userId: user.id,
+      });
+    }
 
-        if (countError !== null) {
-          return errorResponse(500, "INTERNAL_ERROR", "Failed to count event registrations.", {
-            eventId: event.id,
-            countError: countError.message,
-          });
-        }
+    if (registration === null || registration.status === "CANCELLED") {
+      const { data: registerResult, error: registerError } = await supabase.rpc("register_event_atomic", {
+        p_event_id: event.id,
+        p_student_id: user.id,
+      });
 
-        if (typeof count === "number" && count >= event.max_participants) {
-          return errorResponse(400, "EVENT_FULL", "Event is full.", {
-            eventId: event.id,
-            maxParticipants: event.max_participants,
-            currentRegistrations: count,
-          });
-        }
-      }
-
-      const { error: insertError } = await supabase
-        .from("event_registrations")
-        .insert({
-          event_id: event.id,
-          student_id: user.id,
-          status: "REGISTERED",
-        });
-
-      if (insertError !== null && insertError.code !== "23505") {
+      if (registerError !== null) {
         return errorResponse(500, "INTERNAL_ERROR", "Failed to register student for event.", {
           eventId: event.id,
           userId: user.id,
-          insertError: insertError.message,
-          insertErrorCode: insertError.code,
+          registerError: registerError.message,
+          registerErrorCode: registerError.code,
+        });
+      }
+
+      const parsedResult = registerResult as RegisterEventAtomicResult | null;
+
+      if (parsedResult === null) {
+        return errorResponse(500, "INTERNAL_ERROR", "Registration RPC returned no data.", {
+          eventId: event.id,
+          userId: user.id,
+        });
+      }
+
+      if (parsedResult.status === "EVENT_FULL") {
+        return errorResponse(400, "EVENT_FULL", "Event is full.", {
+          eventId: event.id,
+          maxParticipants: parsedResult.maxParticipants,
+          currentRegistrations: parsedResult.currentRegistrations,
+        });
+      }
+
+      if (parsedResult.status === "EVENT_REGISTRATION_CLOSED") {
+        return errorResponse(400, "EVENT_REGISTRATION_CLOSED", "Event registration is closed.", {
+          eventId: event.id,
+          startAt: parsedResult.startAt,
+          joinDeadlineAt: parsedResult.joinDeadlineAt,
+        });
+      }
+
+      if (parsedResult.status === "STUDENT_BANNED") {
+        return errorResponse(403, "STUDENT_BANNED", "Student is banned from this event.", {
+          eventId: event.id,
+          userId: user.id,
+        });
+      }
+
+      if (parsedResult.status === "PROFILE_NOT_ACTIVE" || parsedResult.status === "ROLE_NOT_ALLOWED") {
+        return errorResponse(403, parsedResult.status, "Student profile is not allowed to register for this event.", {
+          eventId: event.id,
+          userId: user.id,
+        });
+      }
+
+      if (parsedResult.status === "AUTH_REQUIRED" || parsedResult.status === "ACTOR_NOT_ALLOWED") {
+        return errorResponse(401, "UNAUTHORIZED", "Student registration RPC rejected the caller.", {
+          eventId: event.id,
+          userId: user.id,
+          registrationStatus: parsedResult.status,
+        });
+      }
+
+      if (parsedResult.status === "EVENT_NOT_FOUND" || parsedResult.status === "EVENT_NOT_AVAILABLE") {
+        return errorResponse(400, parsedResult.status, "Event is not available for registration.", {
+          eventId: event.id,
+        });
+      }
+
+      if (parsedResult.status !== "SUCCESS" && parsedResult.status !== "ALREADY_REGISTERED") {
+        return errorResponse(500, "INTERNAL_ERROR", "Registration RPC returned an unexpected status.", {
+          eventId: event.id,
+          userId: user.id,
+          registrationStatus: parsedResult.status,
         });
       }
     }

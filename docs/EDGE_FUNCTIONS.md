@@ -95,6 +95,15 @@ Response:
 }
 ```
 
+Behavior notes:
+
+- The function still allows already-registered students to open QR without a separate join step.
+- When the student is missing a registration or only has a `CANCELLED` row, the function now delegates registration to `register_event_atomic`.
+- Shared registration failures now surface consistently from this endpoint:
+  - `EVENT_FULL`
+  - `EVENT_REGISTRATION_CLOSED`
+  - `STUDENT_BANNED`
+
 ## `register-device-token`
 
 Request:

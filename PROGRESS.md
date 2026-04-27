@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-student-events-list`
-- **Yapılan iş:** Faz 3 öğrenci ana ekranının ilk gerçek veri dilimi eklendi. `apps/mobile/src/features/events` altında typed query helper'ları ve event card component'i oluşturuldu; `student/events` ekranı placeholder durumundan çıkıp Supabase'ten public `ACTIVE` ve `PUBLISHED` event'leri, ayrıca oturumdaki öğrencinin kendi registration kayıtlarını okuyup birleştiren gerçek liste ekranına dönüştü. Ekran artık loading, error, empty, live now ve coming up durumlarını gösteriyor; kartlar da registration badge, join deadline, capacity ve minimum leima bilgisini gösteriyor.
-- **Neden yapıldı:** Google auth ve route guard sonrası Faz 3'teki en doğru küçük adım öğrenci için ilk gerçek veri yüzeyini açmaktı. Event detail, join mutation, QR ve rewards akışlarına geçmeden önce event discovery ekranının güvenli veri okumayla oturması gerekiyordu.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Seeded student ile local Supabase sign-in yapılıp public event listesi ve `event_registrations` query smoke test'i çalıştırıldı; `ACTIVE` event ile `REGISTERED` state doğrulandı. Local web preview `http://localhost:8085` üzerinde açıldı. `curl -I http://localhost:8085/auth/login` ve `curl -I http://localhost:8085/student/events` ile route'ların HTML cevabı doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-event-detail-and-join` aç. Bu slice içinde event detail ekranı, join CTA, join deadline ve capacity rule surface'i, ardından uygun backend mutation entegrasyonu hazırlanmalı.
-- **Açık risk/blokaj:** Google OAuth client code hazır olsa da gerçek roundtrip doğrulaması için Supabase dashboard'da Google provider'ın ve redirect allow-list'lerin yapılandırılmış olması gerekiyor. Student events list ekranı gerçek Supabase verisini okuyor, ancak native tarafta gerçek login ve refresh davranışı development build veya fiziksel cihaz ile ayrıca doğrulanmalı.
+- **Branch:** `feature/mobile-event-detail-and-join`
+- **Yapılan iş:** Faz 3 event detail ve join slice tamamlandı. `student/events` tabı nested stack yapısına taşındı; liste ekranı her karttan `/student/events/[eventId]` detail route'una gidiyor. Detail ekranı artık event overview, join status, joined venue listesi, reward tiers ve organizer rules gösteriyor. Backend tarafında `register_event_atomic` RPC eklendi; öğrenci registration yazıları artık direct table insert/update yerine bu atomic path üzerinden yürüyor. `generate-qr-token` da aynı registration primitive ile hizalandı; unregistered veya cancelled student için QR üretmeden önce shared join rules uygulanıyor.
+- **Neden yapıldı:** Event discovery sonrası Faz 3'teki en doğru küçük adım öğrencinin tek bir etkinlikte gerçekten karar alabileceği detail ekranını ve güvenli join write path'ini kurmaktı. Sadece UI join butonu eklemek yetmezdi; capacity ve join deadline kontrolünün zero-trust biçimde backend transaction'ına taşınması gerekiyordu.
+- **Doğrulama:** `supabase db reset` geçti. `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Seeded student ile local Supabase smoke testlerinde direct `event_registrations` insert RLS ile reddedildi; `register_event_atomic` için success, `ALREADY_REGISTERED`, `EVENT_FULL`, `EVENT_REGISTRATION_CLOSED` ve `STUDENT_BANNED` sonuçları doğrulandı. `generate-qr-token` için seeded registered event success, future open event auto-register success, closed event rejection ve full event rejection doğrulandı. Local web preview `http://localhost:8086` üzerinde açıldı. `curl -I http://localhost:8086/student/events` ve `curl -I http://localhost:8086/student/events/30000000-0000-0000-0000-000000000010` ile list ve detail route'ları doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-qr-screen` aç. Bu slice içinde registered student için dynamic QR screen, refresh timer, `generate-qr-token` mutation, foreground refresh state ve screen-capture warning surface hazırlanmalı.
+- **Açık risk/blokaj:** Google OAuth client code ve event detail route hazır olsa da gerçek signed-in UI join denemesi tarayıcı içinde manuel geçilmedi; şu anda smoke testler auth client + RPC + route render seviyesinde. Native tarafta gerçek login, event detail navigation ve QR refresh davranışı development build veya fiziksel cihaz ile ayrıca doğrulanmalı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -45,7 +45,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Supabase Auth ile Google Login entegrasyonunun sağlanması
 - [x] Global State (Örn: Zustand/Tanstack Query) ve Supabase Client bağlantısının kurulması
 - [x] Öğrenci Ana Ekran: Yaklaşan/Aktif etkinliklerin listelenmesi
-- [ ] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
+- [x] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
 - [ ] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [ ] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
 - [ ] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
 - *2026-04-28*: Faz 3 mobile foundation tamamlandı; `apps/mobile` Expo shell'i, Supabase client/session provider, React Query provider ve push preparation helper eklendi.

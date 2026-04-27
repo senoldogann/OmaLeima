@@ -15,6 +15,7 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260427201500_approve_business_application.sql`
 - `supabase/migrations/20260427201600_reject_business_application.sql`
 - `supabase/migrations/20260427213000_notification_delivery_indexes.sql`
+- `supabase/migrations/20260428220000_register_event_atomic.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -34,12 +35,14 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `claim_reward_atomic`
   - `approve_business_application_atomic`
   - `reject_business_application_atomic`
+  - `register_event_atomic`
 
 ## Critical Write Rules
 
 Clients must not directly insert or update these tables:
 
 ```txt
+event_registrations
 qr_token_uses
 stamps
 leaderboard_scores
@@ -50,6 +53,33 @@ fraud_signals
 ```
 
 Critical writes must go through Supabase Edge Functions and security-definer RPC functions. Frontend code may read allowed rows through RLS, but it must not own stamp, reward, fraud, audit, or leaderboard mutation logic.
+
+## Event Registration Foundation
+
+Student event registration is now enforced through `register_event_atomic(event_id, student_id)` instead of direct client writes.
+
+Current behavior:
+
+- Direct student `insert` and `update` access to `event_registrations` is intentionally removed.
+- `register_event_atomic` is the shared rule path used by:
+  - the Phase 3 mobile join flow
+  - `generate-qr-token` when an authenticated student is still unregistered
+- The function locks the target event row before checking capacity so last-seat races stay serialized as long as writes go through the shared path.
+- Registration is allowed only when:
+  - caller is the same authenticated student or the service role
+  - student profile is active and uses the `STUDENT` role
+  - event is `PUBLIC`
+  - event status is joinable
+  - `now() < join_deadline_at`
+  - `now() < start_at`
+- Known statuses returned by the RPC:
+  - `SUCCESS`
+  - `ALREADY_REGISTERED`
+  - `EVENT_FULL`
+  - `EVENT_REGISTRATION_CLOSED`
+  - `STUDENT_BANNED`
+  - `ROLE_NOT_ALLOWED`
+  - `PROFILE_NOT_ACTIVE`
 
 ## Local Smoke Test Accounts
 
@@ -180,6 +210,27 @@ Running the same reward claim again should return:
 
 ```json
 {"status": "REWARD_ALREADY_CLAIMED"}
+```
+
+Register the seeded student for a future public event:
+
+```sql
+select public.register_event_atomic(
+  '30000000-0000-0000-0000-000000000010',
+  '00000000-0000-0000-0000-000000000004'
+);
+```
+
+Expected first result:
+
+```json
+{"status": "SUCCESS"}
+```
+
+Running the same registration again should return:
+
+```json
+{"status": "ALREADY_REGISTERED"}
 ```
 
 Approve a pending business application:

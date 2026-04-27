@@ -1,3 +1,4 @@
+import { useRouter, type RelativePathString } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
@@ -8,6 +9,7 @@ import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useSession } from "@/providers/session-provider";
 
 export default function StudentEventsScreen() {
+  const router = useRouter();
   const { session } = useSession();
   const studentId = session?.user.id ?? null;
   const eventsQuery = useStudentEventsQuery({
@@ -19,11 +21,15 @@ export default function StudentEventsScreen() {
   const upcomingEvents = eventsQuery.data?.upcomingEvents ?? [];
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
 
+  const openEventDetail = (eventId: string): void => {
+    router.push(`./${eventId}` as RelativePathString);
+  };
+
   return (
     <AppScreen>
       <InfoCard eyebrow="Student" title="Event discovery">
         <Text style={styles.bodyText}>
-          Active and upcoming public events now come from Supabase. Registration actions and event detail stay for the next slice.
+          Active and upcoming public events now come from Supabase. Event detail, venues, rewards, and join state now continue inside the event route.
         </Text>
       </InfoCard>
 
@@ -44,18 +50,16 @@ export default function StudentEventsScreen() {
             state: eventsQuery.isLoading ? "loading" : eventsQuery.error ? "error" : "ready",
           },
           {
-            label: "Registration state",
-            value: "Card badges already show whether the signed-in student is registered for an event.",
-            state: "pending",
+            label: "Detail route",
+            value: "Each event card now opens a nested event detail screen inside the Events tab.",
+            state: "ready",
           },
         ]}
       />
 
       {eventsQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load events">
-          <Text style={styles.bodyText}>
-            {eventsQuery.error.message}
-          </Text>
+          <Text style={styles.bodyText}>{eventsQuery.error.message}</Text>
           <Pressable onPress={() => void eventsQuery.refetch()} style={styles.retryButton}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </Pressable>
@@ -74,7 +78,7 @@ export default function StudentEventsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Live now</Text>
           {activeEvents.map((event) => (
-            <EventCard event={event} key={event.id} />
+            <EventCard event={event} key={event.id} onPress={() => openEventDetail(event.id)} />
           ))}
         </View>
       ) : null}
@@ -83,7 +87,7 @@ export default function StudentEventsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Coming up</Text>
           {upcomingEvents.map((event) => (
-            <EventCard event={event} key={event.id} />
+            <EventCard event={event} key={event.id} onPress={() => openEventDetail(event.id)} />
           ))}
         </View>
       ) : null}
