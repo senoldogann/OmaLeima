@@ -6,6 +6,7 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 
 - `generate-qr-token`
 - `scan-qr`
+- `claim-reward`
 
 ## Local Secrets
 
@@ -35,13 +36,36 @@ supabase secrets set QR_SIGNING_SECRET=replace-with-production-secret
 
 ## Auth Model
 
-Both functions set `verify_jwt = false` in `supabase/config.toml` and authenticate explicitly inside the function:
+All current functions set `verify_jwt = false` in `supabase/config.toml` and authenticate explicitly inside the function:
 
 1. Read the Bearer token from `Authorization`.
 2. Call Supabase Auth with the service client to resolve the user.
 3. Apply function-specific authorization checks.
 
 This keeps the auth behavior explicit and compatible with current Supabase Edge Function guidance.
+
+## `claim-reward`
+
+Request:
+
+```json
+{
+  "eventId": "30000000-0000-0000-0000-000000000001",
+  "studentId": "00000000-0000-0000-0000-000000000004",
+  "rewardTierId": "40000000-0000-0000-0000-000000000001",
+  "notes": "local smoke claim"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "rewardClaimId": "uuid",
+  "message": "Reward claim recorded successfully."
+}
+```
 
 ## `generate-qr-token`
 
@@ -104,6 +128,8 @@ supabase functions serve --env-file supabase/.env.local
 
 4. Sign in as the seeded scanner and call `scan-qr` using the generated token.
 
+5. Sign in as the seeded organizer and call `claim-reward`.
+
 Expected scan statuses:
 
 ```txt
@@ -112,4 +138,13 @@ QR_ALREADY_USED_OR_REPLAYED
 ALREADY_STAMPED
 INVALID_QR
 QR_EXPIRED
+```
+
+Expected reward statuses:
+
+```txt
+SUCCESS
+REWARD_ALREADY_CLAIMED
+NOT_ENOUGH_STAMPS
+CLAIMER_NOT_ALLOWED
 ```

@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/qr-edge-functions`
-- **Yapılan iş:** Faz 2'nin ilk güvenlik dilimi tamamlandı: `generate-qr-token` ve `scan-qr` Supabase Edge Function'ları, shared auth/http/env/validation/JWT helper'ları, local function config'i ve Edge Function kullanım dokümantasyonu eklendi. Seed auth verisi local password login smoke testlerini destekleyecek şekilde düzeltildi.
-- **Neden yapıldı:** Mobil öğrenci QR ekranı ve mekan tarayıcı akışı başlamadan önce QR üretimi, QR doğrulama, scanner yetkisi ve atomik damga RPC çağrısı server-side güvenli bir API yüzeyine alınmalıydı.
-- **Doğrulama:** `supabase db reset`; local password auth ile seeded student/scanner login; `generate-qr-token`; `scan-qr` success; aynı QR replay; invalid QR; expired QR smoke testleri geçti.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra temiz `main` üzerinden Phase 2'nin bir sonraki küçük branch'ini aç: `feature/reward-edge-function` ile `claim-reward` Edge Function'ını `claim_reward_atomic` RPC üzerine kur.
-- **Açık risk/blokaj:** `generate-qr-token` kapasite kontrolü şu an explicit count + DB unique constraint ile korunuyor; yüksek eşzamanlı kayıt senaryosu ürün için kritik hale gelirse event registration için ayrıca atomik RPC tasarlanmalı. Production deploy öncesi `QR_SIGNING_SECRET` Supabase hosted secrets içine set edilmeli.
+- **Branch:** `feature/reward-edge-function`
+- **Yapılan iş:** Faz 2'nin ikinci güvenlik dilimi tamamlandı: `claim-reward` Supabase Edge Function'ı eklendi, `claim_reward_atomic` RPC için request validation ve sabit response message katmanı kuruldu, function config ve Edge Function dokümantasyonu güncellendi.
+- **Neden yapıldı:** Öğrencinin kazandığı ödülün kulüp yetkilisi tarafından güvenli ve duplicate korumalı şekilde teslim edilebilmesi için reward claim akışı da client dışına alınmalıydı.
+- **Doğrulama:** `supabase db reset`; local organizer/scanner/student password auth; `generate-qr-token`; `scan-qr` ile seed student'a 1 valid leima üretimi; `claim-reward` success; duplicate claim; not-enough-stamps; invalid bearer token; `CLAIMER_NOT_ALLOWED` smoke testleri geçti.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra temiz `main` üzerinden Phase 2'nin sonraki küçük branch'ini aç: `feature/admin-business-approval-functions` ile `admin-approve-business` ve `admin-reject-business` Edge Function'larını tasarla ve uygula.
+- **Açık risk/blokaj:** Reward claim şu an event, student ve reward tier ID'leriyle çağrılıyor; staff-side QR/confirmation UX ve fiziksel teslimat doğrulama ekranı sonraki fazlarda ayrıca bağlanmalı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -35,7 +35,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Proje genelinde kullanılacak TypeScript tiplerinin (Shared Types) oluşturulması
 - [x] `generate-qr-token` API'sinin yazılması (Maksimum katılımcı kontrolü ve JWT imzalaması dahil)
 - [x] `scan-qr` API'sinin yazılması (Zaman aşımı, tekrar kullanımı engelleme ve mekan doğrulama)
-- [ ] `claim-reward` API'sinin yazılması
+- [x] `claim-reward` API'sinin yazılması
 - [ ] `admin-approve-business` ve `admin-reject-business` API'lerinin yazılması
 - [ ] `register-device-token` ve `send-push-notification` API'lerinin yazılması
 - [ ] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
@@ -79,6 +79,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-27*: Faz 2 reward claim Edge Function tamamlandı; `claim-reward` eklendi ve local reward smoke testleri geçti.
 - *2026-04-27*: Faz 2 QR Edge Function ilk dilimi tamamlandı; `generate-qr-token` ve `scan-qr` eklendi, local auth/DB/function smoke testleri geçti.
 - *2026-04-27*: Ajan çalışma disiplini güçlendirildi; `REVIEW.md`, `PLAN.md`, `TODOS.md` zorunlu pre-implementation çalışma dosyaları olarak eklendi.
 - *2026-04-27*: Ürün konumlandırması "Digital leima pass for Finnish student overalls events" olarak netleştirildi. Faz 1 Supabase database foundation tamamlandı; local migration/seed ve RPC smoke testleri geçti.
