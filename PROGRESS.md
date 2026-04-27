@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-event-detail-and-join`
-- **Yapılan iş:** Faz 3 event detail ve join slice tamamlandı. `student/events` tabı nested stack yapısına taşındı; liste ekranı her karttan `/student/events/[eventId]` detail route'una gidiyor. Detail ekranı artık event overview, join status, joined venue listesi, reward tiers ve organizer rules gösteriyor. Backend tarafında `register_event_atomic` RPC eklendi; öğrenci registration yazıları artık direct table insert/update yerine bu atomic path üzerinden yürüyor. `generate-qr-token` da aynı registration primitive ile hizalandı; unregistered veya cancelled student için QR üretmeden önce shared join rules uygulanıyor.
-- **Neden yapıldı:** Event discovery sonrası Faz 3'teki en doğru küçük adım öğrencinin tek bir etkinlikte gerçekten karar alabileceği detail ekranını ve güvenli join write path'ini kurmaktı. Sadece UI join butonu eklemek yetmezdi; capacity ve join deadline kontrolünün zero-trust biçimde backend transaction'ına taşınması gerekiyordu.
-- **Doğrulama:** `supabase db reset` geçti. `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Seeded student ile local Supabase smoke testlerinde direct `event_registrations` insert RLS ile reddedildi; `register_event_atomic` için success, `ALREADY_REGISTERED`, `EVENT_FULL`, `EVENT_REGISTRATION_CLOSED` ve `STUDENT_BANNED` sonuçları doğrulandı. `generate-qr-token` için seeded registered event success, future open event auto-register success, closed event rejection ve full event rejection doğrulandı. Local web preview `http://localhost:8086` üzerinde açıldı. `curl -I http://localhost:8086/student/events` ve `curl -I http://localhost:8086/student/events/30000000-0000-0000-0000-000000000010` ile list ve detail route'ları doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-qr-screen` aç. Bu slice içinde registered student için dynamic QR screen, refresh timer, `generate-qr-token` mutation, foreground refresh state ve screen-capture warning surface hazırlanmalı.
-- **Açık risk/blokaj:** Google OAuth client code ve event detail route hazır olsa da gerçek signed-in UI join denemesi tarayıcı içinde manuel geçilmedi; şu anda smoke testler auth client + RPC + route render seviyesinde. Native tarafta gerçek login, event detail navigation ve QR refresh davranışı development build veya fiziksel cihaz ile ayrıca doğrulanmalı.
+- **Branch:** `feature/mobile-student-qr-screen`
+- **Yapılan iş:** Faz 3 öğrenci QR ekranı tamamlandı. `student/active-event` artık placeholder değil; öğrencinin kendi registered event context'ini okuyup aktif event varsa dynamic QR token çekiyor, upcoming registered event varsa standby state gösteriyor. QR screen refresh loop'u `generate-qr-token` response içindeki `refreshAfterSeconds` değerini kullanıyor; app foreground + focused durumundayken token yenileniyor, background'da duruyor. Ekranda countdown bar, leima progress özeti, retry state ve görünür capture warning var. `expo-screen-capture`, `qrcode` ve `react-native-svg` kullanılarak client-side signing olmadan QR render ve native capture blocking surface eklendi.
+- **Neden yapıldı:** Event detail ve secure join sonrası Faz 3'teki en doğru küçük adım öğrencinin gerçekten venue'ye göstereceği üretim yüzeyini kurmaktı. QR ekranı product'ın çekirdek akışı olduğu için refresh cadence, foreground behavior ve screenshot/capture uyarısı aynı dilimde oturmalıydı.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Local smoke testte seeded student için registered event listesi okunup bir aktif ve bir upcoming registered event doğrulandı; `generate-qr-token` çağrısı `200` döndü, `refreshAfterSeconds=30` ve `qrPayload.type=LEIMA_STAMP_QR` doğrulandı. `qrcode` ile local SVG üretimi doğrulandı. Local web preview `http://localhost:8087` üzerinde açıldı. `curl -I http://localhost:8087/student/active-event` ve `curl -I http://localhost:8087/student/events` ile route'ların HTML cevabı doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-rewards-progress` aç. Bu slice içinde reward progress summary, claimable tier state ve QR screen / rewards tab shared progress surface birleştirilmeli.
+- **Açık risk/blokaj:** Web preview'da screen-capture blocking çalışmaz; burada yalnızca warning surface görünür. Native tarafta gerçek screenshot/screen-record blocking, background/foreground refresh davranışı ve logged-in QR happy path development build veya fiziksel cihaz ile ayrıca doğrulanmalı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -46,7 +46,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Global State (Örn: Zustand/Tanstack Query) ve Supabase Client bağlantısının kurulması
 - [x] Öğrenci Ana Ekran: Yaklaşan/Aktif etkinliklerin listelenmesi
 - [x] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
-- [ ] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
+- [x] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [ ] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
 - [ ] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
 - [ ] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
