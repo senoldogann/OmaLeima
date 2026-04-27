@@ -4,17 +4,17 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/mobile-event-detail-and-join` branch.
-- [x] Review the current event detail, join rules, and existing QR registration behavior.
-- [x] Update `REVIEW.md` for the event detail and join scope.
-- [x] Update `PLAN.md` for the event detail and join scope.
+- [x] Create `feature/mobile-student-qr-screen` branch.
+- [x] Review the current QR requirements, active-event placeholder, and backend token contract.
+- [x] Update `REVIEW.md` for the QR screen scope.
+- [x] Update `PLAN.md` for the QR screen scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add an atomic event registration RPC and tighten direct client registration writes.
-- [x] Align `generate-qr-token` with the shared event registration rule path.
-- [x] Add typed event detail query and join mutation helpers under `apps/mobile/src/features/events`.
-- [x] Convert the events tab to a nested stack and add an event detail route.
-- [x] Add join CTA, registration state, venues, and reward tier sections to the mobile detail screen.
-- [x] Run `supabase db reset`, mobile validation commands, and local join smoke tests.
-- [x] Update `docs/DATABASE.md` and `PROGRESS.md`.
+- [x] Add the minimal dependencies needed for QR rendering and screen-capture prevention.
+- [x] Add typed QR screen query and token refresh helpers under `apps/mobile/src/features/qr`.
+- [x] Replace the active-event placeholder with live registered-event selection and QR states.
+- [x] Add foreground-aware refresh timing, countdown, and retry behavior.
+- [x] Add visible capture-protection warning and reward-progress summary.
+- [x] Run mobile validation commands and local QR smoke tests.
+- [x] Update `PROGRESS.md` and any QR-facing docs that changed.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.
