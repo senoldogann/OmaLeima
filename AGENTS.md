@@ -26,7 +26,30 @@ Bir faz (ve altındaki görevler) tamamen bitip test edilmeden ve onaylanmadan d
 - Devir notu en az şunları içermelidir: tarih, branch, yapılan iş, neden yapıldığı, doğrulama durumu, sıradaki önerilen adım ve varsa açık riskler/blokajlar.
 - Devir notları kısa, güncel durum odaklı ve eyleme geçirilebilir olmalıdır; geçmiş changelog'un tekrarı gibi yazılmamalıdır.
 
-## 4. Kod Kalitesi, Mimari ve Ölçeklenebilirlik (Code Quality & Scalability)
+## 4. Zorunlu Çalışma Dosyaları (Required Working Docs)
+Her ajan kod yazmadan önce ve iş boyunca aşağıdaki dosyaları güncel tutmalıdır. Bu dosyalar changelog değildir; mevcut işi anlamak, tasarlamak ve küçük adımlara bölmek için kullanılır.
+
+1. **`REVIEW.md` - Önce sistemi analiz et**
+   - Hangi dosyalar ve modüller etkileniyor?
+   - Riskler neler?
+   - Bağımlılıklar neler?
+   - Mevcut benzer logic nerede var?
+
+2. **`PLAN.md` - Koddan önce tasarım**
+   - Nasıl yapılacağını yaz.
+   - Mimari kararları belirt.
+   - Değerlendirilen alternatifleri ve neden seçilmediklerini yaz.
+   - Edge-case'leri açıkça listele.
+
+3. **`TODOS.md` - Her zaman küçük uygulanabilir adımlar**
+   - Planı küçük, sıralı ve doğrulanabilir görevlere böl.
+   - Aynı anda çok fazla işi "in progress" bırakma.
+   - İş bittikçe checkbox'ları güncelle.
+   - Yeni ajan işe başlamadan önce `PROGRESS.md` ile birlikte bu dosyayı da okumalıdır.
+
+Bu üç dosya her feature branch'te ilgili işe göre güncellenmelidir. İş tamamlanınca `PROGRESS.md` sonuç ve devir notunu tutar; `REVIEW.md`, `PLAN.md` ve `TODOS.md` ise son işin uygulanabilir bağlamını tutar.
+
+## 5. Kod Kalitesi, Mimari ve Ölçeklenebilirlik (Code Quality & Scalability)
 Bu proje 2 yıl sonra binlerce anlık kullanıcının yükü altında çökmeyecek, bakımı kolay ve profesyonel standartlarda yazılacaktır:
 
 - **Güvenlik ve RLS (Zero Trust):** İstemciye (client) asla güvenmeyin. UI'da bir butonu gizlemek yetmez; veritabanında Row Level Security (RLS) politikalarını ve Edge Function içindeki yetki kontrollerini katı bir şekilde uygulayın.
