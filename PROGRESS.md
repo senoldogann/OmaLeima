@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/send-push-notification`
-- **Yapılan iş:** Faz 2 push maddesi tamamlandı: `send-push-notification` Edge Function eklendi. İlk production-shaped slice `PROMOTION` tipi için uygulandı. Function aktif, event-linked promotion kaydını okuyor; aktif business staff veya platform admin yetkisini doğruluyor; joined venue kontrolü yapıyor; registered participant + enabled token hedeflemesi yapıyor; aynı promotion duplicate'ini ve `event + business` başına maksimum `2` başarılı promotion kuralını uyguluyor. Her kullanıcı için bir `PROMOTION` notification row ve her başarılı gönderim için bir audit log yazıyor.
-- **Neden yapıldı:** Faz 2'de açık kalan son backend maddesi `register-device-token` ile birlikte `send-push-notification` API'siydi. Promotions tablosu ve anti-spam kuralı mevcut şemada en net, en küçük ve ürünle uyumlu controlled push yüzeyini veriyordu.
-- **Doğrulama:** `supabase db reset`; local student/scanner/organizer password auth; student `register-device-token` success; service-role ile 3 aktif promotion insert; `send-push-notification` invalid bearer -> `UNAUTHORIZED`; business staff first promotion success; same promotion repeat -> `PROMOTION_ALREADY_SENT`; second promotion success; third promotion -> `PROMOTION_LIMIT_REACHED`; organizer -> `NOTIFICATION_NOT_ALLOWED`. DB üzerinden iki `PROMOTION|SENT` notification row ve iki `PROMOTION_PUSH_SENT` audit log doğrulandı. Mock push server loglarında iki ayrı Expo request görüldü.
-- **Sıradaki önerilen adım:** Faz 2 tamamlandığı için sıradaki doğru adım Faz 3'e geçmek: `feature/mobile-expo-foundation` ile Expo app temelini, klasör yapısını, Supabase client bağlantısını ve push permission hazırlığını kur.
-- **Açık risk/blokaj:** `send-push-notification` şu an bilinçli olarak sadece `PROMOTION` tipini destekliyor. `REWARD_UNLOCKED`, `EVENT_STARTED` veya `RANK_CHANGED` gibi tipler ileride eklenecekse ayrı branch'lerde kendi delivery/anti-spam kurallarıyla genişletilmeli.
+- **Branch:** `feature/mobile-expo-foundation`
+- **Yapılan iş:** Faz 3 mobile foundation başlatıldı. `apps/mobile` altında Expo SDK 55 tabanlı uygulama kuruldu; demo template temizlenip `auth/login` ile `student` tab shell rotaları yerleştirildi. `app.config.ts`, `eas.json`, `.env.example`, strict public env parsing, shared Supabase client, auth session provider, React Query provider ve native push permission / Expo token hazırlık helper'ı eklendi. Login ekranı ve student tabları artık ürünün gerçek bilgi mimarisine göre placeholder shell olarak hazır.
+- **Neden yapıldı:** Faz 2 tamamen kapandıktan sonra en doğru küçük adım Faz 3'ün altyapı dilimiydi. Google auth, event sorguları ve QR ekranı gibi daha riskli mobil işlerin sağlıklı ilerleyebilmesi için önce route yapısı, env disiplini, session bootstrap ve push hazırlığının ayrıştırılması gerekiyordu.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. Export sırasında `localStorage is not defined` hatası yakalanıp Supabase client SSR-safe hale getirildi. Local web dev server `http://localhost:8082` üzerinde açıldı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-google-auth` aç ve Supabase Auth + Google sign-in akışını gerçek login ekranına bağla. Bu slice içinde login redirect, session persistence doğrulaması ve ilk authenticated route guard tamamlanmalı.
+- **Açık risk/blokaj:** Push helper sadece local/native preparation seviyesinde. Gerçek Expo token doğrulaması ve `register-device-token` entegrasyonu için development build + fiziksel cihaz gerekiyor. Student tabları şu an shell seviyesinde; gerçek event data ve RLS doğrulaması bir sonraki auth/data slice'a bırakıldı.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -41,9 +41,9 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
 
 ## Faz 3: Mobil Uygulama MVP - Öğrenci Akışı (Mobile Student Agent)
-- [ ] Expo projesinin başlatılması, klasör yapısı (app, src/features) ve kütüphanelerin kurulumu
+- [x] Expo projesinin başlatılması, klasör yapısı (app, src/features) ve kütüphanelerin kurulumu
 - [ ] Supabase Auth ile Google Login entegrasyonunun sağlanması
-- [ ] Global State (Örn: Zustand/Tanstack Query) ve Supabase Client bağlantısının kurulması
+- [x] Global State (Örn: Zustand/Tanstack Query) ve Supabase Client bağlantısının kurulması
 - [ ] Öğrenci Ana Ekran: Yaklaşan/Aktif etkinliklerin listelenmesi
 - [ ] Etkinlik Detay Ekranı ve kapasite kurallı "Etkinliğe Katıl" işleminin arayüzü
 - [ ] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
@@ -82,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-28*: Faz 3 mobile foundation tamamlandı; `apps/mobile` Expo shell'i, Supabase client/session provider, React Query provider ve push preparation helper eklendi.
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
 - *2026-04-28*: Faz 2 controlled push endpoint tamamlandı; `send-push-notification` eklendi ve `PROMOTION` anti-spam rule smoke testleri geçti.
 - *2026-04-27*: Faz 2 leaderboard refresh cron job tamamlandı; `scheduled-leaderboard-refresh` eklendi ve async leaderboard smoke testleri geçti.
