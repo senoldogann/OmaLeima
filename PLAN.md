@@ -5,31 +5,45 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/agent-planning-docs`
-- **Goal:** Require agents to analyze, design, and break work into small steps before implementation.
+- **Branch:** `feature/qr-edge-functions`
+- **Goal:** Implement the first Phase 2 QR Edge Functions: `generate-qr-token` and `scan-qr`.
 
 ## Architectural Decisions
 
-- Keep `PROGRESS.md` for completed progress and handoff.
-- Add `REVIEW.md` for pre-work system analysis.
-- Add `PLAN.md` for implementation design before code.
-- Add `TODOS.md` for small executable tasks.
-- Register all three files in `AGENTS.md` so future agents must use them.
+- Use Supabase Edge Functions with `Deno.serve`.
+- Keep shared logic under `supabase/functions/_shared`.
+- Use `SUPABASE_SERVICE_ROLE_KEY` only inside Edge Functions for privileged reads/RPC calls.
+- Authenticate callers by extracting the Bearer token and calling `supabase.auth.getUser(token)`.
+- Sign QR payloads with HS256 using `QR_SIGNING_SECRET`.
+- Keep QR token payload stable: `sub`, `eventId`, `typ`, `iat`, `exp`, `jti`.
+- Let `scan_stamp_atomic` own all stamp mutation and concurrency-sensitive behavior.
+- Configure `verify_jwt = false` for these functions and perform explicit auth inside the function, matching current Supabase auth guidance.
 
 ## Alternatives Considered
 
-- Put everything into `PROGRESS.md`: rejected because progress tracking and active planning would become mixed.
-- Put everything into `AGENTS.md`: rejected because AGENTS should define rules, not hold changing per-branch work context.
-- Create only one planning file: rejected because analysis, design, and execution tracking serve different purposes.
+- Direct client writes to `event_registrations`, `qr_token_uses`, or `stamps`: rejected because critical writes must remain server-side/RPC-controlled.
+- Rely on gateway JWT verification only: rejected because current Supabase guidance favors explicit auth patterns and we need custom QR token verification too.
+- Add all Phase 2 functions now: rejected to keep scope small and testable.
+- Add atomic event registration RPC now: deferred unless capacity race risk becomes urgent; first pass keeps explicit checks and DB unique constraint.
 
 ## Edge Cases
 
-- Tiny documentation-only changes still need a minimal review/plan/todo update.
-- If a branch is interrupted, the next agent must be able to continue from `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
-- Completed work must still be summarized in `PROGRESS.md`; the planning files do not replace it.
+- Missing or malformed JSON body.
+- Missing Authorization header.
+- Suspended/deleted profile.
+- Unknown, unavailable, ended, or full event.
+- Already registered student.
+- Invalid QR payload shape.
+- Modified QR token signature.
+- Expired QR token.
+- Authenticated scanner without active business staff membership.
+- QR replay and duplicate stamp responses from `scan_stamp_atomic`.
 
 ## Validation Plan
 
-- Confirm the new files exist.
-- Confirm `AGENTS.md` explicitly requires using them.
-- Confirm `PROGRESS.md` handoff mentions the workflow change.
+- Set local `QR_SIGNING_SECRET`.
+- Run `supabase db reset`.
+- Run `supabase functions serve`.
+- Call `generate-qr-token` with the seeded student account.
+- Call `scan-qr` with the seeded scanner account and generated token.
+- Verify duplicate scan/replay behavior returns stable error codes.

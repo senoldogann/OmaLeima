@@ -1,10 +1,19 @@
 insert into auth.users (
+  instance_id,
   id,
   aud,
   role,
   email,
   encrypted_password,
   email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change,
+  phone_change,
+  phone_change_token,
+  email_change_token_current,
+  reauthentication_token,
   raw_app_meta_data,
   raw_user_meta_data,
   created_at,
@@ -12,54 +21,166 @@ insert into auth.users (
 )
 values
   (
+    '00000000-0000-0000-0000-000000000000',
     '00000000-0000-0000-0000-000000000001',
     'authenticated',
     'authenticated',
     'admin@omaleima.test',
     crypt('password123', gen_salt('bf')),
     now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Platform Admin"}'::jsonb,
     now(),
     now()
   ),
   (
+    '00000000-0000-0000-0000-000000000000',
     '00000000-0000-0000-0000-000000000002',
     'authenticated',
     'authenticated',
     'organizer@omaleima.test',
     crypt('password123', gen_salt('bf')),
     now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Guild Organizer"}'::jsonb,
     now(),
     now()
   ),
   (
+    '00000000-0000-0000-0000-000000000000',
     '00000000-0000-0000-0000-000000000003',
     'authenticated',
     'authenticated',
     'scanner@omaleima.test',
     crypt('password123', gen_salt('bf')),
     now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Venue Scanner"}'::jsonb,
     now(),
     now()
   ),
   (
+    '00000000-0000-0000-0000-000000000000',
     '00000000-0000-0000-0000-000000000004',
     'authenticated',
     'authenticated',
     'student@omaleima.test',
     crypt('password123', gen_salt('bf')),
     now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"display_name":"Student Tester"}'::jsonb,
     now(),
     now()
   )
-on conflict (id) do nothing;
+on conflict (id) do update
+set
+  instance_id = excluded.instance_id,
+  aud = excluded.aud,
+  role = excluded.role,
+  email = excluded.email,
+  encrypted_password = excluded.encrypted_password,
+  email_confirmed_at = excluded.email_confirmed_at,
+  confirmation_token = excluded.confirmation_token,
+  recovery_token = excluded.recovery_token,
+  email_change_token_new = excluded.email_change_token_new,
+  email_change = excluded.email_change,
+  phone_change = excluded.phone_change,
+  phone_change_token = excluded.phone_change_token,
+  email_change_token_current = excluded.email_change_token_current,
+  reauthentication_token = excluded.reauthentication_token,
+  raw_app_meta_data = excluded.raw_app_meta_data,
+  raw_user_meta_data = excluded.raw_user_meta_data,
+  updated_at = excluded.updated_at;
+
+insert into auth.identities (
+  id,
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  last_sign_in_at,
+  created_at,
+  updated_at
+)
+values
+  (
+    '01000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '{"sub":"00000000-0000-0000-0000-000000000001","email":"admin@omaleima.test"}'::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+  ),
+  (
+    '01000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    '{"sub":"00000000-0000-0000-0000-000000000002","email":"organizer@omaleima.test"}'::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+  ),
+  (
+    '01000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000003',
+    '{"sub":"00000000-0000-0000-0000-000000000003","email":"scanner@omaleima.test"}'::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+  ),
+  (
+    '01000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000004',
+    '{"sub":"00000000-0000-0000-0000-000000000004","email":"student@omaleima.test"}'::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+  )
+on conflict (provider, provider_id) do update
+set
+  user_id = excluded.user_id,
+  identity_data = excluded.identity_data,
+  last_sign_in_at = excluded.last_sign_in_at,
+  updated_at = excluded.updated_at;
 
 insert into public.profiles (id, email, display_name, primary_role)
 values
