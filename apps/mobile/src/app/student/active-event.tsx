@@ -17,9 +17,10 @@ import {
   useQrCountdown,
   useQrScreenProtection,
   useQrSvgQuery,
-  useStudentEventStampCountQuery,
   useStudentQrContextQuery,
 } from "@/features/qr/student-qr";
+import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
+import { useStudentRewardEventQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
 
@@ -66,7 +67,7 @@ export default function StudentActiveEventScreen() {
     [now, qrContextQuery.data]
   );
 
-  const stampCountQuery = useStudentEventStampCountQuery({
+  const rewardEventQuery = useStudentRewardEventQuery({
     eventId: selectedEvent?.id ?? "",
     studentId: studentId ?? "",
     isEnabled: selectedEvent !== null && studentId !== null,
@@ -92,9 +93,6 @@ export default function StudentActiveEventScreen() {
 
   const refreshAfterSeconds = qrTokenQuery.data?.refreshAfterSeconds ?? null;
   const countdownSeconds = useQrCountdown(refreshAfterSeconds, qrTokenQuery.dataUpdatedAt, shouldRefreshQr);
-  const progressGoal = selectedEvent?.minimumStampsRequired ?? 0;
-  const stampCount = stampCountQuery.data?.stampCount ?? 0;
-  const progressRatio = progressGoal === 0 ? 1 : Math.min(stampCount / progressGoal, 1);
   const refreshProgressRatio =
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
 
@@ -166,28 +164,28 @@ export default function StudentActiveEventScreen() {
       ) : null}
 
       {selectedEvent?.viewState === "UPCOMING" ? (
-        <InfoCard eyebrow={selectedEvent.city} title={selectedEvent.name}>
-          <View style={styles.badges}>
-            <StatusBadge label="registered" state="ready" />
-            <StatusBadge label="upcoming" state="pending" />
-          </View>
-          <Text style={styles.bodyText}>
-            QR refresh stays paused until the event is active. Come back once the event starts and the screen will immediately request a fresh token.
-          </Text>
-          <View style={styles.metaGroup}>
-            <Text style={styles.metaLine}>Starts {formatDateTime(selectedEvent.startAt)}</Text>
-            <Text style={styles.metaLine}>Ends {formatDateTime(selectedEvent.endAt)}</Text>
-            <Text style={styles.metaLine}>
-              Progress target: {stampCount} / {selectedEvent.minimumStampsRequired} leima
+        <>
+          <InfoCard eyebrow={selectedEvent.city} title={selectedEvent.name}>
+            <View style={styles.badges}>
+              <StatusBadge label="registered" state="ready" />
+              <StatusBadge label="upcoming" state="pending" />
+            </View>
+            <Text style={styles.bodyText}>
+              QR refresh stays paused until the event is active. Come back once the event starts and the screen will immediately request a fresh token.
             </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push(`/student/events/${selectedEvent.id}`)}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>Open event detail</Text>
-          </Pressable>
-        </InfoCard>
+            <View style={styles.metaGroup}>
+              <Text style={styles.metaLine}>Starts {formatDateTime(selectedEvent.startAt)}</Text>
+              <Text style={styles.metaLine}>Ends {formatDateTime(selectedEvent.endAt)}</Text>
+            </View>
+            <Pressable
+              onPress={() => router.push(`/student/events/${selectedEvent.id}`)}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>Open event detail</Text>
+            </Pressable>
+          </InfoCard>
+
+        </>
       ) : null}
 
       {selectedEvent?.viewState === "ACTIVE" ? (
@@ -237,20 +235,36 @@ export default function StudentActiveEventScreen() {
             ) : null}
           </InfoCard>
 
-          <InfoCard eyebrow="Progress" title="Leima progress">
-            <Text style={styles.bodyText}>
-              {progressGoal === 0
-                ? `${stampCount} valid leima recorded so far.`
-                : `${stampCount} / ${progressGoal} valid leima toward the event target.`}
-            </Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.goalProgressFill, { width: `${progressRatio * 100}%` }]} />
-            </View>
+          <InfoCard eyebrow="Safety" title="QR usage reminder">
             <Text style={styles.warningText}>
               Do not screenshot or screen-record this QR. It is short-lived and should only be shown to participating venues during the active event window.
             </Text>
           </InfoCard>
         </>
+      ) : null}
+
+      {selectedEvent !== null && rewardEventQuery.isLoading ? (
+        <InfoCard eyebrow="Progress" title="Updating reward progress">
+          <Text style={styles.bodyText}>Loading leima counts, reward tiers, and claimed state for this event.</Text>
+        </InfoCard>
+      ) : null}
+
+      {selectedEvent !== null && rewardEventQuery.error ? (
+        <InfoCard eyebrow="Progress" title="Reward progress unavailable">
+          <Text style={styles.bodyText}>{rewardEventQuery.error.message}</Text>
+          <Pressable onPress={() => void rewardEventQuery.refetch()} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Retry reward progress</Text>
+          </Pressable>
+        </InfoCard>
+      ) : null}
+
+      {selectedEvent !== null && rewardEventQuery.data ? (
+        <RewardProgressCard
+          event={rewardEventQuery.data}
+          onOpenEvent={(eventId: string) => {
+            router.push(`/student/events/${eventId}`);
+          }}
+        />
       ) : null}
     </AppScreen>
   );
@@ -266,11 +280,6 @@ const styles = StyleSheet.create({
     color: "#CBD5E1",
     fontSize: 14,
     lineHeight: 20,
-  },
-  goalProgressFill: {
-    backgroundColor: "#16A34A",
-    borderRadius: 999,
-    height: 8,
   },
   metaGroup: {
     gap: 8,
