@@ -4,6 +4,7 @@ export type RuntimeEnv = {
   qrSigningSecret: string;
   expoPushApiUrl: string;
   expoPushAccessToken: string | null;
+  scheduledJobSecret: string | null;
 };
 
 const readRequiredEnv = (name: string): string => {
@@ -32,4 +33,5 @@ export const readRuntimeEnv = (): RuntimeEnv => ({
   qrSigningSecret: readRequiredEnv("QR_SIGNING_SECRET"),
   expoPushApiUrl: Deno.env.get("EXPO_PUSH_API_URL") ?? "https://exp.host/--/api/v2/push/send",
   expoPushAccessToken: readOptionalEnv("EXPO_PUSH_ACCESS_TOKEN"),
+  scheduledJobSecret: readOptionalEnv("SCHEDULED_JOB_SECRET"),
 });

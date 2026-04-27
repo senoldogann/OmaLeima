@@ -14,6 +14,7 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260427181200_claim_reward_atomic.sql`
 - `supabase/migrations/20260427201500_approve_business_application.sql`
 - `supabase/migrations/20260427201600_reject_business_application.sql`
+- `supabase/migrations/20260427213000_notification_delivery_indexes.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -84,6 +85,12 @@ Current Phase 2 device token behavior:
 - `register-device-token` upserts on `expo_push_token`.
 - Re-registering the same user and `device_id` with a rotated token disables older tokens for that device.
 - `send-test-push` records every send attempt in `notifications`, including failed transport attempts.
+- `scheduled-event-reminders` records one `EVENT_REMINDER` row per user reminder and uses successful notification history for duplicate protection.
+
+Reminder delivery indexes added in `20260427213000_notification_delivery_indexes.sql`:
+
+- `idx_device_tokens_user_enabled`
+- `idx_notifications_event_type_user`
 
 ## Recommended Next Checks
 
