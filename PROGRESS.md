@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/db-schema`
-- **Yapılan iş:** Ürün konumlandırması netleştirildi ve Faz 1 Supabase veritabanı temeli tamamlandı: remote Supabase project link, local config, schema/RLS migrationları, atomic RPC migrationları, seed dosyası ve `docs/DATABASE.md` eklendi.
-- **Neden yapıldı:** Sonraki ajanların ürünü generic QR stamp app veya generic bar app gibi değil, Finnish student overalls events için etkinlik altyapısı olarak geliştirmesi ve Faz 1'e veritabanından başlaması gerekiyor.
-- **Doğrulama:** `supabase start` ile local stack ayağa kalktı; migration ve seed dosyaları başarıyla uygulandı. `scan_stamp_atomic` için success, QR replay ve duplicate stamp smoke testleri geçti. `update_event_leaderboard`, `get_event_leaderboard`, `claim_reward_atomic` ve duplicate reward claim smoke testleri geçti.
-- **Sıradaki önerilen adım:** Değişiklikleri review edip commit/merge sürecine almak; ardından Faz 2 için `generate-qr-token` ve `scan-qr` Edge Function branch'i açmak.
-- **Açık risk/blokaj:** RLS politikaları basic production foundation seviyesinde. Faz 2 ve QA sırasında kötü niyetli client senaryolarıyla ayrıntılı RLS testleri genişletilmeli.
+- **Branch:** `feature/agent-planning-docs`
+- **Yapılan iş:** Ajanların koddan önce sistem analizi, tasarım ve küçük uygulanabilir görev planı yapması için `REVIEW.md`, `PLAN.md` ve `TODOS.md` çalışma dosyaları eklendi; `AGENTS.md` bu dosyaları zorunlu workflow olarak güncellendi.
+- **Neden yapıldı:** Sonraki ajanların neyi, neden ve hangi sırayla yaptığını anlayabilmesi; koddan önce tasarım yapılması; kesinti veya ajan değişiminde bağlamın kaybolmaması gerekiyor.
+- **Doğrulama:** Dokümantasyon/workflow değişikliği. Diff review yeterli; kod testi gerekmiyor.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için temiz `feature/qr-edge-functions` branch'i açıp önce `REVIEW.md`, `PLAN.md`, `TODOS.md` dosyalarını Faz 2 kapsamına göre güncellemek.
+- **Açık risk/blokaj:** Planlama dosyaları güncel tutulmazsa yanlış güven hissi yaratabilir. Her ajan branch sonunda bu dosyaları ve `PROGRESS.md` handoff notunu birlikte güncellemelidir.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -79,5 +79,6 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-27*: Ajan çalışma disiplini güçlendirildi; `REVIEW.md`, `PLAN.md`, `TODOS.md` zorunlu pre-implementation çalışma dosyaları olarak eklendi.
 - *2026-04-27*: Ürün konumlandırması "Digital leima pass for Finnish student overalls events" olarak netleştirildi. Faz 1 Supabase database foundation tamamlandı; local migration/seed ve RPC smoke testleri geçti.
 - *2026-04-26*: Ana mimari planlama, kural dosyaları (`AGENTS.md`) ve detaylı proje takip listesi (`PROGRESS.md`) mükemmeliyet odaklı oluşturuldu. Faz 0 tamamlandı.
