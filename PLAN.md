@@ -5,52 +5,41 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-expo-foundation`
-- **Goal:** Start Phase 3 with a real Expo app foundation that future student flows can build on safely.
+- **Branch:** `feature/mobile-google-auth`
+- **Goal:** Connect the login screen to Supabase Google OAuth and add the first real auth guard for student routes.
 
 ## Architectural Decisions
 
-- Keep the Expo app inside `apps/mobile`, matching the master plan and leaving room for a future `apps/admin` sibling.
-- Stay close to the current Expo SDK 55 default template: keep `src/app` routing, typed routes, and root config in the app root.
-- Convert the app config to `app.config.ts` so public Supabase keys and future EAS project IDs can be injected from env cleanly.
-- Add only the mobile libraries that are immediately needed for this slice:
-  1. `@supabase/supabase-js`
-  2. `react-native-url-polyfill`
-  3. `expo-sqlite`
-  4. `expo-notifications`
-  5. `@tanstack/react-query`
-  6. `zod`
-- Replace the Expo demo screens with a clean route shell:
-  1. root redirect
-  2. `auth/login`
-  3. student tab layout
-  4. placeholder student screens that reflect the planned information architecture
-- Create shared mobile infrastructure modules before any feature logic:
-  1. public env parsing
-  2. Supabase client
-  3. auth session provider
-  4. React Query provider
-  5. push permission and Expo token helper
-- Keep Google auth, live event queries, device token registration, and QR generation out of this branch; this is foundation only.
+- Keep the Phase 3 scope narrow: this branch will only solve sign-in, callback completion, sign-out, and route protection.
+- Use Supabase OAuth for Google instead of a provider-specific native SDK so the auth surface stays aligned with the backend and can later support other providers.
+- Complete the mobile OAuth flow with PKCE:
+  1. build redirect URI from Expo config
+  2. request OAuth URL from Supabase with `skipBrowserRedirect`
+  3. open the auth session on native with `expo-web-browser`
+  4. redirect same-window on web
+  5. exchange the returned auth code in an `auth/callback` route
+- Add `expo-web-browser` plugin configuration in `app.config.ts` to match Expo's current auth guidance.
+- Protect `student/*` routes in the tab layout and redirect anonymous users back to login.
+- Redirect authenticated users away from `auth/login` and expose a simple sign-out action from the student profile screen.
 
 ## Alternatives Considered
 
-- Creating the mobile app at the repo root: rejected because the master plan already reserves `apps/mobile` and the repo will later need an admin app sibling.
-- Keeping the generated Expo demo UI and layering project code around it: rejected because it would leave too much unrelated template surface for later agents.
-- Starting Google auth in the same branch: rejected because it would mix infrastructure with a second risky slice that needs separate validation and likely real OAuth configuration.
+- Pulling in a provider-specific Google sign-in SDK now: rejected because Supabase OAuth already covers the product need and keeps session handling inside one auth model.
+- Mixing event fetching into the auth branch: rejected because it would blur whether failures come from OAuth setup or data/RLS setup.
+- Leaving auth completion in button-local code only: rejected because web redirects and cold app launches need a route-based callback surface.
 
 ## Edge Cases
 
 - Public Supabase env vars are missing.
-- Expo push permission is requested on web or simulator.
-- EAS project ID is not configured yet.
-- Session bootstrap is still loading during the first route resolution.
-- The app needs a previewable shell even before Google auth is implemented.
+- Google OAuth is tapped on web without the provider being configured in Supabase.
+- OAuth callback returns `error` or arrives without a `code`.
+- Session bootstrap is loading while the router decides between login and student tabs.
+- Native auth is started on simulator or Expo Go without full provider setup.
 
 ## Validation Plan
 
-- Install the Expo dependencies in `apps/mobile`.
+- Install any auth-specific Expo/mobile dependencies if needed.
 - Run `npm run lint` in `apps/mobile`.
-- Run `npx tsc --noEmit` in `apps/mobile`.
-- Export the app for web with `npx expo export --platform web` to catch route and config issues.
-- Confirm the generated route tree and config files match the intended student shell structure.
+- Run `npm run typecheck` in `apps/mobile`.
+- Run `npm run export:web` in `apps/mobile`.
+- Start the local web preview and verify the login screen, callback route, and authenticated route guard render cleanly.

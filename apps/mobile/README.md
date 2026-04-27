@@ -28,9 +28,16 @@ npm run export:web
 - Auth session provider in `src/providers/session-provider.tsx`
 - React Query provider in `src/providers/app-providers.tsx`
 - Push permission and Expo token preparation helper in `src/lib/push.ts`
+- Google OAuth flow in `src/lib/auth.ts` and `src/app/auth/callback.tsx`
+- Native session persistence via `expo-secure-store`
 
 ## Next planned slice
 
-- Supabase Google sign-in
 - Real event queries
 - `register-device-token` integration after native push testing
+
+## OAuth setup notes
+
+- Enable Google as an Auth provider in Supabase.
+- Add your mobile redirect URL and local web callback URL to Supabase redirect allow-lists.
+- Keep the Expo scheme aligned with `app.config.ts`.

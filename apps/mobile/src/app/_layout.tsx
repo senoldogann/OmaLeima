@@ -17,7 +17,7 @@ export default function RootLayout() {
           <AppProviders>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
-              <Stack.Screen name="auth/login" />
+              <Stack.Screen name="auth" />
               <Stack.Screen name="student" />
             </Stack>
             <StatusBar style="light" />

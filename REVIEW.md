@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-expo-foundation`
-- **Scope:** Phase 3 mobile Expo foundation for the student app.
+- **Branch:** `feature/mobile-google-auth`
+- **Scope:** Phase 3 Google sign-in and the first authenticated route guard for the student app.
 
 ## Affected Files
 
@@ -15,16 +15,14 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `TODOS.md`
 - `PROGRESS.md`
 - `apps/mobile/app.config.ts`
-- `apps/mobile/eas.json`
 - `apps/mobile/.env.example`
-- `apps/mobile/README.md`
 - `apps/mobile/package.json`
 - `apps/mobile/package-lock.json`
-- `apps/mobile/eslint.config.js`
-- `apps/mobile/assets/images/*`
-- `apps/mobile/src/app/*`
+- `apps/mobile/src/app/_layout.tsx`
+- `apps/mobile/src/app/auth/*`
+- `apps/mobile/src/app/student/*`
 - `apps/mobile/src/components/*`
-- `apps/mobile/src/features/*`
+- `apps/mobile/src/features/auth/*`
 - `apps/mobile/src/lib/*`
 - `apps/mobile/src/providers/*`
 - `apps/mobile/src/types/*`
@@ -32,26 +30,26 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 
 ## Risks
 
-- The repo had no mobile package yet, so the first app scaffold can easily drift away from the master plan route structure if we keep too much template code.
-- Expo push permissions must be prepared with the current `expo-notifications` plugin and project ID flow, but real push testing still requires a development build on a physical device.
-- Supabase client setup must be strict about missing public env vars; otherwise the foundation will fail later in confusing ways during auth work.
-- The first mobile slice should not leak backend secrets or move QR logic client-side.
-- Google auth is the next slice, so this branch should stop at session bootstrap, route shell, and push preparation instead of inventing partial auth behavior.
+- Google OAuth in Expo is sensitive to redirect URI shape, app scheme configuration, and Supabase redirect allow-lists.
+- The flow must work without silently depending on browser-only behavior, because the product target is mobile first.
+- We can validate the client flow and callback handling locally, but an end-to-end Google sign-in still depends on external provider configuration in Supabase and Google Cloud.
+- Web preview should keep working even if Google OAuth is not fully configured in the local environment.
+- Route protection should not create redirect loops while session bootstrap is still loading.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections for `apps/mobile`, student tab structure, Supabase auth, and push token registration flow.
-- Current official Expo SDK 55 project structure, router, and notifications setup guidance.
-- Current official Supabase Expo React Native quickstart for client initialization and session persistence.
-- Existing Supabase backend endpoints already merged in Phase 2.
+- `LEIMA_APP_MASTER_PLAN.md` sections for Google login, protected student navigation, and mobile auth flow.
+- Current official Supabase guidance for Expo social auth and Google social login.
+- Current official Expo guidance for browser-based OAuth, redirect URI handling, and `expo-web-browser`.
+- Existing `apps/mobile` foundation branch already merged to `main`.
 
 ## Existing Logic Checked
 
-- The repository currently contains only backend, schema, and planning work; there is no pre-existing Expo app or shared frontend package to extend.
-- The new Expo default template already uses `src/app` and Expo Router, which matches the master plan direction.
-- `register-device-token` is already available on the backend, so the mobile app only needs permission and token preparation in this slice.
-- Supabase auth and event queries are not wired on the client yet.
+- `apps/mobile` already has strict env parsing, Supabase client bootstrap, React Query provider, and route shell tabs.
+- `@supabase/auth-js` in local `node_modules` confirms `skipBrowserRedirect` is available and that `exchangeCodeForSession` is the correct PKCE completion API.
+- Login screen currently has no real sign-in action and student tabs are not yet protected from anonymous access.
+- `expo-web-browser` is installed already, but the plugin configuration for auth launcher behavior is not set yet.
 
 ## Review Outcome
 
-Implement a production-shaped mobile foundation in `apps/mobile`: keep the Expo Router scaffold, replace the demo UI with OmaLeima route shells, add strict public env parsing, create the shared Supabase client and auth session provider, prepare React Query, and add push permission/token helpers without crossing into full Google login or QR feature work.
+Implement the first real auth slice in `apps/mobile`: add a Google sign-in action backed by `supabase.auth.signInWithOAuth`, introduce an OAuth callback route that exchanges the PKCE code for a session, protect the student tab layout from anonymous access, and add a sign-out path so the route guard can be validated end to end once provider configuration is ready.

@@ -41,7 +41,13 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
         },
       },
     ],
-    "expo-sqlite",
+    [
+      "expo-web-browser",
+      {
+        experimentalLauncherActivity: false,
+      },
+    ],
+    "expo-secure-store",
     "expo-notifications",
   ],
   experiments: {

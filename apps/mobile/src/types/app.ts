@@ -11,3 +11,5 @@ export type PushPreparationResult = {
   expoPushToken: string | null;
   detail: string;
 };
+
+export type GoogleSignInState = "idle" | "loading" | "redirecting" | "error";

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { preparePushTokenAsync } from "@/lib/push";
 import { useSession } from "@/providers/session-provider";
@@ -41,6 +42,13 @@ export default function StudentProfileScreen() {
           },
         ]}
       />
+
+      <InfoCard eyebrow="Account" title="Session actions">
+        <Text style={styles.bodyText}>
+          Signing out should clear the local Supabase session and return the app to the Google login screen through the student route guard.
+        </Text>
+        <SignOutButton />
+      </InfoCard>
 
       <InfoCard eyebrow="Push" title="Notification readiness">
         <Text style={styles.bodyText}>
