@@ -5,42 +5,36 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/reward-edge-function`
-- **Goal:** Implement the Phase 2 `claim-reward` Edge Function.
+- **Branch:** `feature/department-tags-plan`
+- **Goal:** Add optional student department tags to the product and implementation roadmap before the next major feature step.
 
 ## Architectural Decisions
 
-- Use Supabase Edge Functions with `Deno.serve`.
-- Keep shared logic under `supabase/functions/_shared`.
-- Use `SUPABASE_SERVICE_ROLE_KEY` only inside Edge Functions for privileged reads/RPC calls.
-- Authenticate callers by extracting the Bearer token and calling `supabase.auth.getUser(token)`.
-- Let `claim_reward_atomic` own reward authorization, duplicate protection, stock locking, inventory increment, and audit logging.
-- Keep reward-specific business outcomes in the JSON response body with stable `status` values and human-readable `message`.
-- Configure `verify_jwt = false` for this function and perform explicit auth inside the function, matching the existing Edge Function pattern in the repo.
+- Keep department tags optional and profile-oriented.
+- Separate canonical tag catalog data from per-student selected tags.
+- Allow two creation sources: official tags from clubs/admin and custom tags from users.
+- Allow one primary tag and a small bounded number of total tags per student.
+- Treat tags as discovery/community metadata only, not permissions or eligibility data.
+- Add duplicate-control planning now: slug normalization, merge path, and admin cleanup workflow.
 
 ## Alternatives Considered
 
-- Direct client writes to `reward_claims`: rejected because reward claiming must stay behind RPC authorization and duplicate protection.
-- A generic CRUD-style reward claim endpoint: rejected because we want a narrow contract around `claim_reward_atomic`.
-- Implement staff QR verification for reward handoff now: deferred until the separate reward scanner/mobile flow exists in later phases.
+- A single free-text `department_name` column on `profiles`: rejected because it cannot distinguish official vs custom entries and will create duplicate spelling variants quickly.
+- Reusing `clubs` directly as tags: rejected because a club and a study/programme label are related but not the same domain object.
+- Admin-only creation: rejected because the user explicitly wants both organization-created and user-created tags.
 
 ## Edge Cases
 
 - Missing or malformed JSON body.
-- Missing Authorization header.
-- Invalid `eventId`, `studentId`, or `rewardTierId`.
-- Optional `notes` field sent with invalid type.
-- Caller authenticated but not allowed to claim rewards for the event.
-- Reward tier not found or not active for the event.
-- Student does not yet have enough valid leimas.
-- Reward inventory is depleted.
-- Reward already claimed by this student.
+- Duplicate tags such as `Tieto ja viestintätekniikka` vs `Tieto- ja viestintätekniikka`.
+- The same programme name existing across multiple universities.
+- Users wanting to keep more than one identity label.
+- Clubs wanting official tags without becoming gatekeepers over all custom tags.
+- Businesses seeing unnecessary student identity data.
 
 ## Validation Plan
 
-- Run `supabase db reset`.
-- Run `supabase functions serve`.
-- Call `claim-reward` with the seeded organizer account and seeded student/event/reward IDs.
-- Verify duplicate reward claim returns a stable status.
-- Verify a not-enough-stamps scenario returns a stable status.
-- Verify invalid Bearer token returns `UNAUTHORIZED`.
+- Update the master plan with a future schema for canonical tags and profile-tag links.
+- Update student UX, public read model, and admin/club acceptance criteria.
+- Update `PROGRESS.md` so the next agent understands the new scope and sequencing.
+- Review the diff for consistency with the phased roadmap.

@@ -5,42 +5,36 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/reward-edge-function`
-- **Scope:** Phase 2 reward claim Edge Function.
+- **Branch:** `feature/department-tags-plan`
+- **Scope:** Product and data model planning update for optional student department tags.
 
 ## Affected Files
 
 - `REVIEW.md`
 - `PLAN.md`
 - `TODOS.md`
+- `LEIMA_APP_MASTER_PLAN.md`
 - `PROGRESS.md`
-- `supabase/config.toml`
-- `docs/EDGE_FUNCTIONS.md`
-- `supabase/functions/_shared/*`
-- `supabase/functions/claim-reward/index.ts`
 
 ## Risks
 
-- `claim-reward` must not allow unauthenticated callers or malformed payloads.
-- Reward claiming must stay server-side; client code must not create `reward_claims` rows directly.
-- The function must map RPC result statuses to stable app-facing messages so mobile and admin clients can branch cleanly.
-- Notes should remain optional and explicit; null vs empty string handling should stay predictable.
-- Error responses must use explicit status codes and stable app-level error codes.
-- Local smoke tests must prove duplicate-claim and not-enough-stamps scenarios, not only success.
+- We must not confuse department tags with auth, permissions, or hard event eligibility.
+- Free-text user-created tags can create duplicate sprawl unless the plan includes normalization and merge rules.
+- Official club-created tags and user-created custom tags need a clear distinction in the product model.
+- The scope should stay small enough to fit the existing roadmap without rewriting the whole schema plan.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections 13 and 16.
-- Existing Supabase schema and RPC functions from Phase 1.
-- Supabase Edge Functions runtime with `Deno.serve`.
-- Supabase JS client inside Edge Functions.
+- `LEIMA_APP_MASTER_PLAN.md` profile, club, student UX, API, and mobile/admin acceptance sections.
+- Existing `clubs` concept, because user wants official tags to be creatable by student organizations.
+- Existing phased roadmap, because the feature should be inserted without breaking current sequencing.
 
 ## Existing Logic Checked
 
-- `claim_reward_atomic` already handles staff/admin authorization, reward tier locking, stamp count validation, stock checks, duplicate claim protection, inventory increment, and audit log insert.
-- `seed.sql` creates one active event, one student, one business scanner, and one reward tier for smoke tests.
-- Existing shared Edge Function helpers already cover POST enforcement, JSON parsing, bearer token extraction, runtime env loading, auth resolution, and UUID validation.
+- `profiles` currently has no study field, department, or tag modeling.
+- `clubs` already model student organizations and can be reused as official tag sources.
+- Current plan does not yet define how optional identity labels appear in student profile, leaderboard, or admin/club tools.
 
 ## Review Outcome
 
-Implement only the next Phase 2 slice: `claim-reward`, reusing the shared Edge Function helper pattern and validating the RPC contract with local smoke tests.
+Update the product plan now so optional student department tags are first-class in the roadmap, with a future-safe schema direction, UX rules, and ownership boundaries.

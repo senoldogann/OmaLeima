@@ -419,6 +419,87 @@ create table club_members (
 
 ---
 
+### 6.4.a `department_tags`
+
+Optional student-visible study/programme/department labels.
+
+Examples:
+
+```txt
+Tradenomi
+Tieto- ja viestintätekniikka
+Kauppatieteet
+Rakennustekniikka
+```
+
+Official tags can be created by student organizations or platform admins.
+Users can also create a custom tag when the right option does not exist yet.
+
+```sql
+create table department_tags (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text unique not null,
+  university_name text,
+  city text,
+  source_type text not null default 'USER'
+    check (source_type in ('USER', 'CLUB', 'ADMIN')),
+  source_club_id uuid references clubs(id) on delete set null,
+  created_by uuid references profiles(id) on delete set null,
+  status text not null default 'ACTIVE'
+    check (status in ('PENDING_REVIEW', 'ACTIVE', 'MERGED', 'BLOCKED')),
+  merged_into_tag_id uuid references department_tags(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  check (merged_into_tag_id is null or merged_into_tag_id <> id)
+);
+```
+
+Notes:
+
+```txt
+- Tags are optional identity/discovery metadata, not auth data.
+- A tag may be official or user-created.
+- Duplicates should be merged, not silently deleted.
+```
+
+---
+
+### 6.4.b `profile_department_tags`
+
+Students can attach a small number of department tags to their profile.
+One tag can be marked as primary for public display.
+
+```sql
+create table profile_department_tags (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  department_tag_id uuid not null references department_tags(id) on delete cascade,
+  is_primary boolean not null default false,
+  source_type text not null default 'SELF_SELECTED'
+    check (source_type in ('SELF_SELECTED', 'CLUB_ASSIGNED', 'ADMIN_ASSIGNED')),
+  created_at timestamptz not null default now(),
+
+  unique (profile_id, department_tag_id)
+);
+
+create unique index idx_profile_department_tags_one_primary
+on profile_department_tags(profile_id)
+where is_primary = true;
+```
+
+Product rules:
+
+```txt
+- Max 3 tags per student profile
+- Max 1 primary tag
+- Official suggestions shown first
+- Free-text create allowed when no good match exists
+```
+
+---
+
 ### 6.5 `business_applications`
 
 ```sql
@@ -1651,6 +1732,36 @@ Eğer etkinlikte ödül varsa, app içinde şu bilgi net olmalı:
 10 leima topla -> afterparty discount kazan
 ```
 
+### 13.1 Student profile and department tags
+
+Student profile:
+
+```txt
+Display name: Dogan
+Primary tag: Tieto- ja viestintätekniikka
+Other tags:
+- Tradenomi
+- Otaniemi marketing guild
+```
+
+Flow:
+
+1. Student opens Profile or first-time onboarding.
+2. System shows official suggested tags first.
+3. Student can pick up to 3 tags.
+4. Student can mark 1 tag as primary.
+5. If the right label is missing, student can create a custom tag.
+6. Custom tags stay usable immediately, but can later be merged into an official canonical tag.
+
+Display rules:
+
+```txt
+- Primary tag can appear on profile and leaderboard card
+- Tags are optional
+- Tags must not be used for access control
+- Businesses should not receive extra private student metadata by default
+```
+
 ### 13.2 Student reward UX
 
 Student event detail:
@@ -1871,6 +1982,8 @@ GET events/:id
 GET event venues
 GET reward tiers
 GET promotions
+GET own profile
+GET department tag suggestions
 GET own stamps
 GET own reward claims
 ```
@@ -2777,6 +2890,7 @@ apps/mobile/src/features/events
 apps/mobile/src/features/qr
 apps/mobile/src/features/leaderboard
 apps/mobile/src/features/rewards
+apps/mobile/src/features/profile
 ```
 
 Acceptance:
@@ -2789,6 +2903,8 @@ Student can show dynamic QR
 Student can see collected leimat
 Student can see leaderboard
 Student can see reward progress
+Student can optionally manage department tags
+Student primary tag can be shown on profile and later on leaderboard cards
 ```
 
 ---
@@ -2845,6 +2961,8 @@ Platform admin can approve businesses
 Platform admin can manage clubs
 Club organizer can create events
 Club organizer can manage reward tiers
+Club organizer can create official department tags for own community
+Platform admin can merge duplicate custom department tags
 Club staff can confirm reward claims
 Admin can see fraud signals
 ```
@@ -2970,6 +3088,7 @@ Do not allow client to insert stamps directly.
 Do not rely only on frontend checks for duplicate stamps.
 Do not allow business to join event after start.
 Do not send private student data to businesses.
+Do not use department tags as permissions or event eligibility gates.
 Do not overbuild Redis/NestJS/Kubernetes at launch.
 Do not add payments before core event flow works.
 Do not spam users with rank notifications.

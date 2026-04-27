@@ -4,14 +4,13 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/reward-edge-function` branch.
-- [x] Review reward claim RPC and master plan sections.
-- [x] Update `REVIEW.md` for reward scope.
-- [x] Update `PLAN.md` for reward scope.
+- [x] Create `feature/department-tags-plan` branch.
+- [x] Review profile, club, and student UX sections.
+- [x] Update `REVIEW.md` for department tag planning scope.
+- [x] Update `PLAN.md` for department tag planning scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Implement `claim-reward`.
-- [x] Add function config and docs update.
-- [x] Run DB reset and reward smoke tests.
-- [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
+- [x] Update `LEIMA_APP_MASTER_PLAN.md` with product, schema, and roadmap changes.
+- [x] Capture related recommendations in the plan.
+- [x] Update `PROGRESS.md` handoff and roadmap notes.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

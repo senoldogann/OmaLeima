@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-27
-- **Branch:** `feature/reward-edge-function`
-- **Yapılan iş:** Faz 2'nin ikinci güvenlik dilimi tamamlandı: `claim-reward` Supabase Edge Function'ı eklendi, `claim_reward_atomic` RPC için request validation ve sabit response message katmanı kuruldu, function config ve Edge Function dokümantasyonu güncellendi.
-- **Neden yapıldı:** Öğrencinin kazandığı ödülün kulüp yetkilisi tarafından güvenli ve duplicate korumalı şekilde teslim edilebilmesi için reward claim akışı da client dışına alınmalıydı.
-- **Doğrulama:** `supabase db reset`; local organizer/scanner/student password auth; `generate-qr-token`; `scan-qr` ile seed student'a 1 valid leima üretimi; `claim-reward` success; duplicate claim; not-enough-stamps; invalid bearer token; `CLAIMER_NOT_ALLOWED` smoke testleri geçti.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra temiz `main` üzerinden Phase 2'nin sonraki küçük branch'ini aç: `feature/admin-business-approval-functions` ile `admin-approve-business` ve `admin-reject-business` Edge Function'larını tasarla ve uygula.
-- **Açık risk/blokaj:** Reward claim şu an event, student ve reward tier ID'leriyle çağrılıyor; staff-side QR/confirmation UX ve fiziksel teslimat doğrulama ekranı sonraki fazlarda ayrıca bağlanmalı.
+- **Branch:** `feature/department-tags-plan`
+- **Yapılan iş:** Ürün planına opsiyonel öğrenci department tag desteği eklendi. Master plan artık official tag + user-created custom tag ayrımını, canonical merge yaklaşımını, `department_tags` ve `profile_department_tags` veri modelini, öğrenci profile UX'ini ve club/admin ownership kurallarını içeriyor.
+- **Neden yapıldı:** Kullanıcı öğrencilerin bölüm/program etiketlerini görünür ve seçilebilir yapmak istedi. Bu ihtiyaç mobil profile, leaderboard görünümü ve kulüp topluluk kimliği için erken aşamada planlanmazsa ileride dağınık free-text veri ve zayıf UX üretir.
+- **Doğrulama:** Dokümantasyon/roadmap güncellemesi. Diff review yeterli; kod testi gerekmiyor.
+- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2'ye devam edilebilir. Ancak Faz 3 öğrenci profile UI başlamadan önce ayrı bir schema branch'i açılmalı: `feature/department-tags-foundation` ile yeni tablolar, RLS ve read model eklenmeli.
+- **Açık risk/blokaj:** Bölüm etiketi kapsamı auth veya event eligibility için kullanılmamalı. Duplicate tag cleanup için club-level creation tek başına yetmez; admin merge akışı gerekecek.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -49,6 +49,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [ ] Öğrenci QR Ekranı: Dinamik, 30 saniyede bir yenilenen, ekran kaydı uyarılı QR kod gösterimi
 - [ ] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
 - [ ] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
+- [ ] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
 - [ ] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
 
 ## Faz 4: Mobil Uygulama - Mekan ve Tarayıcı Akışı (Mobile Business Agent)
@@ -65,8 +66,10 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [ ] Admin/Kulüp giriş ekranı ve yetkiye (role) bağlı yönlendirme mekanizması (Supabase Auth)
 - [ ] **Sistem Admini Modülü:** Bekleyen mekan başvurularını inceleme ve onaylama/reddetme
 - [ ] **Sistem Admini Modülü:** Platformdaki tüm kulüpleri, etkinlikleri ve Fraud (Sahtekarlık) sinyallerini izleme
+- [ ] **Sistem Admini Modülü:** Duplicate/custom department tag'leri birleştirme ve moderasyon
 - [ ] **Kulüp Yetkilisi Modülü:** Yeni etkinlik oluşturma (Tarih, şehir, kapasite, kurallar)
 - [ ] **Kulüp Yetkilisi Modülü:** Etkinlik ödül seviyelerinin (Reward Tiers) eklenmesi ve stok takibi
+- [ ] **Kulüp Yetkilisi Modülü:** Topluluk için official department tag önerme/oluşturma
 - [ ] **Kulüp Yetkilisi Modülü:** Ödül Dağıtım Ekranı (Öğrencinin hak kazandığı ödülü teslim etmek için doğrulama)
 
 ## Faz 6: Kalite Güvencesi (QA) ve Canlıya Geçiş (QA Agent)
@@ -79,6 +82,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-04-27*: Öğrenci department tag desteği ürün planına eklendi; optional profile tags, official/custom sources ve duplicate merge yaklaşımı roadmap'e işlendi.
 - *2026-04-27*: Faz 2 reward claim Edge Function tamamlandı; `claim-reward` eklendi ve local reward smoke testleri geçti.
 - *2026-04-27*: Faz 2 QR Edge Function ilk dilimi tamamlandı; `generate-qr-token` ve `scan-qr` eklendi, local auth/DB/function smoke testleri geçti.
 - *2026-04-27*: Ajan çalışma disiplini güçlendirildi; `REVIEW.md`, `PLAN.md`, `TODOS.md` zorunlu pre-implementation çalışma dosyaları olarak eklendi.
