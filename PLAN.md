@@ -5,38 +5,36 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-leaderboard`
-- **Goal:** Add the first real student leaderboard screen with event selection, Top 10, and current-user rank visibility.
+- **Branch:** `feature/mobile-push-registration`
+- **Goal:** Add the first real student device-notification registration flow in the mobile profile screen.
 
 ## Architectural Decisions
 
-- Keep this slice event-scoped and read-only. The screen will select one relevant registered event at a time and fetch one leaderboard RPC for that event, instead of issuing one leaderboard request per registered event.
-- Build one shared leaderboard data layer under `apps/mobile/src/features/leaderboard`:
-  1. read the student's registered event ids
-  2. load matching public event summaries in one query
-  3. derive a stable event order: active first, then upcoming, then completed
-  4. fetch the selected event leaderboard through `get_event_leaderboard`
-  5. read `leaderboard_updates` for the selected event so the screen can explain freshness
+- Keep this slice centered on the existing profile tab. We already have native token preparation; the missing step is authenticated backend enrollment plus clear UX around unsupported environments.
+- Split responsibilities cleanly:
+  1. `lib/push.ts` stays responsible for native permission + Expo token preparation
+  2. a new `features/push` module owns backend registration and result shaping
+  3. `student/profile` becomes the user-facing orchestration surface
 - Keep the first UI scope tight:
-  1. event switcher for registered events
-  2. Top 10 list for the selected event
-  3. separate current-user rank card even when the student is outside Top 10
-  4. empty-state copy when the event has no leaderboard rows yet
-- Do not add realtime subscriptions in this slice. The backend refresh job already exists, and the smallest correct step is a reliable fetch surface before adding live updates.
+  1. explain physical-device and development-build requirements
+  2. request permission and get the Expo token
+  3. post the token to `register-device-token`
+  4. show device state, Expo token state, and backend registration state
+- Do not add notification listeners, deep-link handling, or backend test-send UI in this slice. The smallest correct step is device enrollment.
 
 ## Alternatives Considered
 
-- Reading `leaderboard_scores` directly and ranking on the client: rejected because it would either overfetch all participants or reimplement the exact ranking logic the RPC already owns.
-- Fetching leaderboard data for every registered event at once: rejected because it turns an event-scoped RPC into N+1 network work and does not match the current tab's need.
-- Adding realtime subscriptions now: rejected because we should first land the stable event selection and read model before wiring live updates.
+- Auto-registering the push token during session bootstrap: rejected because permission prompts and native failures should stay behind an explicit user action in this slice.
+- Adding a stable per-device ID dependency now: rejected because backend registration already allows `deviceId: null`, and we should keep this change small unless rotation cleanup becomes a product requirement on mobile.
+- Adding a server-triggered test-push button for students: rejected because the current Phase 3 need is enrollment, not diagnostic delivery.
 
 ## Edge Cases
 
-- The student has no registered public event eligible for leaderboard display.
-- The selected event exists but `leaderboard_scores` has not been refreshed yet, so Top 10 is empty.
-- The current student is outside Top 10 and only the separate `currentUser` card reveals their rank.
-- Two students share stamp counts and are ordered by `last_stamp_at`, so local smoke data should cover tie handling.
-- A registered event later becomes invisible to public reads; the tab should not tell the student to join an event again if they still have registrations.
+- The app runs on web, where remote push enrollment is unavailable.
+- The app runs in Expo Go or a simulator, where a real remote push token is unavailable.
+- Permission is denied after the request prompt.
+- Permission is granted but backend token registration fails, so the student should see a partial failure instead of fake success.
+- `EXPO_PUBLIC_EAS_PROJECT_ID` is missing, so native token preparation is misconfigured.
 
 ## Validation Plan
 
@@ -45,7 +43,7 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 - Run `npm run typecheck` in `apps/mobile`.
 - Run `npm run export:web` in `apps/mobile`.
 - Run local Supabase-authenticated smoke checks for:
-  1. registered event leaderboard selection query
-  2. `update_event_leaderboard` + `get_event_leaderboard` with seeded and fixture students
-  3. empty leaderboard state on a registered event with no scores yet
-- Start the local web preview and verify `/student/leaderboard` renders with the live leaderboard screen.
+  1. backend `register-device-token` success path with the seeded student session
+  2. invalid bearer token rejection for the same endpoint
+  3. profile route render with the new notification registration surface
+- Start the local web preview and verify `/student/profile` renders the updated push-registration UI.

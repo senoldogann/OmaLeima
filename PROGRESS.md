@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-student-leaderboard`
-- **Yapılan iş:** Faz 3 öğrenci leaderboard ekranı tamamlandı. `student/leaderboard` artık placeholder değil; öğrencinin registered public event'leri okunuyor, aktif event önce gelecek şekilde seçilebilir event scope listesi kuruluyor ve seçilen event için `get_event_leaderboard` RPC üzerinden Top 10 ile current-user rank aynı ekranda gösteriliyor. Bu dilimde `get_event_leaderboard` RPC'si de aynı snapshot'tan `refreshedAt` ve `version` dönecek şekilde genişletildi; böylece freshness bilgisi leaderboard satırlarıyla tutarlı kaldı. Yeni shared read model `apps/mobile/src/features/leaderboard` altına taşındı.
-- **Neden yapıldı:** Reward progress sonrası Faz 3 checklist'indeki en doğru küçük adım leaderboard görünürlüğünü açmaktı. Bu ekran event-scoped tutuldu; böylece her registered event için N+1 RPC çağrısı yapmadan, öğrencinin gerçekten takip ettiği tek event leaderboard'u güvenli ve sade bir surface ile sunuluyor.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası local fixture ile bir aktif event için çoklu participant leaderboard kurulup `update_event_leaderboard` çağrıldı; `get_event_leaderboard` çıktısında Top 10 + currentUser rank ve tie-order doğrulandı. Ayrıca registered ama skorsuz future event fixture'ı ile empty leaderboard state doğrulandı. Local web preview `http://localhost:8089` üzerinde açıldı. `curl -I http://localhost:8089/student/leaderboard` ile route'un HTML cevabı doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-push-registration` aç. Faz 3 checklist'indeki mobil bildirim izni ve `register-device-token` entegrasyonu tamamlanmalı. Department tag UI başlamadan önce de ayrı olarak `feature/department-tags-foundation` schema branch'i açılmalı.
-- **Açık risk/blokaj:** Leaderboard şu an fetch-based; realtime subscription henüz yok. Web preview route/render doğrulaması sağlıyor ama logged-in görsel state ile event switcher davranışı native cihaz veya browser session içinde ayrıca test edilmeli.
+- **Branch:** `feature/mobile-push-registration`
+- **Yapılan iş:** Faz 3 mobil push registration dilimi tamamlandı. `student/profile` artık yalnızca local token hazırlığı göstermiyor; fiziksel cihazdaki izin isteği, Expo push token üretimi ve `register-device-token` Edge Function'ına authenticated backend kayıt akışı tek yüzeyde birleştirildi. `apps/mobile/src/features/push/device-registration.ts` eklendi ve result shape, unsupported environment, permission denial, misconfiguration ve backend registration failure durumları ayrı ayrı ele alındı.
+- **Neden yapıldı:** Leaderboard sonrası Faz 3 checklist'inde açık kalan en doğru küçük adım mobil bildirim hazırlığını gerçek backend enrollment seviyesine taşımaktı. Böylece student app artık yalnızca token üreten değil, push gönderimine hazır device row kaydeden bir yüzeye sahip oldu.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası seeded student auth ile `register-device-token` success ve invalid bearer rejection smoke testleri geçti. DB üzerinde `device_tokens` tablosunda yeni `ExponentPushToken[test-token-2]` kaydı doğrulandı. Local web preview `http://localhost:8091` üzerinde açıldı. `curl -I http://localhost:8091/student/profile` ile route'un HTML cevabı doğrulandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/department-tags-foundation` aç. Faz 3'teki profile tag UI başlamadan önce planlanan schema ve data-model foundation gerçekten kurulmalı.
+- **Açık risk/blokaj:** Remote push registration'ın gerçek uçtan uca native doğrulaması için development build ve fiziksel cihaz hâlâ gerekiyor. Bu branch web route ve backend smoke doğrulamasını tamamlıyor, ama gerçek device permission prompt ve token alma davranışı cihaz üstünde ayrıca test edilmeli.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -50,7 +50,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Leima (Damga) Ekranı: Anlık toplanan leimaların ve ödül kazanım ilerlemesinin gösterimi
 - [x] Leaderboard Ekranı: Top 10 ve kullanıcının kendi sıralamasının gösterimi
 - [ ] Öğrenci Profil Ekranı: Opsiyonel department tag seçimi, custom tag ekleme ve primary tag belirleme
-- [ ] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
+- [x] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
 
 ## Faz 4: Mobil Uygulama - Mekan ve Tarayıcı Akışı (Mobile Business Agent)
 - [ ] Mekan Personeli (Business Staff) için email/şifre giriş ekranı
@@ -85,6 +85,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
 - *2026-04-28*: Faz 3 student reward progress tamamlandı; rewards tabı gerçek reward tier state gösteriyor ve active-event QR ekranı ile shared reward progress surface kullanıyor.
 - *2026-04-28*: Faz 3 student leaderboard tamamlandı; event-scoped Top 10 ve current-user rank görünürlüğü `student/leaderboard` tabına bağlandı.
+- *2026-04-28*: Faz 3 mobile push registration tamamlandı; student profile tabı native permission + Expo token + backend device-token enrollment akışına bağlandı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
