@@ -4,15 +4,17 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/send-push-notification` branch.
-- [x] Review promotion push rules, auth boundaries, and recipient selection path.
-- [x] Update `REVIEW.md` for send-push-notification scope.
-- [x] Update `PLAN.md` for send-push-notification scope.
+- [x] Create `feature/mobile-expo-foundation` branch.
+- [x] Review the current repo state, Phase 3 plan, and current Expo/Supabase guidance.
+- [x] Update `REVIEW.md` for the mobile foundation scope.
+- [x] Update `PLAN.md` for the mobile foundation scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add any missing notification-specific error codes or helper types.
-- [x] Implement `send-push-notification`.
-- [x] Update config and docs.
-- [x] Run DB reset and promotion push smoke tests.
-- [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
+- [x] Generate the Expo app scaffold in `apps/mobile`.
+- [x] Replace the template UI with the OmaLeima route shell.
+- [x] Add strict env parsing, Supabase client setup, auth session provider, and React Query provider.
+- [x] Add push permission and Expo token preparation helpers.
+- [x] Add app config, EAS config, and env example updates.
+- [x] Run mobile validation commands.
+- [x] Update `PROGRESS.md` with the Phase 3 foundation handoff.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.
