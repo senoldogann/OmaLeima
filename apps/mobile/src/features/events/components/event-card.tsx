@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -6,6 +6,7 @@ import type { StudentEventSummary } from "@/features/events/types";
 
 type EventCardProps = {
   event: StudentEventSummary;
+  onPress: () => void;
 };
 
 const timeFormatter = new Intl.DateTimeFormat("en-FI", {
@@ -49,34 +50,43 @@ const formatCapacity = (event: StudentEventSummary): string =>
 
 const formatDeadline = (event: StudentEventSummary): string => `Join deadline ${formatDateTime(event.joinDeadlineAt)}`;
 
-export const EventCard = ({ event }: EventCardProps) => {
+export const EventCard = ({ event, onPress }: EventCardProps) => {
   const timelineBadge = getTimelineBadge(event);
   const registrationBadge = getRegistrationBadge(event);
 
   return (
-    <InfoCard eyebrow={event.city} title={event.name}>
-      <View style={styles.badges}>
-        <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-        <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-      </View>
+    <Pressable onPress={onPress} style={styles.pressable}>
+      <InfoCard eyebrow={event.city} title={event.name}>
+        <View style={styles.badges}>
+          <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+          <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+        </View>
 
-      <Text style={styles.description}>
-        {event.description ?? "Event description will be added by the organizer."}
-      </Text>
-
-      <View style={styles.metaGroup}>
-        <Text style={styles.metaLine}>
-          {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+        <Text style={styles.description}>
+          {event.description ?? "Event description will be added by the organizer."}
         </Text>
-        <Text style={styles.metaLine}>{formatDeadline(event)}</Text>
-        <Text style={styles.metaLine}>{formatCapacity(event)}</Text>
-        <Text style={styles.metaLine}>Minimum leimat required: {event.minimumStampsRequired}</Text>
-      </View>
-    </InfoCard>
+
+        <View style={styles.metaGroup}>
+          <Text style={styles.metaLine}>
+            {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+          </Text>
+          <Text style={styles.metaLine}>{formatDeadline(event)}</Text>
+          <Text style={styles.metaLine}>{formatCapacity(event)}</Text>
+          <Text style={styles.metaLine}>Minimum leimat required: {event.minimumStampsRequired}</Text>
+        </View>
+
+        <Text style={styles.actionText}>Open event</Text>
+      </InfoCard>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
+  actionText: {
+    color: "#93C5FD",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   badges: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -94,5 +104,8 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontSize: 13,
     lineHeight: 18,
+  },
+  pressable: {
+    borderRadius: 8,
   },
 });

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-events-list`
-- **Scope:** Phase 3 authenticated student events list with real Supabase reads.
+- **Branch:** `feature/mobile-event-detail-and-join`
+- **Scope:** Phase 3 student event detail route and secure event registration flow.
 
 ## Affected Files
 
@@ -14,31 +14,36 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/events.tsx`
+- `docs/DATABASE.md`
+- `supabase/migrations/*`
+- `supabase/functions/generate-qr-token/index.ts`
+- `apps/mobile/src/app/student/_layout.tsx`
+- `apps/mobile/src/app/student/events/*`
 - `apps/mobile/src/features/events/*`
 - `apps/mobile/src/components/*`
 
 ## Risks
 
-- Events list must only use data already visible to authenticated students under current RLS rules.
-- The first query should not sprawl into detail screen, join mutations, or venue/reward overfetch.
-- We need loading, empty, and error states that still make sense even before Google OAuth is fully configured in external dashboards.
-- Seed data currently has one active event; query logic should still handle upcoming-only and empty results cleanly.
-- Event timing and registration status should be derived on the client without inventing permissions or availability rules.
+- Student registration must not depend on client-only checks for capacity or join deadline.
+- Current `generate-qr-token` behavior can auto-register a student, so the join rules must be centralized or the new UI will be bypassable.
+- Event detail needs to fetch venues and reward tiers without leaking private business or registration data outside current RLS rules.
+- The current seed event is already active and its join deadline has passed, so success-path validation needs dedicated local fixture data.
+- Navigation should gain a detail route without turning the tab bar into a second event tab.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` sections for student home screen, event discovery, and later event registration flow.
+- `LEIMA_APP_MASTER_PLAN.md` sections for student event detail, event join flow, and QR access after registration.
 - Existing `apps/mobile` auth foundation and route guard merged in Phase 3.
-- Current Supabase client query surface and existing RLS policies on `events` and `event_registrations`.
+- Current Supabase client query surface and existing RLS policies on `events`, `event_venues`, `reward_tiers`, and `event_registrations`.
 
 ## Existing Logic Checked
 
 - `apps/mobile` already has session bootstrap, route protection, and sign-out, so the events screen can assume authenticated access.
-- `events.tsx` is still a placeholder shell with no live query.
-- RLS allows public reads of `PUBLISHED`, `ACTIVE`, and `COMPLETED` public events, and students can read only their own `event_registrations`.
-- Seed data currently includes one registered student and one active public event, which is enough for a smoke query against the live local backend.
+- Student events list is live and already merges public events with the signed-in student's own registration state.
+- RLS allows public reads of public events, joined event venues, and active reward tiers, while students can read only their own registrations.
+- Direct student insert/update policies still allow client-side registration writes today, so join deadline and capacity rules are not yet fully zero-trust.
+- `generate-qr-token` currently auto-creates registrations and checks capacity, but it does not centralize the full event join rule set behind a shared atomic registration primitive.
 
 ## Review Outcome
 
-Implement the first real student data surface in `apps/mobile`: query active and upcoming events from Supabase for an authenticated student, include the user's registration state, render clear loading/error/empty states, and keep the data model ready for the next event detail and join slice. Registration state should be fetched without accidentally filtering out visible public events.
+Implement a real event detail route and move student registration into a backend-controlled atomic flow. The mobile screen should surface event overview, venue list, reward tiers, registration status, and join CTA states. Registration writes should stop relying on permissive direct table policies and should instead go through one shared rule path that also keeps `generate-qr-token` aligned.
