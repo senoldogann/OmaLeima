@@ -4,13 +4,16 @@ Bu dosya her branch'te planı küçük, uygulanabilir ve doğrulanabilir adımla
 
 ## Current Todos
 
-- [x] Create `feature/agent-planning-docs` branch.
-- [x] Add `REVIEW.md` template.
-- [x] Add `PLAN.md` template.
-- [x] Add `TODOS.md` template.
-- [x] Update `AGENTS.md` to require these files before implementation.
-- [ ] Update `PROGRESS.md` latest handoff.
-- [x] Update `PROGRESS.md` latest handoff.
+- [x] Create `feature/qr-edge-functions` branch.
+- [x] Review Master Plan QR and Edge Function sections.
+- [x] Update `REVIEW.md` for Phase 2 QR scope.
+- [x] Update `PLAN.md` for Phase 2 QR scope.
+- [x] Update `TODOS.md` with small implementation steps.
+- [x] Add shared Edge Function helpers.
+- [x] Implement `generate-qr-token`.
+- [x] Implement `scan-qr`.
+- [x] Add local function config and secret documentation.
+- [x] Run DB reset and Edge Function smoke tests.
+- [x] Update `PROGRESS.md` handoff and Phase 2 checklist.
 - [x] Review diff.
-- [ ] Commit and push branch.
-- [ ] Open PR and merge after validation.
+- [ ] Commit, push, PR, merge, and branch cleanup.
