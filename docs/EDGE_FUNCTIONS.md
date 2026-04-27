@@ -10,6 +10,7 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `admin-approve-business`
 - `admin-reject-business`
 - `register-device-token`
+- `send-push-notification`
 - `send-test-push`
 - `scheduled-event-reminders`
 - `scheduled-leaderboard-refresh`
@@ -160,6 +161,49 @@ Behavior notes:
 - The function reads the authenticated user's enabled `device_tokens`.
 - It writes a `notifications` row with `SENT` or `FAILED` and stores the Expo response body in `payload.expoPushResponse`.
 - Transport or Expo API failures return `PUSH_SEND_FAILED`.
+
+## `send-push-notification`
+
+Current supported request type:
+
+```txt
+PROMOTION
+```
+
+Request:
+
+```json
+{
+  "type": "PROMOTION",
+  "promotionId": "70000000-0000-0000-0000-000000000001"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "type": "PROMOTION",
+  "promotionId": "70000000-0000-0000-0000-000000000001",
+  "businessId": "20000000-0000-0000-0000-000000000001",
+  "eventId": "30000000-0000-0000-0000-000000000001",
+  "notificationsCreated": 1,
+  "notificationsSent": 1,
+  "notificationsFailed": 0,
+  "recipientsSkippedNoDeviceToken": 0,
+  "message": "Promotion push sent successfully."
+}
+```
+
+Behavior notes:
+
+- The current slice is intentionally narrow and product-grounded: only `PROMOTION` pushes backed by an existing `promotions` row are supported.
+- Active business staff for the promotion's business can send the push; active platform admins are the only global override.
+- Promotion delivery is limited to registered participants of the linked event who have enabled device tokens.
+- The same promotion cannot be sent twice.
+- Successful promotion sends are capped at `2` per `event + business`, matching the anti-spam rule in the master plan.
+- The function writes one `PROMOTION` notification row per user and one audit log row per successful send attempt.
 
 ## `scheduled-event-reminders`
 
@@ -347,17 +391,22 @@ supabase functions serve --env-file supabase/.env.local
 7. Sign in as the seeded platform admin and call `admin-approve-business` or `admin-reject-business` on a pending business application.
 8. Sign in as the seeded student and call `register-device-token`.
 9. Re-register the same `deviceId` with a rotated Expo token and verify the old token becomes disabled.
-10. Call `send-test-push` and verify a `notifications` row is written.
-11. Stop the mock push server once and verify `send-test-push` returns `PUSH_SEND_FAILED`.
-12. Insert one event due in the next 24 hours and one event due in the next 2 hours.
-13. Call `scheduled-event-reminders` with an invalid secret and verify it returns `UNAUTHORIZED`.
-14. Call `scheduled-event-reminders` with the valid secret and verify `EVENT_REMINDER` rows are written.
-15. Call it again and verify duplicate reminders are skipped.
-16. Stop the mock push server once and verify a due reminder is written as `FAILED`.
-17. Generate one QR with the seeded student and scan it with the seeded scanner.
-18. Call `scheduled-leaderboard-refresh` with an invalid secret and verify it returns `UNAUTHORIZED`.
-19. Call `scheduled-leaderboard-refresh` with the valid secret and verify `leaderboard_scores` and `leaderboard_updates` rows are written.
-20. Call it again and verify the already-fresh event is skipped.
+10. Insert active promotions for the seeded business and seeded event.
+11. Sign in as the seeded business staff user and call `send-push-notification`.
+12. Call the same promotion again and verify duplicate protection blocks it.
+13. Call a second promotion and verify it succeeds.
+14. Call a third promotion and verify the max-2 rule blocks it.
+15. Call `send-test-push` and verify a `notifications` row is written.
+16. Stop the mock push server once and verify `send-test-push` returns `PUSH_SEND_FAILED`.
+17. Insert one event due in the next 24 hours and one event due in the next 2 hours.
+18. Call `scheduled-event-reminders` with an invalid secret and verify it returns `UNAUTHORIZED`.
+19. Call `scheduled-event-reminders` with the valid secret and verify `EVENT_REMINDER` rows are written.
+20. Call it again and verify duplicate reminders are skipped.
+21. Stop the mock push server once and verify a due reminder is written as `FAILED`.
+22. Generate one QR with the seeded student and scan it with the seeded scanner.
+23. Call `scheduled-leaderboard-refresh` with an invalid secret and verify it returns `UNAUTHORIZED`.
+24. Call `scheduled-leaderboard-refresh` with the valid secret and verify `leaderboard_scores` and `leaderboard_updates` rows are written.
+25. Call it again and verify the already-fresh event is skipped.
 
 Expected scan statuses:
 
@@ -403,6 +452,21 @@ Expected test push statuses:
 SUCCESS
 DEVICE_TOKEN_NOT_FOUND
 PUSH_SEND_FAILED
+UNAUTHORIZED
+```
+
+Expected controlled push statuses:
+
+```txt
+SUCCESS
+PARTIAL_SUCCESS
+PROMOTION_ALREADY_SENT
+PROMOTION_LIMIT_REACHED
+PROMOTION_NOT_ACTIVE
+PROMOTION_EVENT_REQUIRED
+PROMOTION_NOT_JOINED_EVENT
+NOTIFICATION_NOT_ALLOWED
+NOTIFICATION_RECIPIENTS_NOT_FOUND
 UNAUTHORIZED
 ```
 

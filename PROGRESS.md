@@ -4,13 +4,13 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ## Son Ajan Devri (Latest Agent Handoff)
 
-- **Tarih:** 2026-04-27
-- **Branch:** `feature/leaderboard-refresh-job`
-- **Yapılan iş:** Faz 2 cron tarafı tamamlandı: `scheduled-leaderboard-refresh` Edge Function eklendi. Function son geçerli stamp zamanı ile `leaderboard_updates.updated_at` alanını karşılaştırıp sadece dirty event'leri buluyor ve mevcut `update_event_leaderboard` RPC'sini çağırarak refresh ediyor. Scheduled secret doğrulaması da shared helper'a alındı; `scheduled-event-reminders` aynı helper'ı kullanacak şekilde hizalandı.
-- **Neden yapıldı:** Master plan gereği leaderboard aggregation scan anında değil, periyodik cron job ile yapılmalıydı. Reminder job tamamlandıktan sonra Faz 2 cron checklist'inin kalan parçası buydu.
-- **Doğrulama:** `supabase db reset`; seeded student/scanner auth; `generate-qr-token` success; `scan-qr` success ile gerçek stamp üretimi; `scheduled-leaderboard-refresh` invalid secret -> `UNAUTHORIZED`; valid secret -> `updatedEvents=1`; ikinci run -> `skippedAlreadyFresh=1`. DB üzerinden `leaderboard_scores` içinde `EVENT|event_id|student_id|1` ve `leaderboard_updates` içinde `version=1` doğrulandı. Shared helper regression için `scheduled-event-reminders` invalid secret ve zero-due success çağrıları da geçti.
-- **Sıradaki önerilen adım:** Bu branch merge edildikten sonra Faz 2 için yeni küçük branch aç: `feature/send-push-notification` ile organizer/admin kaynaklı controlled push endpoint'i ekle ve böylece `register-device-token` + `send-push-notification` checklist maddesini kapat.
-- **Açık risk/blokaj:** Scheduled job'lar hâlâ `x-scheduled-job-secret` header'ına bağlı; hosted cron kurulumunda bu secret Supabase Vault veya project secrets ile yönetilmeli. Leaderboard refresh şu an event scope için çalışıyor; weekly/monthly/yearly scope istenirse ayrı DB/RPC genişletmesi gerekecek.
+- **Tarih:** 2026-04-28
+- **Branch:** `feature/send-push-notification`
+- **Yapılan iş:** Faz 2 push maddesi tamamlandı: `send-push-notification` Edge Function eklendi. İlk production-shaped slice `PROMOTION` tipi için uygulandı. Function aktif, event-linked promotion kaydını okuyor; aktif business staff veya platform admin yetkisini doğruluyor; joined venue kontrolü yapıyor; registered participant + enabled token hedeflemesi yapıyor; aynı promotion duplicate'ini ve `event + business` başına maksimum `2` başarılı promotion kuralını uyguluyor. Her kullanıcı için bir `PROMOTION` notification row ve her başarılı gönderim için bir audit log yazıyor.
+- **Neden yapıldı:** Faz 2'de açık kalan son backend maddesi `register-device-token` ile birlikte `send-push-notification` API'siydi. Promotions tablosu ve anti-spam kuralı mevcut şemada en net, en küçük ve ürünle uyumlu controlled push yüzeyini veriyordu.
+- **Doğrulama:** `supabase db reset`; local student/scanner/organizer password auth; student `register-device-token` success; service-role ile 3 aktif promotion insert; `send-push-notification` invalid bearer -> `UNAUTHORIZED`; business staff first promotion success; same promotion repeat -> `PROMOTION_ALREADY_SENT`; second promotion success; third promotion -> `PROMOTION_LIMIT_REACHED`; organizer -> `NOTIFICATION_NOT_ALLOWED`. DB üzerinden iki `PROMOTION|SENT` notification row ve iki `PROMOTION_PUSH_SENT` audit log doğrulandı. Mock push server loglarında iki ayrı Expo request görüldü.
+- **Sıradaki önerilen adım:** Faz 2 tamamlandığı için sıradaki doğru adım Faz 3'e geçmek: `feature/mobile-expo-foundation` ile Expo app temelini, klasör yapısını, Supabase client bağlantısını ve push permission hazırlığını kur.
+- **Açık risk/blokaj:** `send-push-notification` şu an bilinçli olarak sadece `PROMOTION` tipini destekliyor. `REWARD_UNLOCKED`, `EVENT_STARTED` veya `RANK_CHANGED` gibi tipler ileride eklenecekse ayrı branch'lerde kendi delivery/anti-spam kurallarıyla genişletilmeli.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -37,7 +37,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] `scan-qr` API'sinin yazılması (Zaman aşımı, tekrar kullanımı engelleme ve mekan doğrulama)
 - [x] `claim-reward` API'sinin yazılması
 - [x] `admin-approve-business` ve `admin-reject-business` API'lerinin yazılması
-- [ ] `register-device-token` ve `send-push-notification` API'lerinin yazılması
+- [x] `register-device-token` ve `send-push-notification` API'lerinin yazılması
 - [x] Periyodik (Cron) çalışan asenkron Edge Functions (Leaderboard toplu güncelleme, etkinlik hatırlatmaları)
 
 ## Faz 3: Mobil Uygulama MVP - Öğrenci Akışı (Mobile Student Agent)
@@ -83,6 +83,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ---
 ### Tamamlanan Görevler (Changelog)
 - *2026-04-27*: Faz 2 admin business approval flow tamamlandı; business review RPC'leri ve `admin-approve-business` / `admin-reject-business` Edge Function'ları eklendi.
+- *2026-04-28*: Faz 2 controlled push endpoint tamamlandı; `send-push-notification` eklendi ve `PROMOTION` anti-spam rule smoke testleri geçti.
 - *2026-04-27*: Faz 2 leaderboard refresh cron job tamamlandı; `scheduled-leaderboard-refresh` eklendi ve async leaderboard smoke testleri geçti.
 - *2026-04-27*: Faz 2 scheduled reminder cron foundation tamamlandı; `scheduled-event-reminders`, Expo batch/retry helper ve reminder query index'leri eklendi, local cron smoke testleri geçti.
 - *2026-04-27*: Faz 2 push foundation tamamlandı; shared Expo push helper ile `register-device-token` ve `send-test-push` Edge Function'ları eklendi, local push smoke testleri geçti.
