@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-push-registration`
-- **Yapılan iş:** Faz 3 mobil push registration dilimi tamamlandı. `student/profile` artık yalnızca local token hazırlığı göstermiyor; fiziksel cihazdaki izin isteği, Expo push token üretimi ve `register-device-token` Edge Function'ına authenticated backend kayıt akışı tek yüzeyde birleştirildi. `apps/mobile/src/features/push/device-registration.ts` eklendi ve result shape, unsupported environment, permission denial, misconfiguration ve backend registration failure durumları ayrı ayrı ele alındı.
-- **Neden yapıldı:** Leaderboard sonrası Faz 3 checklist'inde açık kalan en doğru küçük adım mobil bildirim hazırlığını gerçek backend enrollment seviyesine taşımaktı. Böylece student app artık yalnızca token üreten değil, push gönderimine hazır device row kaydeden bir yüzeye sahip oldu.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası seeded student auth ile `register-device-token` success ve invalid bearer rejection smoke testleri geçti. DB üzerinde `device_tokens` tablosunda yeni `ExponentPushToken[test-token-2]` kaydı doğrulandı. Local web preview `http://localhost:8091` üzerinde açıldı. `curl -I http://localhost:8091/student/profile` ile route'un HTML cevabı doğrulandı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/department-tags-foundation` aç. Faz 3'teki profile tag UI başlamadan önce planlanan schema ve data-model foundation gerçekten kurulmalı.
-- **Açık risk/blokaj:** Remote push registration'ın gerçek uçtan uca native doğrulaması için development build ve fiziksel cihaz hâlâ gerekiyor. Bu branch web route ve backend smoke doğrulamasını tamamlıyor, ama gerçek device permission prompt ve token alma davranışı cihaz üstünde ayrıca test edilmeli.
+- **Branch:** `feature/department-tags-foundation`
+- **Yapılan iş:** Faz 3 profile department tag foundation tamamlandı. `department_tags` ve `profile_department_tags` tabloları, source ve moderation alanları, canonical merge referansı, deterministic local seed verisi, RLS politikaları, profil başına max 3 tag limiti ve max 1 primary tag limiti Supabase tarafında eklendi. Max-3 kuralı slot bazlı unique yapı ile concurrency-safe hale getirildi; ayrıca admin merge/block ve profile role-status değişimlerinde bağlı profile tag satırlarını onaran `after update` trigger'ları eklendi.
+- **Neden yapıldı:** Faz 3 checklist'indeki son açık öğrenci profil işi department tag UI idi; ama onu güvenli ve tutarlı biçimde geliştirmek için önce veri modeli, ownership kuralları ve merge foundation'unun database seviyesinde kurulması gerekiyordu.
+- **Doğrulama:** `supabase db reset` geçti. Local auth-backed smoke testlerde public active tag read, student custom tag create, organizer official club tag create, student club tag create rejection, merged tag attach rejection, second primary rejection, concurrent üçüncü-slot yarışında yalnızca tek insert success kalması, dördüncü tag rejection, admin merge repair ve profile role change sonrası dependent-row cleanup doğrulandı. DB üzerinde sırasıyla `after_concurrency_db:3|...`, `after_merge_repair_db:2|...` ve `after_profile_role_repair_db:0` sonuçları kontrol edildi.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-student-profile-tags` aç. Bu branch'teki schema ve seed verisini kullanarak profile ekranına tag listesi, custom create ve primary selection UI bağlanmalı.
+- **Açık risk/blokaj:** Bu dilim henüz create-and-assign RPC eklemiyor; ileride club/admin moderation veya slug-collision ergonomisi client direct write yerine daha kontrollü bir RPC yüzeyine taşınabilir. Ayrıca push registration için fiziksel cihazla native smoke test ihtiyacı devam ediyor.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -86,6 +86,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 student reward progress tamamlandı; rewards tabı gerçek reward tier state gösteriyor ve active-event QR ekranı ile shared reward progress surface kullanıyor.
 - *2026-04-28*: Faz 3 student leaderboard tamamlandı; event-scoped Top 10 ve current-user rank görünürlüğü `student/leaderboard` tabına bağlandı.
 - *2026-04-28*: Faz 3 mobile push registration tamamlandı; student profile tabı native permission + Expo token + backend device-token enrollment akışına bağlandı.
+- *2026-04-28*: Faz 3 department tag schema foundation tamamlandı; `department_tags` ve `profile_department_tags` tabloları, RLS politikaları, seeded local örnekler ve max 3 / max 1 primary kuralları eklendi.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.
