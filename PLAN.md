@@ -5,39 +5,41 @@ Bu dosya her yeni feature branch'te koddan önce tasarımı netleştirmek için 
 ## Current Plan
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/admin-business-approval-functions`
-- **Goal:** Implement `admin-approve-business` and `admin-reject-business` with atomic database-side state transitions.
+- **Branch:** `feature/device-token-functions`
+- **Goal:** Implement `register-device-token` and the first server-side Expo push test flow.
 
 ## Architectural Decisions
 
-- Add two security-definer RPCs so review state changes and business creation happen atomically in Postgres.
-- Keep Edge Functions thin: authenticate bearer token, validate request body, call RPC, map status to message.
-- Generate the new business slug inside the approval RPC from `business_name`, appending numeric suffixes on collision.
-- Treat invitation/contact onboarding as deferred; do not invent a half-modeled invite system in this slice.
-- Return stable statuses for `APPLICATION_NOT_FOUND`, `APPLICATION_NOT_PENDING`, `ADMIN_NOT_ALLOWED`, and success cases.
+- Keep registration and push logic in Edge Functions, with the database as the device token source of truth.
+- Reuse the shared auth/http helper pattern and add one Expo push helper for token validation and HTTP sending.
+- Make token registration idempotent by upserting on `expo_push_token` and refreshing `last_seen_at`.
+- If `deviceId` is supplied, disable older tokens for the same user/device pair to reduce stale duplicates.
+- Keep the first send flow manual and self-targeted: authenticated user triggers a test push to their own enabled tokens.
+- Make Expo Push API URL and access token configurable so local smoke tests can target a mock server.
 
 ## Alternatives Considered
 
-- Direct client-side insert into `businesses`: rejected because approval must remain audit-logged and admin-controlled.
-- Implementing approval only in Edge Functions without RPC: rejected because status change and business creation should be one transaction.
-- Adding an invite table now: deferred because the current schema and roadmap do not yet define the invite lifecycle.
+- Relying only on direct client writes to `device_tokens`: rejected because Phase 2 is where we standardize server-owned write surfaces.
+- Sending real pushes to Expo in local smoke tests: rejected because it requires real device tokens and credentials, which makes the test fragile.
+- Building the full scheduled notification engine now: rejected because the next smallest useful slice is registration plus one manual push path.
 
 ## Edge Cases
 
 - Missing or malformed JSON body.
-- Missing or malformed `applicationId`.
-- Re-review of an already approved or rejected application.
-- Slug collision with an existing business.
-- Reject request without a useful reason.
-- Admin token valid but profile no longer active or no longer platform admin.
-- Application approved after a business with the same source application already exists.
+- Missing or malformed `expoPushToken`.
+- Token string that is not an Expo push token.
+- Same user re-registering the same token repeatedly.
+- Same device re-registering with a rotated token.
+- User triggering a test push with no enabled tokens.
+- Expo Push API returning an application-level error ticket.
 
 ## Validation Plan
 
 - Run `supabase db reset`.
 - Start `supabase functions serve`.
-- Insert or create a pending business application for smoke tests.
-- Call `admin-approve-business` with the seeded admin account and verify business creation.
-- Call approval again and verify a stable non-success status.
-- Call `admin-reject-business` on a fresh application and verify review metadata is written.
-- Verify invalid Bearer token and non-admin user both fail safely.
+- Start a local mock push server reachable from the Edge runtime container.
+- Call `register-device-token` with the seeded student account and verify the DB row is created or updated.
+- Re-register the same device with a rotated token and verify the old token is disabled.
+- Call `send-test-push` with the seeded student account and verify a `notifications` row is written with `SENT`.
+- Stop the mock push server once to verify transport failures return `PUSH_SEND_FAILED`.
+- Verify invalid Bearer token and invalid token format both fail safely.

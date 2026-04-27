@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 ## Current Review
 
 - **Date:** 2026-04-27
-- **Branch:** `feature/admin-business-approval-functions`
-- **Scope:** Phase 2 admin business approval and rejection APIs.
+- **Branch:** `feature/device-token-functions`
+- **Scope:** Phase 2 device token registration and first push test flow.
 
 ## Affected Files
 
@@ -17,30 +17,34 @@ Bu dosya her yeni feature branch'te kod yazmadan önce sistem analizini kaydetme
 - `docs/EDGE_FUNCTIONS.md`
 - `docs/DATABASE.md`
 - `supabase/config.toml`
-- `supabase/migrations/*business_application*`
-- `supabase/functions/admin-approve-business/index.ts`
-- `supabase/functions/admin-reject-business/index.ts`
+- `supabase/functions/_shared/env.ts`
+- `supabase/functions/_shared/http.ts`
+- `supabase/functions/_shared/validation.ts`
+- `supabase/functions/_shared/expoPush.ts`
+- `supabase/functions/register-device-token/index.ts`
+- `supabase/functions/send-test-push/index.ts`
 
 ## Risks
 
-- Admin approval must stay server-side and atomic; clients must not create `businesses` rows directly from an application.
-- Approval and rejection must both enforce active platform admin authorization.
-- Approval must create a unique business slug from application data without breaking on collisions.
-- Once an application is reviewed, repeated approve/reject requests must return stable statuses instead of creating duplicate side effects.
-- Invite/contact onboarding is mentioned in the master plan but not yet modeled in the database, so this slice must stop at business creation + review state + audit log.
+- Device token registration must stay tied to the authenticated user and should not silently duplicate stale tokens.
+- Expo push token handling should follow current Expo docs: client gets `ExpoPushToken`, server stores it, and push requests go to Expo Push API.
+- We should not require a real mobile device for local smoke tests, so the first push flow needs a mockable push endpoint.
+- Push test sends must stay narrow and safe; the first slice should only target the authenticated user's own enabled tokens.
+- Notification spam rules exist in the product plan, so the test flow should remain explicitly manual and non-broadcast.
 
 ## Dependencies
 
-- `LEIMA_APP_MASTER_PLAN.md` business approval and API sections.
-- Existing business application, business, business staff, profile, and audit log tables.
+- `LEIMA_APP_MASTER_PLAN.md` push notifications, device token flow, and Edge Function sections.
+- Existing `device_tokens`, `notifications`, `profiles`, and audit log tables.
 - Existing shared Edge Function helpers for auth, HTTP, and validation.
+- Current official Expo documentation for `getExpoPushTokenAsync` and Expo Push API sending.
 
 ## Existing Logic Checked
 
-- `business_applications` supports `PENDING`, `APPROVED`, and `REJECTED`, with review metadata already present.
-- `businesses` has a unique `slug` and an `application_id` link but no helper yet to populate it atomically from an application.
-- No approval/rejection RPC or Edge Functions exist yet.
+- `device_tokens` already supports `expo_push_token`, `platform`, `device_id`, `enabled`, and `last_seen_at`.
+- RLS already allows users to manage their own device tokens directly, but Phase 2 requires the registration flow to move through Edge Functions.
+- No push-related Edge Functions exist yet.
 
 ## Review Outcome
 
-Implement the next Phase 2 slice with minimal, production-shaped behavior: approval/rejection RPCs, admin-only Edge Functions, and local smoke validation.
+Implement the next Phase 2 slice with a narrow but real push backend: `register-device-token`, a shared Expo push helper, and a manual `send-test-push` flow that can be smoke-tested locally.

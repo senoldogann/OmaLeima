@@ -63,6 +63,28 @@ student@omaleima.test / password123
 
 The seed also creates one active Helsinki appro event, one joined venue, one registered student, and one haalarimerkki reward tier.
 
+## Push Notification Foundation
+
+The initial schema already includes the tables needed for Phase 2 push registration and test delivery:
+
+- `device_tokens`
+  - unique `expo_push_token`
+  - `platform` constrained to `IOS | ANDROID`
+  - optional `device_id`
+  - `enabled` flag for token rotation cleanup
+  - `last_seen_at` for refresh tracking
+- `notifications`
+  - user-scoped notification history
+  - `channel` constrained to `PUSH | IN_APP | EMAIL`
+  - `status` constrained to `PENDING | SENT | FAILED | READ`
+  - JSON `payload` for provider response metadata
+
+Current Phase 2 device token behavior:
+
+- `register-device-token` upserts on `expo_push_token`.
+- Re-registering the same user and `device_id` with a rotated token disables older tokens for that device.
+- `send-test-push` records every send attempt in `notifications`, including failed transport attempts.
+
 ## Recommended Next Checks
 
 After `supabase start`, verify:

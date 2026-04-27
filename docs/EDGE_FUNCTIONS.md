@@ -9,6 +9,8 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `claim-reward`
 - `admin-approve-business`
 - `admin-reject-business`
+- `register-device-token`
+- `send-test-push`
 
 ## Local Secrets
 
@@ -16,6 +18,13 @@ The QR token signing secret is required locally and in hosted Supabase:
 
 ```txt
 QR_SIGNING_SECRET
+```
+
+Push testing also supports these optional environment variables:
+
+```txt
+EXPO_PUSH_API_URL
+EXPO_PUSH_ACCESS_TOKEN
 ```
 
 For local development, run the function server with an environment file that is not committed:
@@ -28,12 +37,23 @@ Example `supabase/.env.local` content:
 
 ```bash
 QR_SIGNING_SECRET=replace-with-a-long-random-local-secret
+EXPO_PUSH_API_URL=http://host.docker.internal:8789
+EXPO_PUSH_ACCESS_TOKEN=replace-with-local-test-token
 ```
+
+`host.docker.internal` matters for local mock push testing because the Edge runtime runs in a container and cannot reach a host-only `127.0.0.1` server.
 
 For hosted Supabase, set the secret through the Supabase dashboard or CLI:
 
 ```bash
 supabase secrets set QR_SIGNING_SECRET=replace-with-production-secret
+```
+
+Optional push settings can be set the same way:
+
+```bash
+supabase secrets set EXPO_PUSH_API_URL=https://exp.host/--/api/v2/push/send
+supabase secrets set EXPO_PUSH_ACCESS_TOKEN=replace-with-production-access-token
 ```
 
 ## Auth Model
@@ -68,6 +88,73 @@ Response:
   "message": "Reward claim recorded successfully."
 }
 ```
+
+## `register-device-token`
+
+Request:
+
+```json
+{
+  "expoPushToken": "ExponentPushToken[test-token-2]",
+  "platform": "IOS",
+  "deviceId": "local-device-1"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "deviceToken": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "expo_push_token": "ExponentPushToken[test-token-2]",
+    "platform": "IOS",
+    "device_id": "local-device-1",
+    "enabled": true
+  },
+  "message": "Device token registered successfully."
+}
+```
+
+Behavior notes:
+
+- The authenticated user is always the owner of the stored token.
+- Re-registering the same token refreshes `last_seen_at`.
+- When the same user sends a new token for the same `deviceId`, older tokens for that device are disabled.
+
+## `send-test-push`
+
+Request:
+
+```json
+{
+  "title": "Test Push",
+  "body": "Smoke test",
+  "data": {
+    "kind": "smoke-test"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "notificationId": "uuid",
+  "ticketId": "ticket-test-1",
+  "message": "Test push sent successfully."
+}
+```
+
+Behavior notes:
+
+- This first slice is intentionally manual and self-targeted.
+- The function reads the authenticated user's enabled `device_tokens`.
+- It writes a `notifications` row with `SENT` or `FAILED` and stores the Expo response body in `payload.expoPushResponse`.
+- Transport or Expo API failures return `PUSH_SEND_FAILED`.
 
 ## `admin-approve-business`
 
@@ -169,12 +256,18 @@ supabase db reset
 supabase functions serve --env-file supabase/.env.local
 ```
 
-3. Sign in as the seeded student and call `generate-qr-token`.
+3. For local push tests, start a mock server on the host and point `EXPO_PUSH_API_URL` at it.
 
-4. Sign in as the seeded scanner and call `scan-qr` using the generated token.
+4. Sign in as the seeded student and call `generate-qr-token`.
 
-5. Sign in as the seeded organizer and call `claim-reward`.
-6. Sign in as the seeded platform admin and call `admin-approve-business` or `admin-reject-business` on a pending business application.
+5. Sign in as the seeded scanner and call `scan-qr` using the generated token.
+
+6. Sign in as the seeded organizer and call `claim-reward`.
+7. Sign in as the seeded platform admin and call `admin-approve-business` or `admin-reject-business` on a pending business application.
+8. Sign in as the seeded student and call `register-device-token`.
+9. Re-register the same `deviceId` with a rotated Expo token and verify the old token becomes disabled.
+10. Call `send-test-push` and verify a `notifications` row is written.
+11. Stop the mock push server once and verify `send-test-push` returns `PUSH_SEND_FAILED`.
 
 Expected scan statuses:
 
@@ -204,4 +297,21 @@ APPLICATION_NOT_PENDING
 ADMIN_NOT_ALLOWED
 REJECTION_REASON_REQUIRED
 BUSINESS_ALREADY_CREATED
+```
+
+Expected device token statuses:
+
+```txt
+SUCCESS
+INVALID_EXPO_PUSH_TOKEN
+UNAUTHORIZED
+```
+
+Expected test push statuses:
+
+```txt
+SUCCESS
+DEVICE_TOKEN_NOT_FOUND
+PUSH_SEND_FAILED
+UNAUTHORIZED
 ```
