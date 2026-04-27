@@ -12,6 +12,7 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `register-device-token`
 - `send-test-push`
 - `scheduled-event-reminders`
+- `scheduled-leaderboard-refresh`
 
 ## Local Secrets
 
@@ -197,6 +198,45 @@ Behavior notes:
 - It writes one `EVENT_REMINDER` notification row per user reminder, even when the user has multiple tokens.
 - Expo push sending now uses batched requests with limited retry handling for transport, `429`, and `5xx` failures.
 
+## `scheduled-leaderboard-refresh`
+
+Request headers:
+
+```txt
+x-scheduled-job-secret: <scheduled-job-secret>
+```
+
+Request body:
+
+```json
+{}
+```
+
+Response:
+
+```json
+{
+  "status": "SUCCESS",
+  "candidateEvents": 1,
+  "dirtyEvents": 1,
+  "updatedEvents": 1,
+  "skippedNoValidStamps": 0,
+  "skippedAlreadyFresh": 0,
+  "failedEvents": 0,
+  "updatedEventIds": [
+    "30000000-0000-0000-0000-000000000001"
+  ],
+  "failedEventIds": []
+}
+```
+
+Behavior notes:
+
+- This function is designed for cron-style invocation, not browser use.
+- It detects dirty events by comparing the latest valid `stamps.scanned_at` value with `leaderboard_updates.updated_at`.
+- It only considers recent `PUBLISHED`, `ACTIVE`, and `COMPLETED` events, then refreshes dirty ones through `update_event_leaderboard`.
+- A second run without new valid stamps should skip the already-fresh event.
+
 ## `admin-approve-business`
 
 Request:
@@ -314,6 +354,10 @@ supabase functions serve --env-file supabase/.env.local
 14. Call `scheduled-event-reminders` with the valid secret and verify `EVENT_REMINDER` rows are written.
 15. Call it again and verify duplicate reminders are skipped.
 16. Stop the mock push server once and verify a due reminder is written as `FAILED`.
+17. Generate one QR with the seeded student and scan it with the seeded scanner.
+18. Call `scheduled-leaderboard-refresh` with an invalid secret and verify it returns `UNAUTHORIZED`.
+19. Call `scheduled-leaderboard-refresh` with the valid secret and verify `leaderboard_scores` and `leaderboard_updates` rows are written.
+20. Call it again and verify the already-fresh event is skipped.
 
 Expected scan statuses:
 
@@ -363,6 +407,14 @@ UNAUTHORIZED
 ```
 
 Expected scheduled reminder statuses:
+
+```txt
+SUCCESS
+PARTIAL_SUCCESS
+UNAUTHORIZED
+```
+
+Expected scheduled leaderboard statuses:
 
 ```txt
 SUCCESS

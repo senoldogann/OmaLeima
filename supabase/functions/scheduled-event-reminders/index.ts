@@ -1,6 +1,7 @@
 import { assertPostRequest, errorResponse, jsonResponse } from "../_shared/http.ts";
 import { readRuntimeEnv } from "../_shared/env.ts";
 import { type ExpoPushMessage, type ExpoPushSendResult, sendExpoPushMessages } from "../_shared/expoPush.ts";
+import { assertScheduledJobRequest } from "../_shared/scheduled.ts";
 import { createServiceClient } from "../_shared/supabase.ts";
 
 type ReminderWindowHours = 24 | 2;
@@ -81,7 +82,6 @@ type DeliverySummary = {
   tokenResults: ExpoPushSendResult[];
 };
 
-const scheduledJobSecretHeader = "x-scheduled-job-secret";
 const reminderWindowMinutes = 30;
 const reminderWindows: ReminderWindow[] = [
   {
@@ -236,17 +236,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   try {
     const env = readRuntimeEnv();
+    const scheduledAuthResponse = assertScheduledJobRequest(request, env);
 
-    if (env.scheduledJobSecret === null) {
-      return errorResponse(500, "INTERNAL_ERROR", "SCHEDULED_JOB_SECRET is not configured.", {});
-    }
-
-    const providedSecret = request.headers.get(scheduledJobSecretHeader);
-
-    if (providedSecret === null || providedSecret !== env.scheduledJobSecret) {
-      return errorResponse(401, "UNAUTHORIZED", "Missing or invalid scheduled job secret.", {
-        header: scheduledJobSecretHeader,
-      });
+    if (scheduledAuthResponse !== null) {
+      return scheduledAuthResponse;
     }
 
     const supabase = createServiceClient(env);

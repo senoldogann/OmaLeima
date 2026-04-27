@@ -86,11 +86,18 @@ Current Phase 2 device token behavior:
 - Re-registering the same user and `device_id` with a rotated token disables older tokens for that device.
 - `send-test-push` records every send attempt in `notifications`, including failed transport attempts.
 - `scheduled-event-reminders` records one `EVENT_REMINDER` row per user reminder and uses successful notification history for duplicate protection.
+- `scheduled-leaderboard-refresh` refreshes stale event leaderboard rows by calling `update_event_leaderboard` only for events with new valid stamps.
 
 Reminder delivery indexes added in `20260427213000_notification_delivery_indexes.sql`:
 
 - `idx_device_tokens_user_enabled`
 - `idx_notifications_event_type_user`
+
+Leaderboard refresh behavior:
+
+- `leaderboard_scores` remains the read model for event ranking.
+- `leaderboard_updates` is the freshness marker that the cron job compares against the latest valid stamp time.
+- The scan flow stays write-light because leaderboard aggregation remains asynchronous.
 
 ## Recommended Next Checks
 
