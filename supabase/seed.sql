@@ -320,3 +320,93 @@ values (
   100
 )
 on conflict (id) do nothing;
+
+insert into public.department_tags (
+  id,
+  title,
+  slug,
+  university_name,
+  city,
+  source_type,
+  source_club_id,
+  created_by,
+  status,
+  merged_into_tag_id
+)
+values
+  (
+    '50000000-0000-0000-0000-000000000001',
+    'Tieto- ja viestintatekniikka',
+    'tieto-ja-viestintatekniikka',
+    'Aalto University',
+    'Helsinki',
+    'CLUB',
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'ACTIVE',
+    null
+  ),
+  (
+    '50000000-0000-0000-0000-000000000002',
+    'Tradenomi',
+    'tradenomi',
+    'Aalto University',
+    'Helsinki',
+    'CLUB',
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'ACTIVE',
+    null
+  ),
+  (
+    '50000000-0000-0000-0000-000000000003',
+    'Kauppatieteet',
+    'kauppatieteet',
+    'Aalto University',
+    'Espoo',
+    'USER',
+    null,
+    '00000000-0000-0000-0000-000000000004',
+    'ACTIVE',
+    null
+  ),
+  (
+    '50000000-0000-0000-0000-000000000004',
+    'Tietotekniikka',
+    'tietotekniikka',
+    'Aalto University',
+    'Helsinki',
+    'USER',
+    null,
+    '00000000-0000-0000-0000-000000000004',
+    'MERGED',
+    '50000000-0000-0000-0000-000000000001'
+  )
+on conflict (id) do nothing;
+
+insert into public.profile_department_tags (
+  id,
+  profile_id,
+  department_tag_id,
+  slot,
+  is_primary,
+  source_type
+)
+values
+  (
+    '51000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000004',
+    '50000000-0000-0000-0000-000000000001',
+    1,
+    true,
+    'SELF_SELECTED'
+  ),
+  (
+    '51000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000004',
+    '50000000-0000-0000-0000-000000000002',
+    2,
+    false,
+    'SELF_SELECTED'
+  )
+on conflict (id) do nothing;

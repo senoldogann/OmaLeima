@@ -16,10 +16,11 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260427201600_reject_business_application.sql`
 - `supabase/migrations/20260427213000_notification_delivery_indexes.sql`
 - `supabase/migrations/20260428220000_register_event_atomic.sql`
+- `supabase/migrations/20260428233000_department_tags_foundation.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
-- Core tables for profiles, clubs, businesses, events, event venues, registrations, QR token uses, stamps, leaderboards, rewards, notifications, audit logs, and fraud signals.
+- Core tables for profiles, clubs, businesses, events, event venues, registrations, QR token uses, stamps, leaderboards, rewards, notifications, audit logs, fraud signals, and department tags.
 - Foreign keys, unique constraints, checks, and performance indexes.
 - RLS enabled for all application tables.
 - Basic RLS policies for public reads, own-user reads, organizer/business access, and platform admin access.
@@ -36,6 +37,47 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `approve_business_application_atomic`
   - `reject_business_application_atomic`
   - `register_event_atomic`
+
+## Department Tag Foundation
+
+`20260428233000_department_tags_foundation.sql` adds the Phase 3 schema base for optional student department tags:
+
+- `department_tags`
+  - canonical tag records for study or programme labels
+  - `source_type` constrained to `USER | CLUB | ADMIN`
+  - `status` constrained to `PENDING_REVIEW | ACTIVE | MERGED | BLOCKED`
+  - merge support through `merged_into_tag_id`
+- `profile_department_tags`
+  - student-to-tag attachments
+  - unique `(profile_id, department_tag_id)`
+  - unique `(profile_id, slot)` with slots `1..3` for atomic max-tag enforcement
+  - partial unique index for one primary tag per profile
+
+Database-level guardrails now enforce:
+
+- department tags remain metadata only and are not tied to permissions
+- only active, non-merged tags can be attached to profiles
+- only `STUDENT` profiles can own profile department tags
+- a profile can hold at most `3` department tags
+- a profile can hold at most `1` primary tag
+- profile-tag inserts claim one of three per-profile slots so concurrent writes cannot exceed the cap
+
+Current RLS behavior:
+
+- active `department_tags` are publicly readable
+- authenticated users can insert only their own `USER` tags
+- club staff can insert only `CLUB` tags for clubs they manage
+- only platform admins can broadly manage, merge, or block tags
+- `profile_department_tags` are readable by the owning user and platform admins
+- only the owning user can create, update, or delete `SELF_SELECTED` profile tag links
+- admin merge or block actions automatically repair or remove dependent profile-tag links
+
+Local seed coverage now includes:
+
+- two official club tags
+- one active user-created custom tag
+- one merged duplicate tag for validation tests
+- two seeded profile tag links for the local student account
 
 ## Critical Write Rules
 
