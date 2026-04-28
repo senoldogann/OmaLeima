@@ -429,7 +429,8 @@ textarea {
 }
 
 .review-card,
-.review-card-compact {
+.review-card-compact,
+.moderation-card {
   width: 100%;
 }
 
@@ -444,6 +445,12 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
   gap: 16px;
+}
+
+.moderation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .detail-grid {

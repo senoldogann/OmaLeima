@@ -14,6 +14,10 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     label: "Business applications",
   },
   {
+    href: "/admin/department-tags",
+    label: "Department tags",
+  },
+  {
     href: "/forbidden",
     label: "Access policy",
   },
@@ -39,7 +43,7 @@ export const adminDashboardSections: DashboardSection[] = [
   {
     title: "Catalog",
     tone: "neutral",
-    items: ["Businesses", "Clubs", "Department tags"],
+    items: ["Department tags", "Businesses", "Clubs"],
   },
   {
     title: "Events",
