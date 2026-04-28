@@ -5,59 +5,55 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-business-scan-history-and-leave-flow`
-- **Goal:** Finish the next Phase 4 business slice with leave-before-start and a dedicated scan history screen.
+- **Branch:** `feature/admin-web-foundation`
+- **Goal:** Start Phase 5 with a real Next.js admin and club panel foundation, plus role-gated Supabase SSR auth.
 
 ## Architectural Decisions
 
-- Keep the business mobile data surface centered on one shared read model, but add the missing write primitive:
-  1. `leave_business_event_atomic`
-  2. no scan-history write table because `stamps` already is the source of truth
-- Build one dedicated history route instead of burying history at the bottom of the scanner screen:
-  1. `business/history` shows recent own scans
-  2. scanner route can deep-link into history after results
-- Leave flow belongs on joined upcoming events only:
-  1. never for active events
-  2. never for completed or cancelled events
-  3. never after `start_at`
-- Scanner result states should become more explicit and product-shaped:
-  1. success green
-  2. duplicate/already-stamped yellow
-  3. expired orange
-  4. invalid or venue mismatch red
-  5. inactive event neutral/red
-- Scanner lock stays manual, but this slice should make that lock obvious and stable across camera, manual fallback, timeout, and result actions.
+- Create a new standalone `apps/admin` Next.js App Router app instead of folding web admin into the Expo app or repo root.
+- Use Supabase SSR auth utilities with cookie-based session refresh:
+  1. browser client for login actions
+  2. server client for route protection and data reads
+  3. `proxy.ts` to refresh auth cookies via `getClaims()`
+- Keep the first protected surfaces small but real:
+  1. `/login`
+  2. `/admin`
+  3. `/club`
+- Route access should be driven by server-validated `profiles.primary_role` and `profiles.status`, not by client-side assumptions.
+- This slice should end with a utilitarian dashboard shell, not a marketing page.
+- Testing and launch readiness must stay visible in planning:
+  1. auth-backed smoke scripts stay mandatory for each branch
+  2. stronger RLS, concurrency, CI, and load-test work remains Phase 6 scope
+  3. go-to-market and deployment packaging should be documented as explicit follow-up work, not left implicit
 
 ## Alternatives Considered
 
-- Adding leave flow through direct `event_venues` updates: rejected because the business mobile app should stay behind RPC guardrails.
-- Keeping scan history on the scanner screen only: rejected because the roadmap explicitly expects a past-scan list as its own business-facing surface.
-- Using `qr_token_uses` for history: rejected because the real operator history should reflect successful stamp outcomes from `stamps`, not every transport attempt.
-- Adding automatic scanner unlock right after result: rejected because the event-day flow already chose explicit operator acknowledgement to reduce accidental rapid rescans.
+- Building admin inside the mobile repo root without a dedicated app folder: rejected because web admin needs its own runtime, scripts, and deployment path.
+- Starting with static mock dashboards only: rejected because this phase should already prove the real auth gate and role routing.
+- Trusting `getSession()` in server code: rejected because official Supabase guidance for protected server surfaces is `getClaims()`.
+- Delaying all docs until after multiple admin modules land: rejected because Phase 5 introduces a second app surface and needs explicit run/env guidance immediately.
 
 ## Edge Cases
 
-- Business staff tries to leave an event that is already `ACTIVE`.
-- Venue row is already `LEFT` or `REMOVED`.
-- Event status changes to `CANCELLED` after venue joined.
-- Multi-business account scans for one venue but history query should still show only rows the current user actually scanned.
-- `REVOKED` or `MANUAL_REVIEW` stamps should not look identical to clean valid scans in history.
-- No history exists yet for a newly onboarded scanner.
+- Authenticated user has an active session but `profiles.status` is not `ACTIVE`.
+- Student or business staff session hits the admin app and must not see admin or club routes.
+- Platform admin and club organizer need different landing routes from the same root path.
+- OAuth callback must not strand users on a dead end if role resolution says `unsupported`.
+- Proxy matcher must avoid static asset noise while still covering protected routes.
+- The app foundation must stay easy to extend later with CI smoke checks, RLS probes, and load-test harnesses.
 
 ## Validation Plan
 
-- Run `apps/mobile` validation:
+- Run `apps/admin` validation:
   1. `npm run lint`
-  2. `npm run typecheck`
-  3. `npm run export:web`
-- Reset local Supabase and run auth-backed smoke checks for:
-  1. leave RPC success on future joined event
-  2. leave blocked on active event
-  3. leave blocked when row is not joined
-  4. scan history query returns seeded or generated scan rows
-  5. scanner result tone mapping covers success, duplicate, expired, invalid, inactive
+  2. `npm run build`
+- Run auth-backed smoke checks for:
+  1. seeded platform admin resolves to admin area
+  2. seeded club organizer resolves to club area
+  3. seeded student resolves to unsupported area
+  4. protected route logic rejects unsupported roles
 - Open the local web preview and verify:
-  1. `/business/events`
-  2. `/business/scanner`
-  3. `/business/history`
+  1. `/login`
+  2. `/admin`
+  3. `/club`
 - Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
