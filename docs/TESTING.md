@@ -250,6 +250,9 @@ npm run qa:custom-domain-readiness
 npm --prefix apps/admin run audit:custom-domain-cutover
 npm run qa:supabase-auth-cutover-readiness
 npm --prefix apps/admin run audit:supabase-auth-url-config
+SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run \
+SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain \
+npm --prefix apps/admin run apply:supabase-auth-url-config
 ```
 
 `qa:hosted-admin-readiness` currently does three things in order:
@@ -269,6 +272,7 @@ npm --prefix apps/admin run audit:supabase-auth-url-config
 1. `npm --prefix apps/admin run lint`
 2. `npm --prefix apps/admin run typecheck`
 3. `npm --prefix apps/admin run smoke:supabase-auth-url-config-audit`
+4. `npm --prefix apps/admin run smoke:supabase-auth-url-config-apply`
 
 The real `audit:hosted-setup` command is read-only and checks:
 
@@ -291,6 +295,18 @@ The real `audit:supabase-auth-url-config` command is read-only and checks:
 - hosted Supabase Auth `site_url` is either the current preview URL or the final custom domain
 - required redirect URLs still include local web, preview web, custom-domain web, mobile deep link, Expo web, and preview wildcard entries
 - Google OAuth is still enabled and still has a client id configured
+
+The real `apply:supabase-auth-url-config` command supports two explicit modes:
+
+- `SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run`
+- `SUPABASE_AUTH_CONFIG_APPLY_MODE=apply`
+
+and two explicit targets:
+
+- `SUPABASE_AUTH_CONFIG_APPLY_TARGET=preview`
+- `SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain`
+
+It rejects same-state requests, preserves the canonical redirect allow-list, and blocks the `custom-domain` target until `audit:custom-domain-cutover` is green.
 
 Important hosted caveat:
 
@@ -334,6 +350,16 @@ ns2.vercel-dns.com
 ```
 
 While DNS is still pending, `audit:supabase-auth-url-config` should continue to report `state:preview-site-url`. After the domain turns green and the Supabase dashboard cutover is done, the same audit should report `state:custom-domain-site-url`.
+
+The safest rehearsal before the real cutover is:
+
+```bash
+SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run \
+SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain \
+npm --prefix apps/admin run apply:supabase-auth-url-config
+```
+
+Before DNS is ready, that command should fail on the custom-domain gate. After DNS is ready, the same dry-run should print the planned patch without writing. Only then should `SUPABASE_AUTH_CONFIG_APPLY_MODE=apply` be used.
 
 For the full function-backed security matrix:
 

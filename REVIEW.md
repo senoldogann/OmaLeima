@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-supabase-auth-cutover-audit`
-- **Scope:** Post-Phase 6 Supabase auth cutover audit: add a repo-owned read-only audit for hosted Supabase Auth URL configuration so we can verify preview-mode versus custom-domain-mode before and after DNS cutover.
+- **Branch:** `feature/post-phase6-supabase-auth-cutover-apply`
+- **Scope:** Post-Phase 6 Supabase auth cutover apply slice: prepare a controlled dry-run/apply command for the hosted Supabase Auth URL cutover so the switch is not left as a manual dashboard-only step.
 
 ## Affected Files
 
@@ -17,40 +17,44 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `package.json`
 - `tests/run-supabase-auth-cutover-readiness.mjs`
 - `apps/admin/package.json`
+- `apps/admin/scripts/_shared/supabase-auth-config.ts`
 - `apps/admin/scripts/audit-supabase-auth-url-config.ts`
+- `apps/admin/scripts/apply-supabase-auth-url-config.ts`
 - `apps/admin/scripts/smoke-supabase-auth-url-config-audit.ts`
+- `apps/admin/scripts/smoke-supabase-auth-url-config-apply.ts`
 - `apps/admin/README.md`
 - `docs/TESTING.md`
 - `docs/LAUNCH_RUNBOOK.md`
 
 ## Risks
 
-- If we keep Supabase Auth URL state only in the dashboard, the cutover can silently drift from repo docs and the next operator will not know whether preview-mode or custom-domain-mode is live.
-- Reading hosted auth config requires a Supabase management token; the audit must fail clearly if CLI auth or `SUPABASE_ACCESS_TOKEN` is unavailable.
-- We must not trigger any remote write before DNS is ready; this slice should stay read-only and should not mutate hosted auth config.
+- If the apply command can write without checking DNS and current state first, it can break working hosted auth while the custom domain is still dark.
+- The write path must not accidentally remove redirect entries that mobile or preview verification still need.
+- Hosted writes require a Supabase management token with `auth:write`; failures need to be explicit and safe.
 
 ## Dependencies
 
-- Existing custom-domain readiness audit and hosted verification workflow.
+- Existing custom-domain readiness audit and hosted auth-config audit.
 - Hosted Supabase management API access through Supabase CLI login or `SUPABASE_ACCESS_TOKEN`.
 - The current hosted Supabase auth config, which already includes preview, custom-domain, mobile, and Expo web redirect URLs plus Google OAuth enablement.
 - The still-pending DNS cutover for `admin.omaleima.fi`.
 
 ## Existing Logic Checked
 
-- `apps/admin/scripts/audit-custom-domain-cutover.ts` already tells us when Vercel and DNS are ready, but it does not inspect the hosted Supabase auth config itself.
+- `apps/admin/scripts/audit-custom-domain-cutover.ts` already tells us when Vercel and DNS are ready.
+- `apps/admin/scripts/audit-supabase-auth-url-config.ts` already tells us whether hosted Supabase Auth is still in preview-mode or has moved to custom-domain-mode.
 - The real hosted auth config currently reports:
   - `site_url = https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
   - redirect allow-list includes preview callback, custom-domain callback, mobile deep link, Expo web callback, and preview wildcard
   - Google OAuth is enabled with a real client id
-- That current preview-mode state is valid for now, but we do not yet have a repo-owned audit that can confirm when the switch to `https://admin.omaleima.fi` is complete.
+- That current preview-mode state is valid for now, but we still do not have a repo-owned command that can safely apply the later switch to `https://admin.omaleima.fi`.
 
 ## Review Outcome
 
-Build the smallest Supabase-auth audit slice that:
+Build the smallest Supabase-auth apply slice that:
 
-- adds a read-only hosted auth-config audit under `apps/admin/scripts`
-- verifies the current state is either preview-mode or custom-domain-mode, never an unknown URL
-- verifies the required redirect URLs and Google OAuth enablement stay present across the cutover
-- adds deterministic smoke coverage and a small repo-root QA wrapper
-- leaves the actual remote write for the later moment when DNS goes green
+- extracts the common hosted Supabase auth config access into a shared helper
+- adds a dry-run/apply command with explicit target states instead of manual dashboard steps
+- blocks apply unless the current state and target state make sense
+- reuses the existing DNS/custom-domain audit as a gate before custom-domain apply
+- adds deterministic smoke coverage without writing to the real hosted project

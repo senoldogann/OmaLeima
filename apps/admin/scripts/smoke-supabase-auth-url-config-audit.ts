@@ -59,7 +59,7 @@ const run = async (): Promise<void> => {
   try {
     runAuditCommand({
       SUPABASE_AUTH_CONFIG_AUDIT_PROJECT_REF: "test-project",
-      SUPABASE_AUTH_CONFIG_AUDIT_RESPONSE_JSON: createAuditResponse(
+      SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuditResponse(
         "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app",
         [
           "http://localhost:3001/auth/callback",
@@ -82,7 +82,7 @@ const run = async (): Promise<void> => {
   try {
     runAuditCommand({
       SUPABASE_AUTH_CONFIG_AUDIT_PROJECT_REF: "test-project",
-      SUPABASE_AUTH_CONFIG_AUDIT_RESPONSE_JSON: createAuditResponse(
+      SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuditResponse(
         "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app",
         previewAllowList,
         false,
@@ -97,7 +97,7 @@ const run = async (): Promise<void> => {
 
   const previewReadyOutput = runAuditCommand({
     SUPABASE_AUTH_CONFIG_AUDIT_PROJECT_REF: "test-project",
-    SUPABASE_AUTH_CONFIG_AUDIT_RESPONSE_JSON: createAuditResponse(
+    SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuditResponse(
       "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app",
       previewAllowList,
       true,
@@ -111,7 +111,7 @@ const run = async (): Promise<void> => {
 
   const customDomainReadyOutput = runAuditCommand({
     SUPABASE_AUTH_CONFIG_AUDIT_PROJECT_REF: "test-project",
-    SUPABASE_AUTH_CONFIG_AUDIT_RESPONSE_JSON: createAuditResponse(
+    SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuditResponse(
       "https://admin.omaleima.fi",
       previewAllowList,
       true,

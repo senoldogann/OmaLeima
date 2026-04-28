@@ -28,6 +28,11 @@ const commands = [
     command: npmBinary,
     label: "Supabase auth URL config audit smoke",
   },
+  {
+    args: ["--prefix", "apps/admin", "run", "smoke:supabase-auth-url-config-apply"],
+    command: npmBinary,
+    label: "Supabase auth URL config apply smoke",
+  },
 ];
 
 const run = async () => {
