@@ -75,6 +75,8 @@ export default function BusinessLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="home" />
+      <Stack.Screen name="events" />
+      <Stack.Screen name="scanner" />
     </Stack>
   );
 }

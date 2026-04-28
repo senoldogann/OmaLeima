@@ -16,7 +16,9 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260427201600_reject_business_application.sql`
 - `supabase/migrations/20260427213000_notification_delivery_indexes.sql`
 - `supabase/migrations/20260428220000_register_event_atomic.sql`
+- `supabase/migrations/20260428230000_get_event_leaderboard_freshness.sql`
 - `supabase/migrations/20260428233000_department_tags_foundation.sql`
+- `supabase/migrations/20260429000000_join_business_event_atomic.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -37,6 +39,7 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `approve_business_application_atomic`
   - `reject_business_application_atomic`
   - `register_event_atomic`
+  - `join_business_event_atomic`
 
 ## Department Tag Foundation
 
@@ -135,6 +138,36 @@ student@omaleima.test / password123
 ```
 
 The seed also creates one active Helsinki appro event, one joined venue, one registered student, and one haalarimerkki reward tier.
+
+## Business Event Join Foundation
+
+Business-side venue participation is now enforced through `join_business_event_atomic(event_id, business_id, staff_user_id)` instead of direct mobile writes.
+
+Current behavior:
+
+- Business staff still cannot directly insert or update `event_venues` from the client.
+- `join_business_event_atomic` is the shared rule path for the Phase 4 mobile business join flow.
+- The function locks the target profile, business, event, and any existing venue row before mutating participation state.
+- Joining is allowed only when:
+  - caller is the same authenticated business user or the service role
+  - profile is active
+  - target business exists and is `ACTIVE`
+  - caller has an active `business_staff` membership for that business
+  - event is `PUBLIC`
+  - event status is joinable
+  - `now() < join_deadline_at`
+  - `now() < start_at`
+- Existing `INVITED` or `LEFT` venue rows are revived back to `JOINED`.
+- Existing `REMOVED` venue rows are blocked from self-rejoin.
+- Known statuses returned by the RPC:
+  - `SUCCESS`
+  - `ALREADY_JOINED`
+  - `EVENT_JOIN_CLOSED`
+  - `EVENT_NOT_AVAILABLE`
+  - `BUSINESS_NOT_ACTIVE`
+  - `BUSINESS_STAFF_NOT_ALLOWED`
+  - `VENUE_REMOVED`
+  - `PROFILE_NOT_ACTIVE`
 
 ## Push Notification Foundation
 

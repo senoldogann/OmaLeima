@@ -1,3 +1,4 @@
+import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
@@ -33,8 +34,20 @@ export default function BusinessHomeScreen() {
     <AppScreen>
       <InfoCard eyebrow="Business" title="Scanner home">
         <Text selectable style={styles.bodyText}>
-          This is the first business-side home route. It shows the active staff memberships, the events this business already joined, and nearby public opportunities that the future join flow will target.
+          This route now acts as the business launchpad. Staff can jump into event joining or scanner work from here while still seeing the current joined-event context.
         </Text>
+        <View style={styles.actionRow}>
+          <Link href="/business/events" asChild>
+            <Pressable style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Manage events</Text>
+            </Pressable>
+          </Link>
+          <Link href="/business/scanner" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Open scanner</Text>
+            </Pressable>
+          </Link>
+        </View>
       </InfoCard>
 
       {homeOverviewQuery.isLoading ? (
@@ -97,6 +110,19 @@ export default function BusinessHomeScreen() {
                     Ends {formatDateTime(event.endAt)}
                     {event.stampLabel ? ` · ${event.stampLabel}` : ""}
                   </Text>
+                  <Link
+                    href={{
+                      pathname: "/business/scanner",
+                      params: {
+                        eventVenueId: event.eventVenueId,
+                      },
+                    }}
+                    asChild
+                  >
+                    <Pressable style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>Scan this event</Text>
+                    </Pressable>
+                  </Link>
                 </View>
               ))}
             </View>
@@ -158,7 +184,7 @@ export default function BusinessHomeScreen() {
 
       <InfoCard eyebrow="Next" title="Scanner and join flow">
         <Text selectable style={styles.bodyText}>
-          Camera scanning, join or leave actions, and scan history land next. This route now gives staff the event context they need before the scanner slice opens.
+          Event joining and the first live scanner state machine now continue in dedicated routes. Leave flow and scan history still land next.
         </Text>
       </InfoCard>
 
@@ -200,6 +226,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  secondaryButton: {
+    alignItems: "center",
+    backgroundColor: "#0F172A",
+    borderColor: "#334155",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: "#E2E8F0",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   rowCard: {
     backgroundColor: "#0F172A",
     borderColor: "#1E293B",
@@ -210,5 +251,9 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
   },
 });

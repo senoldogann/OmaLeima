@@ -4,15 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/mobile-business-auth-and-home` branch.
-- [x] Review the current auth redirects, route tree, and business data foundation.
-- [x] Update `REVIEW.md` for the business-auth-and-home scope.
-- [x] Update `PLAN.md` for the business-auth-and-home scope.
+- [x] Create `feature/mobile-business-join-and-scanner-foundation` branch.
+- [x] Review the current business mobile flow, `scan-qr`, and event-join constraints.
+- [x] Update `REVIEW.md` for the join-and-scanner-foundation scope.
+- [x] Update `PLAN.md` for the join-and-scanner-foundation scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add a shared auth access resolver for student vs business routing.
-- [x] Extend the login screen with business email/password sign-in.
-- [x] Add guarded `business` routes and the first home screen.
-- [x] Run mobile validation commands and local auth-backed smoke tests.
+- [x] Add the business event join RPC and supporting documentation updates.
+- [x] Add a business events read-model plus join mutation in the mobile app.
+- [x] Add business event and scanner routes, including home CTAs.
+- [x] Add scanner state machine, camera permission handling, manual token fallback, and result surfaces.
+- [x] Run mobile validation commands and auth-backed business smoke tests.
 - [x] Update `PROGRESS.md`.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

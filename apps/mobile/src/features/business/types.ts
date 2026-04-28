@@ -38,3 +38,24 @@ export type BusinessHomeOverview = {
   joinedUpcomingEvents: BusinessJoinedEventSummary[];
   cityOpportunities: BusinessOpportunitySummary[];
 };
+
+export type BusinessJoinEventStatus =
+  | "SUCCESS"
+  | "ALREADY_JOINED"
+  | "EVENT_NOT_FOUND"
+  | "EVENT_NOT_AVAILABLE"
+  | "EVENT_JOIN_CLOSED"
+  | "BUSINESS_NOT_ACTIVE"
+  | "BUSINESS_STAFF_NOT_ALLOWED"
+  | "PROFILE_NOT_ACTIVE"
+  | "PROFILE_NOT_FOUND"
+  | "VENUE_REMOVED"
+  | "AUTH_REQUIRED"
+  | "ACTOR_NOT_ALLOWED";
+
+export type BusinessJoinEventResult = {
+  status: BusinessJoinEventStatus;
+  eventVenueId?: string;
+  startAt?: string;
+  joinDeadlineAt?: string;
+};
