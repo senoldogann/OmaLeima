@@ -5,34 +5,35 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/realtime-readiness-audit`
-- **Goal:** Turn the mobile Realtime question into an explicit, testable repository state instead of leaving it as an assumption buried in the master plan.
+- **Branch:** `feature/realtime-implementation-foundation`
+- **Goal:** Land the first real mobile Realtime subscriptions for student freshness-critical views while keeping the slice small and predictable.
 
 ## Architectural Decisions
 
-- Add a lightweight audit command under `apps/mobile/scripts` instead of shipping partial Realtime code just to satisfy the plan wording.
-- Treat the current mobile state as "deferred Realtime with QR polling already in place" unless the audit finds real client subscriptions.
-- Keep the audit read-only and deterministic: it should inspect source files and declared package scripts, not require a running socket server.
-- Expose the audit both at the `apps/mobile` level and at the repo root so future agents can find it the same way they find the existing QA commands.
+- Create a dedicated `apps/mobile/src/features/realtime` module so subscription logic does not leak into screen files.
+- Use invalidation-based Realtime, not optimistic local patching. The app already has typed React Query fetchers, so invalidating the right keys is lower risk than mutating cached shapes by hand.
+- Subscribe to `leaderboard_updates` for leaderboard freshness and to student `stamps` plus own `reward_claims` changes for progress freshness.
+- Keep subscriptions screen-scoped and foreground-aware to avoid background socket noise in this first slice.
 
 ## Alternatives Considered
 
-- Implementing the full mobile Realtime subscription layer right now:
-  - rejected because the current request is to take the next correct step, and the highest-value gap is first understanding and documenting the current state cleanly
-- Leaving the ambiguity untouched because the app already works with query fetches:
-  - rejected because the master plan explicitly promises Realtime and future agents need a clear answer about what is still missing
-- Hiding the decision only in `PROGRESS.md` handoff text:
-  - rejected because handoff notes are too transient for an ongoing architectural gap
+- Polling leaderboard and reward queries on an interval:
+  - rejected because the backend already writes explicit freshness signals and the planned architecture calls for Realtime
+- Patching React Query cache payloads directly from Realtime callbacks:
+  - rejected because the reward and leaderboard shapes are derived from multiple tables and RPC output, so targeted invalidation is simpler and safer
+- Wiring every student screen into Realtime immediately:
+  - rejected because the first slice should stay with the highest-value screens only
 
 ## Edge Cases
 
-- QR rotation already uses polling by design, so the audit must not misclassify that path as a missing Realtime bug.
-- If a future slice starts adding `supabase.channel(...)` or `postgres_changes` listeners, the audit should fail loudly until its expected-state logic and docs are updated.
-- The plan still names `apps/mobile/src/features/realtime` as an output, so the audit notes must distinguish between "planned" and "currently shipped."
+- The student stamp subscription should not invalidate reward queries for unrelated events.
+- Realtime callbacks can fire on `UPDATE` and `DELETE` as well as `INSERT`, so the invalidation path must not assume only one event type.
+- Reward progress depends on `validation_status = VALID`, so the callback should only invalidate when the changed row matters to that read model.
+- Shared reward inventory can still change because of other students' claims, so this first slice should not over-document inventory freshness as Realtime-complete.
+- The leaderboard screen can switch selected events, so the subscription must track the current event and cleanly resubscribe.
 
 ## Validation Plan
 
-- Run the new `apps/mobile` Realtime audit directly.
-- Run `apps/mobile` lint and typecheck after adding the new script wiring.
-- Run the root wrapper so the audit is discoverable through the repo-level QA entry points too.
-- Get a reviewer pass on the final slice because this is a repo-behavior clarification, not just a local note.
+- Run `apps/mobile` lint and typecheck.
+- Re-run the new `audit:realtime-readiness` command; it should now fail because the deferred state changed, so the audit and docs must be updated in the same slice.
+- Add a reviewer pass because Realtime false positives and overbroad invalidation are easy to miss.

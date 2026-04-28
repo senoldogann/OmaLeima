@@ -32,17 +32,19 @@ npm run audit:realtime-readiness
 - Google OAuth flow in `src/lib/auth.ts` and `src/app/auth/callback.tsx`
 - Native session persistence via `expo-secure-store`
 - QR token rotation currently uses controlled polling
-- Leaderboard and stamp refresh still use query snapshots, not client Realtime subscriptions yet
+- Student leaderboard and the current student’s stamp/claim progress now use Realtime-driven query invalidation
 
 ## Realtime note
 
-The master plan still includes a dedicated mobile Realtime slice. The current repository state is intentionally smaller:
+The first dedicated mobile Realtime slice is now shipped:
 
 - QR rotation already refreshes through polling in `src/features/qr/student-qr.ts`
-- mobile leaderboard and stamp progress still load through query fetches
-- no `src/features/realtime` client subscription layer has landed yet
+- `src/features/realtime/student-realtime.ts` subscribes to `leaderboard_updates` for leaderboard freshness
+- the same module also subscribes to `stamps` and the current student’s `reward_claims` for progress freshness
+- leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
+- shared reward inventory and out-of-stock transitions still rely on the next query fetch, not a broad event-level inventory subscription yet
 
-Use this command to confirm that state before starting a Realtime implementation slice:
+Use this command to confirm that state before extending or widening the Realtime layer:
 
 ```bash
 npm run audit:realtime-readiness

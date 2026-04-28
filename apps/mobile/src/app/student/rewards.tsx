@@ -1,22 +1,34 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { useStudentRewardProgressRealtime } from "@/features/realtime/student-realtime";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
+import { useActiveAppState } from "@/features/qr/student-qr";
 
 export default function StudentRewardsScreen() {
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const isAppActive = useActiveAppState();
   const { session } = useSession();
   const studentId = session?.user.id ?? null;
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
   });
+
+  useStudentRewardProgressRealtime({
+    eventId: null,
+    studentId: studentId ?? "",
+    isEnabled: studentId !== null && isFocused && isAppActive,
+  });
+
   const events = rewardOverviewQuery.data?.events ?? [];
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
   const claimableEventCount = events.filter((event) => event.claimableTierCount > 0).length;

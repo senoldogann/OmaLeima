@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useIsFocused } from "@react-navigation/native";
+
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -12,8 +14,9 @@ import {
   useEventLeaderboardQuery,
   useStudentLeaderboardOverviewQuery,
 } from "@/features/leaderboard/student-leaderboard";
+import { useStudentEventLeaderboardRealtime } from "@/features/realtime/student-realtime";
 import { useSession } from "@/providers/session-provider";
-import { useCurrentTime } from "@/features/qr/student-qr";
+import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
   weekday: "short",
@@ -31,8 +34,10 @@ const getFreshnessBadge = (refreshedAt: string | null): { label: string; state: 
     : { label: "refreshed", state: "ready" };
 
 export default function StudentLeaderboardScreen() {
+  const isFocused = useIsFocused();
+  const isAppActive = useActiveAppState();
   const { session } = useSession();
-  const now = useCurrentTime(true);
+  const now = useCurrentTime(isFocused && isAppActive);
   const studentId = session?.user.id ?? null;
   const overviewQuery = useStudentLeaderboardOverviewQuery({
     studentId: studentId ?? "",
@@ -65,6 +70,12 @@ export default function StudentLeaderboardScreen() {
     eventId: selectedEvent?.id ?? "",
     studentId: studentId ?? "",
     isEnabled: selectedEvent !== null && studentId !== null,
+  });
+
+  useStudentEventLeaderboardRealtime({
+    eventId: selectedEvent?.id ?? "",
+    studentId: studentId ?? "",
+    isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
   });
 
   const top10 = leaderboardQuery.data?.top10 ?? [];

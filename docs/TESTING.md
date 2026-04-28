@@ -194,21 +194,24 @@ This focused audit currently does three things in order:
 2. `npm --prefix apps/mobile run typecheck`
 3. `npm --prefix apps/mobile run audit:realtime-readiness`
 
-The audit is intentionally read-only. It verifies the current mobile repository state still matches the explicitly deferred Realtime decision:
+The audit is intentionally read-only. It verifies the current mobile repository state still matches the shipped Realtime foundation:
 
 - the QR screen still refreshes tokens through polling
 - the session provider still only subscribes to auth state changes
-- the mobile source tree still has no `supabase.channel(...)` or `postgres_changes` usage
-- the planned `apps/mobile/src/features/realtime` area has not landed yet
+- `apps/mobile/src/features/realtime/student-realtime.ts` is present
+- student leaderboard freshness uses Realtime invalidation through `leaderboard_updates`
+- the current student’s progress freshness uses Realtime invalidation through `stamps` and their own `reward_claims`
+- shared reward inventory and out-of-stock state still remain snapshot-based in this first slice
 
 Expected success output today:
 
-- `mobile-realtime-state:DEFERRED`
-- `leaderboard-mode:query-snapshot`
-- `stamp-mode:query-snapshot`
+- `mobile-realtime-state:FOUNDATION_ACTIVE`
+- `leaderboard-mode:realtime-invalidation`
+- `student-progress-mode:realtime-invalidation`
+- `shared-inventory-mode:query-snapshot`
 - `qr-mode:polling-refresh`
 
-If a future slice starts shipping actual client Realtime listeners, this audit should fail until its expected-state logic and the surrounding docs are updated.
+If a future slice changes which screens own Realtime freshness or replaces invalidation with direct cache patching, this audit should be updated in the same change.
 
 ## Hosted admin verification
 
