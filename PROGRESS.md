@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
+- **Branch:** `feature/phase-6-leaderboard-load-and-event-day-runbook`
+- **Yapılan iş:** Faz 6’nin leaderboard load, readiness, event-day fallback ve launch runbook dilimi tamamlandı. Repo köküne `npm run qa:phase6-readiness` eklendi; bu komut `qa:phase6-expanded` üstüne yeni `smoke:leaderboard-load` yük doğrulamasını koşturuyor. Yeni smoke bir izole `ACTIVE` event için `1000` kayıtlı öğrenci, `5` joined venue ve `5000` başlangıç `VALID` stamp seed ediyor; ilk `scheduled-leaderboard-refresh` ile `1000 leaderboard_scores` ve `version=1` bekliyor, ikinci run’da `already-fresh` skip doğruluyor, sonra gerçek `generate-qr-token` + `scan-qr` akışıyla bir yeni dirty stamp üretiyor ve üçüncü refresh’te `version=2` ile `anchor-stamp-count=6` bekliyor. Bu smoke gerçek bir üretim bug’ı da yakaladı: `scheduled-leaderboard-refresh` kirli event tespitinde ham `stamps` satırlarını API’den çektiği için local PostgREST row cap altında geç stamp’leri kaçırıyordu. Bunun için yeni `get_latest_valid_stamp_by_events` SQL helper’ı eklendi ve cron function dirty-check logic’i DB aggregate yoluna taşındı. Aynı turda `smoke:business-applications` içindeki sequential approve/reject yolunda route-backed cookie jar’ın response `Set-Cookie` güncellemelerini kaçırdığı da bulundu; route smoke client artık response cookie’lerini geri hydrate ediyor. `docs/LAUNCH_RUNBOOK.md` eklendi; `README.md`, `apps/admin/README.md`, `docs/TESTING.md`, `docs/DATABASE.md`, `docs/EDGE_FUNCTIONS.md`, `REVIEW.md`, `PLAN.md`, `TODOS.md` güncellendi.
+- **Neden yapıldı:** Faz 6’da açık kalan son pratik boşluklar leaderboard/performance doğrulaması, event-day checklist, manuel fallback formatı ve launch/GTM runbook’tu. Bu slice, bir yandan bunları belgeleyip tek komutlu readiness kapısı kurarken, diğer yandan load altında gerçekten bozulan cron freshness bug’ını ürün kodunda kapattı.
+- **Doğrulama:** `rtk supabase db reset --yes`, `rtk npm --prefix apps/admin run lint`, `rtk npm --prefix apps/admin run typecheck`, `rtk npm --prefix apps/admin run smoke:business-applications`, `rtk npm --prefix apps/admin run smoke:leaderboard-load` geçti. Ardından `rtk node tests/run-phase6-readiness.mjs` geçti. Readiness zinciri içinde `qa:phase6-core`, `smoke:business-applications`, `smoke:qr-security`, `smoke:scan-race`, `smoke:leaderboard-load` başarılı tamamlandı. Yeni load smoke çıktısı: `first-refresh-ms:55|first-refresh:SUCCESS|score-count:1000|leaderboard-version:1|leaderboard-read:ok|second-refresh:already-fresh|dirty-stamp-scan:SUCCESS|third-refresh:SUCCESS|updated-version:2|anchor-stamp-count:6`.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile hosted staging doğrulaması ve deployment automation dilimine geç. En doğru küçük adım bence `feature/post-phase6-hosted-staging-and-clickpath`.
+- **Açık risk/blokaj:** Faz 6 local readiness artık tamamlandı, ama hosted staging smoke, gerçek browser click-path E2E ve deployment automation hattı hâlâ ayrı bir follow-up işi.
+
+- **Tarih:** 2026-04-28
 - **Branch:** `feature/phase-6-concurrency-and-jwt-hardening`
 - **Yapılan iş:** Faz 6’nin ikinci hardening dilimi tamamlandı. Function-backed güvenlik ve concurrency smoke’ları eklendi. `apps/admin/scripts/_shared/function-smoke.ts` ile shared auth, SQL ve Edge Function invoke helper’ları çıkarıldı. `smoke:qr-security` gerçek local function server üstünde `generate-qr-token` ve `scan-qr` için invalid bearer, tampered QR, invalid QR type, expired QR ve scanner business’in katılmadığı başka etkinlik QR’ı senaryolarını doğruluyor. `smoke:scan-race` ise aynı QR’nin iki farklı scanner context’inden eşzamanlı okutulmasını simüle ediyor; bir `SUCCESS`, bir `QR_ALREADY_USED_OR_REPLAYED` bekliyor ve DB’de tam olarak 1 `stamps`, 1 `qr_token_uses`, 1 `STAMP_CREATED` audit row kaldığını sayıyor. Repo köküne yeni `npm run qa:phase6-expanded` eklendi; bu komut admin app ve local function server preflight’ı yaptıktan sonra `qa:phase6-core`, `smoke:business-applications`, `smoke:qr-security` ve `smoke:scan-race` zincirini çalıştırıyor. `README.md`, `apps/admin/README.md`, `docs/TESTING.md` ve `docs/EDGE_FUNCTIONS.md` expanded matrix ile güncellendi.
 - **Neden yapıldı:** Faz 6 checklist’te açık duran en kritik iki madde invalid JWT / wrong-event QR abuse ve duplicate scan race protection’dı. Core matrix kurulduktan sonra sıradaki doğru adım, gerçek Edge Function çağrılarıyla bu iki güvenlik hattını otomatik doğrulayan replayable smoke’ları eklemekti.
@@ -148,9 +156,9 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Kritik güvenlik testi: Geçersiz JWT, başka etkinliğin QR'ı, süresi dolmuş JWT denemeleri
 - [x] Race Condition testi: Aynı öğrenciyi eşzamanlı iki farklı telefondan okutma denemesi
 - [x] RLS testi: Kötü niyetli bir öğrencinin başkasının stamps tablosunu doğrudan okumaya/yazmaya çalışması
-- [ ] Performans testi: Asenkron Leaderboard yapısının veritabanını kilitlemeden çalıştığının doğrulanması
-- [ ] Master Plan Bölüm 29: "Event Day Checklist" (Etkinlik Günü Kontrol Listesi) üstünden geçilmesi
-- [ ] Manuel Fallback (Çevrimdışı Liste) senaryosunun belgelenmesi ve görevlilere verilecek formatın hazırlanması
+- [x] Performans testi: Asenkron Leaderboard yapısının veritabanını kilitlemeden çalıştığının doğrulanması
+- [x] Master Plan Bölüm 29: "Event Day Checklist" (Etkinlik Günü Kontrol Listesi) üstünden geçilmesi
+- [x] Manuel Fallback (Çevrimdışı Liste) senaryosunun belgelenmesi ve görevlilere verilecek formatın hazırlanması
 
 ---
 ### Tamamlanan Görevler (Changelog)
@@ -171,6 +179,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 5 club official department tags tamamlandı; `/club/department-tags`, `create_club_department_tag_atomic`, tighter club tag RLS ve `smoke:club-department-tags` eklendi.
 - *2026-04-28*: Faz 6 QA foundation ilk dilimi tamamlandı; root `qa:phase6-core` orkestrasyonu, `docs/TESTING.md` ve `smoke:rls-core` eklendi.
 - *2026-04-28*: Faz 6 QR/JWT security ve duplicate-scan race dilimi tamamlandı; `qa:phase6-expanded`, `smoke:qr-security` ve `smoke:scan-race` eklendi.
+- *2026-04-28*: Faz 6 leaderboard load ve launch readiness tamamlandı; `smoke:leaderboard-load`, `qa:phase6-readiness`, `docs/LAUNCH_RUNBOOK.md`, `get_latest_valid_stamp_by_events` ve sequential review-cookie fix eklendi.
 - *2026-04-28*: Faz 4 business join and scanner foundation tamamlandı; `join_business_event_atomic`, `business/events`, `business/scanner`, camera permission, manual QR fallback ve 4 saniye timeout sonucu eklendi.
 - *2026-04-28*: Faz 4 business auth and home foundation tamamlandı; ortak auth entry student/business ayrımı yapacak şekilde genişletildi ve yeni `business/home` route'u aktif staff membership ile joined event context göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.

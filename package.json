@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "qa:phase6-core": "node tests/run-phase6-core.mjs",
-    "qa:phase6-expanded": "node tests/run-phase6-expanded.mjs"
+    "qa:phase6-expanded": "node tests/run-phase6-expanded.mjs",
+    "qa:phase6-readiness": "node tests/run-phase6-readiness.mjs"
   }
 }

@@ -11,7 +11,7 @@ type EventRow = {
 
 type StampRow = {
   event_id: string;
-  scanned_at: string;
+  latest_scanned_at: string;
 };
 
 type LeaderboardUpdateRow = {
@@ -24,22 +24,28 @@ const completedEventRefreshLookbackDays = 7;
 const addDays = (date: Date, days: number): Date =>
   new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 
-const latestStampByEvent = (rows: StampRow[]): Map<string, string> => {
-  const latest = new Map<string, string>();
+const toTimestampMs = (value: string, fieldName: string): number => {
+  const parsed = Date.parse(value);
+
+  if (Number.isNaN(parsed)) {
+    throw new Error(`Invalid timestamp in scheduled leaderboard refresh for ${fieldName}.`);
+  }
+
+  return parsed;
+};
+
+const latestStampByEvent = (rows: StampRow[]): Map<string, number> => {
+  const latest = new Map<string, number>();
 
   for (const row of rows) {
-    const existing = latest.get(row.event_id);
-
-    if (typeof existing === "undefined" || existing < row.scanned_at) {
-      latest.set(row.event_id, row.scanned_at);
-    }
+    latest.set(row.event_id, toTimestampMs(row.latest_scanned_at, "latest_valid_stamp.latest_scanned_at"));
   }
 
   return latest;
 };
 
-const leaderboardUpdatedAtByEvent = (rows: LeaderboardUpdateRow[]): Map<string, string> =>
-  new Map(rows.map((row) => [row.event_id, row.updated_at]));
+const leaderboardUpdatedAtByEvent = (rows: LeaderboardUpdateRow[]): Map<string, number> =>
+  new Map(rows.map((row) => [row.event_id, toTimestampMs(row.updated_at, "leaderboard_updates.updated_at")]));
 
 Deno.serve(async (request: Request): Promise<Response> => {
   const methodResponse = assertPostRequest(request);
@@ -87,12 +93,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const candidateEventIds = candidateEvents.map((event) => event.id);
     const [{ data: validStamps, error: validStampsError }, { data: leaderboardUpdates, error: leaderboardUpdatesError }] =
       await Promise.all([
-        supabase
-          .from("stamps")
-          .select("event_id,scanned_at")
-          .in("event_id", candidateEventIds)
-          .eq("validation_status", "VALID")
-          .returns<StampRow[]>(),
+        supabase.rpc("get_latest_valid_stamp_by_events", {
+          p_event_ids: candidateEventIds,
+        }).returns<StampRow[]>(),
         supabase
           .from("leaderboard_updates")
           .select("event_id,updated_at")
@@ -128,7 +131,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
       }
 
       const lastLeaderboardRefreshAt = leaderboardUpdatedAtMap.get(event.id);
-
       if (typeof lastLeaderboardRefreshAt !== "undefined" && latestValidStampAt <= lastLeaderboardRefreshAt) {
         skippedAlreadyFresh += 1;
         continue;

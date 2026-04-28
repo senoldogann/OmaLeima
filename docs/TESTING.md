@@ -162,12 +162,35 @@ supabase functions serve --env-file supabase/.env.local
 npm run qa:phase6-expanded
 ```
 
+## Readiness matrix
+
+These checks extend the expanded matrix with leaderboard refresh load validation:
+
+```bash
+supabase functions serve --env-file supabase/.env.local
+npm run qa:phase6-readiness
+```
+
+Current readiness matrix:
+
+1. `qa:phase6-expanded`
+2. `npm --prefix apps/admin run smoke:leaderboard-load`
+
+`smoke:leaderboard-load` verifies:
+
+- one isolated `ACTIVE` event with `1000` registered students and `5000` valid `stamps`
+- first `scheduled-leaderboard-refresh` run creates `1000` `leaderboard_scores`
+- second run skips the already-fresh event
+- a real follow-up `generate-qr-token` plus `scan-qr` creates one new valid dirty stamp
+- the next refresh increments `leaderboard_updates.version`
+- `get_event_leaderboard` stays readable after the refreshes
+
 ## What is still missing
 
-This foundation does not close the full Phase 6 checklist yet. The remaining major slices are still open:
+The current local matrix is strong enough for branch-level Phase 6 work, but it still does not replace:
 
-- invalid JWT and cross-event QR abuse scenarios
-- leaderboard and cron load validation
-- event-day checklist
-- offline fallback documentation
-- deploy and go-to-market runbooks
+- hosted staging verification
+- real browser click-path E2E on admin flows
+- pilot dry-run with real operator devices
+
+Event-day, fallback, and launch operations now live in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).

@@ -287,8 +287,10 @@ Behavior notes:
 
 - This function is designed for cron-style invocation, not browser use.
 - It detects dirty events by comparing the latest valid `stamps.scanned_at` value with `leaderboard_updates.updated_at`.
+- The latest valid stamp time is now computed through a DB aggregate helper so the cron path does not truncate large events at the API row cap.
 - It only considers recent `PUBLISHED`, `ACTIVE`, and `COMPLETED` events, then refreshes dirty ones through `update_event_leaderboard`.
 - A second run without new valid stamps should skip the already-fresh event.
+- Local readiness validation now includes `npm --prefix apps/admin run smoke:leaderboard-load`, which seeds one isolated `1000`-student event with `5000` valid `stamps`, verifies a successful first refresh, verifies the already-fresh skip path, adds one dirty valid stamp, then verifies a second persisted version bump.
 
 ## `admin-approve-business`
 
