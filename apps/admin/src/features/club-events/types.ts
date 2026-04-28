@@ -10,6 +10,7 @@ export type ClubMembershipSummary = {
   clubId: string;
   clubName: string;
   membershipRole: ClubMembershipRole;
+  universityName: string | null;
 };
 
 export type ClubEventRecord = {

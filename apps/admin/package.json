@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.ts",
     "smoke:business-applications": "tsx scripts/smoke-business-applications.ts",
+    "smoke:club-department-tags": "tsx scripts/smoke-club-department-tags.ts",
     "smoke:club-claims": "tsx scripts/smoke-club-claims.ts",
     "smoke:club-events": "tsx scripts/smoke-club-events.ts",
     "smoke:club-rewards": "tsx scripts/smoke-club-rewards.ts",
