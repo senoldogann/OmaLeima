@@ -37,6 +37,8 @@ const domainDetailsSchema = z.object({
   domain: z.object({
     name: z.string().min(1),
     configVerifiedAt: z.number().nullable(),
+    intendedNameservers: z.array(z.string()).optional(),
+    nameservers: z.array(z.string()).optional(),
     verificationRecord: z.string().nullable().optional(),
   }),
 });
@@ -257,10 +259,14 @@ const pickRecommendedAValue = (domainConfig: DomainConfig): string | null => {
 const pickRecommendedCnameValue = (domainConfig: DomainConfig): string | null =>
   domainConfig.recommendedCNAME[0]?.value ?? null;
 
+const formatNameserverList = (nameservers: string[]): string =>
+  nameservers.length > 0 ? nameservers.join(", ") : "none";
+
 const assertDnsReady = (
   domainName: string,
   domainConfig: DomainConfig,
-  domainResolution: DomainResolution
+  domainResolution: DomainResolution,
+  domainDetails: DomainDetails
 ): void => {
   if (!domainConfig.misconfigured) {
     return;
@@ -268,16 +274,17 @@ const assertDnsReady = (
 
   const recommendedAValue = pickRecommendedAValue(domainConfig);
   const recommendedCnameValue = pickRecommendedCnameValue(domainConfig);
+  const intendedNameservers = domainDetails.domain.intendedNameservers ?? [];
 
   if (recommendedAValue !== null) {
     throw new Error(
-      `Custom domain ${domainName} is not ready yet. Set DNS record "A ${domainName} ${recommendedAValue}" and wait for verification. Current A values: ${domainResolution.aValues.join(",") || "none"}.`
+      `Custom domain ${domainName} is not ready yet. Either set DNS record "A ${domainName} ${recommendedAValue}" at your current DNS provider, or delegate the domain to Vercel nameservers (${formatNameserverList(intendedNameservers)}) so the Vercel DNS record can become active. Current A values: ${domainResolution.aValues.join(",") || "none"}.`
     );
   }
 
   if (recommendedCnameValue !== null) {
     throw new Error(
-      `Custom domain ${domainName} is not ready yet. Set DNS record "CNAME ${domainName} ${recommendedCnameValue}" and wait for verification. Current CNAME values: ${domainResolution.cnameValues.join(",") || "none"}.`
+      `Custom domain ${domainName} is not ready yet. Either set DNS record "CNAME ${domainName} ${recommendedCnameValue}" at your current DNS provider, or delegate the domain to Vercel nameservers (${formatNameserverList(intendedNameservers)}) so the Vercel DNS record can become active. Current CNAME values: ${domainResolution.cnameValues.join(",") || "none"}.`
     );
   }
 
@@ -303,7 +310,7 @@ const run = async (): Promise<void> => {
   const domainDetails = readDomainDetails(domainName);
   const domainResolution = await readResolvedValues(domainName);
 
-  assertDnsReady(domainName, domainConfig, domainResolution);
+  assertDnsReady(domainName, domainConfig, domainResolution, domainDetails);
   assertVercelVerification(domainDetails, domainName);
 
   console.log(
