@@ -1,0 +1,91 @@
+import { NextResponse } from "next/server";
+
+import {
+  invokeCreateClubEventRpcAsync,
+  requireClubEventCreatorAccessAsync,
+} from "@/features/club-events/event-transport";
+import {
+  ClubEventValidationError,
+  parseClubEventCreationPayloadOrThrow,
+  parseIsoDateTimeOrThrow,
+} from "@/features/club-events/validation";
+import { createRouteHandlerClient } from "@/lib/supabase/server";
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createRouteHandlerClient();
+    const accessError = await requireClubEventCreatorAccessAsync(supabase);
+
+    if (accessError !== null) {
+      return NextResponse.json(accessError.response, {
+        status: accessError.status,
+      });
+    }
+
+    const claimsResult = await supabase.auth.getClaims();
+
+    if (claimsResult.error !== null) {
+      throw new Error(`Failed to resolve route claims: ${claimsResult.error.message}`);
+    }
+
+    const userId = claimsResult.data?.claims?.sub;
+
+    if (typeof userId !== "string") {
+      return NextResponse.json(
+        {
+          message: "Sign in again before creating an event.",
+          status: "AUTH_REQUIRED",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const body = parseClubEventCreationPayloadOrThrow(
+      (await request.json()) as Record<string, string>
+    );
+    const result = await invokeCreateClubEventRpcAsync(supabase, {
+      city: body.city,
+      clubId: body.clubId,
+      country: body.country,
+      coverImageUrl: body.coverImageUrl,
+      createdBy: userId,
+      description: body.description,
+      endAtIso: parseIsoDateTimeOrThrow(body.endAt, "endAt"),
+      joinDeadlineAtIso: parseIsoDateTimeOrThrow(body.joinDeadlineAt, "joinDeadlineAt"),
+      maxParticipants: body.maxParticipantsValue,
+      minimumStampsRequired: body.minimumStampsRequiredValue,
+      name: body.name,
+      rules: body.parsedRules,
+      startAtIso: parseIsoDateTimeOrThrow(body.startAt, "startAt"),
+      visibility: body.visibility,
+    });
+
+    return NextResponse.json(result.response, {
+      status: result.status,
+    });
+  } catch (error) {
+    if (error instanceof ClubEventValidationError) {
+      return NextResponse.json(
+        {
+          message: error.message,
+          status: "VALIDATION_ERROR",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: error instanceof Error ? error.message : "Unknown club event route error.",
+        status: "ROUTE_ERROR",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

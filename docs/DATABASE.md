@@ -22,6 +22,8 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260429010000_leave_business_event_atomic.sql`
 - `supabase/migrations/20260429020000_merge_department_tag_atomic.sql`
 - `supabase/migrations/20260429020100_block_department_tag_atomic.sql`
+- `supabase/migrations/20260429030000_create_club_event_atomic.sql`
+- `supabase/migrations/20260429030100_restrict_club_event_writes.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -44,6 +46,7 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `register_event_atomic`
   - `join_business_event_atomic`
   - `leave_business_event_atomic`
+  - `create_club_event_atomic`
 
 ## Department Tag Foundation
 
@@ -78,6 +81,55 @@ Current RLS behavior:
 - `profile_department_tags` are readable by the owning user and platform admins
 - only the owning user can create, update, or delete `SELF_SELECTED` profile tag links
 - admin merge or block actions automatically repair or remove dependent profile-tag links
+
+## Club Event Creation Foundation
+
+Club-side web event creation is now enforced through `create_club_event_atomic(...)`.
+
+Current behavior:
+
+- The club web panel uses a route-backed call instead of direct browser inserts.
+- The function locks the target profile, club, and club membership rows before creating the event.
+- Creation is allowed only when:
+  - caller is the same authenticated organizer or the service role
+  - profile is active
+  - target club exists and is `ACTIVE`
+  - caller has an active `club_members` row for that club
+  - membership role is `OWNER` or `ORGANIZER`
+- Validation guardrails:
+  - `name` and `city` are required
+  - `visibility` must be `PUBLIC | PRIVATE | UNLISTED`
+  - `end_at > start_at`
+  - `join_deadline_at <= start_at`
+  - `max_participants`, when present, must be positive
+  - `minimum_stamps_required >= 0`
+- Successful writes always create:
+  - a new `events` row in `DRAFT` status
+  - an `audit_logs` row with `CLUB_EVENT_CREATED`
+- Direct `events` writes are now narrowed at the RLS layer:
+  - active club members can still read own club events
+  - only `OWNER` or `ORGANIZER` memberships can insert, update, or delete `events`
+  - `CLUB_STAFF` can no longer bypass the route or RPC through raw table writes
+- Slug generation is concurrency-safe:
+  - first attempt uses the normalized event name
+  - collision retries append a short random suffix inside the same transaction path
+- Known statuses returned by the RPC:
+  - `SUCCESS`
+  - `AUTH_REQUIRED`
+  - `ACTOR_NOT_ALLOWED`
+  - `PROFILE_NOT_FOUND`
+  - `PROFILE_NOT_ACTIVE`
+  - `CLUB_NOT_ACTIVE`
+  - `CLUB_MEMBERSHIP_NOT_ALLOWED`
+  - `CLUB_EVENT_CREATOR_NOT_ALLOWED`
+  - `EVENT_NAME_REQUIRED`
+  - `EVENT_CITY_REQUIRED`
+  - `EVENT_VISIBILITY_INVALID`
+  - `EVENT_END_BEFORE_START`
+  - `EVENT_JOIN_DEADLINE_INVALID`
+  - `EVENT_MAX_PARTICIPANTS_INVALID`
+  - `EVENT_MINIMUM_STAMPS_INVALID`
+  - `EVENT_SLUG_CONFLICT`
 
 Local seed coverage now includes:
 
