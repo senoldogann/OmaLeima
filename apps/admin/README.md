@@ -38,7 +38,9 @@ npm run smoke:club-events
 npm run smoke:club-claims
 npm run smoke:department-tags
 npm run smoke:oversight
+npm run smoke:qr-security
 npm run smoke:rls-core
+npm run smoke:scan-race
 npm run smoke:routes
 ```
 
@@ -46,6 +48,12 @@ Repo root Phase 6 core entry point:
 
 ```bash
 npm run qa:phase6-core
+```
+
+Repo root expanded function-backed entry point:
+
+```bash
+npm run qa:phase6-expanded
 ```
 
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
@@ -62,7 +70,9 @@ supabase functions serve --env-file supabase/.env.local
 `npm run smoke:club-rewards` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff and claimed-inventory fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so moderation fixtures can be seeded directly.
 `npm run smoke:oversight` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so oversight fixtures can be seeded directly.
+`npm run smoke:qr-security` expects the local Supabase stack, the local function server, and the local Docker-backed Supabase DB container to be running so wrong-event fixtures can be seeded directly and function auth paths can be invoked.
 `npm run smoke:rls-core` expects the local Supabase stack and the local Docker-backed Supabase DB container to be running so cross-user stamp and audit-log fixtures can be seeded directly.
+`npm run smoke:scan-race` expects the local Supabase stack, the local function server, and the local Docker-backed Supabase DB container to be running so a second scanner fixture and isolated event rows can be seeded and cleaned up around the race test.
 
 ## Current routes
 

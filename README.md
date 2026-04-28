@@ -19,4 +19,10 @@ The current local QA entry point is:
 npm run qa:phase6-core
 ```
 
+Function-backed expanded QA entry point:
+
+```bash
+npm run qa:phase6-expanded
+```
+
 Testing prerequisites and the expanded smoke matrix live in [docs/TESTING.md](docs/TESTING.md).
