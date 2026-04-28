@@ -4,17 +4,15 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/admin-club-official-department-tags` branch.
-- [x] Review the current department-tag schema, club access boundaries, and existing moderation flow.
-- [x] Update `REVIEW.md` for the official club department-tag scope.
-- [x] Update `PLAN.md` for the official club department-tag scope.
+- [x] Create `feature/phase-6-hardening-foundation` branch.
+- [x] Review current smoke coverage, repo QA gaps, and Phase 6 expectations.
+- [x] Update `REVIEW.md` for the Phase 6 foundation scope.
+- [x] Update `PLAN.md` for the Phase 6 foundation scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add an organizer-only database path for official club department tag creation.
-- [x] Tighten direct `CLUB` tag writes so staff or browser clients cannot bypass the route-backed path.
-- [x] Add a bounded club department-tag read model plus organizer-only `/club/department-tags` route.
-- [x] Extend club dashboard navigation and sections for the new workflow.
-- [x] Add app-local smoke coverage for organizer success, staff denial, duplicate handling, and cleanup isolation.
-- [x] Run admin validation commands plus new tag smokes.
-- [x] Update `README.md`, `PROGRESS.md`, and any docs touched by the new route.
+- [x] Add a root-level QA entry point and `tests/` orchestration script.
+- [x] Add a dedicated `smoke:rls-core` regression script.
+- [x] Document local QA prerequisites and matrix tiers in `docs/TESTING.md` and repo README files.
+- [x] Run the new core QA matrix plus direct smoke validation.
+- [x] Update `PROGRESS.md` with the Phase 6 foundation outcome.
 - [x] Review diff and reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.

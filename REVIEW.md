@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-club-official-department-tags`
-- **Scope:** Phase 5 club-side official department tag creation flow.
+- **Branch:** `feature/phase-6-hardening-foundation`
+- **Scope:** Phase 6 QA foundation with centralized smoke orchestration and core RLS regression coverage.
 
 ## Affected Files
 
@@ -14,45 +14,41 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
+- `README.md`
 - `apps/admin/README.md`
-- `apps/admin/src/app/club/*`
-- `apps/admin/src/app/api/club/*`
-- `apps/admin/src/features/club-*/*`
-- `apps/admin/src/features/dashboard/*`
+- `apps/admin/package.json`
 - `apps/admin/scripts/*`
-- `supabase/migrations/*`
+- `docs/TESTING.md`
+- `tests/*`
+- root `package.json`
 
 ## Risks
 
-- The current `department_tags` insert policy allows any club staff member to create official tags directly. That is broader than the product plan, which calls for organizer-level ownership.
-- Official tags are public catalog records. A weak create path could pollute the tag list with duplicates or low-quality labels.
-- Student custom tag creation already exists and must keep working. Any policy tightening must not break the mobile student profile flow.
-- Club users may belong to multiple clubs. The route must scope create actions to active organizer or owner memberships only.
-- Department tag creation is not a heavy transaction, but concurrent duplicate attempts from the same club should converge cleanly instead of producing unstable unique-slug failures.
-- Repo-level CI is still thin, so this slice needs strong smoke coverage for route access, organizer success, staff denial, duplicate prevention, RLS direct-write blocking, and cleanup isolation.
+- Current smoke coverage is strong but fragmented. A future agent can easily miss a required sequence or prerequisite and think the repo is healthier than it is.
+- Repo-level QA still depends on manual knowledge: which scripts need a running admin app, which ones need Docker-backed DB access, and which ones depend on local Edge Functions.
+- Critical RLS expectations are currently proven indirectly across many feature smokes, but there is no single focused regression script for the most security-sensitive direct table access rules.
+- If the new orchestration script assumes too much local state, it becomes flaky and adds noise instead of trust.
+- We should not overreach into full concurrency or load harnesses in the same slice. The first hardening step needs a reliable foundation, not a broad half-finished QA suite.
 
 ## Dependencies
 
-- Existing `department_tags` schema, triggers, and profile-link sync logic.
-- Existing admin moderation flow in `apps/admin/src/features/department-tags/*`.
-- Existing club SSR auth foundation and organizer access model in `apps/admin`.
-- Existing organizer-only route-backed patterns from `/club/events` and `/club/rewards`.
-- Existing seeded admin, organizer, and club data from `supabase/seed.sql`.
+- Existing admin smoke scripts in `apps/admin/scripts`.
+- Existing local Supabase reset flow and seeded accounts.
+- Existing RLS policies on `stamps`, `reward_claims`, `audit_logs`, `department_tags`, and related tables.
+- Existing feature-level docs in `apps/admin/README.md` and `docs/DATABASE.md`.
 
 ## Existing Logic Checked
 
-- `department_tags` already normalizes title and slug, enforces source-type rules, and keeps merged or blocked tags out of active profile usage.
-- Admin moderation already provides merge and block operations, so this slice only needs to open the club-side create path.
-- `fetchClubEventContextAsync` already tells us which memberships have organizer-level authority via `canCreateEvents`.
-- Student mobile profile already reads active department tags and creates custom `USER` tags directly; that flow must stay untouched.
-- Current club admin slices already follow a route-backed mutation pattern with app-local smokes and fixture cleanup we can reuse.
+- Admin app already has focused route and flow smokes for business applications, oversight, department tags, club events, club rewards, club claims, and club department tags.
+- Many direct-write RLS expectations are already tested, but each script only covers its own slice.
+- There is no root-level package or single QA entry point right now.
+- The master plan explicitly calls for `tests/` outputs and `docs/TESTING.md` in Phase 6.
 
 ## Review Outcome
 
-Add a dedicated club department-tag workflow that lets organizers:
+Build a first Phase 6 hardening slice that:
 
-- open an organizer-only official tag panel
-- create official `CLUB` source tags for their own community
-- keep student custom tags and admin moderation flows intact
-- tighten the write boundary so direct club-side inserts no longer bypass the intended route
-- leave repeatable smoke coverage for access control, duplicate handling, and cleanup isolation
+- adds a single repo-level QA entry point
+- documents prerequisites and smoke tiers clearly
+- adds a dedicated core RLS regression script
+- keeps the scope tight enough to be stable and repeatable
