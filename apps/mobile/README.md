@@ -20,6 +20,7 @@ npm run lint
 npm run typecheck
 npm run export:web
 npm run audit:realtime-readiness
+npm run audit:reward-notification-bridge
 ```
 
 ## Current scope
@@ -29,6 +30,7 @@ npm run audit:realtime-readiness
 - Auth session provider in `src/providers/session-provider.tsx`
 - React Query provider in `src/providers/app-providers.tsx`
 - Push permission and Expo token preparation helper in `src/lib/push.ts`
+- Local foreground reward notifications in `src/features/notifications/student-reward-notifications.ts`
 - Google OAuth flow in `src/lib/auth.ts` and `src/app/auth/callback.tsx`
 - Native session persistence via `expo-secure-store`
 - QR token rotation currently uses controlled polling
@@ -43,11 +45,18 @@ The first dedicated mobile Realtime slice is now shipped:
 - the same module also subscribes to `stamps` and the current student’s `reward_claims` for progress freshness
 - the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
+- local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery is still deferred
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 
 ```bash
 npm run audit:realtime-readiness
+```
+
+Use this command to confirm the current reward notification bridge state:
+
+```bash
+npm run audit:reward-notification-bridge
 ```
 
 ## OAuth setup notes

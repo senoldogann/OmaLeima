@@ -213,6 +213,36 @@ Expected success output today:
 
 If a future slice changes which screens own Realtime freshness or replaces invalidation with direct cache patching, this audit should be updated in the same change.
 
+## Mobile reward notification bridge
+
+For the local foreground reward notification bridge:
+
+```bash
+npm run qa:mobile-reward-notification-readiness
+```
+
+This focused audit currently does three things in order:
+
+1. `npm --prefix apps/mobile run lint`
+2. `npm --prefix apps/mobile run typecheck`
+3. `npm --prefix apps/mobile run audit:reward-notification-bridge`
+
+The audit is intentionally read-only. It verifies the current mobile repository state still matches the shipped reward notification follow-up:
+
+- `StudentRewardNotificationBridge` is wired through `apps/mobile/src/providers/app-providers.tsx`
+- the bridge reads the shared reward overview and reuses the existing student Realtime invalidation hooks
+- local foreground reward notifications are present for reward unlock and stock-change behavior
+- the rewards screen no longer owns a duplicate overview-level Realtime subscription
+- docs still describe this as local foreground behavior and still leave remote reward-unlocked push delivery deferred
+
+Expected success output today:
+
+- `student-reward-notification-bridge:present`
+- `notification-mode:local-foreground`
+- `remote-reward-push:deferred`
+- `reward-screen-ownership:provider-bridge`
+- `docs:aligned`
+
 ## Hosted admin verification
 
 For preview, staging, or production-like hosted checks:

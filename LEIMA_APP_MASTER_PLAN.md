@@ -2996,6 +2996,8 @@ The first mobile client-side Realtime foundation is shipped under apps/mobile/sr
 Student leaderboard freshness now follows leaderboard_updates.
 The current student's stamp and claim progress now follows stamps and reward_claims invalidation.
 Shared reward inventory freshness now follows reward_tiers invalidation on the student views that expose stock state.
+Student local foreground reward notifications are shipped on top of the reward overview and Realtime invalidation.
+Remote reward-unlocked push delivery is still deferred.
 QR rotation still uses polling by design.
 ```
 

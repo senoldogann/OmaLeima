@@ -20,12 +20,8 @@ import {
   useQrSvgQuery,
   useStudentQrContextQuery,
 } from "@/features/qr/student-qr";
-import {
-  useStudentRewardInventoryRealtime,
-  useStudentRewardProgressRealtime,
-} from "@/features/realtime/student-realtime";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
-import { useStudentRewardEventQuery } from "@/features/rewards/student-rewards";
+import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
 
@@ -71,29 +67,17 @@ export default function StudentActiveEventScreen() {
     () => (qrContextQuery.data ? selectStudentQrEvent(qrContextQuery.data.registeredEvents, now) : null),
     [now, qrContextQuery.data]
   );
-  const trackedInventoryEventIds = useMemo(
-    () => (selectedEvent === null ? [] : [selectedEvent.id]),
-    [selectedEvent]
+  const rewardOverviewQuery = useStudentRewardOverviewQuery({
+    studentId: studentId ?? "",
+    isEnabled: studentId !== null,
+  });
+  const selectedRewardEvent = useMemo(
+    () =>
+      selectedEvent === null
+        ? null
+        : (rewardOverviewQuery.data?.events.find((event) => event.id === selectedEvent.id) ?? null),
+    [rewardOverviewQuery.data, selectedEvent]
   );
-
-  const rewardEventQuery = useStudentRewardEventQuery({
-    eventId: selectedEvent?.id ?? "",
-    studentId: studentId ?? "",
-    isEnabled: selectedEvent !== null && studentId !== null,
-  });
-
-  useStudentRewardProgressRealtime({
-    eventId: selectedEvent?.id ?? null,
-    studentId: studentId ?? "",
-    isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
-  });
-
-  useStudentRewardInventoryRealtime({
-    trackedEventIds: trackedInventoryEventIds,
-    studentId: studentId ?? "",
-    detailEventId: null,
-    isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
-  });
 
   const shouldRefreshQr =
     selectedEvent !== null &&
@@ -265,24 +249,24 @@ export default function StudentActiveEventScreen() {
         </>
       ) : null}
 
-      {selectedEvent !== null && rewardEventQuery.isLoading ? (
+      {selectedEvent !== null && rewardOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Progress" motionIndex={6} title="Updating reward progress">
           <Text style={styles.bodyText}>Loading leima counts, reward tiers, and claimed state for this event.</Text>
         </InfoCard>
       ) : null}
 
-      {selectedEvent !== null && rewardEventQuery.error ? (
+      {selectedEvent !== null && rewardOverviewQuery.error ? (
         <InfoCard eyebrow="Progress" motionIndex={6} title="Reward progress unavailable">
-          <Text style={styles.bodyText}>{rewardEventQuery.error.message}</Text>
-          <Pressable onPress={() => void rewardEventQuery.refetch()} style={styles.secondaryButton}>
+          <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
+          <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Retry reward progress</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
-      {selectedEvent !== null && rewardEventQuery.data ? (
+      {selectedEvent !== null && selectedRewardEvent ? (
         <RewardProgressCard
-          event={rewardEventQuery.data}
+          event={selectedRewardEvent}
           onOpenEvent={(eventId: string) => {
             router.push(`/student/events/${eventId}`);
           }}

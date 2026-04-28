@@ -4,14 +4,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/realtime-inventory-followup` branch.
-- [x] Update `REVIEW.md` for the inventory follow-up scope.
-- [x] Update `PLAN.md` for the inventory follow-up slice.
+- [x] Create `feature/realtime-unlock-notification-followup` branch.
+- [x] Update `REVIEW.md` for the reward notification follow-up scope.
+- [x] Update `PLAN.md` for the reward notification slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Inspect the current reward inventory read paths and choose the narrowest query invalidation targets.
-- [x] Extend the shared mobile Realtime module with shared inventory invalidation.
-- [x] Wire the inventory follow-up into rewards, active-event, and event-detail views.
-- [x] Update docs and the Realtime audit so shared inventory no longer appears snapshot-based once the code is real.
+- [x] Inspect the current reward overview, push permission, and notification presentation paths.
+- [x] Add a shared student reward notification bridge with strict transition detection and local dedupe.
+- [x] Wire the bridge into app providers and trim overlapping reward-screen behavior if a narrower owner exists.
+- [x] Update docs and any audit coverage so the shipped behavior is described honestly.
 - [x] Run focused validation.
 - [x] Get a reviewer pass.
 - [x] Update `PROGRESS.md` and finish the branch handoff package.
