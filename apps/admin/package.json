@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.ts",
+    "smoke:business-applications": "tsx scripts/smoke-business-applications.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts"
   },
   "dependencies": {

@@ -3,3 +3,8 @@ export type DashboardSection = {
   items: string[];
   tone: "neutral" | "accent" | "warning";
 };
+
+export type DashboardNavItem = {
+  href: string;
+  label: string;
+};
