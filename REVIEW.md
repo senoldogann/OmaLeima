@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-business-join-and-scanner-foundation`
-- **Scope:** Phase 4 business event join flow plus the first real scanner screen and scan request state machine.
+- **Branch:** `feature/mobile-business-scan-history-and-leave-flow`
+- **Scope:** Phase 4 leave-before-start business flow plus dedicated own-scan history and clearer scanner result states.
 
 ## Affected Files
 
@@ -19,31 +19,29 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/business/*`
 - `apps/mobile/src/features/business/*`
 - `apps/mobile/src/features/scanner/*`
-- `apps/mobile/app.config.ts`
-- `apps/mobile/package.json`
 
 ## Risks
 
-- Business join currently has no write path, so the new RPC must be atomic and enforce time-based rules in the database.
-- Scanner flow depends on `scan-qr`, so the client must always send explicit `businessId` for multi-business staff accounts.
-- Camera preview must unlock after success, failure, and timeout; otherwise staff can get stuck on event day.
-- Expo camera support is platform-sensitive, so web preview needs a fallback input path that still exercises the real networked scan behavior.
-- Rapid duplicate scans can happen both from camera callbacks and impatient taps, so the scanner state machine must debounce locally before the backend responds.
+- Leave flow must not allow a venue to escape an event once the event has started, even if the row is still technically `JOINED`.
+- Event-venue status changes have to stay compatible with the existing join RPC so `LEFT` rows can be rejoined later only when rules allow it.
+- Scan history should reflect operator-owned successful outcomes from `stamps`, not a noisy transport log.
+- Result-state colors and copy need to stay consistent between camera scans and manual pasted-token scans.
+- Multi-business accounts should not accidentally lose scanner context when jumping between events, scanner, and history.
 
 ## Dependencies
 
-- Existing business auth/access resolver and `business/home` route.
-- Existing `scan-qr` Edge Function and `scan_stamp_atomic` RPC.
-- Existing `event_venues`, `events`, and `business_staff` schema foundation.
-- Current Expo Router mobile shell and Supabase session bootstrap.
+- Existing `join_business_event_atomic` RPC and business mobile event/scanner routes.
+- Existing `scan-qr` Edge Function and `stamps` table.
+- Existing RLS policy that allows business staff to read scan history rows for their businesses.
+- Existing mobile auth/session bootstrap and business access resolver.
 
 ## Existing Logic Checked
 
-- `business/home` already shows joined and opportunity context, but it has no real action path yet.
-- `scan-qr` already supports explicit `businessId`, optional `scannerDeviceId`, and optional location payloads.
-- Student registration already uses the repo pattern we want here: DB RPC from mobile plus targeted query invalidation.
-- There is no current mobile scanner module or camera dependency in `apps/mobile`.
+- `business/events` already has a clear upcoming-joined section where leave CTA belongs.
+- `stamps` already captures `scanner_user_id`, `student_id`, `business_id`, `event_id`, `scanned_at`, and `validation_status`, so a history screen can be read without a new table.
+- `business/scanner` already has lock plus result state scaffolding; this slice should refine the result presentation rather than redesign the whole scanner.
+- No leave RPC exists yet, and the roadmap rule is `event.status == PUBLISHED && now < start_at`.
 
 ## Review Outcome
 
-Add a database RPC for business event join, build a dedicated business events screen that can join public city events, add a scanner feature module with permission, timeout, locked-scan, and result-state handling, and wire `business/home` into those routes so Phase 4 gets its first true action path.
+Add `leave_business_event_atomic`, wire leave CTA into joined upcoming business events, add a dedicated `business/history` route backed by `stamps`, and tighten scanner result-state presentation so the remaining Phase 4 checklist items move from implicit to explicit product behavior.

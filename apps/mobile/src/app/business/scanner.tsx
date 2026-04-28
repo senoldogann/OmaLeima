@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
-import { useLocalSearchParams } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type { ScannerAttemptResult } from "@/features/scanner/types";
@@ -46,9 +48,38 @@ const toneStyles: Record<ScannerAttemptResult["tone"], { eyebrow: string; border
   },
 };
 
+const scanResultTitles: Record<ScannerAttemptResult["status"], string> = {
+  SUCCESS: "Stamp recorded",
+  QR_ALREADY_USED_OR_REPLAYED: "QR already used",
+  ALREADY_STAMPED: "Student already stamped",
+  INVALID_QR: "QR is invalid",
+  QR_EXPIRED: "QR expired",
+  VENUE_NOT_IN_EVENT: "Wrong venue for this QR",
+  EVENT_NOT_ACTIVE: "Event is not scannable",
+  STUDENT_NOT_REGISTERED: "Student not registered",
+  VENUE_JOINED_TOO_LATE: "Venue joined too late",
+  BUSINESS_STAFF_NOT_ALLOWED: "Scanner account not allowed",
+  NETWORK_TIMEOUT: "Network timeout",
+};
+
+const scanResultDetails: Record<ScannerAttemptResult["status"], string> = {
+  SUCCESS: "Scanner is locked after a successful read so staff can confirm the result before continuing.",
+  QR_ALREADY_USED_OR_REPLAYED: "This token should not be retried. Ask the student to refresh the QR in the app.",
+  ALREADY_STAMPED: "The student already received this venue stamp for the current event.",
+  INVALID_QR: "The payload did not match the expected student QR format.",
+  QR_EXPIRED: "Ask the student to reopen the active event screen and generate a fresh QR.",
+  VENUE_NOT_IN_EVENT: "The selected venue context does not match the event encoded in the student QR.",
+  EVENT_NOT_ACTIVE: "Scanning is available only while the selected joined event is live.",
+  STUDENT_NOT_REGISTERED: "The student must be registered for the event before a stamp can be recorded.",
+  VENUE_JOINED_TOO_LATE: "This venue joined after the event scan window had already opened.",
+  BUSINESS_STAFF_NOT_ALLOWED: "This signed-in account does not have scanner permission for the selected business.",
+  NETWORK_TIMEOUT: "No response arrived within 4 seconds. Retry or use manual fallback when the connection settles.",
+};
+
 export default function BusinessScannerScreen() {
   const params = useLocalSearchParams<{ eventVenueId?: string }>();
   const { session } = useSession();
+  const queryClient = useQueryClient();
   const userId = session?.user.id ?? null;
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
     userId: userId ?? "",
@@ -122,6 +153,12 @@ export default function BusinessScannerScreen() {
       );
 
       setLastResult(result);
+
+      if (result.status === "SUCCESS" && userId !== null) {
+        await queryClient.invalidateQueries({
+          queryKey: businessScanHistoryQueryKey(userId),
+        });
+      }
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Unknown scanner error.");
       setIsScannerLocked(false);
@@ -262,7 +299,7 @@ export default function BusinessScannerScreen() {
       ) : null}
 
       {lastResult !== null ? (
-        <InfoCard eyebrow={toneStyles[lastResult.tone].eyebrow} title={lastResult.status}>
+        <InfoCard eyebrow={toneStyles[lastResult.tone].eyebrow} title={scanResultTitles[lastResult.status]}>
           <View
             style={[
               styles.resultCard,
@@ -275,20 +312,37 @@ export default function BusinessScannerScreen() {
             <Text selectable style={styles.cardTitle}>
               {lastResult.message}
             </Text>
+            <Text selectable style={styles.metaText}>Status code: {lastResult.status}</Text>
             {typeof lastResult.stampCount === "number" ? (
               <Text selectable style={styles.metaText}>
                 Student stamp count: {lastResult.stampCount}
               </Text>
             ) : null}
-            <Text selectable style={styles.metaText}>
-              {lastResult.status === "NETWORK_TIMEOUT"
-                ? "Network response did not arrive within 4 seconds."
-                : "Scanner stays locked until staff chooses to scan again."}
-            </Text>
+            <Text selectable style={styles.metaText}>{scanResultDetails[lastResult.status]}</Text>
           </View>
-          <Pressable onPress={resetScanner} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Scan again</Text>
-          </Pressable>
+          <View style={styles.actionRow}>
+            <Pressable onPress={resetScanner} style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Scan again</Text>
+            </Pressable>
+            <Link href="/business/history" asChild>
+              <Pressable style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Open history</Text>
+              </Pressable>
+            </Link>
+          </View>
+        </InfoCard>
+      ) : null}
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <InfoCard eyebrow="History" title="Need a past scan?">
+          <Text selectable style={styles.bodyText}>
+            Recent scan outcomes are available in a separate route so staff can review them without keeping the camera open.
+          </Text>
+          <Link href="/business/history" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>View scan history</Text>
+            </Pressable>
+          </Link>
         </InfoCard>
       ) : null}
     </AppScreen>
@@ -296,6 +350,10 @@ export default function BusinessScannerScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   bodyText: {
     color: "#CBD5E1",
     fontSize: 14,
@@ -341,6 +399,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#1D4ED8",
     borderRadius: 8,
+    flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
@@ -359,6 +418,23 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: 12,
+  },
+  secondaryButton: {
+    alignItems: "center",
+    backgroundColor: "#0F172A",
+    borderColor: "#334155",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: "#E2E8F0",
+    fontSize: 14,
+    fontWeight: "700",
   },
   textArea: {
     backgroundColor: "#0F172A",

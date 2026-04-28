@@ -4,15 +4,15 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/mobile-business-join-and-scanner-foundation` branch.
-- [x] Review the current business mobile flow, `scan-qr`, and event-join constraints.
-- [x] Update `REVIEW.md` for the join-and-scanner-foundation scope.
-- [x] Update `PLAN.md` for the join-and-scanner-foundation scope.
+- [x] Create `feature/mobile-business-scan-history-and-leave-flow` branch.
+- [x] Review leave rules, current business routes, and scan-history data sources.
+- [x] Update `REVIEW.md` for the scan-history-and-leave-flow scope.
+- [x] Update `PLAN.md` for the scan-history-and-leave-flow scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add the business event join RPC and supporting documentation updates.
-- [x] Add a business events read-model plus join mutation in the mobile app.
-- [x] Add business event and scanner routes, including home CTAs.
-- [x] Add scanner state machine, camera permission handling, manual token fallback, and result surfaces.
+- [x] Add the business leave RPC and supporting documentation updates.
+- [x] Add business leave mutation and invalidate the shared overview read model.
+- [x] Add `business/history` and wire business route CTAs to it.
+- [x] Refine scanner result-state presentation and keep lock behavior explicit.
 - [x] Run mobile validation commands and auth-backed business smoke tests.
 - [x] Update `PROGRESS.md`.
 - [x] Review diff.

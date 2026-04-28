@@ -48,6 +48,11 @@ export default function BusinessHomeScreen() {
             </Pressable>
           </Link>
         </View>
+        <Link href="/business/history" asChild>
+          <Pressable style={styles.ghostButton}>
+            <Text style={styles.ghostButtonText}>Open scan history</Text>
+          </Pressable>
+        </Link>
       </InfoCard>
 
       {homeOverviewQuery.isLoading ? (
@@ -182,10 +187,15 @@ export default function BusinessHomeScreen() {
         </InfoCard>
       ) : null}
 
-      <InfoCard eyebrow="Next" title="Scanner and join flow">
+      <InfoCard eyebrow="History" title="Recent scan history">
         <Text selectable style={styles.bodyText}>
-          Event joining and the first live scanner state machine now continue in dedicated routes. Leave flow and scan history still land next.
+          Staff can now review recent own scans in a dedicated history screen instead of relying on the live scanner route only.
         </Text>
+        <Link href="/business/history" asChild>
+          <Pressable style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>View scan history</Text>
+          </Pressable>
+        </Link>
       </InfoCard>
 
       <InfoCard eyebrow="Account" title="Session actions">
@@ -207,6 +217,21 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: "#F8FAFC",
     fontSize: 15,
+    fontWeight: "700",
+  },
+  ghostButton: {
+    alignItems: "center",
+    borderColor: "#334155",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  ghostButtonText: {
+    color: "#CBD5E1",
+    fontSize: 14,
     fontWeight: "700",
   },
   metaText: {

@@ -5,45 +5,44 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-business-join-and-scanner-foundation`
-- **Goal:** Add the first real business event join action and a scanner screen foundation with live scan state handling.
+- **Branch:** `feature/mobile-business-scan-history-and-leave-flow`
+- **Goal:** Finish the next Phase 4 business slice with leave-before-start and a dedicated scan history screen.
 
 ## Architectural Decisions
 
-- Keep this slice inside the Phase 4 mobile app, but add the minimum backend primitive it needs:
-  1. a concurrency-safe RPC for business event join
-  2. no leave RPC yet
-- Split the business flow into two focused screens:
-  1. `business/events` for joined plus joinable event context
-  2. `business/scanner` for active joined-event selection and QR scanning
-- Reuse the existing `business/home` read model where it helps, but add a richer business-events read model instead of overloading the home route.
-- Join actions should go through a typed Supabase RPC path, not direct `event_venues` writes, because RLS currently does not allow business staff inserts.
-- Scanner UX should be stateful and explicit:
-  1. selected joined active event
-  2. camera permission state
-  3. locked scan while request is in flight
-  4. 4-second timeout path
-  5. result card with color-coded states
-  6. manual pasted-token fallback for web and local smoke checks
-- Always send `businessId` to `scan-qr` from the mobile client so multi-business staff accounts scan in the correct venue context.
+- Keep the business mobile data surface centered on one shared read model, but add the missing write primitive:
+  1. `leave_business_event_atomic`
+  2. no scan-history write table because `stamps` already is the source of truth
+- Build one dedicated history route instead of burying history at the bottom of the scanner screen:
+  1. `business/history` shows recent own scans
+  2. scanner route can deep-link into history after results
+- Leave flow belongs on joined upcoming events only:
+  1. never for active events
+  2. never for completed or cancelled events
+  3. never after `start_at`
+- Scanner result states should become more explicit and product-shaped:
+  1. success green
+  2. duplicate/already-stamped yellow
+  3. expired orange
+  4. invalid or venue mismatch red
+  5. inactive event neutral/red
+- Scanner lock stays manual, but this slice should make that lock obvious and stable across camera, manual fallback, timeout, and result actions.
 
 ## Alternatives Considered
 
-- Building scanner UI without a real scan request path: rejected because the user value of this slice is the networked scan state machine, not a decorative camera frame.
-- Deferring business join until a later branch: rejected because Phase 4 home still needs a real path from opportunity discovery to venue participation.
-- Implementing join via direct mobile inserts: rejected because the database ownership model intentionally blocks that path.
-- Adding leave flow in the same branch: rejected because join plus scanner already covers the critical forward path and keeps the blast radius smaller.
+- Adding leave flow through direct `event_venues` updates: rejected because the business mobile app should stay behind RPC guardrails.
+- Keeping scan history on the scanner screen only: rejected because the roadmap explicitly expects a past-scan list as its own business-facing surface.
+- Using `qr_token_uses` for history: rejected because the real operator history should reflect successful stamp outcomes from `stamps`, not every transport attempt.
+- Adding automatic scanner unlock right after result: rejected because the event-day flow already chose explicit operator acknowledgement to reduce accidental rapid rescans.
 
 ## Edge Cases
 
-- Business staff account belongs to multiple businesses and needs explicit business context for scan requests.
-- User has joined upcoming events but no active joined event to scan yet.
-- Camera permission is denied or unavailable on the current platform.
-- QR request hangs longer than 4 seconds and scanner must unlock cleanly.
-- `scan-qr` returns `ALREADY_STAMPED`, `QR_EXPIRED`, `INVALID_QR`, `VENUE_NOT_IN_EVENT`, or `EVENT_NOT_ACTIVE`.
-- Business tries to join an event after `join_deadline_at` or after `start_at`.
-- Business already has a `JOINED` row for the same event.
-- Existing `LEFT` or `REMOVED` venue rows should be revived only if the join rules still allow it.
+- Business staff tries to leave an event that is already `ACTIVE`.
+- Venue row is already `LEFT` or `REMOVED`.
+- Event status changes to `CANCELLED` after venue joined.
+- Multi-business account scans for one venue but history query should still show only rows the current user actually scanned.
+- `REVOKED` or `MANUAL_REVIEW` stamps should not look identical to clean valid scans in history.
+- No history exists yet for a newly onboarded scanner.
 
 ## Validation Plan
 
@@ -52,13 +51,13 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   2. `npm run typecheck`
   3. `npm run export:web`
 - Reset local Supabase and run auth-backed smoke checks for:
-  1. business join RPC success
-  2. already joined protection
-  3. join blocked after deadline or after start
-  4. scanner request success with seeded QR
-  5. scanner timeout state helper
-  6. result-state handling for at least one non-success scan status
+  1. leave RPC success on future joined event
+  2. leave blocked on active event
+  3. leave blocked when row is not joined
+  4. scan history query returns seeded or generated scan rows
+  5. scanner result tone mapping covers success, duplicate, expired, invalid, inactive
 - Open the local web preview and verify:
   1. `/business/events`
   2. `/business/scanner`
+  3. `/business/history`
 - Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
