@@ -4,17 +4,15 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/post-phase6-custom-domain-cutover-readiness` branch.
-- [x] Re-check the real custom-domain blocker state after hosted live verification turned green.
-- [x] Update `REVIEW.md` for the custom-domain cutover readiness scope.
-- [x] Update `PLAN.md` for the custom-domain readiness slice.
+- [x] Create `feature/post-phase6-custom-domain-delegation-guidance` branch.
+- [x] Re-check the real custom-domain blocker state after the readiness audit landed.
+- [x] Update `REVIEW.md` for the delegation-guidance scope.
+- [x] Update `PLAN.md` for the delegation-guidance slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Check whether production is ready and whether the custom domain can be attached in Vercel.
-- [x] Attach `admin.omaleima.fi` to the Vercel project if production is healthy.
-- [x] Add a replayable custom-domain cutover audit script.
-- [x] Add a deterministic smoke and repo-root QA wrapper for the custom-domain audit.
-- [x] Run lint, typecheck, and the new custom-domain audit smoke.
-- [x] Run the real custom-domain audit and capture the current DNS blocker.
-- [x] Update docs and `PROGRESS.md` with the current DNS instruction and later Supabase cutover order.
+- [x] Confirm whether the Vercel DNS record exists but is still inactive because nameservers are not delegated.
+- [x] Update the custom-domain audit guidance to mention both valid next paths.
+- [x] Run lint, typecheck, and the custom-domain audit smoke again.
+- [x] Run the real custom-domain audit and capture the clarified blocker message.
+- [x] Update docs and `PROGRESS.md` with the nameserver-delegation option.
 - [x] Review the final state and any reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.

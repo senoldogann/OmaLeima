@@ -312,6 +312,13 @@ If `audit:custom-domain-cutover` fails on DNS, follow the exact record it prints
 A admin.omaleima.fi 76.76.21.21
 ```
 
+If you prefer to use Vercel DNS instead of managing the A record at your registrar, delegate the domain to these nameservers first:
+
+```txt
+ns1.vercel-dns.com
+ns2.vercel-dns.com
+```
+
 For the full function-backed security matrix:
 
 ```bash

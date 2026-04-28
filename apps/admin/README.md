@@ -170,6 +170,7 @@ Expected Vercel project setup for the admin app:
 - Current temporary Site URL: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
 - Future custom-domain replacement: `https://admin.omaleima.fi`
 - Current custom-domain DNS instruction: `A admin.omaleima.fi 76.76.21.21`
+- Alternative custom-domain DNS path: delegate the domain to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` so the existing Vercel DNS record becomes active
 
 Preview verification also expects these GitHub repo secrets for `.github/workflows/staging-admin-verification.yml`:
 

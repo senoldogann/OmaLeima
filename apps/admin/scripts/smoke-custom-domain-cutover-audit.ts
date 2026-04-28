@@ -80,6 +80,8 @@ const run = async (): Promise<void> => {
         domain: {
           name: "omaleima.fi",
           configVerifiedAt: null,
+          intendedNameservers: ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
+          nameservers: [],
           verificationRecord: "token",
         },
       }),
@@ -115,6 +117,8 @@ const run = async (): Promise<void> => {
         domain: {
           name: "omaleima.fi",
           configVerifiedAt: null,
+          intendedNameservers: ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
+          nameservers: [],
           verificationRecord: "token",
         },
       }),
@@ -125,7 +129,8 @@ const run = async (): Promise<void> => {
     dnsPendingError = error instanceof Error ? error.message : String(error);
   }
 
-  assertIncludes(dnsPendingError, 'Set DNS record "A admin.omaleima.fi 76.76.21.21"');
+  assertIncludes(dnsPendingError, 'Either set DNS record "A admin.omaleima.fi 76.76.21.21"');
+  assertIncludes(dnsPendingError, "delegate the domain to Vercel nameservers (ns1.vercel-dns.com, ns2.vercel-dns.com)");
 
   const successOutput = runAuditCommand({
     CUSTOM_DOMAIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
@@ -147,6 +152,8 @@ const run = async (): Promise<void> => {
       domain: {
         name: "omaleima.fi",
         configVerifiedAt: 1777395000000,
+        intendedNameservers: ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
+        nameservers: ["ns1.vercel-dns.com", "ns2.vercel-dns.com"],
         verificationRecord: "token",
       },
     }),

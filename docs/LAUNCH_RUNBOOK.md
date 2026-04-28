@@ -69,6 +69,7 @@ Run these checks before a hosted pilot or a real event:
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 - If the linked hosted Supabase project was just created, assume it is empty until `supabase db push --linked` has completed and a direct hosted API probe confirms tables like `profiles` and `clubs` are reachable.
 - The custom domain is now attached in Vercel, but DNS still needs `A admin.omaleima.fi 76.76.21.21` before Supabase Auth can move off the preview URL.
+- A matching Vercel DNS record already exists in the Vercel zone. If you want to use it, delegate the domain to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` instead of managing the A record externally.
 
 ## Custom-domain cutover order
 

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-custom-domain-cutover-readiness`
-- **Scope:** Post-Phase 6 custom-domain cutover readiness: verify the production deployment and custom domain are in a state where Supabase Auth can later move from the preview URL to `admin.omaleima.fi`, while capturing the current DNS blocker in a replayable audit.
+- **Branch:** `feature/post-phase6-custom-domain-delegation-guidance`
+- **Scope:** Post-Phase 6 custom-domain delegation guidance: refine the cutover audit and docs so they distinguish between an external registrar A record and Vercel nameserver delegation, because the Vercel DNS record now exists but is not active yet.
 
 ## Affected Files
 
@@ -25,9 +25,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- `admin.omaleima.fi` is attached to Vercel now, but DNS is still empty; switching Supabase Site URL too early would break auth redirects instead of improving them.
-- The latest production deployment used to be errored, and Vercel refuses domain assignment in that state. We need to keep production readiness and domain readiness coupled in the audit.
-- The team can lose track of whether the remaining blocker is Vercel, DNS, or Supabase dashboard cutover unless the audit names the exact missing step.
+- `admin.omaleima.fi` is attached to Vercel now, but public DNS is still empty; switching Supabase Site URL too early would break auth redirects instead of improving them.
+- A Vercel DNS record for `admin.omaleima.fi` now exists, but it does nothing until the registrar delegates nameservers to Vercel.
+- If the guidance says only “set an A record”, the next operator may miss the equally valid nameserver-delegation path and get stuck in the wrong dashboard.
 
 ## Dependencies
 
@@ -40,15 +40,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Existing Logic Checked
 
 - The production deployment is now `READY`, which removed the earlier Vercel blocker that prevented domain assignment.
-- `admin.omaleima.fi` is now attached to the Vercel project, but Vercel still reports it as misconfigured and asks for `A admin.omaleima.fi 76.76.21.21`.
-- Public DNS for `admin.omaleima.fi` is still empty, so the domain cannot be used for Supabase Auth cutover yet.
+- `admin.omaleima.fi` is now attached to the Vercel project, and a Vercel DNS record `admin A 76.76.21.21` has been created inside the Vercel zone.
+- Public DNS for `admin.omaleima.fi` is still empty because the domain is not delegated to Vercel nameservers yet, so the domain cannot be used for Supabase Auth cutover yet.
 - The current preview URL remains the temporary Supabase Site URL until DNS and Vercel verification finish.
 
 ## Review Outcome
 
-Build the smallest cutover-readiness slice that:
+Build the smallest delegation-guidance slice that:
 
-- captures custom-domain readiness in a replayable audit script
-- proves the audit handles production-not-ready, DNS-pending, and ready states
-- documents the exact current blocker: DNS still needs `A admin.omaleima.fi 76.76.21.21`
-- leaves the actual Supabase Site URL cutover for the moment when the domain resolves and Vercel marks it verified
+- keeps the existing cutover audit and smoke coverage intact
+- updates the audit error to mention both valid next paths: registrar A record or Vercel nameserver delegation
+- documents that a Vercel DNS record already exists but remains inactive until delegation happens
+- leaves the actual Supabase Site URL cutover for the moment when public DNS resolves and Vercel marks the domain verified
