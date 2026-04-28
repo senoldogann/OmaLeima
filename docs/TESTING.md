@@ -246,6 +246,8 @@ Hosted-admin readiness audit:
 ```bash
 npm run qa:hosted-admin-readiness
 npm --prefix apps/admin run audit:hosted-setup
+npm run qa:custom-domain-readiness
+npm --prefix apps/admin run audit:custom-domain-cutover
 ```
 
 `qa:hosted-admin-readiness` currently does three things in order:
@@ -253,6 +255,12 @@ npm --prefix apps/admin run audit:hosted-setup
 1. `npm --prefix apps/admin run lint`
 2. `npm --prefix apps/admin run typecheck`
 3. `npm --prefix apps/admin run smoke:hosted-setup-audit`
+
+`qa:custom-domain-readiness` currently does three things in order:
+
+1. `npm --prefix apps/admin run lint`
+2. `npm --prefix apps/admin run typecheck`
+3. `npm --prefix apps/admin run smoke:custom-domain-cutover-audit`
 
 The real `audit:hosted-setup` command is read-only and checks:
 
@@ -262,6 +270,13 @@ The real `audit:hosted-setup` command is read-only and checks:
 - required Preview env vars in Vercel
 - required Production env vars in Vercel
 - required GitHub Actions repo secrets
+
+The real `audit:custom-domain-cutover` command is read-only and checks:
+
+- latest production deployment is `READY`
+- `admin.omaleima.fi` is attached to the Vercel project
+- Vercel domain config is no longer marked misconfigured
+- public DNS resolves to the Vercel-recommended record
 
 Important hosted caveat:
 
@@ -289,6 +304,12 @@ If it fails with missing GitHub Actions secrets, add them with:
 gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
 gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
 gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'
+```
+
+If `audit:custom-domain-cutover` fails on DNS, follow the exact record it prints. The current expected record is:
+
+```txt
+A admin.omaleima.fi 76.76.21.21
 ```
 
 For the full function-backed security matrix:

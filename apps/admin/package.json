@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "audit:custom-domain-cutover": "tsx scripts/audit-custom-domain-cutover.ts",
     "audit:hosted-setup": "tsx scripts/audit-hosted-setup.ts",
     "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",
@@ -18,6 +19,7 @@
     "smoke:club-claims": "tsx scripts/smoke-club-claims.ts",
     "smoke:club-events": "tsx scripts/smoke-club-events.ts",
     "smoke:club-rewards": "tsx scripts/smoke-club-rewards.ts",
+    "smoke:custom-domain-cutover-audit": "tsx scripts/smoke-custom-domain-cutover-audit.ts",
     "smoke:department-tags": "tsx scripts/smoke-department-tags.ts",
     "smoke:hosted-setup-audit": "tsx scripts/smoke-hosted-setup-audit.ts",
     "smoke:hosted-admin-access": "tsx scripts/smoke-hosted-admin-access.ts",

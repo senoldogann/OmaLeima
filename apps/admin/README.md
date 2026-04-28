@@ -34,11 +34,13 @@ npm run build
 npm run smoke:auth
 npm run smoke:business-applications
 npm run smoke:browser-admin-review
+npm run audit:custom-domain-cutover
 npm run audit:hosted-setup
 npm run check:hosted-env
 npm run smoke:club-department-tags
 npm run smoke:club-events
 npm run smoke:club-claims
+npm run smoke:custom-domain-cutover-audit
 npm run smoke:department-tags
 npm run smoke:hosted-admin-access
 npm run smoke:hosted-setup-audit
@@ -89,6 +91,12 @@ Repo root hosted readiness audit entry point:
 npm run qa:hosted-admin-readiness
 ```
 
+Repo root custom-domain readiness entry point:
+
+```bash
+npm run qa:custom-domain-readiness
+```
+
 Hosted env preflight:
 
 ```bash
@@ -114,10 +122,12 @@ npm exec playwright install chromium
 
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
 `npm run smoke:browser-admin-review` expects the local Supabase stack, the local admin app, the local function server, and the local Docker-backed Supabase DB container to be running so it can seed pending applications, sign in through the real `/login` page, click approve and reject in the browser, and verify the resulting DB state.
+`npm run audit:custom-domain-cutover` expects Vercel CLI auth and a linked `apps/admin/.vercel/project.json`. It is read-only and checks whether the latest production deployment is ready, whether `admin.omaleima.fi` is attached and verified in Vercel, and whether DNS now matches the Vercel-recommended record before Supabase Auth is switched away from the temporary preview URL.
 `npm run audit:hosted-setup` expects Vercel CLI auth, GitHub CLI auth, a linked `apps/admin/.vercel/project.json`, the required Preview and Production Vercel env names, and the required GitHub Actions repo secrets. It is read-only and meant to answer “are we actually ready to verify a hosted admin deployment from this workstation?”
 `npm run check:hosted-env` always validates admin public env presence and URL shape. When `VERCEL=1` or `REQUIRE_HOSTED_ADMIN_ENV=1`, it additionally requires an `https` Supabase URL, rejects localhost/127.0.0.1 targets, and rejects obvious example publishable-key placeholders.
 `npm run smoke:hosted-admin-access` expects `ADMIN_APP_BASE_URL`, `STAGING_ADMIN_EMAIL`, and `STAGING_ADMIN_PASSWORD`. It does not seed data or touch review mutations; it signs in through the real login page, checks anonymous `/admin` redirect behavior, opens the admin dashboard, visits the three current admin routes, and signs out again.
 `npm run smoke:hosted-setup-audit` is the deterministic fixture-backed smoke for the audit script itself. It verifies one missing-link failure and one fully-ready success path without depending on a real linked project or real hosted secrets.
+`npm run smoke:custom-domain-cutover-audit` is the deterministic fixture-backed smoke for the custom-domain audit itself. It verifies one production-not-ready failure, one DNS-pending failure, and one fully-ready success path without depending on the live domain state.
 `npm run smoke:club-department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary organizer-club and club-staff fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
 `npm run smoke:club-claims` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff, reward-tier, stamp, and claim fixtures can be seeded and cleaned up around the route test.
@@ -159,6 +169,7 @@ Expected Vercel project setup for the admin app:
 - If Vercel project protection reports SSO for preview deployments, anonymous `curl` checks and the hosted verification workflow will still return `401` until you either disable SSO protection for the project or switch the verification path to an allowed bypass model.
 - Current temporary Site URL: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
 - Future custom-domain replacement: `https://admin.omaleima.fi`
+- Current custom-domain DNS instruction: `A admin.omaleima.fi 76.76.21.21`
 
 Preview verification also expects these GitHub repo secrets for `.github/workflows/staging-admin-verification.yml`:
 
@@ -177,6 +188,7 @@ gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
 gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
 gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'
 npm run audit:hosted-setup
+npm run audit:custom-domain-cutover
 ```
 
 ## Current routes
