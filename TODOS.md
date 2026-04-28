@@ -4,15 +4,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/native-push-device-smoke-readiness` branch.
-- [x] Update `REVIEW.md` for the native push device-smoke scope.
-- [x] Update `PLAN.md` for the diagnostics and dev-client slice.
+- [x] Create `feature/native-simulator-smoke-pass` branch.
+- [x] Update `REVIEW.md` for the simulator and emulator smoke scope.
+- [x] Update `PLAN.md` for the pre-device verification slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Inspect the current mobile push registration, profile surface, and Expo runtime setup.
-- [x] Add the minimal Expo development-build alignment needed for device smoke readiness.
-- [x] Add provider-owned push diagnostics capture and expose it on the student profile route.
-- [x] Add a focused mobile audit and root QA wrapper for native push device readiness.
-- [x] Update docs and plan notes so the current state stays honest about dev builds and physical-device requirements.
+- [x] Discover and use the relevant Expo / iOS / Android plugin capabilities available in this environment.
+- [x] Add the smallest repo-owned simulator/emulator readiness audit and root QA wrapper if needed.
+- [x] Tighten docs and runbook so the remaining physical-device step becomes short and explicit.
 - [x] Run focused validation.
-- [x] Get a reviewer pass.
+- [x] Get a reviewer pass if code or audit logic changes.
 - [x] Update `PROGRESS.md` and finish the branch handoff package.
