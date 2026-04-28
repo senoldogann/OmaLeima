@@ -40,6 +40,34 @@ const readProjectId = (): string | null => {
   return projectId;
 };
 
+const hasGrantedNotificationPermission = (status: Notifications.NotificationPermissionsStatus): boolean =>
+  status.granted || status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+
+export const hasGrantedNotificationPermissionAsync = async (): Promise<boolean> => {
+  if (Platform.OS === "web") {
+    return false;
+  }
+
+  const permissions = await Notifications.getPermissionsAsync();
+
+  return hasGrantedNotificationPermission(permissions);
+};
+
+export const presentLocalNotificationAsync = async (
+  content: Notifications.NotificationContentInput
+): Promise<string | null> => {
+  const hasPermission = await hasGrantedNotificationPermissionAsync();
+
+  if (!hasPermission) {
+    return null;
+  }
+
+  return Notifications.scheduleNotificationAsync({
+    content,
+    trigger: null,
+  });
+};
+
 export const preparePushTokenAsync = async (): Promise<PushPreparationResult> => {
   if (Platform.OS === "web") {
     return {

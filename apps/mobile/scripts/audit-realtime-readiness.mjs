@@ -15,6 +15,8 @@ const leaderboardScreenPath = path.join(mobileSourceRoot, "app", "student", "lea
 const activeEventScreenPath = path.join(mobileSourceRoot, "app", "student", "active-event.tsx");
 const rewardsScreenPath = path.join(mobileSourceRoot, "app", "student", "rewards.tsx");
 const eventDetailScreenPath = path.join(mobileSourceRoot, "app", "student", "events", "[eventId].tsx");
+const appProvidersPath = path.join(mobileSourceRoot, "providers", "app-providers.tsx");
+const notificationBridgePath = path.join(mobileSourceRoot, "features", "notifications", "student-reward-notifications.ts");
 const plannedRealtimeDir = path.join(mobileSourceRoot, "features", "realtime");
 const realtimeFeaturePath = path.join(plannedRealtimeDir, "student-realtime.ts");
 
@@ -127,6 +129,8 @@ const main = async () => {
   const activeEventScreenSource = await readUtf8Async(activeEventScreenPath);
   const rewardsScreenSource = await readUtf8Async(rewardsScreenPath);
   const eventDetailScreenSource = await readUtf8Async(eventDetailScreenPath);
+  const appProvidersSource = await readUtf8Async(appProvidersPath);
+  const notificationBridgeSource = await readUtf8Async(notificationBridgePath);
   const realtimeFeatureSource = realtimeFeatureExists ? await readUtf8Async(realtimeFeaturePath) : "";
   const qrPollingBlock = extractBlock(qrSource, "export const useGenerateQrTokenQuery", [
     "export const useQrSvgQuery",
@@ -174,6 +178,14 @@ const main = async () => {
   const sessionProviderUsesOnlyAuthSubscription =
     sessionProviderSource.includes("onAuthStateChange") &&
     !isRealtimeLine(sessionProviderSource);
+  const rewardOverviewOwnedByProvider =
+    appProvidersSource.includes("StudentRewardNotificationBridge") &&
+    notificationBridgeSource.includes("useStudentRewardOverviewRealtime") &&
+    notificationBridgeSource.includes("useStudentRewardOverviewInventoryRealtime") &&
+    !rewardsScreenSource.includes("useStudentRewardProgressRealtime") &&
+    !rewardsScreenSource.includes("useStudentRewardInventoryRealtime") &&
+    !activeEventScreenSource.includes("useStudentRewardProgressRealtime") &&
+    !activeEventScreenSource.includes("useStudentRewardInventoryRealtime");
   const realtimeFoundationWired =
     realtimeFeatureSource.includes('table: "leaderboard_updates"') &&
     realtimeFeatureSource.includes('table: "stamps"') &&
@@ -186,15 +198,13 @@ const main = async () => {
     realtimeFeatureSource.includes("student-leaderboard-catch-up") &&
     realtimeFeatureSource.includes("student-reward-progress-catch-up") &&
     leaderboardScreenSource.includes("useStudentEventLeaderboardRealtime") &&
-    activeEventScreenSource.includes("useStudentRewardProgressRealtime") &&
-    rewardsScreenSource.includes("useStudentRewardProgressRealtime");
+    rewardOverviewOwnedByProvider;
   const sharedInventoryRealtimeWired =
     realtimeFeatureSource.includes('table: "reward_tiers"') &&
     realtimeFeatureSource.includes("studentEventDetailQueryKey") &&
     realtimeFeatureSource.includes("student-reward-inventory-catch-up") &&
     realtimeFeatureSource.includes("payloadTouchesTrackedEvents") &&
-    activeEventScreenSource.includes("useStudentRewardInventoryRealtime") &&
-    rewardsScreenSource.includes("useStudentRewardInventoryRealtime") &&
+    rewardOverviewOwnedByProvider &&
     eventDetailScreenSource.includes("useStudentRewardInventoryRealtime");
 
   if (!qrUsesPolling) {

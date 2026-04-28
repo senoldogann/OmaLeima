@@ -1,22 +1,17 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
-import { useStudentRewardInventoryRealtime, useStudentRewardProgressRealtime } from "@/features/realtime/student-realtime";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
-import { useActiveAppState } from "@/features/qr/student-qr";
 
 export default function StudentRewardsScreen() {
   const router = useRouter();
-  const isFocused = useIsFocused();
-  const isAppActive = useActiveAppState();
   const { session } = useSession();
   const studentId = session?.user.id ?? null;
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
@@ -24,23 +19,9 @@ export default function StudentRewardsScreen() {
     isEnabled: studentId !== null,
   });
 
-  useStudentRewardProgressRealtime({
-    eventId: null,
-    studentId: studentId ?? "",
-    isEnabled: studentId !== null && isFocused && isAppActive,
-  });
-
   const events = useMemo(() => rewardOverviewQuery.data?.events ?? [], [rewardOverviewQuery.data]);
-  const trackedEventIds = useMemo(() => events.map((event) => event.id), [events]);
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
   const claimableEventCount = events.filter((event) => event.claimableTierCount > 0).length;
-
-  useStudentRewardInventoryRealtime({
-    trackedEventIds,
-    studentId: studentId ?? "",
-    detailEventId: null,
-    isEnabled: studentId !== null && isFocused && isAppActive && trackedEventIds.length > 0,
-  });
 
   return (
     <AppScreen>

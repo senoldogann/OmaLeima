@@ -5,33 +5,35 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/realtime-inventory-followup`
-- **Goal:** Close the next highest-value freshness gap by making shared reward inventory updates visible without waiting for manual refetches.
+- **Branch:** `feature/realtime-unlock-notification-followup`
+- **Goal:** Ship the smallest student reward notification behavior that works with the current Realtime foundation and does not overclaim remote push support yet.
 
 ## Architectural Decisions
 
-- Keep building inside the existing `apps/mobile/src/features/realtime` module instead of spreading another layer of screen-local subscriptions.
-- Continue using invalidation-based Realtime instead of cache patching.
-- Add `reward_tiers` inventory invalidation for tracked event ids only.
-- Keep subscriptions screen-scoped and foreground-aware, with the existing catch-up invalidation pattern when the app or tab returns.
+- Build the behavior inside a dedicated mobile notifications feature module instead of scattering ad hoc effects across multiple student screens.
+- Use the existing student reward overview as the single source of truth for unlock and stock-change detection.
+- Keep the notification bridge app-level so student reward notifications can fire outside the rewards tab.
+- Present local device notifications only when the app already has notification permission; do not auto-prompt again from this slice.
+- Seed first-load state without backfilling old unlocks so the bridge does not spam already claimable rewards on initial hydration.
 
 ## Alternatives Considered
 
-- Leaving shared reward inventory on snapshots until a later notification slice:
-  - rejected because it already creates visible stale states such as out-of-stock lag after another student claims the last reward
-- Adding a global unfiltered `reward_tiers` subscription with blind invalidation:
-  - rejected because even the mobile first cut should stay scoped to the currently visible student event set
-- Bundling reward unlock notification UX into the same change:
-  - rejected because that is a separate product and behavior slice
+- Adding backend `REWARD_UNLOCKED` push delivery now:
+  - rejected because it widens the slice into new Edge Function behavior, notification rows, and device-level delivery testing
+- Adding a full mobile notification center route now:
+  - rejected because the user already asked to defer the broader UI pass
+- Detecting unlocks separately on each reward screen:
+  - rejected because duplicate mounted screens would make de-duplication and future maintenance worse
 
 ## Edge Cases
 
-- Rewards overview can cover multiple events, so the inventory hook must track a set of visible event ids.
-- Event detail uses a separate query key from rewards overview/event progress and must be invalidated too.
-- `reward_tiers` changes can be inserts, updates, deletes, disables, or inventory count changes; the callback should treat any matching event change as freshness-relevant.
-- Notification state is still separate from inventory freshness, so docs must not imply reward-unlocked push UX is now shipped.
+- Web preview must not fail just because local device notifications are unavailable there.
+- Simulator and Expo Go behavior differ from physical-device remote push behavior, so this slice should stay honest about being local notification behavior first.
+- Reward overview can refetch with unchanged data; notifications must only fire on real transition boundaries.
+- A reward can become unavailable because another student claimed the last inventory slot, so stock-change detection must use the same shared inventory state the UI already shows.
 
 ## Validation Plan
 
-- Run `apps/mobile` lint, typecheck, the Realtime audit, and `export:web`.
-- Add a reviewer pass because event-scoped invalidation mistakes and audit overclaims are easy to miss here too.
+- Run `apps/mobile` lint, typecheck, and `export:web`.
+- Add or update a small repo-owned audit for the reward notification bridge if the code introduces behavior that could otherwise be overclaimed in docs.
+- Get a reviewer pass because duplicate notification and hidden spam regressions are easy to miss.

@@ -16,7 +16,12 @@ type RealtimeHookParams = {
 };
 
 type RewardProgressRealtimeParams = {
-  eventId: string | null;
+  studentId: string;
+  isEnabled: boolean;
+};
+
+type RewardProgressEventRealtimeParams = {
+  eventId: string;
   studentId: string;
   isEnabled: boolean;
 };
@@ -25,6 +30,12 @@ type RewardInventoryRealtimeParams = {
   trackedEventIds: string[];
   studentId: string;
   detailEventId: string | null;
+  isEnabled: boolean;
+};
+
+type RewardInventoryOverviewRealtimeParams = {
+  trackedEventIds: string[];
+  studentId: string;
   isEnabled: boolean;
 };
 
@@ -86,31 +97,28 @@ const invalidateLeaderboardAsync = async (
   });
 };
 
+const invalidateRewardOverviewAsync = async (
+  queryClient: QueryClient,
+  studentId: string
+): Promise<void> => {
+  await queryClient.invalidateQueries({
+    queryKey: studentRewardOverviewQueryKey(studentId),
+  });
+};
+
 const invalidateRewardProgressAsync = async (
   queryClient: QueryClient,
   studentId: string,
-  eventId: string | null
+  eventId: string
 ): Promise<void> => {
-  const invalidations = [
+  await Promise.all([
     queryClient.invalidateQueries({
-      queryKey: studentRewardOverviewQueryKey(studentId),
+      queryKey: studentRewardEventQueryKey(eventId, studentId),
     }),
-  ];
-
-  if (eventId !== null) {
-    invalidations.push(
-      queryClient.invalidateQueries({
-        queryKey: studentRewardEventQueryKey(eventId, studentId),
-      })
-    );
-    invalidations.push(
-      queryClient.invalidateQueries({
-        queryKey: studentEventStampCountQueryKey(eventId, studentId),
-      })
-    );
-  }
-
-  await Promise.all(invalidations);
+    queryClient.invalidateQueries({
+      queryKey: studentEventStampCountQueryKey(eventId, studentId),
+    }),
+  ]);
 };
 
 const subscribeToChannel = (
@@ -205,11 +213,7 @@ const invalidateRewardInventoryAsync = async (
   eventIds: string[],
   detailEventId: string | null
 ): Promise<void> => {
-  const invalidations: Promise<void>[] = [
-    queryClient.invalidateQueries({
-      queryKey: studentRewardOverviewQueryKey(studentId),
-    }),
-  ];
+  const invalidations: Promise<void>[] = [];
 
   eventIds.forEach((eventId) => {
     invalidations.push(
@@ -287,8 +291,7 @@ export const useStudentEventLeaderboardRealtime = ({
   }, [eventId, isEnabled, queryClient, studentId]);
 };
 
-export const useStudentRewardProgressRealtime = ({
-  eventId,
+export const useStudentRewardOverviewRealtime = ({
   studentId,
   isEnabled,
 }: RewardProgressRealtimeParams): void => {
@@ -307,19 +310,99 @@ export const useStudentRewardProgressRealtime = ({
 
     hasEnabledOnce.current = true;
 
-    const scopeEventId = eventId ?? "all-events";
-
     if (resumedIntoForeground) {
       handleAsyncInvalidation(
-        invalidateRewardProgressAsync(queryClient, studentId, eventId),
-        "student-reward-progress-catch-up",
-        scopeEventId,
+        invalidateRewardOverviewAsync(queryClient, studentId),
+        "student-reward-overview-catch-up",
+        "all-events",
         studentId
       );
     }
 
     const channel = supabase
-      .channel(createChannelName("student-reward-progress", scopeEventId, studentId))
+      .channel(createChannelName("student-reward-overview", "all-events", studentId))
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stamps",
+          filter: `student_id=eq.${studentId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<StampRealtimeRow>) => {
+          if (!stampPayloadAffectsRewardProgress(payload, null)) {
+            return;
+          }
+
+          handleAsyncInvalidation(
+            invalidateRewardOverviewAsync(queryClient, studentId),
+            "student-reward-overview",
+            "all-events",
+            studentId
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "reward_claims",
+          filter: `student_id=eq.${studentId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<RewardClaimRealtimeRow>) => {
+          if (!rewardClaimPayloadAffectsRewardProgress(payload, null)) {
+            return;
+          }
+
+          handleAsyncInvalidation(
+            invalidateRewardOverviewAsync(queryClient, studentId),
+            "student-reward-overview",
+            "all-events",
+            studentId
+          );
+        }
+      );
+
+    subscribeToChannel(channel, "student-reward-overview", "all-events", studentId);
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isEnabled, queryClient, studentId]);
+};
+
+export const useStudentRewardProgressRealtime = ({
+  eventId,
+  studentId,
+  isEnabled,
+}: RewardProgressEventRealtimeParams): void => {
+  const queryClient = useQueryClient();
+  const hasEnabledOnce = useRef<boolean>(false);
+  const previousEnabled = useRef<boolean>(false);
+
+  useEffect(() => {
+    const resumedIntoForeground = isEnabled && !previousEnabled.current && hasEnabledOnce.current;
+
+    previousEnabled.current = isEnabled;
+
+    if (!isEnabled) {
+      return;
+    }
+
+    hasEnabledOnce.current = true;
+
+    if (resumedIntoForeground) {
+      handleAsyncInvalidation(
+        invalidateRewardProgressAsync(queryClient, studentId, eventId),
+        "student-reward-progress-catch-up",
+        eventId,
+        studentId
+      );
+    }
+
+    const channel = supabase
+      .channel(createChannelName("student-reward-progress", eventId, studentId))
       .on(
         "postgres_changes",
         {
@@ -336,7 +419,7 @@ export const useStudentRewardProgressRealtime = ({
           handleAsyncInvalidation(
             invalidateRewardProgressAsync(queryClient, studentId, eventId),
             "student-reward-progress",
-            scopeEventId,
+            eventId,
             studentId
           );
         }
@@ -357,18 +440,97 @@ export const useStudentRewardProgressRealtime = ({
           handleAsyncInvalidation(
             invalidateRewardProgressAsync(queryClient, studentId, eventId),
             "student-reward-progress",
-            scopeEventId,
+            eventId,
             studentId
           );
         }
       );
 
-    subscribeToChannel(channel, "student-reward-progress", scopeEventId, studentId);
+    subscribeToChannel(channel, "student-reward-progress", eventId, studentId);
 
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [eventId, isEnabled, queryClient, studentId]);
+};
+
+export const useStudentRewardOverviewInventoryRealtime = ({
+  trackedEventIds,
+  studentId,
+  isEnabled,
+}: RewardInventoryOverviewRealtimeParams): void => {
+  const queryClient = useQueryClient();
+  const hasEnabledOnce = useRef<boolean>(false);
+  const previousEnabled = useRef<boolean>(false);
+  const normalizedTrackedEventIds = useMemo(() => dedupeTrackedEventIds(trackedEventIds), [trackedEventIds]);
+  const trackedIdsKey = normalizedTrackedEventIds.join(",");
+
+  useEffect(() => {
+    const resumedIntoForeground = isEnabled && !previousEnabled.current && hasEnabledOnce.current;
+
+    previousEnabled.current = isEnabled;
+
+    if (!isEnabled || normalizedTrackedEventIds.length === 0) {
+      return;
+    }
+
+    hasEnabledOnce.current = true;
+
+    if (resumedIntoForeground) {
+      handleAsyncInvalidation(
+        invalidateRewardOverviewAsync(queryClient, studentId),
+        "student-reward-overview-inventory-catch-up",
+        trackedIdsKey,
+        studentId
+      );
+    }
+
+    const trackedEventIdChunks = chunkEventIds(normalizedTrackedEventIds);
+    const channels = trackedEventIdChunks.map((eventIds, index) => {
+      const channel = supabase.channel(
+        createChannelName("student-reward-overview-inventory", `${trackedIdsKey}:${index}`, studentId)
+      );
+
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*" as const,
+          schema: "public" as const,
+          table: "reward_tiers" as const,
+          filter: createEventFilter(eventIds),
+        },
+        (payload: RealtimePostgresChangesPayload<RewardTierRealtimeRow>) => {
+          const affectedEventIds = payloadTouchesTrackedEvents(payload, normalizedTrackedEventIds);
+
+          if (affectedEventIds.length === 0) {
+            return;
+          }
+
+          handleAsyncInvalidation(
+            invalidateRewardOverviewAsync(queryClient, studentId),
+            "student-reward-overview-inventory",
+            affectedEventIds.join(","),
+            studentId
+          );
+        }
+      );
+
+      subscribeToChannel(
+        channel,
+        "student-reward-overview-inventory",
+        `${trackedIdsKey}:${index}`,
+        studentId
+      );
+
+      return channel;
+    });
+
+    return () => {
+      channels.forEach((channel) => {
+        void supabase.removeChannel(channel);
+      });
+    };
+  }, [isEnabled, normalizedTrackedEventIds, queryClient, studentId, trackedIdsKey]);
 };
 
 export const useStudentRewardInventoryRealtime = ({

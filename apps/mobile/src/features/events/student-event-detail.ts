@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type UseMutationResult, type Use
 import { supabase } from "@/lib/supabase";
 
 import { studentEventsQueryKey } from "@/features/events/student-events";
+import { studentRewardOverviewQueryKey } from "@/features/rewards/student-rewards";
 import type {
   EventRegistrationState,
   EventRegistrationStatus,
@@ -279,6 +280,9 @@ export const useJoinEventMutation = (): UseMutationResult<JoinEventResult, Error
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: studentEventsQueryKey(variables.studentId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: studentRewardOverviewQueryKey(variables.studentId),
         }),
         queryClient.invalidateQueries({
           queryKey: studentEventDetailQueryKey(variables.eventId, variables.studentId),
