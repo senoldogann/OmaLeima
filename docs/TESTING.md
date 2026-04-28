@@ -180,6 +180,36 @@ The browser smoke itself verifies:
 - resulting `business_applications` DB state after each click path
 - cleanup of temporary applications, approved business rows, and related audit rows
 
+## Mobile Realtime readiness audit
+
+Run from repo root:
+
+```bash
+npm run qa:mobile-realtime-readiness
+```
+
+This focused audit currently does three things in order:
+
+1. `npm --prefix apps/mobile run lint`
+2. `npm --prefix apps/mobile run typecheck`
+3. `npm --prefix apps/mobile run audit:realtime-readiness`
+
+The audit is intentionally read-only. It verifies the current mobile repository state still matches the explicitly deferred Realtime decision:
+
+- the QR screen still refreshes tokens through polling
+- the session provider still only subscribes to auth state changes
+- the mobile source tree still has no `supabase.channel(...)` or `postgres_changes` usage
+- the planned `apps/mobile/src/features/realtime` area has not landed yet
+
+Expected success output today:
+
+- `mobile-realtime-state:DEFERRED`
+- `leaderboard-mode:query-snapshot`
+- `stamp-mode:query-snapshot`
+- `qr-mode:polling-refresh`
+
+If a future slice starts shipping actual client Realtime listeners, this audit should fail until its expected-state logic and the surrounding docs are updated.
+
 ## Hosted admin verification
 
 For preview, staging, or production-like hosted checks:

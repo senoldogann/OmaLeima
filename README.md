@@ -37,6 +37,12 @@ Focused browser click-path entry point for seeded admin login plus business appl
 npm run qa:browser-admin-review
 ```
 
+Focused mobile Realtime readiness audit:
+
+```bash
+npm run qa:mobile-realtime-readiness
+```
+
 Hosted admin verification entry point for preview or staging URLs:
 
 ```bash

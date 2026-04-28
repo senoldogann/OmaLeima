@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/scanner-contract-hardening`
-- **Scope:** Tighten the QR scanner contract between the mobile business flow and the `scan-qr` Edge Function, remove a dead backend branch, and document the IP header trust assumption without reopening broad UI work.
+- **Branch:** `feature/realtime-readiness-audit`
+- **Scope:** Audit the current mobile Realtime state against the master plan, make the current deferred decision explicit, and add a repo-owned command that can tell future agents whether mobile Realtime is still missing or has started to land.
 
 ## Affected Files
 
@@ -14,37 +14,39 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/scanner/types.ts`
-- `apps/mobile/src/features/scanner/scan-transport.ts`
-- `apps/mobile/src/app/business/scanner.tsx`
-- `supabase/functions/scan-qr/index.ts`
-- `supabase/functions/_shared/http.ts`
-- `apps/admin/scripts/smoke-qr-security.ts`
+- `README.md`
+- `docs/TESTING.md`
+- `LEIMA_APP_MASTER_PLAN.md`
+- `apps/mobile/README.md`
+- `package.json`
+- `tests/run-mobile-realtime-readiness.mjs`
+- `apps/mobile/package.json`
+- `apps/mobile/scripts/audit-realtime-readiness.mjs`
 
 ## Risks
 
-- The mobile scanner currently trusts any backend `status` string that looks shaped correctly, so contract drift can silently leak unsupported states into the UI.
-- The business scanner title/detail maps must stay exhaustive once the mobile union expands.
-- The `scan-qr` dead conditional is low risk but easy to miss if we do not re-run the existing QR security smoke after touching the function.
+- The master plan explicitly promises Supabase Realtime for leaderboard and stamp updates, but the current mobile app may still be query-only. If we do not document that gap clearly, future agents can mistake "not implemented yet" for "implemented somewhere else."
+- An audit that is too clever can become brittle when the eventual Realtime slice lands. The command should detect the current state clearly without overfitting to one file layout.
+- This slice must not reopen the postponed full UI pass. The user already said the broad visual redo will happen later.
 
 ## Dependencies
 
-- Existing `scan-qr` Edge Function behavior and the phase-6 QR security smoke that already verifies `INVALID_QR`, `INVALID_QR_TYPE`, `QR_EXPIRED`, and venue mismatch paths.
-- The mobile business scanner flow under `apps/mobile/src/app/business/scanner.tsx`.
-- Existing type-safe QR transport code in `apps/mobile/src/features/scanner`.
+- The current student mobile data flows in `apps/mobile/src/features/leaderboard`, `apps/mobile/src/features/qr`, and `apps/mobile/src/providers`.
+- The master-plan sections that describe `leaderboard_updates`, stamp update pings, and the planned `apps/mobile/src/features/realtime` area.
+- Existing repo QA conventions where focused audits get a package-level command plus an optional root wrapper.
 
 ## Existing Logic Checked
 
-- `scan-qr` can return `INVALID_QR_TYPE`, `NOT_BUSINESS_STAFF`, and `BUSINESS_CONTEXT_REQUIRED`, but the mobile scanner union does not currently include all of them.
-- `requestScanQrAsync` maps any shaped error response into a scan result even when the status is not part of the intended business scanner contract.
-- `getClientIp` reads `x-forwarded-for` first, then `cf-connecting-ip` and `x-real-ip`, but the trust boundary is not documented.
-- The dead conditional in `scan-qr` is still present and easy to remove without behavioral risk.
+- `apps/mobile/src/providers/session-provider.tsx` only subscribes to auth state changes; it does not subscribe to database changes.
+- `apps/mobile/src/features/qr/student-qr.ts` uses controlled polling via `refetchInterval` for QR rotation.
+- `apps/mobile/src/features/leaderboard/student-leaderboard.ts` loads leaderboard snapshots through plain React Query fetches with no Realtime channel or refetch cadence.
+- The master plan still describes `leaderboard_updates` as a Realtime ping path and names `apps/mobile/src/features/realtime` as an expected output for the Realtime agent.
 
 ## Review Outcome
 
-Build the smallest scanner hardening slice that:
+Build the smallest Realtime-readiness slice that:
 
-- makes the mobile business scanner contract explicit and exhaustive
-- rejects unsupported backend statuses instead of silently treating them as valid scan results
-- removes the dead backend status branch
-- adds a short trust note around platform-managed forwarding headers
+- adds a deterministic repo-owned audit command for the current mobile Realtime state
+- makes the current deferred-versus-implemented decision explicit in the repo docs and plan notes
+- avoids pretending the planned Realtime slice is already done
+- leaves the broader UI redesign explicitly out of scope

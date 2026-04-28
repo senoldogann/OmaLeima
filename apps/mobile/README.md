@@ -19,6 +19,7 @@ npx expo start
 npm run lint
 npm run typecheck
 npm run export:web
+npm run audit:realtime-readiness
 ```
 
 ## Current scope
@@ -30,11 +31,22 @@ npm run export:web
 - Push permission and Expo token preparation helper in `src/lib/push.ts`
 - Google OAuth flow in `src/lib/auth.ts` and `src/app/auth/callback.tsx`
 - Native session persistence via `expo-secure-store`
+- QR token rotation currently uses controlled polling
+- Leaderboard and stamp refresh still use query snapshots, not client Realtime subscriptions yet
 
-## Next planned slice
+## Realtime note
 
-- Real event queries
-- `register-device-token` integration after native push testing
+The master plan still includes a dedicated mobile Realtime slice. The current repository state is intentionally smaller:
+
+- QR rotation already refreshes through polling in `src/features/qr/student-qr.ts`
+- mobile leaderboard and stamp progress still load through query fetches
+- no `src/features/realtime` client subscription layer has landed yet
+
+Use this command to confirm that state before starting a Realtime implementation slice:
+
+```bash
+npm run audit:realtime-readiness
+```
 
 ## OAuth setup notes
 
