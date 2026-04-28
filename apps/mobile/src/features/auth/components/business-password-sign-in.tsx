@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 
 import { useRouter } from "expo-router";
 
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { fetchSessionAccessAsync } from "@/features/auth/session-access";
 import { supabase } from "@/lib/supabase";
 
@@ -89,7 +90,11 @@ export const BusinessPasswordSignIn = () => {
       <Pressable
         disabled={isLoading || email.trim().length === 0 || password.length === 0}
         onPress={handlePress}
-        style={[styles.button, isLoading ? styles.disabledButton : null]}
+        style={({ pressed }) => [
+          styles.button,
+          isLoading ? styles.disabledButton : null,
+          pressed ? styles.buttonPressed : null,
+        ]}
       >
         {isLoading ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
         <Text style={styles.buttonText}>{isLoading ? "Signing in..." : "Sign in with email"}</Text>
@@ -107,51 +112,57 @@ export const BusinessPasswordSignIn = () => {
 const styles = StyleSheet.create({
   button: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
     flexDirection: "row",
     gap: 10,
     justifyContent: "center",
     minHeight: 46,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
+  },
+  buttonPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   buttonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   container: {
-    gap: 10,
+    gap: 12,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.8,
   },
   errorText: {
-    color: "#FCA5A5",
+    color: "#FFC5C1",
     fontSize: 12,
     lineHeight: 18,
   },
   fieldGroup: {
-    gap: 6,
+    gap: 7,
   },
   helperText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 12,
     lineHeight: 18,
   },
   input: {
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 18,
     borderWidth: 1,
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   label: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },

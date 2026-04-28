@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
@@ -87,20 +88,22 @@ export default function StudentRewardsScreen() {
 
 const styles = StyleSheet.create({
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },

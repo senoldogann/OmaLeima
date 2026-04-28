@@ -5,40 +5,36 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `bug/supabase-auth-cutover-hardening`
-- **Goal:** Harden the new hosted Supabase auth cutover apply flow so it is safe under review findings and explicitly keeps the custom-domain work parked until later.
+- **Branch:** `feature/mobile-glass-design-foundation`
+- **Goal:** Create a shared mobile visual foundation that gives the student app an Apple-like glass feel on iOS, a strong Android/web fallback, and playful but controlled motion.
 
 ## Architectural Decisions
 
-- Keep the existing read/write command shape, but harden the shared helper under it.
-- Preserve extra existing redirect URLs; only guarantee the required ones and change `site_url`.
-- Add retries with warnings for transient hosted GET/PATCH failures and for read-after-write verification lag.
-- Treat two site URL states as valid:
-  - preview-mode: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
-  - custom-domain-mode: `https://admin.omaleima.fi`
-- Require explicit target modes in the new command:
-  - `preview`
-  - `custom-domain`
-- Require `custom-domain` apply to pass the custom-domain readiness audit first.
+- Put the main styling logic into shared mobile primitives instead of hand-tuning each screen separately.
+- Use native `expo-glass-effect` where runtime support exists, but always wrap it in a fallback surface so Android and web stay intentional.
+- Follow Apple guidance: keep the strongest glass treatment for navigation, controls, and highlighted chrome; keep content cards translucent but calmer.
+- Use lightweight mount and emphasis motion that works in Expo web export without depending on device-only interactions.
+- Improve the student tabs visually in the same slice so the app shell matches the new card language.
 
 ## Alternatives Considered
 
-- Leaving the first apply version as-is:
-  - rejected because the reviewer found concrete correctness risks
-- Stripping all extra redirect URLs to enforce a strict canonical list:
-  - rejected because we do not want the cutover helper to silently broaden its blast radius
-- Continuing domain work now:
-  - rejected because the user explicitly wants domain purchase and final cutover to happen last
+- Restyling every mobile screen one by one:
+  - rejected because it would create duplicated styling logic and raise the chance of inconsistent results
+- Using iOS-only glass everywhere with no fallback:
+  - rejected because Android and web would feel unfinished
+- Adding a large new animation or gradient dependency first:
+  - rejected because the current app already has enough primitives to ship a good foundation without widening scope
 
 ## Edge Cases
 
-- Hosted auth config can contain extra valid redirect URLs for future pilot or provider use; keep them.
-- Applying `preview` while already in preview-mode or `custom-domain` while already in custom-domain-mode should still fail clearly rather than silently writing.
-- The management token may only be available via the Supabase CLI keychain on macOS; fail with a precise message if neither keychain nor `SUPABASE_ACCESS_TOKEN` is available.
-- If Google OAuth is disabled or the redirect allow-list is already damaged, the command should still stop and point back to the audit instead of patching over an unknown state.
+- iOS glass APIs can be unavailable at runtime or limited by accessibility settings; fallback surfaces must still look deliberate.
+- Dense surfaces like QR, reward progress, and status summaries must remain readable with stronger translucency and accent lighting.
+- Tab bar and screen padding changes must not clip content or create overlap on small phones.
+- Motion should feel alive without blocking state transitions, retry buttons, or query-driven loading/error states.
 
 ## Validation Plan
 
-- Harden the shared helper and apply flow.
-- Re-run lint, typecheck, both auth smokes, the repo-root auth QA wrapper, the real hosted auth audit, and the real hosted custom-domain dry-run gate.
-- Update docs and handoff notes to say the custom-domain target remains a placeholder until the real domain is purchased.
+- Build shared foundation primitives first, then restyle login and the core student screens on top of them.
+- Re-run `apps/mobile` lint, typecheck, and `export:web`.
+- Smoke the updated surfaces in the local web preview after export-friendly validation passes.
+- Update handoff docs so later agents know domain cutover remains parked and the next frontend work should extend the same glass/motion language instead of inventing a second style.

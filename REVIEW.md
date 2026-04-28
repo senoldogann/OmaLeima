@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `bug/supabase-auth-cutover-hardening`
-- **Scope:** Hardening follow-up for the Supabase auth cutover apply flow: fix reviewer findings, preserve extra redirect URLs, add retry behavior, and document that the future custom domain stays parked until a real domain is purchased.
+- **Branch:** `feature/mobile-glass-design-foundation`
+- **Scope:** Establish a shared mobile visual foundation in `apps/mobile` that brings an Apple-like glass feel on iOS, a close high-quality fallback on Android/web, and lightweight motion across the student-facing shell.
 
 ## Affected Files
 
@@ -14,49 +14,45 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `package.json`
-- `tests/run-supabase-auth-cutover-readiness.mjs`
-- `apps/admin/package.json`
-- `apps/admin/scripts/_shared/supabase-auth-config.ts`
-- `apps/admin/scripts/audit-supabase-auth-url-config.ts`
-- `apps/admin/scripts/apply-supabase-auth-url-config.ts`
-- `apps/admin/scripts/smoke-supabase-auth-url-config-audit.ts`
-- `apps/admin/scripts/smoke-supabase-auth-url-config-apply.ts`
-- `apps/admin/README.md`
-- `docs/TESTING.md`
-- `docs/LAUNCH_RUNBOOK.md`
+- `apps/mobile/src/components/app-screen.tsx`
+- `apps/mobile/src/components/info-card.tsx`
+- `apps/mobile/src/components/status-badge.tsx`
+- `apps/mobile/src/features/auth/components/login-hero.tsx`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `apps/mobile/src/features/foundation/components/foundation-status-card.tsx`
+- `apps/mobile/src/app/auth/login.tsx`
+- `apps/mobile/src/app/student/_layout.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/features/foundation/*`
 
 ## Risks
 
-- The current apply flow can accidentally remove valid extra redirect URLs if it rewrites the allow-list too aggressively.
-- A single transient `429/5xx` or a slightly stale read-after-write can make an operator-facing cutover command look failed even when Supabase eventually applied it.
-- The smoke must verify the outgoing PATCH payload, not just the printed success line.
+- Liquid-glass styling can become noisy fast if we apply the effect to content cards instead of treating it as a navigation and chrome language first.
+- `expo-glass-effect` is iOS-first; Android and web need a deliberate fallback so the design still feels premium instead of broken.
+- Motion must stay lightweight enough for `expo export:web` and local previews without introducing layout jank or unsupported native-only behavior.
+- Global component changes can unintentionally restyle all existing screens, so the slice must stay focused on shared primitives and a few key student routes.
 
 ## Dependencies
 
-- Existing custom-domain readiness audit and hosted auth-config audit.
-- Hosted Supabase management API access through Supabase CLI login or `SUPABASE_ACCESS_TOKEN`.
-- The current hosted Supabase auth config, which already includes preview, custom-domain, mobile, and Expo web redirect URLs plus Google OAuth enablement.
-- The still-pending DNS cutover for `admin.omaleima.fi`.
+- Existing Expo SDK 55 setup in `apps/mobile`, including `expo-glass-effect`, `react-native-reanimated`, `expo-router`, and the current mobile route structure.
+- Shared content components like `InfoCard`, `StatusBadge`, and `FoundationStatusCard`, which already sit under most student screens.
+- Current dark mobile palette and tab layout, which are functional but visually flat.
+- Apple guidance for Liquid Glass and Expo guidance for `expo-glass-effect`, especially the rule that glass works best for controls and navigation rather than the entire content layer.
 
 ## Existing Logic Checked
 
-- `apps/admin/scripts/audit-custom-domain-cutover.ts` already tells us when Vercel and DNS are ready.
-- `apps/admin/scripts/audit-supabase-auth-url-config.ts` already tells us whether hosted Supabase Auth is still in preview-mode or has moved to custom-domain-mode.
-- The real hosted auth config currently reports:
-  - `site_url = https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
-  - redirect allow-list includes preview callback, custom-domain callback, mobile deep link, Expo web callback, and preview wildcard
-  - Google OAuth is enabled with a real client id
-- The current preview-mode state is valid for now, and the new apply command exists, but the reviewer found three real issues in its first version:
-  - it could delete extra redirect URLs
-  - it had no retry behavior for transient remote failures
-  - its smoke never asserted the actual PATCH payload
+- `AppScreen` currently gives every mobile route the same plain dark background and spacing, so it is the right shared entry point for a visual upgrade.
+- `InfoCard`, `StatusBadge`, `EventCard`, and `FoundationStatusCard` already define most of the visible student UI surfaces.
+- Student tabs currently use a stock bottom bar without icons, floating treatment, or depth.
+- `active-event.tsx` and `auth/login.tsx` are good anchors for testing the new language because they combine states, actions, and denser information.
+- The mobile package already includes `expo-glass-effect`, so we can use native glass on supported iOS runtimes instead of faking it everywhere.
 
 ## Review Outcome
 
-Build the smallest hardening slice that:
+Build the smallest mobile design foundation slice that:
 
-- preserves any existing extra hosted redirect URLs while still guaranteeing the required ones
-- adds retry behavior and read-after-write verification retries for transient Supabase management API failures
-- makes the apply smoke assert the exact PATCH payload
-- leaves the future domain work parked until a real domain is bought
+- introduces shared glass-aware surfaces and a richer multi-tone background
+- keeps iOS closer to native glass while giving Android/web a polished translucent fallback
+- adds lightweight motion and a more premium tab-bar treatment
+- applies the new language to login plus the core student routes without refactoring unrelated business or admin flows

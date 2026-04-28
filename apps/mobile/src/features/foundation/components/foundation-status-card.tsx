@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { mobileTheme } from "@/features/foundation/theme";
 import type { AppReadinessState } from "@/types/app";
 
 type FoundationStatusItem = {
@@ -36,22 +37,28 @@ export const FoundationStatusCard = ({
 
 const styles = StyleSheet.create({
   row: {
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 18,
+    borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   copy: {
     flex: 1,
     gap: 4,
   },
   label: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },
   value: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },

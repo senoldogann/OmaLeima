@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import type { AppReadinessState } from "@/types/app";
 
 import type {
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -195,30 +196,31 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaLine: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   progressTrack: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 999,
     height: 10,
     overflow: "hidden",
   },
   progressFill: {
-    backgroundColor: "#22C55E",
+    backgroundColor: mobileTheme.colors.accentMint,
     height: "100%",
   },
   tierList: {
     gap: 10,
   },
   tierCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 20,
     borderWidth: 1,
     gap: 8,
-    padding: 12,
+    padding: 14,
+    ...interactiveSurfaceShadowStyle,
   },
   tierHeader: {
     alignItems: "flex-start",
@@ -231,31 +233,33 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tierTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   tierMeta: {
-    color: "#93C5FD",
+    color: mobileTheme.colors.accentBlue,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   secondaryText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
