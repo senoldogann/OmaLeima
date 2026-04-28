@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/realtime-readiness-audit`
-- **Scope:** Audit the current mobile Realtime state against the master plan, make the current deferred decision explicit, and add a repo-owned command that can tell future agents whether mobile Realtime is still missing or has started to land.
+- **Branch:** `feature/realtime-implementation-foundation`
+- **Scope:** Ship the first real mobile Realtime foundation for student leaderboard and current-student stamp/claim progress without reopening the postponed broad UI pass.
 
 ## Affected Files
 
@@ -14,39 +14,41 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `README.md`
-- `docs/TESTING.md`
-- `LEIMA_APP_MASTER_PLAN.md`
+- `apps/mobile/src/features/realtime/student-realtime.ts`
+- `apps/mobile/src/app/student/leaderboard.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/student/rewards.tsx`
+- `apps/mobile/src/features/leaderboard/student-leaderboard.ts`
+- `apps/mobile/src/features/rewards/student-rewards.ts`
 - `apps/mobile/README.md`
-- `package.json`
-- `tests/run-mobile-realtime-readiness.mjs`
-- `apps/mobile/package.json`
-- `apps/mobile/scripts/audit-realtime-readiness.mjs`
+- `LEIMA_APP_MASTER_PLAN.md`
+- `docs/TESTING.md`
 
 ## Risks
 
-- The master plan explicitly promises Supabase Realtime for leaderboard and stamp updates, but the current mobile app may still be query-only. If we do not document that gap clearly, future agents can mistake "not implemented yet" for "implemented somewhere else."
-- An audit that is too clever can become brittle when the eventual Realtime slice lands. The command should detect the current state clearly without overfitting to one file layout.
-- This slice must not reopen the postponed full UI pass. The user already said the broad visual redo will happen later.
+- Realtime subscriptions can easily over-invalidate and create noisy refetch loops if the query keys are not scoped tightly.
+- Supabase Postgres Changes filters are more limited than normal SQL filters, so we need to be careful about what is filtered at the channel level versus inside the callback.
+- Reward inventory still changes when other students claim the same tier, so this first slice must not pretend shared inventory is fully Realtime yet.
+- This slice must stay focused on data freshness. The user explicitly said the full UI redesign will happen later.
 
 ## Dependencies
 
-- The current student mobile data flows in `apps/mobile/src/features/leaderboard`, `apps/mobile/src/features/qr`, and `apps/mobile/src/providers`.
-- The master-plan sections that describe `leaderboard_updates`, stamp update pings, and the planned `apps/mobile/src/features/realtime` area.
-- Existing repo QA conventions where focused audits get a package-level command plus an optional root wrapper.
+- Existing student query keys in `apps/mobile/src/features/leaderboard/student-leaderboard.ts`, `apps/mobile/src/features/rewards/student-rewards.ts`, and `apps/mobile/src/features/qr/student-qr.ts`.
+- The current student screens that show leaderboard or stamp-derived reward state.
+- Supabase Realtime Postgres Changes behavior and filter constraints for JavaScript clients.
 
 ## Existing Logic Checked
 
-- `apps/mobile/src/providers/session-provider.tsx` only subscribes to auth state changes; it does not subscribe to database changes.
-- `apps/mobile/src/features/qr/student-qr.ts` uses controlled polling via `refetchInterval` for QR rotation.
-- `apps/mobile/src/features/leaderboard/student-leaderboard.ts` loads leaderboard snapshots through plain React Query fetches with no Realtime channel or refetch cadence.
-- The master plan still describes `leaderboard_updates` as a Realtime ping path and names `apps/mobile/src/features/realtime` as an expected output for the Realtime agent.
+- `student/leaderboard.tsx` currently loads a selected event snapshot once and then stays stale unless the user manually refetches or revisits the screen.
+- `student/rewards.tsx` and `student/active-event.tsx` both depend on reward progress derived from valid `stamps`, but neither screen has any subscription path today.
+- `student-qr.ts` already keeps QR rotation alive through polling and should stay independent from the new Realtime work.
+- The audit from the last slice now proves the current state is deferred, so this slice can safely introduce `apps/mobile/src/features/realtime`.
 
 ## Review Outcome
 
-Build the smallest Realtime-readiness slice that:
+Build the smallest real Realtime foundation that:
 
-- adds a deterministic repo-owned audit command for the current mobile Realtime state
-- makes the current deferred-versus-implemented decision explicit in the repo docs and plan notes
-- avoids pretending the planned Realtime slice is already done
+- subscribes to `leaderboard_updates` for the selected student event and invalidates only the relevant leaderboard query
+- subscribes to student stamp and own-claim changes for the current event and invalidates the progress queries that depend on them
+- keeps QR polling as-is
 - leaves the broader UI redesign explicitly out of scope

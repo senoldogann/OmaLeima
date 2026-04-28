@@ -20,6 +20,7 @@ import {
   useQrSvgQuery,
   useStudentQrContextQuery,
 } from "@/features/qr/student-qr";
+import { useStudentRewardProgressRealtime } from "@/features/realtime/student-realtime";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardEventQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
@@ -72,6 +73,12 @@ export default function StudentActiveEventScreen() {
     eventId: selectedEvent?.id ?? "",
     studentId: studentId ?? "",
     isEnabled: selectedEvent !== null && studentId !== null,
+  });
+
+  useStudentRewardProgressRealtime({
+    eventId: selectedEvent?.id ?? null,
+    studentId: studentId ?? "",
+    isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
   });
 
   const shouldRefreshQr =

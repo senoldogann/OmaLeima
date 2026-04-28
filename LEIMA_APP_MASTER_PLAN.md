@@ -720,7 +720,7 @@ create table leaderboard_scores (
 
 Bu tablo Realtime için "ping" tablosudur. Her stamp sonrası bu tablo update edilir. Client bu değişikliği görünce leaderboard'u yeniden çeker.
 
-Current repository note (2026-04-28): the table and backend freshness path exist, but the shipped mobile client still refreshes leaderboard data through query fetches. A dedicated mobile Realtime slice is still required before this schema path becomes a true client subscription flow.
+Current repository note (updated 2026-04-28): the first mobile Realtime foundation is now shipped. The student leaderboard subscribes to this ping table and invalidates the selected event leaderboard query when freshness changes. Broader mobile Realtime coverage is still incremental work, not a finished blanket rollout.
 
 ```sql
 create table leaderboard_updates (
@@ -2992,8 +2992,11 @@ Current repository state (2026-04-28):
 
 ```txt
 Push notifications and reminder jobs are already shipped.
-Mobile client-side Realtime subscriptions for leaderboard and stamp updates are still intentionally deferred.
-The student app currently uses query snapshots plus QR polling, not a dedicated apps/mobile/src/features/realtime subscription layer yet.
+The first mobile client-side Realtime foundation is shipped under apps/mobile/src/features/realtime.
+Student leaderboard freshness now follows leaderboard_updates.
+The current student's stamp and claim progress now follows stamps and reward_claims invalidation.
+Shared reward inventory freshness is still snapshot-based in this first slice.
+QR rotation still uses polling by design.
 ```
 
 Acceptance:
