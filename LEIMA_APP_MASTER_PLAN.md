@@ -720,6 +720,8 @@ create table leaderboard_scores (
 
 Bu tablo Realtime için "ping" tablosudur. Her stamp sonrası bu tablo update edilir. Client bu değişikliği görünce leaderboard'u yeniden çeker.
 
+Current repository note (2026-04-28): the table and backend freshness path exist, but the shipped mobile client still refreshes leaderboard data through query fetches. A dedicated mobile Realtime slice is still required before this schema path becomes a true client subscription flow.
+
 ```sql
 create table leaderboard_updates (
   id uuid primary key default gen_random_uuid(),
@@ -2984,6 +2986,14 @@ apps/mobile/src/features/realtime
 apps/mobile/src/features/notifications
 supabase/functions/register-device-token
 supabase/functions/scheduled-event-reminders
+```
+
+Current repository state (2026-04-28):
+
+```txt
+Push notifications and reminder jobs are already shipped.
+Mobile client-side Realtime subscriptions for leaderboard and stamp updates are still intentionally deferred.
+The student app currently uses query snapshots plus QR polling, not a dedicated apps/mobile/src/features/realtime subscription layer yet.
 ```
 
 Acceptance:

@@ -2,6 +2,7 @@
   "name": "omaleima",
   "private": true,
   "scripts": {
+    "qa:mobile-realtime-readiness": "node tests/run-mobile-realtime-readiness.mjs",
     "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",
     "qa:custom-domain-readiness": "node tests/run-custom-domain-readiness.mjs",
     "qa:hosted-admin-readiness": "node tests/run-hosted-admin-readiness.mjs",

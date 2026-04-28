@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web",
+    "audit:realtime-readiness": "node scripts/audit-realtime-readiness.mjs"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.5",
