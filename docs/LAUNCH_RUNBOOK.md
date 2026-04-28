@@ -34,6 +34,7 @@ Run these checks before a hosted pilot or a real event:
    - `vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin`
    - `gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'`
    - `gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'`
+   - `gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'` when preview protection is enabled
    - `npm --prefix apps/admin run audit:hosted-setup`
 5. Hosted preview verification credentials are set in GitHub repo secrets:
    - `STAGING_ADMIN_EMAIL`
@@ -62,6 +63,7 @@ Run these checks before a hosted pilot or a real event:
 - The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
 - The admin app now also has a read-only readiness audit. Run `npm --prefix apps/admin run audit:hosted-setup` after linking the real project or rotating secrets so the next hosted verification does not fail late.
 - If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.
+- While the custom domain is not ready, the current preview deployment URL is acting as the temporary Site URL in Supabase Auth. Replace it with `https://admin.omaleima.fi` later in one controlled pass.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 
 ## Event-day checklist

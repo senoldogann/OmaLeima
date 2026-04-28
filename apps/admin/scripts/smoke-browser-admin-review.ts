@@ -230,7 +230,7 @@ const run = async (): Promise<void> => {
   let runError: Error | null = null;
 
   try {
-    await assertLoginPageReachableAsync(appBaseUrl);
+    await assertLoginPageReachableAsync(appBaseUrl, null);
     await assertFunctionServerReachableAsync();
     browser = await launchBrowserAsync(playwrightInstallCommand);
 

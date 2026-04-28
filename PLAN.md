@@ -5,46 +5,39 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-real-vercel-project-link`
-- **Goal:** Move the hosted-admin path from repo-only readiness into real external provisioning by linking a real Vercel project, setting real Preview and Production env vars, and pushing the hosted audit forward.
+- **Branch:** `feature/post-phase6-hosted-verification-unblock`
+- **Goal:** Unblock the real hosted verification path by teaching the hosted smoke and audit about Vercel preview protection, while documenting the temporary preview-domain Site URL until the real custom domain exists.
 
 ## Architectural Decisions
 
-- Use the real hosted Supabase project values from MCP:
-  1. URL: `https://jwhdlcnfhrwdxptmoret.supabase.co`
-  2. publishable key: active `sb_publishable_...` key, not the legacy anon key
-- Create or reuse a dedicated Vercel project name for the admin app in the current personal scope.
-- Link `apps/admin` to that real Vercel project locally without committing `.vercel/project.json`.
-- Write the real admin public env vars to both Preview and Production with `vercel env add` or `vercel env update`.
-- Add a repo-owned `apps/admin/vercel.json` framework override if the first real deploy shows the project was created with the wrong preset.
-- Re-run the hosted readiness audit after each provisioning step so the next missing layer is explicit.
-- Probe hosted Supabase password auth for `admin@omaleima.test` / `password123` before writing GitHub staging secrets.
-- Only write `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD` repo secrets if the hosted admin credential path is confirmed valid.
+- Keep the already-created real Vercel project and real env vars as-is; this slice is about verification access, not more provisioning.
+- Add one optional env var path for hosted verification:
+  - `VERCEL_AUTOMATION_BYPASS_SECRET`
+- Use the bypass secret as an HTTP header for both plain fetch preflight and Playwright browser requests.
+- Extend the hosted readiness audit so it checks project protection state and conditionally requires `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub Actions secrets when preview protection is active.
+- Keep `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD` conditional on real hosted credentials being available; do not fake readiness.
+- Update docs to note that the current preview URL is the temporary Site URL until `admin.omaleima.fi` is ready.
 
 ## Alternatives Considered
 
-- Stopping again at docs-only guidance:
-  - rejected because we now have enough external access to do the real link/env step
-- Writing GitHub staging secrets first:
-  - rejected because those secrets are useless or misleading if hosted admin auth still fails
-- Using the legacy anon key for Vercel envs:
-  - rejected because Supabase now recommends modern publishable keys and the MCP exposed one is active
-- Forcing a deploy before link and env provisioning:
-  - rejected because the existing prebuild guard would fail immediately and add noise without moving readiness forward
+- Disabling preview protection manually as the only solution:
+  - rejected because the repo should also support the protected-preview path used by the current project
+- Baking the bypass secret into URLs:
+  - rejected because Vercel recommends headers when automation can set them
+- Marking hosted verification as green without understanding protection:
+  - rejected because the current `401` is not an app bug, but it is still a real blocker for the workflow
 
 ## Edge Cases
 
-- `vercel env add` may fail if the variable already exists; the flow should detect that and switch to `vercel env update` instead of stopping.
-- The personal Vercel scope has no OmaLeima project today, so project creation may be part of the slice.
-- Hosted Supabase auth may reject the seeded local credentials; that should stop GitHub secret provisioning, not the already useful Vercel link/env work.
-- The hosted readiness audit should end this slice either fully green or with one clearly smaller remaining blocker than before.
-- The first preview deploy may expose incorrect Vercel project defaults. If so, a repo-owned `vercel.json` override is safer than relying on manual dashboard repair.
+- The bypass secret may be absent in local runs; the hosted smoke should remain optional and only add headers when the secret exists.
+- The readiness audit must not require a bypass secret when preview protection is not active.
+- The temporary preview domain should not be mistaken for the final production domain; docs need to say it will be replaced later.
+- Hosted admin credentials may still be invalid even after bypass support lands; the slice should stop with that blocker clearly named.
 
 ## Validation Plan
 
-- Create the real Vercel project if it does not exist, then link `apps/admin`.
-- Add or update the real Preview and Production env vars.
-- Run a real preview deploy and fix project-preset issues in repo config if they appear.
-- Validate hosted Supabase admin password auth with the real hosted URL and publishable key.
-- If auth succeeds, set `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD` repo secrets and re-run the hosted audit.
-- Capture the final audit state and update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, and `TODOS.md`.
+- Add optional bypass support to the hosted smoke helpers and workflow.
+- Extend the hosted readiness audit and deterministic audit smoke for protected-preview projects.
+- Run lint, typecheck, `smoke:hosted-setup-audit`, and `qa:hosted-admin-readiness`.
+- Run the real hosted audit again and confirm the next blocker is now either missing secrets or invalid hosted admin credentials, not blind preview protection.
+- Update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, and `TODOS.md` with the new external-state understanding.

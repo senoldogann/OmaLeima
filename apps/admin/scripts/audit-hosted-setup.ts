@@ -13,6 +13,8 @@ const requiredActionsSecrets = [
   "STAGING_ADMIN_PASSWORD",
 ] as const;
 
+const protectionBypassSecretName = "VERCEL_AUTOMATION_BYPASS_SECRET";
+
 const requiredVercelEnvNames = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
@@ -39,12 +41,18 @@ type CommandResult = CommandSuccess | CommandFailure;
 type ProjectLink = z.infer<typeof projectLinkSchema>;
 
 type ReadinessState = {
+  actionsSecretNames: string[];
   githubLogin: string;
   linkedProject: ProjectLink;
   previewEnvNames: string[];
   productionEnvNames: string[];
+  requiresProtectionBypassSecret: boolean;
   repoSlug: string;
   vercelUser: string;
+};
+
+type ProjectProtectionState = {
+  requiresBypassSecret: boolean;
 };
 
 const parseCsvNames = (rawValue: string): string[] =>
@@ -248,6 +256,44 @@ const readGitHubActionsSecretNames = (repoSlug: string): string[] => {
   return Array.from(new Set(secretNames));
 };
 
+const readProjectProtectionState = (projectNameOrId: string): ProjectProtectionState => {
+  const overrideProtectionState = process.env.HOSTED_ADMIN_AUDIT_PROTECTION_STATE;
+
+  if (overrideProtectionState === "requires-bypass") {
+    return {
+      requiresBypassSecret: true,
+    };
+  }
+
+  if (overrideProtectionState === "no-bypass") {
+    return {
+      requiresBypassSecret: false,
+    };
+  }
+
+  const projectProtectionResult = runCommand(
+    "vercel",
+    ["project", "protection", projectNameOrId, "--format", "json", "--cwd", "apps/admin"],
+    repoRoot
+  );
+
+  if (!projectProtectionResult.ok) {
+    throw new Error(`Could not read Vercel project protection for hosted admin audit: ${projectProtectionResult.error}`);
+  }
+
+  const protectionState = JSON.parse(projectProtectionResult.stdout) as {
+    ssoProtection?: {
+      deploymentType?: string;
+    };
+  };
+
+  return {
+    requiresBypassSecret:
+      typeof protectionState.ssoProtection?.deploymentType === "string" &&
+      protectionState.ssoProtection.deploymentType.length > 0,
+  };
+};
+
 const findMissingNames = (requiredNames: readonly string[], actualNames: string[]): string[] =>
   requiredNames.filter((requiredName) => !actualNames.includes(requiredName));
 
@@ -259,6 +305,7 @@ const buildReadinessState = (): ReadinessState => {
   const previewEnvNames = readVercelEnvironmentNames("preview");
   const productionEnvNames = readVercelEnvironmentNames("production");
   const actionsSecretNames = readGitHubActionsSecretNames(repoSlug);
+  const protectionState = readProjectProtectionState(linkedProject.projectName ?? linkedProject.projectId);
 
   const missingPreviewEnvNames = findMissingNames(requiredVercelEnvNames, previewEnvNames);
 
@@ -272,17 +319,22 @@ const buildReadinessState = (): ReadinessState => {
     throw new Error(`Missing Vercel Production env vars: ${missingProductionEnvNames.join(", ")}`);
   }
 
-  const missingActionsSecrets = findMissingNames(requiredActionsSecrets, actionsSecretNames);
+  const requiredSecretNames = protectionState.requiresBypassSecret
+    ? [...requiredActionsSecrets, protectionBypassSecretName]
+    : [...requiredActionsSecrets];
+  const missingActionsSecrets = findMissingNames(requiredSecretNames, actionsSecretNames);
 
   if (missingActionsSecrets.length > 0) {
     throw new Error(`Missing GitHub Actions secrets: ${missingActionsSecrets.join(", ")}`);
   }
 
   return {
+    actionsSecretNames,
     githubLogin,
     linkedProject,
     previewEnvNames,
     productionEnvNames,
+    requiresProtectionBypassSecret: protectionState.requiresBypassSecret,
     repoSlug,
     vercelUser,
   };
@@ -301,7 +353,8 @@ const run = async (): Promise<void> => {
       `project-name:${readinessState.linkedProject.projectName ?? "unknown"}`,
       `preview-env-count:${readinessState.previewEnvNames.length}`,
       `production-env-count:${readinessState.productionEnvNames.length}`,
-      `actions-secret-count:${requiredActionsSecrets.length}`,
+      `actions-secret-count:${readinessState.actionsSecretNames.length}`,
+      `protection-bypass-required:${readinessState.requiresProtectionBypassSecret ? "yes" : "no"}`,
     ].join("|")
   );
 };

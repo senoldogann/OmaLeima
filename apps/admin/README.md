@@ -142,6 +142,7 @@ Required repository secrets:
 
 - `STAGING_ADMIN_EMAIL`
 - `STAGING_ADMIN_PASSWORD`
+- `VERCEL_AUTOMATION_BYPASS_SECRET` when preview deployments are protected by Vercel SSO
 
 This workflow installs `apps/admin` dependencies, installs Playwright Chromium, and runs `node tests/run-staging-admin-verification.mjs`.
 
@@ -156,6 +157,8 @@ Expected Vercel project setup for the admin app:
   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - Automatically expose System Environment Variables: enabled, so `VERCEL=1` and `VERCEL_TARGET_ENV` are available to the prebuild env check
 - If Vercel project protection reports SSO for preview deployments, anonymous `curl` checks and the hosted verification workflow will still return `401` until you either disable SSO protection for the project or switch the verification path to an allowed bypass model.
+- Current temporary Site URL: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
+- Future custom-domain replacement: `https://admin.omaleima.fi`
 
 Preview verification also expects these GitHub repo secrets for `.github/workflows/staging-admin-verification.yml`:
 
@@ -172,6 +175,7 @@ vercel env add NEXT_PUBLIC_SUPABASE_URL production --cwd apps/admin
 vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin
 gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
 gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
+gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'
 npm run audit:hosted-setup
 ```
 

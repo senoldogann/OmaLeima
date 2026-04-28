@@ -24,6 +24,7 @@ jobs:
       ADMIN_APP_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.admin_app_base_url || github.event.deployment_status.target_url }}
       STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
       STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -11,11 +11,25 @@ export type BrowserSmokeRouteExpectation = {
   title: string;
 };
 
-export const assertLoginPageReachableAsync = async (appBaseUrl: string): Promise<void> => {
+const createBypassHeaders = (bypassSecret: string | null): HeadersInit | undefined => {
+  if (bypassSecret === null) {
+    return undefined;
+  }
+
+  return {
+    "x-vercel-protection-bypass": bypassSecret,
+  };
+};
+
+export const assertLoginPageReachableAsync = async (
+  appBaseUrl: string,
+  bypassSecret: string | null,
+): Promise<void> => {
   let response: Response;
 
   try {
     response = await fetch(`${appBaseUrl}/login`, {
+      headers: createBypassHeaders(bypassSecret),
       method: "GET",
       redirect: "manual",
     });
@@ -41,6 +55,13 @@ export const launchBrowserAsync = async (installCommand: string): Promise<Browse
     throw new Error(`Failed to launch Playwright Chromium for browser smoke: ${errorMessage}. Run "${installCommand}" first.`);
   }
 };
+
+export const createBrowserHeaders = (bypassSecret: string | null): Record<string, string> =>
+  bypassSecret === null
+    ? {}
+    : {
+        "x-vercel-protection-bypass": bypassSecret,
+      };
 
 export const signInWithPasswordAsync = async (
   page: Page,
