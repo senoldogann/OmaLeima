@@ -201,14 +201,14 @@ The audit is intentionally read-only. It verifies the current mobile repository 
 - `apps/mobile/src/features/realtime/student-realtime.ts` is present
 - student leaderboard freshness uses Realtime invalidation through `leaderboard_updates`
 - the current student’s progress freshness uses Realtime invalidation through `stamps` and their own `reward_claims`
-- shared reward inventory and out-of-stock state still remain snapshot-based in this first slice
+- shared reward inventory freshness uses Realtime invalidation through `reward_tiers`
 
 Expected success output today:
 
 - `mobile-realtime-state:FOUNDATION_ACTIVE`
 - `leaderboard-mode:realtime-invalidation`
 - `student-progress-mode:realtime-invalidation`
-- `shared-inventory-mode:query-snapshot`
+- `shared-inventory-mode:realtime-invalidation`
 - `qr-mode:polling-refresh`
 
 If a future slice changes which screens own Realtime freshness or replaces invalidation with direct cache patching, this audit should be updated in the same change.

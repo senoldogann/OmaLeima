@@ -14,6 +14,7 @@ const rewardsSourcePath = path.join(mobileSourceRoot, "features", "rewards", "st
 const leaderboardScreenPath = path.join(mobileSourceRoot, "app", "student", "leaderboard.tsx");
 const activeEventScreenPath = path.join(mobileSourceRoot, "app", "student", "active-event.tsx");
 const rewardsScreenPath = path.join(mobileSourceRoot, "app", "student", "rewards.tsx");
+const eventDetailScreenPath = path.join(mobileSourceRoot, "app", "student", "events", "[eventId].tsx");
 const plannedRealtimeDir = path.join(mobileSourceRoot, "features", "realtime");
 const realtimeFeaturePath = path.join(plannedRealtimeDir, "student-realtime.ts");
 
@@ -125,6 +126,7 @@ const main = async () => {
   const leaderboardScreenSource = await readUtf8Async(leaderboardScreenPath);
   const activeEventScreenSource = await readUtf8Async(activeEventScreenPath);
   const rewardsScreenSource = await readUtf8Async(rewardsScreenPath);
+  const eventDetailScreenSource = await readUtf8Async(eventDetailScreenPath);
   const realtimeFeatureSource = realtimeFeatureExists ? await readUtf8Async(realtimeFeaturePath) : "";
   const qrPollingBlock = extractBlock(qrSource, "export const useGenerateQrTokenQuery", [
     "export const useQrSvgQuery",
@@ -186,6 +188,14 @@ const main = async () => {
     leaderboardScreenSource.includes("useStudentEventLeaderboardRealtime") &&
     activeEventScreenSource.includes("useStudentRewardProgressRealtime") &&
     rewardsScreenSource.includes("useStudentRewardProgressRealtime");
+  const sharedInventoryRealtimeWired =
+    realtimeFeatureSource.includes('table: "reward_tiers"') &&
+    realtimeFeatureSource.includes("studentEventDetailQueryKey") &&
+    realtimeFeatureSource.includes("student-reward-inventory-catch-up") &&
+    realtimeFeatureSource.includes("payloadTouchesTrackedEvents") &&
+    activeEventScreenSource.includes("useStudentRewardInventoryRealtime") &&
+    rewardsScreenSource.includes("useStudentRewardInventoryRealtime") &&
+    eventDetailScreenSource.includes("useStudentRewardInventoryRealtime");
 
   if (!qrUsesPolling) {
     fail("mobile-realtime-audit:missing-qr-polling", [
@@ -222,11 +232,12 @@ const main = async () => {
     ]);
   }
 
-  if (!realtimeDirExists || !realtimeFeatureExists || !realtimeFoundationWired) {
+  if (!realtimeDirExists || !realtimeFeatureExists || !realtimeFoundationWired || !sharedInventoryRealtimeWired) {
     const details = [
-      "Expected the first mobile Realtime foundation to be wired for leaderboard and reward freshness.",
+      "Expected the mobile Realtime foundation to be wired for leaderboard, current-student progress, and shared inventory freshness.",
       `Realtime directory present: ${realtimeDirExists}`,
       `Realtime feature file present: ${realtimeFeatureExists}`,
+      `Shared inventory wiring present: ${sharedInventoryRealtimeWired}`,
       `Realtime markers: ${realtimeSubscriptionHits.join(", ") || "none"}`,
     ];
 
@@ -238,7 +249,7 @@ const main = async () => {
       "mobile-realtime-state:FOUNDATION_ACTIVE",
       "leaderboard-mode:realtime-invalidation",
       "student-progress-mode:realtime-invalidation",
-      "shared-inventory-mode:query-snapshot",
+      "shared-inventory-mode:realtime-invalidation",
       "qr-mode:polling-refresh",
       `realtime-subscriptions:${realtimeSubscriptionHits.length}`,
       `realtime-feature-dir:${realtimeFeatureExists ? "present" : "missing"}`,

@@ -1,10 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
+import { useStudentRewardInventoryRealtime } from "@/features/realtime/student-realtime";
+import { useActiveAppState } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
 import type {
@@ -180,6 +184,8 @@ const getRewardInventoryCopy = (rewardTier: RewardTierSummary): string => {
 
 export default function StudentEventDetailScreen() {
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const isAppActive = useActiveAppState();
   const params = useLocalSearchParams<EventDetailRouteParams>();
   const { session } = useSession();
   const eventId = typeof params.eventId === "string" ? params.eventId : null;
@@ -189,6 +195,15 @@ export default function StudentEventDetailScreen() {
     studentId: studentId ?? "",
     isEnabled: eventId !== null && studentId !== null,
   });
+  const trackedEventIds = useMemo(() => (eventId === null ? [] : [eventId]), [eventId]);
+
+  useStudentRewardInventoryRealtime({
+    trackedEventIds,
+    studentId: studentId ?? "",
+    detailEventId: eventId,
+    isEnabled: eventId !== null && studentId !== null && isFocused && isAppActive,
+  });
+
   const joinMutation = useJoinEventMutation();
 
   if (eventId === null) {

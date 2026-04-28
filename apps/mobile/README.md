@@ -32,7 +32,7 @@ npm run audit:realtime-readiness
 - Google OAuth flow in `src/lib/auth.ts` and `src/app/auth/callback.tsx`
 - Native session persistence via `expo-secure-store`
 - QR token rotation currently uses controlled polling
-- Student leaderboard and the current student’s stamp/claim progress now use Realtime-driven query invalidation
+- Student leaderboard, current-student progress, and shared reward inventory now use Realtime-driven query invalidation
 
 ## Realtime note
 
@@ -41,8 +41,8 @@ The first dedicated mobile Realtime slice is now shipped:
 - QR rotation already refreshes through polling in `src/features/qr/student-qr.ts`
 - `src/features/realtime/student-realtime.ts` subscribes to `leaderboard_updates` for leaderboard freshness
 - the same module also subscribes to `stamps` and the current student’s `reward_claims` for progress freshness
+- the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
-- shared reward inventory and out-of-stock transitions still rely on the next query fetch, not a broad event-level inventory subscription yet
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 

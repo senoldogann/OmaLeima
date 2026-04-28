@@ -5,35 +5,33 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/realtime-implementation-foundation`
-- **Goal:** Land the first real mobile Realtime subscriptions for student freshness-critical views while keeping the slice small and predictable.
+- **Branch:** `feature/realtime-inventory-followup`
+- **Goal:** Close the next highest-value freshness gap by making shared reward inventory updates visible without waiting for manual refetches.
 
 ## Architectural Decisions
 
-- Create a dedicated `apps/mobile/src/features/realtime` module so subscription logic does not leak into screen files.
-- Use invalidation-based Realtime, not optimistic local patching. The app already has typed React Query fetchers, so invalidating the right keys is lower risk than mutating cached shapes by hand.
-- Subscribe to `leaderboard_updates` for leaderboard freshness and to student `stamps` plus own `reward_claims` changes for progress freshness.
-- Keep subscriptions screen-scoped and foreground-aware to avoid background socket noise in this first slice.
+- Keep building inside the existing `apps/mobile/src/features/realtime` module instead of spreading another layer of screen-local subscriptions.
+- Continue using invalidation-based Realtime instead of cache patching.
+- Add `reward_tiers` inventory invalidation for tracked event ids only.
+- Keep subscriptions screen-scoped and foreground-aware, with the existing catch-up invalidation pattern when the app or tab returns.
 
 ## Alternatives Considered
 
-- Polling leaderboard and reward queries on an interval:
-  - rejected because the backend already writes explicit freshness signals and the planned architecture calls for Realtime
-- Patching React Query cache payloads directly from Realtime callbacks:
-  - rejected because the reward and leaderboard shapes are derived from multiple tables and RPC output, so targeted invalidation is simpler and safer
-- Wiring every student screen into Realtime immediately:
-  - rejected because the first slice should stay with the highest-value screens only
+- Leaving shared reward inventory on snapshots until a later notification slice:
+  - rejected because it already creates visible stale states such as out-of-stock lag after another student claims the last reward
+- Adding a global unfiltered `reward_tiers` subscription with blind invalidation:
+  - rejected because even the mobile first cut should stay scoped to the currently visible student event set
+- Bundling reward unlock notification UX into the same change:
+  - rejected because that is a separate product and behavior slice
 
 ## Edge Cases
 
-- The student stamp subscription should not invalidate reward queries for unrelated events.
-- Realtime callbacks can fire on `UPDATE` and `DELETE` as well as `INSERT`, so the invalidation path must not assume only one event type.
-- Reward progress depends on `validation_status = VALID`, so the callback should only invalidate when the changed row matters to that read model.
-- Shared reward inventory can still change because of other students' claims, so this first slice should not over-document inventory freshness as Realtime-complete.
-- The leaderboard screen can switch selected events, so the subscription must track the current event and cleanly resubscribe.
+- Rewards overview can cover multiple events, so the inventory hook must track a set of visible event ids.
+- Event detail uses a separate query key from rewards overview/event progress and must be invalidated too.
+- `reward_tiers` changes can be inserts, updates, deletes, disables, or inventory count changes; the callback should treat any matching event change as freshness-relevant.
+- Notification state is still separate from inventory freshness, so docs must not imply reward-unlocked push UX is now shipped.
 
 ## Validation Plan
 
-- Run `apps/mobile` lint and typecheck.
-- Re-run the new `audit:realtime-readiness` command; it should now fail because the deferred state changed, so the audit and docs must be updated in the same slice.
-- Add a reviewer pass because Realtime false positives and overbroad invalidation are easy to miss.
+- Run `apps/mobile` lint, typecheck, the Realtime audit, and `export:web`.
+- Add a reviewer pass because event-scoped invalidation mistakes and audit overclaims are easy to miss here too.

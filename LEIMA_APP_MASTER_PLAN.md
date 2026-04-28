@@ -2995,7 +2995,7 @@ Push notifications and reminder jobs are already shipped.
 The first mobile client-side Realtime foundation is shipped under apps/mobile/src/features/realtime.
 Student leaderboard freshness now follows leaderboard_updates.
 The current student's stamp and claim progress now follows stamps and reward_claims invalidation.
-Shared reward inventory freshness is still snapshot-based in this first slice.
+Shared reward inventory freshness now follows reward_tiers invalidation on the student views that expose stock state.
 QR rotation still uses polling by design.
 ```
 

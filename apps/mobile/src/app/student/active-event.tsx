@@ -20,7 +20,10 @@ import {
   useQrSvgQuery,
   useStudentQrContextQuery,
 } from "@/features/qr/student-qr";
-import { useStudentRewardProgressRealtime } from "@/features/realtime/student-realtime";
+import {
+  useStudentRewardInventoryRealtime,
+  useStudentRewardProgressRealtime,
+} from "@/features/realtime/student-realtime";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardEventQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
@@ -68,6 +71,10 @@ export default function StudentActiveEventScreen() {
     () => (qrContextQuery.data ? selectStudentQrEvent(qrContextQuery.data.registeredEvents, now) : null),
     [now, qrContextQuery.data]
   );
+  const trackedInventoryEventIds = useMemo(
+    () => (selectedEvent === null ? [] : [selectedEvent.id]),
+    [selectedEvent]
+  );
 
   const rewardEventQuery = useStudentRewardEventQuery({
     eventId: selectedEvent?.id ?? "",
@@ -78,6 +85,13 @@ export default function StudentActiveEventScreen() {
   useStudentRewardProgressRealtime({
     eventId: selectedEvent?.id ?? null,
     studentId: studentId ?? "",
+    isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
+  });
+
+  useStudentRewardInventoryRealtime({
+    trackedEventIds: trackedInventoryEventIds,
+    studentId: studentId ?? "",
+    detailEventId: null,
     isEnabled: selectedEvent !== null && studentId !== null && isFocused && isAppActive,
   });
 
