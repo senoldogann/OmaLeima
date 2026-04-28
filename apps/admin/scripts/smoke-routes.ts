@@ -19,7 +19,7 @@ type RouteSmokeCase = {
   expectedLocation: string | null;
   expectedStatus: 200 | 307;
   password: string;
-  path: "/admin" | "/admin/business-applications" | "/club" | "/login";
+  path: "/admin" | "/admin/business-applications" | "/admin/oversight" | "/club" | "/login";
 };
 
 const routeSmokeCases: RouteSmokeCase[] = [
@@ -57,6 +57,20 @@ const routeSmokeCases: RouteSmokeCase[] = [
     expectedStatus: 307,
     password: "password123",
     path: "/admin/business-applications",
+  },
+  {
+    email: "admin@omaleima.test",
+    expectedLocation: null,
+    expectedStatus: 200,
+    password: "password123",
+    path: "/admin/oversight",
+  },
+  {
+    email: "organizer@omaleima.test",
+    expectedLocation: "/club",
+    expectedStatus: 307,
+    password: "password123",
+    path: "/admin/oversight",
   },
   {
     email: "student@omaleima.test",

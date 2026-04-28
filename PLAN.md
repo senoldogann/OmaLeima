@@ -5,41 +5,45 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-business-applications-review`
-- **Goal:** Add the first real platform-admin workflow: pending business application review with authenticated reads and approve or reject actions.
+- **Branch:** `feature/admin-platform-oversight`
+- **Goal:** Add the next real system-admin workflow: platform-wide oversight for clubs, events, fraud signals, and audit logs.
 
 ## Architectural Decisions
 
-- Keep queue reads on the server with the existing SSR Supabase client, then pass only serializable read-model data into interactive client components.
-- Use a client component only for row-level interaction state such as reject-reason draft, pending button state, and inline result messages.
-- Reuse the existing `admin-approve-business` and `admin-reject-business` Edge Functions rather than calling review RPCs directly from the browser.
+- Keep oversight reads on the server with the existing SSR Supabase client. This route is read-only, so there is no reason to pay client bundle cost for live query logic.
 - Extend the existing admin shell instead of creating a second layout pattern. The new route should feel like a direct part of `/admin`.
-- Keep auth verification close to the mutation call with app-local route handlers that validate payloads before delegating to the existing Edge Functions.
+- Use a compact read model with summary cards plus bounded lists:
+  1. active clubs
+  2. upcoming or currently active non-finished events
+  3. latest audit logs
+  4. latest open fraud signals
+- Keep list limits explicit in UI copy so operators can see when a panel is showing “latest N” rather than the entire dataset.
+- For smoke, seed deterministic `audit_logs` and `fraud_signals` fixtures directly into the local DB. Do not add production write paths just to manufacture test data.
 - Validation for this slice must include:
-  1. route-level access checks for `/admin/business-applications`
-  2. RLS smoke proving non-admin sessions cannot read the queue
-  3. approve and reject smoke through the real admin web mutation boundary
-  4. standard `lint`, `typecheck`, and `build`
+  1. route-level access checks for `/admin/oversight`
+  2. RLS smoke proving non-admin sessions cannot read `audit_logs`
+  3. RLS smoke proving organizer sessions can still read event-scoped `fraud_signals`
+  4. admin oversight route renders seeded club, event, fraud, and audit data while excluding reviewed fraud and already-ended event fixtures
+  5. standard `lint`, `typecheck`, and `build`
 - CI, higher-volume load work, and GTM rollout details should be documented more explicitly after this slice, but not expanded into unrelated implementation work here.
 
 ## Alternatives Considered
 
-- Calling approval RPCs directly from a browser client: rejected because it duplicates authorization surface and drifts away from the existing backend contract.
-- Building the entire page as a client component: rejected because queue reads fit server components better and do not need extra client bundle cost.
-- Adding a broad admin CRUD table abstraction first: rejected because this slice only needs business application review and should stay narrowly scoped.
-- Shipping route rendering without review-flow smoke: rejected because the user explicitly wants stronger RLS and mutation confidence for admin workflows.
+- Building a generic admin reporting framework first: rejected because this slice only needs one concrete oversight screen and should stay narrowly scoped.
+- Making the page client-driven with parallel browser fetches: rejected because server reads are simpler, cheaper, and safer under the current app structure.
+- Adding moderation actions to fraud or audit panels now: rejected because this slice is visibility-first and should not expand into mutation workflows yet.
+- Shipping route rendering without data-level smoke: rejected because the user explicitly wants stronger RLS and operational confidence for admin workflows.
 
 ## Edge Cases
 
-- Two admins review the same application close together; one must win and the other should get a stable non-success response without corrupt UI state.
-- Reject submission with blank or whitespace-only reason.
-- Invalid or tampered `applicationId` should fail fast before touching the backend function.
-- Approved or rejected items should disappear from the pending list after refresh and appear in the recent-review surface with status context.
-- Club or student sessions must not read pending rows even if they guess the route or query the table directly.
-- External links such as website or Instagram may be absent and should not break card layout.
-- Untrusted website or Instagram values must not render executable or malformed links in the admin UI.
-- Long free-text application messages should wrap cleanly on mobile and desktop without resizing controls.
-- Pending queue must not silently truncate once application volume grows past the first page.
+- Admin route must stay useful even when some panels are empty; empty-state language should clarify that the system is currently quiet rather than broken.
+- Organizer or student sessions must not read `audit_logs`, and organizer route access must still redirect away from `/admin/oversight`.
+- The operational event list must not let recently ended events crowd out future ones; bounded panels should prefer work that still needs action.
+- Fraud signals may reference event, student, business, or scanner data partially; missing related fields must not break card layout.
+- The fraud summary and fraud list must describe the same operational universe so counts and visible records do not contradict each other.
+- Bounded latest lists must not silently imply full coverage; UI should state the visible limit.
+- Audit metadata and fraud metadata are JSON and may be sparse; the read model should normalize them into safe summary strings instead of dumping raw payload blobs.
+- The route should stay compact on mobile and desktop; operational rows should wrap instead of overflowing.
 
 ## Validation Plan
 
@@ -48,13 +52,13 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   2. `npm run typecheck`
   3. `npm run build`
 - Run auth-backed smoke checks for:
-  1. seeded platform admin can open `/admin/business-applications`
+  1. seeded platform admin can open `/admin/oversight`
   2. seeded organizer is redirected away from that route
-  3. non-admin RLS query cannot see pending rows
-  4. admin review flow can approve one pending application
-  5. admin review flow can reject one pending application
-  6. duplicate or stale review attempts return stable status
+  3. non-admin RLS query cannot see `audit_logs`
+  4. organizer can read an event-scoped fraud signal for a managed event
+  5. admin oversight route shows seeded fraud and audit fixtures
+  6. admin oversight route shows club and event records from the seeded base data and excludes reviewed-fraud or ended-event fixtures
 - Open the local web preview and verify:
   1. `/admin`
-  2. `/admin/business-applications`
+  2. `/admin/oversight`
 - Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
