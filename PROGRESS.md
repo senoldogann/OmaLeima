@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-business-scan-history-and-leave-flow`
-- **Yapılan iş:** Faz 4 business akışı kapatıldı. Yeni `leave_business_event_atomic` RPC ile business staff artık yalnızca etkinlik başlamadan önce joined venue kaydını bırakabiliyor. Mobil tarafta yeni `business/history` route'u eklendi; `business/home`, `business/events` ve `business/scanner` bu ekrana CTA veriyor. `business/events` joined upcoming event kartlarında leave action aldı. `business/scanner` result-state yüzeyleri daha açık hale getirildi; status code, operator guidance ve history deep-link eklendi.
-- **Neden yapıldı:** Bir önceki dilim business tarafını join ve live scan seviyesine getirmişti, ama Faz 4 acceptance hâlâ eksikti: leave-before-start kuralı, operatörün kendi scan geçmişi ve daha net result-state yüzeyleri. Bu dilim Phase 4 checklist'ini tamamlamak için yapıldı.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası auth-backed smoke ile `leave_business_event_atomic` için `SUCCESS`, tekrar çağrıda `VENUE_ALREADY_LEFT`, active event için `EVENT_LEAVE_CLOSED` doğrulandı. Scanner user scope ile history query `REVOKED`, `MANUAL_REVIEW`, `VALID` satırlarını doğru sırada okudu ve UI'nin kullandığı masked student labels `Student ...0011`, `Student ...0010`, `Student ...0004` olarak üretildi. DB tarafında leave sonrası `event_venues.status=LEFT` ve `left_at` dolu olduğu; history fixture için validation-status dağılımı `1/1/1` olduğu doğrulandı. Test sonunda local DB tekrar seeded duruma alındı. Web preview route check `http://localhost:8096/business/events`, `http://localhost:8096/business/history` ve `http://localhost:8096/business/scanner` için `200 OK` verdi.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile Faz 5'e geç ve `feature/admin-web-foundation` aç. Next.js admin/kulüp paneli app shell, auth gate ve temel layout doğru ilk kırılım.
-- **Açık risk/blokaj:** Camera scanner sonucu ve permission davranışı gerçek native cihazda ayrıca doğrulanmalı. Web preview ve manual smoke state machine doğruluyor ama production event-day ergonomisi için cihaz testi hâlâ gerekli.
+- **Branch:** `feature/admin-web-foundation`
+- **Yapılan iş:** Faz 5 web foundation tamamlandı. Yeni `apps/admin` Next.js App Router uygulaması kuruldu; strict env parsing, Supabase SSR browser/server/proxy client’ları, `/login`, `/admin`, `/club`, `/forbidden` route’ları, role-based root redirect ve sign-out akışı eklendi. Club erişimi artık yalnızca `primary_role` değil aktif `club_members` + aktif `clubs` kontrolüyle açılıyor. Ayrıca `smoke:auth` ve gerçek cookie/redirect davranışını vuran `smoke:routes` script’leri eklendi.
+- **Neden yapıldı:** Faz 4 tamamlandıktan sonra en doğru küçük adım, admin ve club panel için ikinci uygulama yüzeyini gerçekten ayağa kaldırmaktı. Faz 5 modüllerine geçmeden önce auth gate, SSR session refresh ve role routing’in sağlam olması gerekiyordu. Aynı anda CI/smoke disiplini zayıf kalmasın diye app-local smoke harness de bu dilime alındı.
+- **Doğrulama:** `apps/admin` içinde `npm run lint`, `npm run typecheck`, `npm run build`, `npm run smoke:auth` ve `npm run smoke:routes` geçti. `smoke:auth` seeded `admin`, `organizer`, `student` hesapları için `admin`, `club`, `unsupported` alan çözümünü doğruladı. `smoke:routes` çalışan local Next dev server üstünde `admin -> /admin 200`, `organizer -> /club 200`, `organizer -> /admin 307 /club`, `student -> /admin 307 /forbidden` davranışını doğruladı. Route check ayrıca `http://localhost:3001/login`, `http://localhost:3001/admin`, `http://localhost:3001/club` üzerinden alındı. Playwright ile login ekranı açıldı ve konsolda yalnızca normal dev logları görüldü.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/admin-business-applications-review` aç. Platform admin için bekleyen mekan başvurularını listeleme ve `admin-approve-business` / `admin-reject-business` akışını web paneline bağlamak Faz 5’in doğru bir sonraki dilimi.
+- **Açık risk/blokaj:** Google OAuth’un gerçek hosted roundtrip’i Supabase dashboard redirect allow-list ile ayrıca doğrulanmalı. Repo seviyesinde merkezi CI, daha sıkı RLS regression smoke, concurrency stress ve load-test harness’leri hâlâ Faz 6 işi olarak duruyor. GTM tarafında deploy runbook, domain, analytics ve launch checklist henüz ayrı bir dilimde belgelenmedi.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -62,8 +62,8 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Geçmiş Ekranı: Mekan görevlisinin kendi okuttuğu leimaları görebileceği anlık liste
 
 ## Faz 5: Admin ve Kulüp Paneli (Admin/Club Panel Agent)
-- [ ] Next.js (App Router) projesinin başlatılması ve temel layout kurulumu
-- [ ] Admin/Kulüp giriş ekranı ve yetkiye (role) bağlı yönlendirme mekanizması (Supabase Auth)
+- [x] Next.js (App Router) projesinin başlatılması ve temel layout kurulumu
+- [x] Admin/Kulüp giriş ekranı ve yetkiye (role) bağlı yönlendirme mekanizması (Supabase Auth)
 - [ ] **Sistem Admini Modülü:** Bekleyen mekan başvurularını inceleme ve onaylama/reddetme
 - [ ] **Sistem Admini Modülü:** Platformdaki tüm kulüpleri, etkinlikleri ve Fraud (Sahtekarlık) sinyallerini izleme
 - [ ] **Sistem Admini Modülü:** Duplicate/custom department tag'leri birleştirme ve moderasyon
@@ -89,6 +89,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 department tag schema foundation tamamlandı; `department_tags` ve `profile_department_tags` tabloları, RLS politikaları, seeded local örnekler ve max 3 / max 1 primary kuralları eklendi.
 - *2026-04-28*: Faz 3 student profile tags tamamlandı; `student/profile` gerçek department tag selection, custom create, primary switch ve remove akışına bağlandı.
 - *2026-04-28*: Faz 4 business scan history and leave flow tamamlandı; `leave_business_event_atomic`, `business/history`, joined-upcoming leave action ve daha açık scanner result-state yüzeyleri eklendi.
+- *2026-04-28*: Faz 5 admin web foundation tamamlandı; `apps/admin` Next.js paneli, SSR auth gate, role-based redirects ve app-local auth plus route smoke script’leri eklendi.
 - *2026-04-28*: Faz 4 business join and scanner foundation tamamlandı; `join_business_event_atomic`, `business/events`, `business/scanner`, camera permission, manual QR fallback ve 4 saniye timeout sonucu eklendi.
 - *2026-04-28*: Faz 4 business auth and home foundation tamamlandı; ortak auth entry student/business ayrımı yapacak şekilde genişletildi ve yeni `business/home` route'u aktif staff membership ile joined event context göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
