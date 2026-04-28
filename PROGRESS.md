@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
+- **Branch:** `feature/admin-department-tag-moderation`
+- **Yapılan iş:** Faz 5 sistem admin department-tag moderation yüzeyi tamamlandı. `apps/admin` altında yeni `/admin/department-tags` route’u eklendi; pending review tag’ler, aktif user-created tag’ler, recent moderated tag’ler ve canonical merge target’lar SSR read-model ile admin panelde gösteriliyor. Merge ve block akışları doğrudan browser update yerine yeni `merge_department_tag_atomic` ve `block_department_tag_atomic` RPC’leri üzerinden route-backed çalışıyor. Böylece merge veya block sırasında mevcut trigger’lar profile link repair ve cleanup işini atomik şekilde koruyor. Yeni `smoke:department-tags` script’i Docker-backed fixture seed ile pending, merge-source, block-source ve temp student profile link’leri üretip non-admin RLS görünmezliği, route validation, admin merge, repeat merge, admin block, repeat block ve profile-link repair davranışını doğruluyor.
+- **Neden yapıldı:** Platform oversight tamamlandıktan sonra Faz 5’te sıradaki doğru küçük adım, daha önce mobile ve schema tarafında eklenen department tag modelini admin moderasyon yüzeyiyle tamamlamaktı. Bu slice, duplicate custom tag cleanup işini gerçek operasyon akışına taşıdı ve department tag lifecycle’ını ürün içinde kapattı.
+- **Doğrulama:** `rtk supabase db reset` sonrası `apps/admin` içinde `npm run lint`, `npm run typecheck`, `npm run build`, sonra sequential olarak `npm run smoke:auth`, `npm run smoke:routes`, `npm run smoke:business-applications`, `npm run smoke:oversight`, `npm run smoke:department-tags` geçti. `smoke:routes` seeded admin için `/admin/department-tags -> 200`, organizer için `/admin/department-tags -> 307 /club` doğruladı. `smoke:department-tags` `admin-pending-read:1`, `organizer-pending-read:0`, `student-pending-read:0`, `merge:SUCCESS`, `invalid-merge:VALIDATION_ERROR`, `duplicate-merge:SOURCE_TAG_ALREADY_MERGED`, `same-target-merge:VALIDATION_ERROR`, `organizer-merge:ADMIN_NOT_ALLOWED`, `merge-repair:ok`, `block:SUCCESS`, `invalid-block:VALIDATION_ERROR`, `duplicate-block:TAG_ALREADY_BLOCKED`, `block-repair:ok`, `organizer-route-redirect:/club` çıktılarıyla tamamlandı.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile Faz 5’in kulüp tarafına dön: `feature/admin-club-event-creation` ile club organizer için yeni event create ve temel yönetim yüzeyini web panele bağla.
+- **Açık risk/blokaj:** Merkezi repo CI hâlâ app-local smoke seviyesinde. Department tag moderation artık atomik ama repo-genel RLS regression matrisi, concurrency stress harness, event-day load testleri ve deploy/GTM runbook işleri hâlâ Faz 6 tarafında bekliyor.
+
+- **Tarih:** 2026-04-28
 - **Branch:** `feature/admin-platform-oversight`
 - **Yapılan iş:** Faz 5 system-admin oversight yüzeyi tamamlandı. `apps/admin` altında yeni `/admin/oversight` route’u eklendi; platform genelindeki kulüpler, yaklaşan veya aktif bitmemiş operasyonel etkinlikler, audit loglar ve açık fraud sinyalleri SSR read-model ile admin panelde gösteriliyor. Admin navigation genişletildi ve bounded latest-list mantığıyla operasyon ekranı eklendi. Audit metadata ve fraud metadata doğrudan ham JSON dökmek yerine kısa summary satırlarına normalize edildi. Yeni `smoke:oversight` script’i Docker-backed local DB fixture seed ile `audit_logs`, açık/reviewed `fraud_signals` ve görünür/gizli event fixture’ları üretip admin görünürlüğü, organizer audit RLS gizliliği, organizer event-scoped fraud görünürlüğü ve route render doğrulaması yapıyor.
 - **Neden yapıldı:** Business application review tamamlandıktan sonra Faz 5’te sıradaki doğru küçük adım, platform admin’in yalnızca başvuru kuyruğunu değil sistem sağlığını da tek ekrandan görmesiydi. Bu slice, fraud ve audit yüzeyini görünür kılarak sonraki moderasyon ve CI/RLS genişletmeleri için temel oluşturdu.
@@ -82,7 +90,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Admin/Kulüp giriş ekranı ve yetkiye (role) bağlı yönlendirme mekanizması (Supabase Auth)
 - [x] **Sistem Admini Modülü:** Bekleyen mekan başvurularını inceleme ve onaylama/reddetme
 - [x] **Sistem Admini Modülü:** Platformdaki tüm kulüpleri, etkinlikleri ve Fraud (Sahtekarlık) sinyallerini izleme
-- [ ] **Sistem Admini Modülü:** Duplicate/custom department tag'leri birleştirme ve moderasyon
+- [x] **Sistem Admini Modülü:** Duplicate/custom department tag'leri birleştirme ve moderasyon
 - [ ] **Kulüp Yetkilisi Modülü:** Yeni etkinlik oluşturma (Tarih, şehir, kapasite, kurallar)
 - [ ] **Kulüp Yetkilisi Modülü:** Etkinlik ödül seviyelerinin (Reward Tiers) eklenmesi ve stok takibi
 - [ ] **Kulüp Yetkilisi Modülü:** Topluluk için official department tag önerme/oluşturma
@@ -108,6 +116,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 5 admin web foundation tamamlandı; `apps/admin` Next.js paneli, SSR auth gate, role-based redirects ve app-local auth plus route smoke script’leri eklendi.
 - *2026-04-28*: Faz 5 admin business applications review tamamlandı; `/admin/business-applications`, SSR queue read, approve/reject action bağlama ve `smoke:business-applications` eklendi.
 - *2026-04-28*: Faz 5 admin platform oversight tamamlandı; `/admin/oversight`, clubs/events/audit/fraud read-model’i ve `smoke:oversight` eklendi.
+- *2026-04-28*: Faz 5 admin department-tag moderation tamamlandı; `/admin/department-tags`, atomic merge/block RPC’leri ve `smoke:department-tags` eklendi.
 - *2026-04-28*: Faz 4 business join and scanner foundation tamamlandı; `join_business_event_atomic`, `business/events`, `business/scanner`, camera permission, manual QR fallback ve 4 saniye timeout sonucu eklendi.
 - *2026-04-28*: Faz 4 business auth and home foundation tamamlandı; ortak auth entry student/business ayrımı yapacak şekilde genişletildi ve yeni `business/home` route'u aktif staff membership ile joined event context göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.

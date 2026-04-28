@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.ts",
     "smoke:business-applications": "tsx scripts/smoke-business-applications.ts",
+    "smoke:department-tags": "tsx scripts/smoke-department-tags.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts"
   },

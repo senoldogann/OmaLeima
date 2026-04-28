@@ -20,6 +20,8 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260428233000_department_tags_foundation.sql`
 - `supabase/migrations/20260429000000_join_business_event_atomic.sql`
 - `supabase/migrations/20260429010000_leave_business_event_atomic.sql`
+- `supabase/migrations/20260429020000_merge_department_tag_atomic.sql`
+- `supabase/migrations/20260429020100_block_department_tag_atomic.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -83,6 +85,18 @@ Local seed coverage now includes:
 - one active user-created custom tag
 - one merged duplicate tag for validation tests
 - two seeded profile tag links for the local student account
+
+Admin moderation now also uses two atomic RPCs:
+
+- `merge_department_tag_atomic`
+  - admin-only merge path for `ACTIVE` or `PENDING_REVIEW` source tags
+  - locks source and target rows in deterministic order to reduce deadlock risk
+  - rejects self-merge, inactive targets, merged targets, and already-merged or blocked sources
+  - writes an audit log entry and reuses existing triggers to repair dependent `profile_department_tags`
+- `block_department_tag_atomic`
+  - admin-only block path for `ACTIVE` or `PENDING_REVIEW` tags
+  - rejects already-merged tags, already-blocked tags, and canonical tags that still have merged dependents
+  - writes an audit log entry and reuses existing triggers to remove dependent `profile_department_tags`
 
 ## Critical Write Rules
 
