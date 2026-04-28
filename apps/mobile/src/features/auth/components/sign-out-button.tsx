@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { supabase } from "@/lib/supabase";
 
 export const SignOutButton = () => {
@@ -24,7 +25,15 @@ export const SignOutButton = () => {
 
   return (
     <View style={styles.container}>
-      <Pressable disabled={isLoading} onPress={handlePress} style={styles.button}>
+      <Pressable
+        disabled={isLoading}
+        onPress={handlePress}
+        style={({ pressed }) => [
+          styles.button,
+          isLoading ? styles.buttonDisabled : null,
+          pressed ? styles.buttonPressed : null,
+        ]}
+      >
         {isLoading ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
         <Text style={styles.buttonText}>{isLoading ? "Signing out..." : "Sign out"}</Text>
       </Pressable>
@@ -39,7 +48,9 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 8,
-    backgroundColor: "#334155",
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: "center",
@@ -47,14 +58,21 @@ const styles = StyleSheet.create({
     minHeight: 46,
     flexDirection: "row",
     gap: 10,
+    ...interactiveSurfaceShadowStyle,
+  },
+  buttonDisabled: {
+    opacity: 0.82,
+  },
+  buttonPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   buttonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   errorText: {
-    color: "#FCA5A5",
+    color: "#FFC5C1",
     fontSize: 12,
     lineHeight: 18,
   },

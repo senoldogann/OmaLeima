@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { signInWithGoogleAsync } from "@/lib/auth";
 import type { GoogleSignInState } from "@/types/app";
 
@@ -23,7 +24,15 @@ export const GoogleSignInButton = () => {
 
   return (
     <View style={styles.container}>
-      <Pressable disabled={state === "loading"} onPress={handlePress} style={styles.button}>
+      <Pressable
+        disabled={state === "loading"}
+        onPress={handlePress}
+        style={({ pressed }) => [
+          styles.button,
+          state === "loading" ? styles.buttonDisabled : null,
+          pressed ? styles.buttonPressed : null,
+        ]}
+      >
         {state === "loading" ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
         <Text style={styles.buttonText}>
           {state === "loading" ? "Opening Google..." : "Continue with Google"}
@@ -43,7 +52,9 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 8,
-    backgroundColor: "#2563EB",
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: "center",
@@ -51,19 +62,26 @@ const styles = StyleSheet.create({
     minHeight: 46,
     flexDirection: "row",
     gap: 10,
+    ...interactiveSurfaceShadowStyle,
+  },
+  buttonDisabled: {
+    opacity: 0.8,
+  },
+  buttonPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   buttonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   helperText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 12,
     lineHeight: 18,
   },
   errorText: {
-    color: "#FCA5A5",
+    color: "#FFC5C1",
     fontSize: 12,
     lineHeight: 18,
   },

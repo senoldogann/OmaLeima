@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import type { AppReadinessState } from "@/types/app";
 
 type StatusBadgeProps = {
@@ -10,15 +11,15 @@ type StatusBadgeProps = {
 const getBadgeColors = (state: AppReadinessState): { backgroundColor: string; textColor: string } => {
   switch (state) {
     case "ready":
-      return { backgroundColor: "#052E16", textColor: "#86EFAC" };
+      return { backgroundColor: "rgba(126, 241, 194, 0.16)", textColor: mobileTheme.colors.accentMint };
     case "loading":
-      return { backgroundColor: "#172554", textColor: "#93C5FD" };
+      return { backgroundColor: "rgba(138, 215, 255, 0.18)", textColor: mobileTheme.colors.accentBlue };
     case "pending":
-      return { backgroundColor: "#3F2C08", textColor: "#FDE68A" };
+      return { backgroundColor: "rgba(246, 210, 139, 0.18)", textColor: mobileTheme.colors.accentGold };
     case "warning":
-      return { backgroundColor: "#431407", textColor: "#FDBA74" };
+      return { backgroundColor: "rgba(255, 177, 168, 0.16)", textColor: mobileTheme.colors.accentRose };
     case "error":
-      return { backgroundColor: "#450A0A", textColor: "#FCA5A5" };
+      return { backgroundColor: "rgba(255, 141, 141, 0.18)", textColor: "#FFC5C1" };
   }
 };
 
@@ -35,12 +36,16 @@ export const StatusBadge = ({ label, state }: StatusBadgeProps) => {
 const styles = StyleSheet.create({
   badge: {
     alignSelf: "flex-start",
+    borderColor: mobileTheme.colors.cardBorderStrong,
+    borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    ...interactiveSurfaceShadowStyle,
   },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
+    textTransform: "uppercase",
   },
 });

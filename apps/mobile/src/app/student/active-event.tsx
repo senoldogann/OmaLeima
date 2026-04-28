@@ -9,6 +9,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   selectStudentQrEvent,
   useActiveAppState,
@@ -98,9 +99,9 @@ export default function StudentActiveEventScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="My QR">
+      <InfoCard eyebrow="Student" motionIndex={0} title="My QR">
         <Text style={styles.bodyText}>
-          QR generation stays server-owned. This screen only requests short-lived QR payloads from Supabase and keeps refresh timing aligned with the backend response.
+          Your QR stays short-lived and server-owned. The app only renders the current token window and keeps the refresh rhythm in sync with the backend.
         </Text>
       </InfoCard>
 
@@ -144,7 +145,7 @@ export default function StudentActiveEventScreen() {
       />
 
       {qrContextQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load QR context">
+        <InfoCard eyebrow="Error" motionIndex={2} title="Could not load QR context">
           <Text style={styles.bodyText}>{qrContextQuery.error.message}</Text>
           <Pressable onPress={() => void qrContextQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Retry</Text>
@@ -153,7 +154,7 @@ export default function StudentActiveEventScreen() {
       ) : null}
 
       {!qrContextQuery.isLoading && selectedEvent === null ? (
-        <InfoCard eyebrow="Standby" title="No registered event ready for QR">
+        <InfoCard eyebrow="Standby" motionIndex={3} title="No registered event ready for QR">
           <Text style={styles.bodyText}>
             Join an event from the Events tab first. Once a registered event is active, the QR screen will start requesting rolling tokens here.
           </Text>
@@ -165,7 +166,7 @@ export default function StudentActiveEventScreen() {
 
       {selectedEvent?.viewState === "UPCOMING" ? (
         <>
-          <InfoCard eyebrow={selectedEvent.city} title={selectedEvent.name}>
+          <InfoCard eyebrow={selectedEvent.city} motionIndex={4} title={selectedEvent.name}>
             <View style={styles.badges}>
               <StatusBadge label="registered" state="ready" />
               <StatusBadge label="upcoming" state="pending" />
@@ -190,7 +191,7 @@ export default function StudentActiveEventScreen() {
 
       {selectedEvent?.viewState === "ACTIVE" ? (
         <>
-          <InfoCard eyebrow={selectedEvent.city} title={selectedEvent.name}>
+          <InfoCard eyebrow={selectedEvent.city} motionIndex={4} title={selectedEvent.name}>
             <View style={styles.badges}>
               <StatusBadge label="active now" state="ready" />
               <StatusBadge label={qrTokenQuery.error ? "refresh error" : "live token"} state={qrTokenQuery.error ? "error" : "ready"} />
@@ -235,7 +236,7 @@ export default function StudentActiveEventScreen() {
             ) : null}
           </InfoCard>
 
-          <InfoCard eyebrow="Safety" title="QR usage reminder">
+          <InfoCard eyebrow="Safety" motionIndex={5} title="QR usage reminder">
             <Text style={styles.warningText}>
               Do not screenshot or screen-record this QR. It is short-lived and should only be shown to participating venues during the active event window.
             </Text>
@@ -244,13 +245,13 @@ export default function StudentActiveEventScreen() {
       ) : null}
 
       {selectedEvent !== null && rewardEventQuery.isLoading ? (
-        <InfoCard eyebrow="Progress" title="Updating reward progress">
+        <InfoCard eyebrow="Progress" motionIndex={6} title="Updating reward progress">
           <Text style={styles.bodyText}>Loading leima counts, reward tiers, and claimed state for this event.</Text>
         </InfoCard>
       ) : null}
 
       {selectedEvent !== null && rewardEventQuery.error ? (
-        <InfoCard eyebrow="Progress" title="Reward progress unavailable">
+        <InfoCard eyebrow="Progress" motionIndex={6} title="Reward progress unavailable">
           <Text style={styles.bodyText}>{rewardEventQuery.error.message}</Text>
           <Pressable onPress={() => void rewardEventQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Retry reward progress</Text>
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -285,61 +286,69 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   metaLine: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   progressTrack: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 999,
     height: 8,
     overflow: "hidden",
   },
   qrPlaceholderText: {
-    color: "#475569",
+    color: "#5E738A",
     fontSize: 16,
     fontWeight: "600",
   },
   qrShell: {
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.qrCanvas,
+    borderColor: "rgba(255, 255, 255, 0.28)",
+    borderRadius: mobileTheme.radius.qr,
+    borderWidth: 1,
     justifyContent: "center",
     minHeight: 312,
-    padding: 16,
+    padding: 18,
+    ...interactiveSurfaceShadowStyle,
   },
   refreshProgressFill: {
-    backgroundColor: "#2563EB",
+    backgroundColor: mobileTheme.colors.actionBlue,
     borderRadius: 999,
     height: 8,
   },
   secondaryButton: {
     alignSelf: "flex-start",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   warningText: {
-    color: "#FDE68A",
+    color: mobileTheme.colors.accentGold,
     fontSize: 13,
     lineHeight: 18,
   },

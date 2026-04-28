@@ -5,6 +5,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   hydrateRegisteredLeaderboardEvents,
   selectDefaultLeaderboardEvent,
@@ -205,28 +206,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   eventChip: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 18,
     borderWidth: 1,
     gap: 4,
     minWidth: 120,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    ...interactiveSurfaceShadowStyle,
   },
   eventChipMeta: {
-    color: "#93C5FD",
+    color: mobileTheme.colors.accentBlue,
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   eventChipTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -239,26 +241,28 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   metaText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   secondaryButton: {
     alignSelf: "flex-start",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   selectedEventChip: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#0B1220",
+    borderColor: "rgba(94, 181, 255, 0.4)",
+    backgroundColor: "rgba(94, 181, 255, 0.1)",
   },
   selectedEventSummary: {
     gap: 8,

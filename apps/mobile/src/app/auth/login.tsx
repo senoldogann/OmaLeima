@@ -7,6 +7,7 @@ import { InfoCard } from "@/components/info-card";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
 import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
 import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import { mobileTheme } from "@/features/foundation/theme";
 import { LoginHero } from "@/features/auth/components/login-hero";
 import { createGoogleRedirectUri } from "@/lib/auth";
 import { publicEnv } from "@/lib/env";
@@ -61,19 +62,29 @@ export default function LoginScreen() {
         ]}
       />
 
-      <InfoCard eyebrow="Sign in" title="Choose your mode">
+      <InfoCard eyebrow="Sign in" motionIndex={1} title="Choose your mode">
         <View style={styles.modeSelector}>
           <Pressable
             onPress={() => setMode("student")}
-            style={[styles.modeButton, mode === "student" ? styles.modeButtonActive : null]}
+            style={({ pressed }) => [
+              styles.modeButton,
+              mode === "student" ? styles.modeButtonActive : null,
+              pressed ? styles.modeButtonPressed : null,
+            ]}
           >
             <Text style={styles.modeButtonText}>Student</Text>
+            <Text style={styles.modeButtonMeta}>Google sign-in</Text>
           </Pressable>
           <Pressable
             onPress={() => setMode("business")}
-            style={[styles.modeButton, mode === "business" ? styles.modeButtonActive : null]}
+            style={({ pressed }) => [
+              styles.modeButton,
+              mode === "business" ? styles.modeButtonActive : null,
+              pressed ? styles.modeButtonPressed : null,
+            ]}
           >
             <Text style={styles.modeButtonText}>Business staff</Text>
+            <Text style={styles.modeButtonMeta}>Email and password</Text>
           </Pressable>
         </View>
 
@@ -96,7 +107,7 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         <Text selectable style={styles.footerText}>
-          Local web preview still works even before full native scanner functionality lands.
+          Preview web keeps the same visual language even before the full native scanner path is active.
         </Text>
       </View>
     </AppScreen>
@@ -105,7 +116,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -113,25 +124,34 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   footerText: {
-    color: "#64748B",
+    color: mobileTheme.colors.textMuted,
     fontSize: 12,
   },
   modeButton: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 20,
     borderWidth: 1,
     flex: 1,
+    gap: 3,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   modeButtonActive: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#172554",
+    borderColor: "rgba(94, 181, 255, 0.46)",
+    backgroundColor: "rgba(94, 181, 255, 0.1)",
+  },
+  modeButtonMeta: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  modeButtonPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   modeButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
