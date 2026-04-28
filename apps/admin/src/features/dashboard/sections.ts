@@ -6,6 +6,10 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     label: "Dashboard",
   },
   {
+    href: "/admin/oversight",
+    label: "Platform oversight",
+  },
+  {
     href: "/admin/business-applications",
     label: "Business applications",
   },
@@ -30,7 +34,7 @@ export const adminDashboardSections: DashboardSection[] = [
   {
     title: "Operations",
     tone: "accent",
-    items: ["Business applications", "Fraud signals", "Audit logs"],
+    items: ["Platform oversight", "Business applications", "Fraud signals"],
   },
   {
     title: "Catalog",
