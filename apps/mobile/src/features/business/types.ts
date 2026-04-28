@@ -59,3 +59,37 @@ export type BusinessJoinEventResult = {
   startAt?: string;
   joinDeadlineAt?: string;
 };
+
+export type BusinessLeaveEventStatus =
+  | "SUCCESS"
+  | "EVENT_NOT_FOUND"
+  | "EVENT_LEAVE_CLOSED"
+  | "BUSINESS_NOT_ACTIVE"
+  | "BUSINESS_STAFF_NOT_ALLOWED"
+  | "VENUE_NOT_FOUND"
+  | "VENUE_NOT_JOINED"
+  | "VENUE_ALREADY_LEFT"
+  | "VENUE_REMOVED"
+  | "PROFILE_NOT_FOUND"
+  | "PROFILE_NOT_ACTIVE"
+  | "AUTH_REQUIRED"
+  | "ACTOR_NOT_ALLOWED";
+
+export type BusinessLeaveEventResult = {
+  status: BusinessLeaveEventStatus;
+  eventVenueId?: string;
+  startAt?: string;
+  eventStatus?: string;
+};
+
+export type BusinessScanHistoryEntry = {
+  stampId: string;
+  eventId: string;
+  eventName: string;
+  businessId: string;
+  businessName: string;
+  studentId: string;
+  studentLabel: string;
+  scannedAt: string;
+  validationStatus: "VALID" | "MANUAL_REVIEW" | "REVOKED";
+};

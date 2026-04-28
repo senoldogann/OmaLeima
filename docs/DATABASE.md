@@ -19,6 +19,7 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260428230000_get_event_leaderboard_freshness.sql`
 - `supabase/migrations/20260428233000_department_tags_foundation.sql`
 - `supabase/migrations/20260429000000_join_business_event_atomic.sql`
+- `supabase/migrations/20260429010000_leave_business_event_atomic.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -40,6 +41,7 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `reject_business_application_atomic`
   - `register_event_atomic`
   - `join_business_event_atomic`
+  - `leave_business_event_atomic`
 
 ## Department Tag Foundation
 
@@ -167,6 +169,37 @@ Current behavior:
   - `BUSINESS_NOT_ACTIVE`
   - `BUSINESS_STAFF_NOT_ALLOWED`
   - `VENUE_REMOVED`
+  - `PROFILE_NOT_ACTIVE`
+
+## Business Event Leave Foundation
+
+Business-side venue exit is now enforced through `leave_business_event_atomic(event_id, business_id, staff_user_id)`.
+
+Current behavior:
+
+- Business staff still cannot directly update `event_venues` from the client.
+- `leave_business_event_atomic` is the shared rule path for the Phase 4 mobile business leave flow.
+- The function locks the target profile, business, event, and venue row before mutating participation state.
+- Leaving is allowed only when:
+  - caller is the same authenticated business user or the service role
+  - profile is active
+  - target business exists and is `ACTIVE`
+  - caller has an active `business_staff` membership for that business
+  - event status is exactly `PUBLISHED`
+  - `now() < start_at`
+  - venue row currently exists in `JOINED`
+- Successful leave sets `status = LEFT` and `left_at = now()`.
+- Known statuses returned by the RPC:
+  - `SUCCESS`
+  - `EVENT_LEAVE_CLOSED`
+  - `EVENT_NOT_FOUND`
+  - `BUSINESS_NOT_ACTIVE`
+  - `BUSINESS_STAFF_NOT_ALLOWED`
+  - `VENUE_NOT_FOUND`
+  - `VENUE_NOT_JOINED`
+  - `VENUE_ALREADY_LEFT`
+  - `VENUE_REMOVED`
+  - `PROFILE_NOT_FOUND`
   - `PROFILE_NOT_ACTIVE`
 
 ## Push Notification Foundation

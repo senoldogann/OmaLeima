@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-business-join-and-scanner-foundation`
-- **Yapılan iş:** Faz 4 iş akışı gerçek aksiyona geçti. `join_business_event_atomic` RPC eklendi; business mobil tarafta yeni `business/events` ekranı ile şehir bazlı public event join akışı bağlandı; yeni `business/scanner` ekranı ile active joined-event selection, camera permission, manual QR token fallback, 4 saniye timeout ve result-state kilit davranışı eklendi. `business/home` da artık bu iki route'a CTA veriyor.
-- **Neden yapıldı:** Business auth foundation tamamlandıktan sonra en doğru küçük adım, mekan personelinin gerçekten event'e katılabilmesi ve canlı QR okutma state machine'ine girebilmesiydi. Aksi halde Phase 4 akışı hâlâ salt okuma seviyesinde kalıyordu.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası auth-backed smoke script ile organizer event insert, scanner için `join_business_event_atomic` success, `ALREADY_JOINED`, `EVENT_JOIN_CLOSED`, student `generate-qr-token`, scanner `scan-qr` success, replay `QR_ALREADY_USED_OR_REPLAYED` ve pure transport timeout sonucu `NETWORK_TIMEOUT` doğrulandı. `http://localhost:8095/business/events` ve `http://localhost:8095/business/scanner` route'ları `200 OK` verdi. Test sonunda local DB tekrar seeded duruma alındı.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-business-scan-history-and-leave-flow` aç. Leave-before-start mutation, scan history ekranı ve scanner result persistence bir sonraki doğru dilim.
-- **Açık risk/blokaj:** Camera tarama gerçek native cihazda ayrıca doğrulanmalı; web preview ve manual token fallback yalnızca network/state machine foundation'ı doğruluyor. Leave flow ve geçmiş ekranı hâlâ eksik.
+- **Branch:** `feature/mobile-business-scan-history-and-leave-flow`
+- **Yapılan iş:** Faz 4 business akışı kapatıldı. Yeni `leave_business_event_atomic` RPC ile business staff artık yalnızca etkinlik başlamadan önce joined venue kaydını bırakabiliyor. Mobil tarafta yeni `business/history` route'u eklendi; `business/home`, `business/events` ve `business/scanner` bu ekrana CTA veriyor. `business/events` joined upcoming event kartlarında leave action aldı. `business/scanner` result-state yüzeyleri daha açık hale getirildi; status code, operator guidance ve history deep-link eklendi.
+- **Neden yapıldı:** Bir önceki dilim business tarafını join ve live scan seviyesine getirmişti, ama Faz 4 acceptance hâlâ eksikti: leave-before-start kuralı, operatörün kendi scan geçmişi ve daha net result-state yüzeyleri. Bu dilim Phase 4 checklist'ini tamamlamak için yapıldı.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası auth-backed smoke ile `leave_business_event_atomic` için `SUCCESS`, tekrar çağrıda `VENUE_ALREADY_LEFT`, active event için `EVENT_LEAVE_CLOSED` doğrulandı. Scanner user scope ile history query `REVOKED`, `MANUAL_REVIEW`, `VALID` satırlarını doğru sırada okudu ve UI'nin kullandığı masked student labels `Student ...0011`, `Student ...0010`, `Student ...0004` olarak üretildi. DB tarafında leave sonrası `event_venues.status=LEFT` ve `left_at` dolu olduğu; history fixture için validation-status dağılımı `1/1/1` olduğu doğrulandı. Test sonunda local DB tekrar seeded duruma alındı. Web preview route check `http://localhost:8096/business/events`, `http://localhost:8096/business/history` ve `http://localhost:8096/business/scanner` için `200 OK` verdi.
+- **Sıradaki önerilen adım:** Yeni temiz branch ile Faz 5'e geç ve `feature/admin-web-foundation` aç. Next.js admin/kulüp paneli app shell, auth gate ve temel layout doğru ilk kırılım.
+- **Açık risk/blokaj:** Camera scanner sonucu ve permission davranışı gerçek native cihazda ayrıca doğrulanmalı. Web preview ve manual smoke state machine doğruluyor ama production event-day ergonomisi için cihaz testi hâlâ gerekli.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -57,9 +57,9 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Mekan Ana Ekran: Katılınabilecek yaklaşan etkinlikler ve başlama saati öncesi katılma işlemleri
 - [x] Kamera Tarayıcı (Scanner) Ekranı: UI tasarımı ve barkod okuma entegrasyonu
 - [x] Tarama İsteği: `scan-qr` servisine istek atılması ve 4 saniyelik "Timeout / Zayıf İnternet" kontrolü
-- [ ] Tarama Sonuç Ekranları: Başarılı (Yeşil), Zaten Okutuldu (Sarı), Hatalı/Süresi Dolmuş (Kırmızı)
-- [ ] Tarayıcı Kilidi: Hızlı ardışık okutmayı engellemek için kameranın işlem bitene kadar dondurulması (Debounce)
-- [ ] Geçmiş Ekranı: Mekan görevlisinin kendi okuttuğu leimaları görebileceği anlık liste
+- [x] Tarama Sonuç Ekranları: Başarılı (Yeşil), Zaten Okutuldu (Sarı), Hatalı/Süresi Dolmuş (Kırmızı)
+- [x] Tarayıcı Kilidi: Hızlı ardışık okutmayı engellemek için kameranın işlem bitene kadar dondurulması (Debounce)
+- [x] Geçmiş Ekranı: Mekan görevlisinin kendi okuttuğu leimaları görebileceği anlık liste
 
 ## Faz 5: Admin ve Kulüp Paneli (Admin/Club Panel Agent)
 - [ ] Next.js (App Router) projesinin başlatılması ve temel layout kurulumu
@@ -88,6 +88,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 mobile push registration tamamlandı; student profile tabı native permission + Expo token + backend device-token enrollment akışına bağlandı.
 - *2026-04-28*: Faz 3 department tag schema foundation tamamlandı; `department_tags` ve `profile_department_tags` tabloları, RLS politikaları, seeded local örnekler ve max 3 / max 1 primary kuralları eklendi.
 - *2026-04-28*: Faz 3 student profile tags tamamlandı; `student/profile` gerçek department tag selection, custom create, primary switch ve remove akışına bağlandı.
+- *2026-04-28*: Faz 4 business scan history and leave flow tamamlandı; `leave_business_event_atomic`, `business/history`, joined-upcoming leave action ve daha açık scanner result-state yüzeyleri eklendi.
 - *2026-04-28*: Faz 4 business join and scanner foundation tamamlandı; `join_business_event_atomic`, `business/events`, `business/scanner`, camera permission, manual QR fallback ve 4 saniye timeout sonucu eklendi.
 - *2026-04-28*: Faz 4 business auth and home foundation tamamlandı; ortak auth entry student/business ayrımı yapacak şekilde genişletildi ve yeni `business/home` route'u aktif staff membership ile joined event context göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
