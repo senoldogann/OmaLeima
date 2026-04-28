@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",
     "build": "next build",
+    "prebuild": "tsx scripts/check-hosted-env.ts",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

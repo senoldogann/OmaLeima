@@ -209,6 +209,22 @@ The hosted smoke verifies:
 
 The hosted smoke is intentionally read-only. It does not seed or mutate shared review data.
 
+Before trusting a hosted Preview or Production build, also run the admin env preflight:
+
+```bash
+npm --prefix apps/admin run check:hosted-env
+REQUIRE_HOSTED_ADMIN_ENV=1 \
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_real_value \
+npm --prefix apps/admin run check:hosted-env
+```
+
+Hosted-required mode is the same policy the admin app uses during `prebuild` on Vercel:
+
+- `NEXT_PUBLIC_SUPABASE_URL` must be `https`
+- `NEXT_PUBLIC_SUPABASE_URL` must not point at localhost or `127.0.0.1`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` must not be an obvious example placeholder
+
 The repository workflow `.github/workflows/staging-admin-verification.yml` can run the same smoke:
 
 - manually via `workflow_dispatch`
@@ -218,6 +234,11 @@ Workflow secrets required:
 
 - `STAGING_ADMIN_EMAIL`
 - `STAGING_ADMIN_PASSWORD`
+
+Vercel project env vars required for the admin app:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 For the full function-backed security matrix:
 

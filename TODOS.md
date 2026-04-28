@@ -4,17 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/post-phase6-staging-verification-and-deploy-automation` branch.
-- [x] Review the hosted staging and deploy-automation gap after local Phase 6 readiness.
-- [x] Update `REVIEW.md` for the hosted verification scope.
-- [x] Update `PLAN.md` for the staging verification slice.
+- [x] Create `feature/post-phase6-vercel-linking-and-preview-secrets` branch.
+- [x] Review the Vercel linking and preview-secret gap after hosted verification landed.
+- [x] Update `REVIEW.md` for the env-hardening scope.
+- [x] Update `PLAN.md` for the preview-secret slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Extract shared Playwright helpers from the current local browser smoke.
-- [x] Add a hosted admin access smoke that uses env-provided URL and credentials.
-- [x] Add a root hosted verification runner.
-- [x] Add a GitHub Actions workflow for manual and deployment-status execution.
-- [x] Update testing and launch docs for preview/staging verification.
-- [x] Run direct local validation for the hosted smoke and root runner.
-- [x] Update `PROGRESS.md` with the hosted verification outcome.
+- [x] Add an admin hosted-env preflight script.
+- [x] Wire the preflight into admin package scripts and hosted build behavior.
+- [x] Update `.env.example` and deployment docs with the Vercel env and GitHub secret matrix.
+- [x] Run local-safe and hosted-required validation cases.
+- [x] Run admin lint and typecheck after the wiring.
+- [x] Update `PROGRESS.md` with the env-hardening outcome.
 - [x] Review diff and any reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.
