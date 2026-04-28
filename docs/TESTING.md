@@ -262,6 +262,10 @@ The real `audit:hosted-setup` command is read-only and checks:
 - required Production env vars in Vercel
 - required GitHub Actions repo secrets
 
+Important hosted caveat:
+
+- If the Vercel project has SSO protection enabled for preview deployments, the public URL can still return `401` even after deploy success and even after the readiness audit passes link and env checks. In that case the next step is an external protection decision, not another repo change.
+
 If it fails with a missing-link error, use:
 
 ```bash
