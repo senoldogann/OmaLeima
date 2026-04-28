@@ -34,6 +34,7 @@ npm run build
 npm run smoke:auth
 npm run smoke:business-applications
 npm run smoke:club-events
+npm run smoke:club-claims
 npm run smoke:department-tags
 npm run smoke:oversight
 npm run smoke:routes
@@ -48,6 +49,7 @@ supabase functions serve --env-file supabase/.env.local
 
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
+`npm run smoke:club-claims` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff, reward-tier, stamp, and claim fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-rewards` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff and claimed-inventory fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so moderation fixtures can be seeded directly.
 `npm run smoke:oversight` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so oversight fixtures can be seeded directly.
@@ -60,6 +62,7 @@ supabase functions serve --env-file supabase/.env.local
 - `/admin/department-tags`
 - `/admin/oversight`
 - `/club`
+- `/club/claims`
 - `/club/events`
 - `/club/rewards`
 - `/forbidden`
@@ -79,6 +82,8 @@ supabase functions serve --env-file supabase/.env.local
 - app-local oversight smoke coverage for admin-only audit visibility, event-scoped fraud visibility, and route rendering
 - club event creation page with organizer-only create access, club selection, recent draft visibility, and route-backed create flow
 - app-local club event smoke coverage for RLS insert blocking, malformed payload validation, concurrent slug creation, and fixture cleanup before later admin smokes
+- club reward-claims page with masked student candidates, recent handoff history, and route-backed confirmation through `claim_reward_atomic`
+- app-local club claim smoke coverage for staff and organizer access, direct-write RLS blocking, duplicate or out-of-stock rejection, and fixture cleanup isolation
 - club reward-tier management page with organizer-only create/update access, event-scoped stock visibility, and route-backed mutation flow
 - app-local club reward smoke coverage for direct-write RLS blocking, claimed-stock inventory floor, and fixture cleanup isolation
 
@@ -87,5 +92,4 @@ supabase functions serve --env-file supabase/.env.local
 - stronger CI smoke and RLS regression checks
 - concurrency and load-test harnesses for event-day traffic
 - club official department tag creation
-- club reward distribution validation screen
 - deployment and go-to-market runbooks for Vercel or Cloudflare

@@ -5,48 +5,45 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-club-reward-tier-management`
-- **Goal:** Add the next real club organizer workflow: manage reward tiers from the web panel.
+- **Branch:** `feature/admin-club-reward-distribution`
+- **Goal:** Add the next real event-day club workflow: confirm reward handoff from the web panel.
 
 ## Architectural Decisions
 
-- Keep reward-tier reads on the server with the existing SSR Supabase client, then hand only serializable event and tier records into a small client component for form state.
-- Extend the existing club shell instead of creating a second layout pattern. The new route should feel like a direct part of `/club`.
-- Use a compact read model with summary cards plus bounded lists:
-  1. manageable club events
-  2. active and disabled reward tiers for those events
-  3. stock pressure and claim visibility
-- Keep list limits explicit in UI copy so operators can see when a panel is showing “latest N” rather than the entire dataset.
-- Back reward-tier create and update with DB-owned safe write paths, then call them from club route handlers. This keeps auth on the server, gives stable inventory checks under concurrent claims, and lets audit logging stay in the same transaction boundary.
-- For smoke, create deterministic reward-tier fixtures through the real route where possible and seed only the minimum claimed-stock fixture needed to prove inventory boundaries. Do not add production-only test hooks.
-- Validation for this slice must include:
-  1. route-level access checks for `/club/rewards`
-  2. organizer create flow succeeds for an owned event and the new tier becomes visible immediately
-  3. organizer update flow succeeds for title, thresholds, instructions, inventory, and disabled state
-  4. invalid payloads fail early at the route boundary
-  5. student or non-organizer sessions cannot create or edit reward tiers through the route or direct table writes
-  6. inventory updates reject totals lower than already claimed stock
-  7. standard `lint`, `typecheck`, and `build`
-- CI, higher-volume load work, and GTM rollout details should be documented more explicitly after this slice, but not expanded into unrelated implementation work here.
+- Reuse the existing `claim_reward_atomic` transaction boundary instead of creating a parallel write path. The web panel should call it through a server-side route handler with the authenticated club session.
+- Keep the page in the existing `/club` shell and expose it as `/club/claims`.
+- This route should be available to active `CLUB_STAFF` and organizers, because reward handoff is an operational action, not a catalog-management action.
+- Keep student identity privacy-preserving. The read model should not depend on broad `profiles` reads and should use masked student labels derived from stable ids.
+- Build a bounded server snapshot:
+  1. operational club events
+  2. claimable student + reward candidates for those events
+  3. recent reward claims for those events
+- Avoid N+1 reads by fetching:
+  1. event list
+  2. registrations for those events
+  3. valid stamp rows for those students/events
+  4. active reward tiers for those events
+  5. existing reward claims for those events
+  then derive claimable candidates in memory.
+- Keep visible limits explicit in UI copy so operators understand when they are seeing only the latest candidates or latest claims.
+- The claim confirm action should require explicit operator click. No optimistic inventory changes before the route call completes.
 
 ## Alternatives Considered
 
-- Direct browser inserts or updates on `reward_tiers`: rejected because route-backed auth, inventory validation, and audit logging are stricter and easier to smoke test.
-- Building reward claims confirmation in the same slice: rejected because this slice only needs organizer catalog management plus stock visibility and should stay narrowly scoped.
-- Reusing raw table updates without an explicit ownership boundary: rejected because current RLS is broader than this slice wants and would leave a staff bypass.
-- Shipping route rendering without claimed-stock smoke: rejected because the user explicitly wants stronger RLS and operational confidence for write workflows.
+- Calling the existing `claim-reward` Edge Function from the admin route: workable, but adds avoidable local function-serve dependency to a web-only workflow. Direct route-backed RPC is simpler here.
+- Building a QR scanner inside the admin web app first: rejected for this slice. Manual candidate selection already matches the master plan and is enough to open the operational workflow.
+- Showing raw student names or emails: rejected because current RLS model intentionally avoids broad club-side student profile access.
+- Fetching one event at a time through route params: rejected for now because the current club app patterns favor one route with bounded operational lists rather than a deeper nested drilldown tree.
 
 ## Edge Cases
 
-- Club route must stay useful even when an organizer has no reward tiers yet; empty-state language should clarify that they can publish the first reward for a selected event.
-- Users with multiple active club events must choose the target event explicitly before creating a tier.
-- `required_stamp_count` must stay positive and should not create confusing duplicate thresholds without clear UI feedback.
-- `inventory_total` may be unlimited, but when present it must never fall below `inventory_claimed`.
-- Claimed-stock smoke fixtures must clean up both `reward_claims` and `audit_logs` so later admin smoke scripts keep seeing the seeded visibility order.
-- Optional fields like `description` and `claim_instructions` may be blank and should normalize cleanly.
-- Bounded latest lists must not silently imply full coverage; UI should state the visible limit.
-- Event and tier metadata should normalize into compact summary strings instead of leaking raw null-heavy rows.
-- The route should stay compact on mobile and desktop; create and edit rows should wrap instead of overflowing.
+- A club staff member may have access to the club area but zero events with claimable rewards; the page must still be usable and explain why it is empty.
+- An event may have rewards configured but no one eligible yet.
+- A student may be eligible for more than one reward tier in the same event.
+- A reward may become unavailable between page load and operator confirmation; the confirm action must surface the backend status cleanly.
+- Duplicate confirm clicks must still converge to `REWARD_ALREADY_CLAIMED`.
+- Completed events may still need final handoff visibility, but long-finished noise should not dominate the screen.
+- Recent claim history and candidate lists must remain bounded and labeled as such.
 
 ## Validation Plan
 
@@ -54,20 +51,16 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   1. `npm run lint`
   2. `npm run typecheck`
   3. `npm run build`
-  4. keep local admin app available at `http://localhost:3001`
-  5. keep local Edge Functions runtime available with `supabase functions serve --env-file supabase/.env.local`
 - Run auth-backed smoke checks for:
-  1. seeded organizer can open `/club/rewards`
-  2. seeded student is redirected away from that route
-  3. student and staff direct writes cannot mutate `reward_tiers`
-  4. organizer create and update actions succeed once and route validation catches malformed bodies
-  5. created or updated tiers appear in organizer route output and organizer-auth reads
-  6. claimed-stock fixture proves low inventory updates are rejected and smoke cleanup keeps later admin scripts stable
-- Open the local web preview and verify:
+  1. organizer and club staff can open `/club/claims`
+  2. student is redirected away
+  3. staff or organizer can confirm a valid claim successfully
+  4. duplicate claim returns the expected duplicate status
+  5. low-stamp candidate rejection is surfaced correctly
+  6. out-of-stock rejection is surfaced correctly
+  7. direct client insert into `reward_claims` remains blocked by RLS
+  8. smoke cleanup leaves reruns stable
+- Open local preview and verify:
   1. `/club`
-  2. `/club/rewards`
+  2. `/club/claims`
 - Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
-
-## Outcome
-
-The implemented slice follows the planned route-backed pattern. Reward-tier writes now stay inside DB-owned transaction boundaries, direct staff bypass is closed at the RLS layer, and the admin smoke set includes repeatable cleanup for both reward-tier and business-application fixtures so reruns stay stable.
