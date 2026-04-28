@@ -31,5 +31,11 @@ Readiness entry point for the full current Phase 6 matrix plus leaderboard load 
 npm run qa:phase6-readiness
 ```
 
+Focused browser click-path entry point for seeded admin login plus business application review:
+
+```bash
+npm run qa:browser-admin-review
+```
+
 Testing prerequisites and the expanded smoke matrix live in [docs/TESTING.md](docs/TESTING.md).
 Launch, fallback, and event-day operating guidance lives in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).

@@ -33,6 +33,7 @@ npm run typecheck
 npm run build
 npm run smoke:auth
 npm run smoke:business-applications
+npm run smoke:browser-admin-review
 npm run smoke:club-department-tags
 npm run smoke:club-events
 npm run smoke:club-claims
@@ -63,6 +64,12 @@ Repo root readiness entry point:
 npm run qa:phase6-readiness
 ```
 
+Repo root browser click-path entry point:
+
+```bash
+npm run qa:browser-admin-review
+```
+
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
 Route-backed smokes that hit Edge Functions also expect the local function server to be running with secrets loaded:
 
@@ -70,7 +77,14 @@ Route-backed smokes that hit Edge Functions also expect the local function serve
 supabase functions serve --env-file supabase/.env.local
 ```
 
+Install the local browser once before the Playwright smoke:
+
+```bash
+npm exec playwright install chromium
+```
+
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
+`npm run smoke:browser-admin-review` expects the local Supabase stack, the local admin app, the local function server, and the local Docker-backed Supabase DB container to be running so it can seed pending applications, sign in through the real `/login` page, click approve and reject in the browser, and verify the resulting DB state.
 `npm run smoke:club-department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary organizer-club and club-staff fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
 `npm run smoke:club-claims` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff, reward-tier, stamp, and claim fixtures can be seeded and cleaned up around the route test.
@@ -105,6 +119,7 @@ supabase functions serve --env-file supabase/.env.local
 - Google OAuth trigger for hosted auth
 - pending business application review page with approve and reject actions through Edge Functions
 - app-local review-flow smoke coverage for RLS visibility and stale-review handling
+- app-local browser click-path smoke coverage for seeded admin login plus approve and reject review actions through the real UI
 - department-tag moderation page with route-backed merge and block actions through atomic database functions
 - app-local department-tag smoke coverage for non-admin RLS, validation boundaries, and profile-link repair
 - platform oversight page for clubs, events, audit logs, and fraud signals
@@ -120,5 +135,5 @@ supabase functions serve --env-file supabase/.env.local
 
 ## Next follow-up slices
 
-- hosted staging verification and browser click-path coverage
+- hosted staging verification and broader browser click-path coverage
 - deployment automation for the chosen hosting target

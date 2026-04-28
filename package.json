@@ -2,6 +2,7 @@
   "name": "omaleima",
   "private": true,
   "scripts": {
+    "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",
     "qa:phase6-core": "node tests/run-phase6-core.mjs",
     "qa:phase6-expanded": "node tests/run-phase6-expanded.mjs",
     "qa:phase6-readiness": "node tests/run-phase6-readiness.mjs"
