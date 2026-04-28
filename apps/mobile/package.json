@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
     "audit:realtime-readiness": "node scripts/audit-realtime-readiness.mjs",
-    "audit:reward-notification-bridge": "node scripts/audit-reward-notification-bridge.mjs"
+    "audit:reward-notification-bridge": "node scripts/audit-reward-notification-bridge.mjs",
+    "audit:native-push-device-readiness": "node scripts/audit-native-push-device-readiness.mjs"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.5",
@@ -23,6 +24,7 @@
     "expo-auth-session": "~55.0.15",
     "expo-camera": "~55.0.16",
     "expo-constants": "~55.0.15",
+    "expo-dev-client": "~55.0.28",
     "expo-device": "~55.0.15",
     "expo-font": "~55.0.6",
     "expo-glass-effect": "~55.0.10",

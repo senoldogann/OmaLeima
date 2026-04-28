@@ -2998,6 +2998,7 @@ The current student's stamp and claim progress now follows stamps and reward_cla
 Shared reward inventory freshness now follows reward_tiers invalidation on the student views that expose stock state.
 Student local foreground reward notifications are shipped on top of the reward overview and Realtime invalidation.
 Remote reward-unlocked push delivery now ships from scan-qr.
+Native push diagnostics surface is shipped on the student profile route for development-build device smoke.
 QR rotation still uses polling by design.
 ```
 

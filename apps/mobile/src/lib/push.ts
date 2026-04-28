@@ -1,10 +1,14 @@
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import { publicEnv } from "@/lib/env";
-import type { PushPreparationResult } from "@/types/app";
+import type {
+  PushPermissionState,
+  PushPreparationResult,
+  PushRuntimeMode,
+} from "@/types/app";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -26,7 +30,7 @@ const ensureAndroidNotificationChannelAsync = async (): Promise<void> => {
   });
 };
 
-const readProjectId = (): string | null => {
+export const readPushProjectId = (): string | null => {
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId ??
@@ -42,6 +46,42 @@ const readProjectId = (): string | null => {
 
 const hasGrantedNotificationPermission = (status: Notifications.NotificationPermissionsStatus): boolean =>
   status.granted || status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+
+const readPermissionState = (status: Notifications.NotificationPermissionsStatus): PushPermissionState => {
+  if (status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
+    return "provisional";
+  }
+
+  if (status.status === "granted") {
+    return "granted";
+  }
+
+  if (status.status === "denied") {
+    return "denied";
+  }
+
+  return "undetermined";
+};
+
+export const readPushRuntimeMode = (): PushRuntimeMode => {
+  if (Platform.OS === "web") {
+    return "web";
+  }
+
+  if (Constants.executionEnvironment === ExecutionEnvironment.Standalone) {
+    return "standalone";
+  }
+
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    if (Constants.expoGoConfig !== null || Constants.appOwnership === "expo") {
+      return "expo-go";
+    }
+
+    return "development-build";
+  }
+
+  return "bare";
+};
 
 export const hasGrantedNotificationPermissionAsync = async (): Promise<boolean> => {
   if (Platform.OS === "web") {
@@ -66,6 +106,16 @@ export const presentLocalNotificationAsync = async (
     content,
     trigger: null,
   });
+};
+
+export const readPushPermissionStateAsync = async (): Promise<PushPermissionState> => {
+  if (Platform.OS === "web") {
+    return "unavailable";
+  }
+
+  const permissions = await Notifications.getPermissionsAsync();
+
+  return readPermissionState(permissions);
 };
 
 export const preparePushTokenAsync = async (): Promise<PushPreparationResult> => {
@@ -103,7 +153,7 @@ export const preparePushTokenAsync = async (): Promise<PushPreparationResult> =>
     };
   }
 
-  const projectId = readProjectId();
+  const projectId = readPushProjectId();
 
   if (projectId === null) {
     return {

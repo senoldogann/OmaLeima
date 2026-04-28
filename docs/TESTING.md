@@ -243,6 +243,46 @@ Expected success output today:
 - `reward-screen-ownership:provider-bridge`
 - `docs:aligned`
 
+## Mobile native push device readiness
+
+For the native push device-smoke readiness gate:
+
+```bash
+npm run qa:mobile-native-push-readiness
+```
+
+This focused audit currently does three things in order:
+
+1. `npm --prefix apps/mobile run lint`
+2. `npm --prefix apps/mobile run typecheck`
+3. `npm --prefix apps/mobile run export:web`
+4. `npm --prefix apps/mobile run audit:native-push-device-readiness`
+
+The audit is intentionally read-only. It verifies the current mobile repository state still matches the shipped native push smoke-preparation slice:
+
+- `expo-dev-client` is installed in `apps/mobile/package.json`
+- the root layout imports `expo-dev-client`
+- provider-owned notification diagnostics are wired through `apps/mobile/src/providers/app-providers.tsx`
+- the diagnostics module captures the last received notification and the last notification response
+- the student profile route exposes the manual smoke surface for runtime mode, permission state, and captured push activity
+- docs still describe the physical-device requirement honestly
+
+Expected success output today:
+
+- `native-push-readiness:repo-wired`
+- `dev-client:installed`
+- `diagnostics-provider:present`
+- `docs:aligned`
+
+This audit does not claim that a notification was really delivered on a device. It only proves the repository wiring and export path needed for that smoke are in place. The next manual step after it is green is:
+
+1. build and install a development build on a physical iPhone or Android device
+2. sign in as a student on that build
+3. enable notifications from the profile route
+4. trigger a real remote push path such as reward unlock delivery
+5. confirm the profile diagnostics surface records the received notification and, after opening it, the notification response
+6. confirm those captured rows show a remote source, not only local foreground notification activity
+
 ## Reward-unlocked remote push smoke
 
 For the backend reward-unlocked push path:
