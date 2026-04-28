@@ -4,16 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/admin-department-tag-moderation` branch.
-- [x] Review the admin app foundation, department-tag schema, RLS, and existing seed coverage.
-- [x] Update `REVIEW.md` for the admin department-tag moderation scope.
-- [x] Update `PLAN.md` for the admin department-tag moderation scope.
+- [x] Create `feature/admin-club-event-creation` branch.
+- [x] Review the club dashboard foundation, event schema, RLS, and existing seed coverage.
+- [x] Update `REVIEW.md` for the club event creation scope.
+- [x] Update `PLAN.md` for the club event creation scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add atomic admin moderation functions for merge and block flows.
-- [x] Add a dedicated `/admin/department-tags` route and read model for pending, custom, and recently moderated tags.
-- [x] Extend admin navigation and dashboard linkage so the department-tag moderation screen is reachable from the existing shell.
-- [x] Add app-local smoke coverage for moderation route visibility, non-admin RLS, and profile-link repair behavior.
-- [x] Run admin validation commands plus department-tag moderation smoke tests.
-- [x] Update `README.md`, `PROGRESS.md`, and any admin docs touched by the new route.
-- [x] Review diff.
+- [x] Add an atomic club event creation backend path with slug collision handling, concurrency-safe retry, and audit logging.
+- [x] Add a dedicated `/club/events` route with organizer club selection, creation form, and recent-event visibility.
+- [x] Extend club navigation and dashboard linkage so the events screen is reachable from the existing shell.
+- [x] Add app-local smoke coverage for route visibility, organizer-only creation, validation boundaries, created-event visibility, and concurrent create isolation.
+- [x] Run admin validation commands plus club event creation smoke tests.
+- [x] Update `README.md`, `PROGRESS.md`, and any docs touched by the new route.
+- [x] Review diff and reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.

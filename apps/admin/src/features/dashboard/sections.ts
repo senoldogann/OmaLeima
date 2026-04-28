@@ -29,6 +29,10 @@ export const clubDashboardNavigationItems: DashboardNavItem[] = [
     label: "Dashboard",
   },
   {
+    href: "/club/events",
+    label: "Club events",
+  },
+  {
     href: "/forbidden",
     label: "Access policy",
   },
@@ -61,7 +65,7 @@ export const clubDashboardSections: DashboardSection[] = [
   {
     title: "Event operations",
     tone: "accent",
-    items: ["Create event", "Manage venues", "Reward tiers"],
+    items: ["Club events", "Manage venues", "Reward tiers"],
   },
   {
     title: "Attendance",
