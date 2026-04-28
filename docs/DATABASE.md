@@ -27,6 +27,8 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260429030200_manage_reward_tiers_atomic.sql`
 - `supabase/migrations/20260429030300_restrict_reward_tier_writes.sql`
 - `supabase/migrations/20260429030400_update_reward_tier_atomic.sql`
+- `supabase/migrations/20260429030500_create_club_department_tag_atomic.sql`
+- `supabase/migrations/20260429030600_restrict_club_department_tag_writes.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -52,6 +54,7 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `create_club_event_atomic`
   - `create_reward_tier_atomic`
   - `update_reward_tier_atomic`
+  - `create_club_department_tag_atomic`
 
 ## Department Tag Foundation
 
@@ -81,11 +84,50 @@ Current RLS behavior:
 
 - active `department_tags` are publicly readable
 - authenticated users can insert only their own `USER` tags
-- club staff can insert only `CLUB` tags for clubs they manage
+- club-side official tags no longer use direct table writes
 - only platform admins can broadly manage, merge, or block tags
 - `profile_department_tags` are readable by the owning user and platform admins
 - only the owning user can create, update, or delete `SELF_SELECTED` profile tag links
 - admin merge or block actions automatically repair or remove dependent profile-tag links
+
+## Club Official Department Tag Foundation
+
+Club-side official department-tag publishing is now enforced through `create_club_department_tag_atomic(...)`.
+
+Current behavior:
+
+- The club web panel uses a route-backed create path instead of direct browser inserts.
+- The function locks the actor profile, target club, and club membership rows before writing a new official tag.
+- Create is allowed only when:
+  - caller is the same authenticated organizer or the service role
+  - profile is active
+  - target club exists and is `ACTIVE`
+  - caller has an active `club_members` row for that club
+  - membership role is `OWNER` or `ORGANIZER`
+- Validation guardrails:
+  - `title` is required after normalization
+  - same club cannot publish the same active official title twice
+  - different clubs may still publish the same visible title
+- Successful writes always create:
+  - a new `department_tags` row with `source_type = 'CLUB'`
+  - club-copied `city` and `university_name` metadata
+  - an `audit_logs` row with `CLUB_DEPARTMENT_TAG_CREATED`
+- Direct `CLUB` source inserts are now removed at the RLS layer:
+  - student custom `USER` tag creation stays intact
+  - platform admins still keep broad management access
+  - `CLUB_STAFF` and `CLUB_ORGANIZER` browser clients can no longer bypass the route or RPC through raw table writes
+- Known statuses returned by the RPC:
+  - `SUCCESS`
+  - `AUTH_REQUIRED`
+  - `ACTOR_NOT_ALLOWED`
+  - `PROFILE_NOT_FOUND`
+  - `PROFILE_NOT_ACTIVE`
+  - `CLUB_NOT_ACTIVE`
+  - `CLUB_MEMBERSHIP_NOT_ALLOWED`
+  - `CLUB_TAG_CREATOR_NOT_ALLOWED`
+  - `DEPARTMENT_TAG_TITLE_REQUIRED`
+  - `DEPARTMENT_TAG_ALREADY_EXISTS`
+  - `DEPARTMENT_TAG_SLUG_CONFLICT`
 
 ## Club Event Creation Foundation
 

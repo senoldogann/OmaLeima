@@ -12,6 +12,7 @@ type ClubRow = {
   city: string | null;
   id: string;
   name: string;
+  university_name: string | null;
 };
 
 export type ClubEventContext = {
@@ -44,7 +45,7 @@ const fetchClubsByIdsAsync = async (supabase: SupabaseClient, clubIds: string[])
 
   const { data, error } = await supabase
     .from("clubs")
-    .select("id,name,city")
+    .select("id,name,city,university_name")
     .in("id", clubIds)
     .eq("status", "ACTIVE")
     .returns<ClubRow[]>();
@@ -88,6 +89,7 @@ export const fetchClubEventContextAsync = async (
         clubId: club.id,
         clubName: club.name,
         membershipRole: membership.role,
+        universityName: club.university_name,
       },
     ];
   });

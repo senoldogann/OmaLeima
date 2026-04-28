@@ -33,6 +33,12 @@ export const getClubDashboardNavigationItems = (canManageRewards: boolean): Dash
       href: "/club/events",
       label: "Club events",
     },
+    canManageRewards
+      ? {
+          href: "/club/department-tags",
+          label: "Department tags",
+        }
+      : null,
     {
       href: "/club/claims",
       label: "Reward claims",
@@ -77,7 +83,7 @@ export const getClubDashboardSections = (canManageRewards: boolean): DashboardSe
     title: "Event operations",
     tone: "accent",
     items: canManageRewards
-      ? ["Club events", "Reward claims", "Reward tiers"]
+      ? ["Club events", "Department tags", "Reward claims", "Reward tiers"]
       : ["Club events", "Reward claims", "Manage venues"],
   },
   {

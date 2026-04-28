@@ -5,45 +5,41 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-club-reward-distribution`
-- **Goal:** Add the next real event-day club workflow: confirm reward handoff from the web panel.
+- **Branch:** `feature/admin-club-official-department-tags`
+- **Goal:** Finish the last remaining Phase 5 club panel workflow by adding organizer-owned official department tag creation.
 
 ## Architectural Decisions
 
-- Reuse the existing `claim_reward_atomic` transaction boundary instead of creating a parallel write path. The web panel should call it through a server-side route handler with the authenticated club session.
-- Keep the page in the existing `/club` shell and expose it as `/club/claims`.
-- This route should be available to active `CLUB_STAFF` and organizers, because reward handoff is an operational action, not a catalog-management action.
-- Keep student identity privacy-preserving. The read model should not depend on broad `profiles` reads and should use masked student labels derived from stable ids.
-- Build a bounded server snapshot:
-  1. operational club events
-  2. claimable student + reward candidates for those events
-  3. recent reward claims for those events
-- Avoid N+1 reads by fetching:
-  1. event list
-  2. registrations for those events
-  3. valid stamp rows for those students/events
-  4. active reward tiers for those events
-  5. existing reward claims for those events
-  then derive claimable candidates in memory.
-- Keep visible limits explicit in UI copy so operators understand when they are seeing only the latest candidates or latest claims.
-- The claim confirm action should require explicit operator click. No optimistic inventory changes before the route call completes.
+- Keep this workflow in the existing `/club` shell and expose it as `/club/department-tags`.
+- Make the route organizer-only. Active `OWNER` and `ORGANIZER` memberships may create official tags; `CLUB_STAFF` may not.
+- Route writes through a server-side API boundary instead of direct browser inserts.
+- Add a database RPC for official club tag creation so:
+  1. actor profile and membership checks happen in one place
+  2. duplicate title checks stay explicit
+  3. club metadata can be copied consistently into the tag row
+  4. response statuses stay stable for the web UI and smoke scripts
+- Tighten direct write permissions for `CLUB` source tags so the browser cannot bypass the intended route or RPC path.
+- Keep student custom `USER` tag creation untouched. This slice should not change the mobile profile behavior.
+- Use a bounded read model that shows:
+  1. organizer-manageable clubs
+  2. existing official tags created by those clubs
+  3. a small recent list so organizers can verify what is already live
 
 ## Alternatives Considered
 
-- Calling the existing `claim-reward` Edge Function from the admin route: workable, but adds avoidable local function-serve dependency to a web-only workflow. Direct route-backed RPC is simpler here.
-- Building a QR scanner inside the admin web app first: rejected for this slice. Manual candidate selection already matches the master plan and is enough to open the operational workflow.
-- Showing raw student names or emails: rejected because current RLS model intentionally avoids broad club-side student profile access.
-- Fetching one event at a time through route params: rejected for now because the current club app patterns favor one route with bounded operational lists rather than a deeper nested drilldown tree.
+- Reusing plain `insert into department_tags` from the route handler: rejected because it would preserve the broad RLS path and make duplicate handling less explicit.
+- Letting `CLUB_STAFF` create official tags: rejected because it conflicts with the master plan and recent club panel patterns where catalog writes stay organizer-level.
+- Routing club-created official tags through the admin moderation queue first: rejected for this slice. The product plan frames these as organizer-created official tags for their own community, not admin-reviewed drafts.
+- Reusing the admin moderation page for club creation: rejected because the audience, permissions, and workflow are different.
 
 ## Edge Cases
 
-- A club staff member may have access to the club area but zero events with claimable rewards; the page must still be usable and explain why it is empty.
-- An event may have rewards configured but no one eligible yet.
-- A student may be eligible for more than one reward tier in the same event.
-- A reward may become unavailable between page load and operator confirmation; the confirm action must surface the backend status cleanly.
-- Duplicate confirm clicks must still converge to `REWARD_ALREADY_CLAIMED`.
-- Completed events may still need final handoff visibility, but long-finished noise should not dominate the screen.
-- Recent claim history and candidate lists must remain bounded and labeled as such.
+- Organizer may belong to multiple clubs and must choose the correct source club.
+- Organizer may have access to the club area but zero organizer-level memberships; route should redirect or deny cleanly.
+- Same club may try to create the same title twice; the response should be deterministic.
+- Different clubs may create the same visible title; that should remain possible without unstable slug conflicts.
+- Club city or university metadata may be null; tag creation should still succeed with nullable copied fields.
+- Existing staff memberships must still be able to read the club area generally, but must not gain this write path.
 
 ## Validation Plan
 
@@ -52,15 +48,16 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   2. `npm run typecheck`
   3. `npm run build`
 - Run auth-backed smoke checks for:
-  1. organizer and club staff can open `/club/claims`
+  1. organizer can open `/club/department-tags`
   2. student is redirected away
-  3. staff or organizer can confirm a valid claim successfully
-  4. duplicate claim returns the expected duplicate status
-  5. low-stamp candidate rejection is surfaced correctly
-  6. out-of-stock rejection is surfaced correctly
-  7. direct client insert into `reward_claims` remains blocked by RLS
-  8. smoke cleanup leaves reruns stable
+  3. staff is redirected or denied
+  4. direct club-source insert into `department_tags` is blocked by RLS
+  5. organizer route create succeeds
+  6. duplicate create returns the expected duplicate status
+  7. invalid club id or invalid title is rejected cleanly
+  8. created row has `source_type = 'CLUB'`, correct `source_club_id`, `created_by`, and copied club metadata
+  9. smoke cleanup leaves reruns stable
 - Open local preview and verify:
   1. `/club`
-  2. `/club/claims`
+  2. `/club/department-tags`
 - Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
