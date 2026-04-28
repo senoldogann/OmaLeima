@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-club-reward-tier-management`
-- **Scope:** Phase 5 club organizer reward-tier management surface in the admin web app.
+- **Branch:** `feature/admin-club-reward-distribution`
+- **Scope:** Phase 5 club-side reward handoff confirmation screen.
 
 ## Affected Files
 
@@ -14,47 +14,45 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/admin/src/app/admin/*`
+- `apps/admin/README.md`
 - `apps/admin/src/app/club/*`
-- `apps/admin/src/app/api/club/reward-tiers/*`
-- `apps/admin/src/app/club/rewards/*`
-- `apps/admin/src/features/club-rewards/*`
+- `apps/admin/src/app/api/club/*`
+- `apps/admin/src/features/club-*/*`
 - `apps/admin/src/features/dashboard/*`
 - `apps/admin/scripts/*`
-- `supabase/migrations/*`
 - `docs/*`
 
 ## Risks
 
-- Reward-tier writes must stay inventory-safe. Organizer edits cannot let `inventory_total` drop below already claimed stock or leave half-updated rows under concurrent claims.
-- Existing reward-tier RLS is broader than this slice wants. `CLUB_STAFF` currently inherits manage access through `can_user_manage_event`, so direct table-write bypass needs to be closed for organizer-only configuration flows.
-- App-local smoke scripts share one local DB. Reward-tier smoke must clean up created tiers, claims, and audit rows or later admin smoke runs will turn flaky.
-- A user can hold multiple active club memberships and multiple active events. The route cannot silently assume one event context or it risks editing the wrong reward catalog.
-- CI and smoke posture is still thin at repo level, so this slice should leave explicit app-local management smoke coverage, not just route rendering.
-- Documentation should stay deployment-aware: local app run, route scope, required function dependency, and next GTM/admin rollout steps must remain obvious.
+- Reward handoff is a stock-changing write path. Confirmation must not bypass the existing duplicate protection or inventory floor logic already enforced in `claim_reward_atomic`.
+- Club claim UI must not leak extra student metadata. Club staff can read event registrations, stamps, and reward claims, but `profiles` RLS does not grant broad student profile reads.
+- The route boundary is different from reward-tier management. `CLUB_STAFF` should be allowed to confirm reward claims even though they cannot manage reward catalog configuration.
+- Claim candidate lists can grow quickly on event day. The read model must use bounded queries and avoid per-student query loops.
+- Shared app-local smoke scripts run against one local DB. This new claim smoke must clean up seeded stamps, claims, rewards, and temp staff fixtures or later runs will become flaky.
+- Repo-level CI is still thin, so this slice needs strong app-local smoke coverage for success, duplicate claim, low-stamp rejection, stock rejection, RLS boundaries, and staff-vs-student access behavior.
 
 ## Dependencies
 
-- Existing `reward_tiers`, `reward_claims`, `events`, `club_members`, and `audit_logs`.
-- Existing `claim_reward_atomic` inventory semantics and seeded organizer, club, event, student, and reward-tier rows from `supabase/seed.sql`.
-- Existing mobile reward and event detail read models that already depend on `reward_tiers.status`, `required_stamp_count`, `inventory_total`, `inventory_claimed`, `reward_type`, and `claim_instructions`.
-- Existing seeded `PLATFORM_ADMIN`, `CLUB_ORGANIZER`, and `STUDENT` accounts for auth-backed smoke.
-- Current `apps/admin` SSR auth foundation and role-gated `/admin` route.
-- Official Next.js App Router guidance already adopted in this app, plus current Supabase query, RPC, and RLS behavior.
+- Existing `claim_reward_atomic` RPC and `claim-reward` Edge Function behavior.
+- Existing tables and RLS on `events`, `event_registrations`, `stamps`, `reward_tiers`, `reward_claims`, `club_members`, and `audit_logs`.
+- Existing club SSR auth foundation and club route shell in `apps/admin`.
+- Existing `/club/rewards` and `/club/events` patterns for server read models, route-backed writes, and app-local smoke structure.
+- Existing seeded organizer, student, scanner, and club data from `supabase/seed.sql`.
 
 ## Existing Logic Checked
 
-- Reward tiers already exist in DB and student mobile reads, but there is no club web management surface yet.
-- `DashboardShell`, club route guards, and club event read context already exist, so the new organizer route should extend the same club surface instead of creating a parallel layout.
-- Existing app-local smoke scripts cover auth, route gating, admin moderation, oversight visibility, and club event creation; they do not yet cover reward-tier writes or claimed-stock edge cases.
-- The previous event slice already introduced organizer-only event editing helper logic; reward-tier policy tightening should follow the same ownership boundary.
+- `claim_reward_atomic` already enforces duplicate protection, valid stamp threshold, out-of-stock rejection, and atomic inventory increment.
+- `reward_claims` already has unique `(event_id, student_id, reward_tier_id)` protection and event-scoped club-staff read access.
+- `fetchClubEventContextAsync` already distinguishes club memberships and `canCreateEvents`, which matters because claim confirmation should allow broader club access than reward-tier editing.
+- Mobile student rewards already compute claimability states, but admin club web does not yet expose a reward delivery workflow.
+- Current admin app smokes already prove route access, reward-tier inventory edits, and cleanup patterns we can reuse for this slice.
 
 ## Review Outcome
 
-This slice now ships as:
+Add a dedicated club reward-claims workflow that lets club staff or organizers:
 
-- organizer-only DB write paths: `create_reward_tier_atomic` and `update_reward_tier_atomic`
-- tighter direct-write RLS on `reward_tiers` so `CLUB_STAFF` cannot bypass the route
-- new `/club/rewards` organizer surface with event-scoped reward creation, stock visibility, and inline editing
-- stronger app-local smoke coverage for organizer-only writes, claimed-stock boundaries, and repeatable fixture cleanup
-- documented local dependency on `supabase functions serve --env-file supabase/.env.local` for route-backed admin smokes that hit Edge Functions
+- open a bounded event-scoped claim console
+- see masked student claim candidates and recent claim history
+- confirm physical reward handoff through a route-backed call into `claim_reward_atomic`
+- keep student privacy intact
+- leave repeatable smoke coverage for event-day claim operations
