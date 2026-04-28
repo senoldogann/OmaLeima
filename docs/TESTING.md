@@ -96,12 +96,47 @@ The goal is to keep one explicit, small, repeatable script for core zero-trust r
 
 ## Expanded matrix
 
-These checks remain important, but they are not in the root `qa:phase6-core` command because they require extra runtime services or a broader setup:
+These checks require the local function server and run through:
+
+```bash
+npm run qa:phase6-expanded
+```
+
+Current expanded matrix:
+
+1. `qa:phase6-core`
+2. `npm --prefix apps/admin run smoke:business-applications`
+3. `npm --prefix apps/admin run smoke:qr-security`
+4. `npm --prefix apps/admin run smoke:scan-race`
+
+What each added smoke covers:
+
+- `smoke:business-applications`
+  - route-backed admin approve/reject flows through Edge Functions
+- `smoke:qr-security`
+  - missing bearer on `generate-qr-token`
+  - missing bearer on `scan-qr`
+  - tampered QR JWT
+  - wrong QR token type
+  - expired QR JWT
+  - valid QR from another event where the scanner business is not joined
+- `smoke:scan-race`
+  - same QR scanned concurrently by two scanner contexts
+  - one `SUCCESS` and one `QR_ALREADY_USED_OR_REPLAYED`
+  - exactly one persisted `stamps`, `qr_token_uses`, and `STAMP_CREATED` audit row
+
+These checks remain separate from the core matrix because they require extra runtime services:
 
 - `npm --prefix apps/admin run smoke:business-applications`
   - requires the local admin app
   - requires the local function server
   - validates route-backed approve/reject flows through Edge Functions
+- `npm --prefix apps/admin run smoke:qr-security`
+  - requires the local function server
+  - validates QR/JWT abuse handling through real Edge Function invocations
+- `npm --prefix apps/admin run smoke:scan-race`
+  - requires the local function server
+  - validates atomic replay protection through real concurrent Edge Function invocations
 
 ## Recommended local order
 
@@ -120,12 +155,18 @@ supabase functions serve --env-file supabase/.env.local
 npm --prefix apps/admin run smoke:business-applications
 ```
 
+For the full function-backed security matrix:
+
+```bash
+supabase functions serve --env-file supabase/.env.local
+npm run qa:phase6-expanded
+```
+
 ## What is still missing
 
 This foundation does not close the full Phase 6 checklist yet. The remaining major slices are still open:
 
 - invalid JWT and cross-event QR abuse scenarios
-- concurrency and duplicate-scan race harnesses
 - leaderboard and cron load validation
 - event-day checklist
 - offline fallback documentation

@@ -425,7 +425,14 @@ QR_ALREADY_USED_OR_REPLAYED
 ALREADY_STAMPED
 INVALID_QR
 QR_EXPIRED
+INVALID_QR_TYPE
+VENUE_NOT_IN_EVENT
 ```
+
+Phase 6 function security smoke coverage now lives in:
+
+- `apps/admin/scripts/smoke-qr-security.ts`
+- `apps/admin/scripts/smoke-scan-race.ts`
 
 Expected reward statuses:
 

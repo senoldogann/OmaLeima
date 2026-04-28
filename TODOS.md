@@ -4,15 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/phase-6-hardening-foundation` branch.
-- [x] Review current smoke coverage, repo QA gaps, and Phase 6 expectations.
-- [x] Update `REVIEW.md` for the Phase 6 foundation scope.
-- [x] Update `PLAN.md` for the Phase 6 foundation scope.
+- [x] Create `feature/phase-6-concurrency-and-jwt-hardening` branch.
+- [x] Review current QR/JWT function paths, replay guards, and Phase 6 checklist gaps.
+- [x] Update `REVIEW.md` for the function-backed security scope.
+- [x] Update `PLAN.md` for the QR/JWT and race-hardening scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add a root-level QA entry point and `tests/` orchestration script.
-- [x] Add a dedicated `smoke:rls-core` regression script.
-- [x] Document local QA prerequisites and matrix tiers in `docs/TESTING.md` and repo README files.
-- [x] Run the new core QA matrix plus direct smoke validation.
-- [x] Update `PROGRESS.md` with the Phase 6 foundation outcome.
+- [x] Add `smoke:qr-security` for invalid bearer, tampered token, wrong type, expired token, and wrong-event venue mismatch.
+- [x] Add `smoke:scan-race` for duplicate concurrent scan protection and side-effect verification.
+- [x] Add an expanded root QA entry point for function-backed smokes.
+- [x] Update testing and Edge Function docs for the expanded matrix.
+- [x] Run direct function-backed validation and the expanded matrix.
+- [x] Update `PROGRESS.md` with the Phase 6 security/race outcome.
 - [x] Review diff and reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.

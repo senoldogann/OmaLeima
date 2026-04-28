@@ -5,57 +5,47 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/phase-6-hardening-foundation`
-- **Goal:** Open Phase 6 with a reliable QA entry point, core RLS regression coverage, and explicit testing docs.
+- **Branch:** `feature/phase-6-concurrency-and-jwt-hardening`
+- **Goal:** Extend Phase 6 with explicit function-backed QR/JWT abuse coverage and a duplicate-scan race harness.
 
 ## Architectural Decisions
 
-- Add a root-level `package.json` for QA orchestration only. The repo currently has no single command surface, and Phase 6 needs one.
-- Keep orchestration in `tests/` to match the master plan output instead of burying it inside one app.
-- Use a small Node script in `tests/` that shells out to existing commands. This avoids duplicating smoke logic and keeps each feature-level smoke where it already belongs.
-- Introduce a dedicated `apps/admin/scripts/smoke-rls-core.ts` script for cross-cutting direct-access security assertions.
-- Make the first matrix intentionally scoped:
-  1. reset local DB
-  2. admin lint + typecheck + build
-  3. core auth and route smokes
-  4. core admin and club feature smokes
-  5. dedicated RLS regression smoke
-- Document two tiers:
-  1. core matrix that does not require local Edge Functions
-  2. expanded matrix that includes function-backed smokes once that layer is centralized later
+- Keep the function-backed smokes in `apps/admin/scripts/` for now so they can reuse `tsx`, `@supabase/supabase-js`, and the existing smoke style.
+- Add one script for QR/JWT abuse assertions and one script for duplicate-scan concurrency assertions. Keep them separate so failures tell us exactly which layer broke.
+- Use deterministic SQL fixtures for isolated event and scanner data instead of mutating the seeded event forever.
+- Add a root-level expanded QA runner in `tests/` that:
+  1. preflights the admin app
+  2. preflights the local function server
+  3. runs `qa:phase6-core`
+  4. runs function-backed smokes after the core matrix
+- Keep the expanded matrix narrow in this slice:
+  1. existing business-application review smoke
+  2. new QR/JWT security smoke
+  3. new scan race smoke
 
 ## Alternatives Considered
 
-- Moving all smokes into one giant new script: rejected because it would duplicate proven slice-level scripts and become harder to maintain.
-- Starting with concurrency/load harness first: rejected because the repo still lacks a stable single QA entry point and dedicated RLS regression set.
-- Adding GitHub Actions immediately in the same slice: rejected for now. First we need a clean local foundation to automate later.
-- Writing the orchestrator in bash only: workable, but a small Node runner gives clearer preflight checks and is easier to extend.
+- Writing these checks as pure shell scripts: rejected because token signing, concurrent request handling, and typed auth helpers are clearer in TypeScript.
+- Reusing seeded event data directly for race tests: rejected because it makes reruns flaky and hides whether cleanup is working.
+- Bundling JWT abuse and race checks into one large script: rejected because failures would be harder to diagnose and reviewer feedback would be noisier.
+- Jumping straight to leaderboard load or cron load in the same slice: rejected because QR security and replay protection are the higher-risk open items from the Phase 6 checklist.
 
 ## Edge Cases
 
-- The local admin app may not be running; the matrix must fail early with a clear message.
-- Some smokes rely on Docker-backed DB access; docs must say that explicitly.
-- Some smokes rely on seeded accounts and `supabase db reset`; the matrix must own that reset step.
-- The dedicated RLS smoke must avoid colliding with feature-specific fixture data and must clean up after itself.
-- The new root package must not interfere with `apps/admin` or `apps/mobile` dependency management.
+- The local function server may not be running even while the Supabase stack is up; the expanded matrix must fail early with a clear message.
+- Invalid JWT tests must distinguish tampered signature, expired token, and wrong QR type instead of collapsing them all into one generic invalid result.
+- Wrong-event QR abuse needs a valid signed token for an event where the scanner business is not joined; otherwise the smoke would only prove invalid signing, not venue scoping.
+- The duplicate-scan race test must verify side effects in `stamps`, `qr_token_uses`, and `audit_logs`, not only response bodies.
+- Extra scanner fixture users and event rows must be cleaned up fully so repeated runs remain stable.
 
 ## Validation Plan
 
-- Run root and admin validation:
-  1. `npm run qa:phase6-core`
-  2. `cd apps/admin && npm run smoke:rls-core`
-- Also run direct commands while developing:
-  1. `rtk supabase db reset`
-  2. `cd apps/admin && rtk npm run lint`
-  3. `cd apps/admin && rtk npm run typecheck`
-  4. `cd apps/admin && rtk npm run build`
-  5. `cd apps/admin && rtk npm run smoke:auth`
-  6. `cd apps/admin && rtk npm run smoke:routes`
-  7. `cd apps/admin && rtk npm run smoke:oversight`
-  8. `cd apps/admin && rtk npm run smoke:department-tags`
-  9. `cd apps/admin && rtk npm run smoke:club-events`
-  10. `cd apps/admin && rtk npm run smoke:club-rewards`
-  11. `cd apps/admin && rtk npm run smoke:club-claims`
-  12. `cd apps/admin && rtk npm run smoke:club-department-tags`
-  13. `cd apps/admin && rtk npm run smoke:rls-core`
-- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/README.md`, and `docs/TESTING.md`.
+- Run direct function-backed validation while developing:
+  1. `rtk supabase db reset --yes`
+  2. `rtk supabase functions serve --env-file supabase/.env.local`
+  3. `cd apps/admin && rtk npm run smoke:qr-security`
+  4. `cd apps/admin && rtk npm run smoke:scan-race`
+- Run full matrix validation:
+  1. `rtk npm run qa:phase6-expanded`
+  2. `rtk npm run qa:phase6-core`
+- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/README.md`, `docs/EDGE_FUNCTIONS.md`, and `docs/TESTING.md`.

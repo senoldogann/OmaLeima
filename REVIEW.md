@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/phase-6-hardening-foundation`
-- **Scope:** Phase 6 QA foundation with centralized smoke orchestration and core RLS regression coverage.
+- **Branch:** `feature/phase-6-concurrency-and-jwt-hardening`
+- **Scope:** Phase 6 function-backed security smokes for QR/JWT abuse and duplicate-scan race protection.
 
 ## Affected Files
 
@@ -18,37 +18,39 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/admin/README.md`
 - `apps/admin/package.json`
 - `apps/admin/scripts/*`
+- `docs/EDGE_FUNCTIONS.md`
 - `docs/TESTING.md`
 - `tests/*`
 - root `package.json`
 
 ## Risks
 
-- Current smoke coverage is strong but fragmented. A future agent can easily miss a required sequence or prerequisite and think the repo is healthier than it is.
-- Repo-level QA still depends on manual knowledge: which scripts need a running admin app, which ones need Docker-backed DB access, and which ones depend on local Edge Functions.
-- Critical RLS expectations are currently proven indirectly across many feature smokes, but there is no single focused regression script for the most security-sensitive direct table access rules.
-- If the new orchestration script assumes too much local state, it becomes flaky and adds noise instead of trust.
-- We should not overreach into full concurrency or load harnesses in the same slice. The first hardening step needs a reliable foundation, not a broad half-finished QA suite.
+- JWT and QR security regressions can hide behind generic 400 responses unless the smoke scripts assert the exact backend status codes.
+- Race-condition tests are easy to write badly. If the concurrent scan smoke reuses seeded event data without cleanup, reruns become flaky and stop proving anything.
+- Function-backed smokes depend on a separately served local Edge Functions process. Without clear preflight checks, the new expanded QA path becomes frustrating and misleading.
+- A duplicate-scan race smoke must verify both HTTP statuses and persistent side effects. Otherwise we could miss double-write regressions in `stamps`, `qr_token_uses`, or `audit_logs`.
+- We should keep this slice focused on explicit JWT abuse and duplicate scan protection, not stretch into leaderboard load or broader event-day ops yet.
 
 ## Dependencies
 
 - Existing admin smoke scripts in `apps/admin/scripts`.
-- Existing local Supabase reset flow and seeded accounts.
-- Existing RLS policies on `stamps`, `reward_claims`, `audit_logs`, `department_tags`, and related tables.
-- Existing feature-level docs in `apps/admin/README.md` and `docs/DATABASE.md`.
+- Existing local Supabase reset flow, local function server flow, and seeded accounts.
+- `generate-qr-token`, `scan-qr`, and shared QR JWT helpers under `supabase/functions`.
+- Existing atomic replay protection in `scan_stamp_atomic`.
+- Existing feature-level docs in `apps/admin/README.md`, `docs/EDGE_FUNCTIONS.md`, and `docs/TESTING.md`.
 
 ## Existing Logic Checked
 
-- Admin app already has focused route and flow smokes for business applications, oversight, department tags, club events, club rewards, club claims, and club department tags.
-- Many direct-write RLS expectations are already tested, but each script only covers its own slice.
-- There is no root-level package or single QA entry point right now.
-- The master plan explicitly calls for `tests/` outputs and `docs/TESTING.md` in Phase 6.
+- `generate-qr-token` explicitly rejects invalid bearer tokens, inactive profiles, unavailable events, and ended events.
+- `scan-qr` explicitly rejects invalid bearer tokens, invalid or expired QR JWTs, missing business context, and business staff mismatches before hitting the atomic RPC.
+- `scan_stamp_atomic` uses unique constraints on `qr_token_uses.jti` and `stamps.qr_jti` to collapse duplicate use into `QR_ALREADY_USED_OR_REPLAYED`.
+- The current root QA flow still stops at the core matrix. Function-backed security smokes are documented but not yet orchestrated.
 
 ## Review Outcome
 
-Build a first Phase 6 hardening slice that:
+Build the next Phase 6 hardening slice that:
 
-- adds a single repo-level QA entry point
-- documents prerequisites and smoke tiers clearly
-- adds a dedicated core RLS regression script
-- keeps the scope tight enough to be stable and repeatable
+- adds explicit QR/JWT abuse smokes for invalid bearer, tampered token, expired token, invalid token type, and wrong-event venue mismatch
+- adds a duplicate-scan race smoke that proves one success, one replay rejection, and single-row persistence
+- adds an expanded function-backed QA entry point with preflight guidance for local function serving
+- updates docs so future agents know which matrix covers core app QA versus Edge Function security QA
