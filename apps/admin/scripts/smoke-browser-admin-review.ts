@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { chromium, type Browser, type Locator, type Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import {
   readSqlTextAsync,
@@ -8,6 +8,12 @@ import {
   seededAdminEmail,
   seededPassword,
 } from "./_shared/function-smoke";
+import {
+  assertLoginPageReachableAsync,
+  launchBrowserAsync,
+  openRouteFromSidebarAsync,
+  signInWithPasswordAsync,
+} from "./_shared/browser-smoke";
 
 type ReviewFixture = {
   approveApplicationId: string;
@@ -24,32 +30,12 @@ const functionBaseUrl = process.env.SUPABASE_FUNCTIONS_BASE_URL ?? "http://127.0
 const rejectReason = "Browser smoke rejection reason.";
 const browserTimeoutMs = 15_000;
 const databasePollTimeoutMs = 10_000;
+const playwrightInstallCommand = "npm --prefix apps/admin exec playwright install chromium";
 
 const sleepAsync = async (durationMs: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, durationMs);
   });
-
-const assertAdminAppReachableAsync = async (): Promise<void> => {
-  let response: Response;
-
-  try {
-    response = await fetch(`${appBaseUrl}/login`, {
-      method: "GET",
-      redirect: "manual",
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "unknown fetch error";
-
-    throw new Error(
-      `Could not reach ${appBaseUrl}/login before browser smoke: ${errorMessage}. Start the admin app with "npm --prefix apps/admin run dev -- --hostname 127.0.0.1 --port 3001" or override ADMIN_APP_BASE_URL.`
-    );
-  }
-
-  if (response.status !== 200) {
-    throw new Error(`Expected ${appBaseUrl}/login to return 200 before browser smoke, got ${response.status}.`);
-  }
-};
 
 const assertFunctionServerReachableAsync = async (): Promise<void> => {
   let response: Response;
@@ -181,90 +167,85 @@ const createCardLocator = (page: Page, businessName: string): Locator =>
     }),
   });
 
-const signInAsAdminAsync = async (page: Page): Promise<void> => {
-  await page.goto(`${appBaseUrl}/login`, {
-    waitUntil: "networkidle",
-  });
-  await page.getByLabel("Email").fill(seededAdminEmail);
-  await page.getByLabel("Password").fill(seededPassword);
-
-  await Promise.all([
-    page.waitForURL("**/admin", {
-      timeout: browserTimeoutMs,
-    }),
-    page.getByRole("button", {
-      name: "Sign in with password",
-    }).click(),
-  ]);
-
-  await page.waitForLoadState("networkidle");
-};
-
 const openBusinessApplicationsAsync = async (page: Page): Promise<void> => {
-  await page.getByRole("link", {
-    name: "Business applications",
-  }).click();
-  await page.waitForURL("**/admin/business-applications", {
-    timeout: browserTimeoutMs,
-  });
-  await page.waitForLoadState("networkidle");
+  await openRouteFromSidebarAsync(
+    page,
+    {
+      navigationLabel: "Business applications",
+      routePath: "/admin/business-applications",
+      title: "Business applications",
+    },
+    browserTimeoutMs
+  );
 };
 
 const approveApplicationAsync = async (page: Page, businessName: string): Promise<void> => {
   const card = createCardLocator(page, businessName);
+  const approveButton = card.getByRole("button", {
+    name: "Approve application",
+  });
 
   await card.waitFor({
     state: "visible",
     timeout: browserTimeoutMs,
   });
-  await card.getByRole("button", {
-    name: "Approve application",
-  }).click();
+  await approveButton.click();
+  await approveButton.waitFor({
+    state: "hidden",
+    timeout: browserTimeoutMs,
+  });
 };
 
 const rejectApplicationAsync = async (page: Page, businessName: string, reason: string): Promise<void> => {
   const card = createCardLocator(page, businessName);
+  const rejectToggleButton = card.getByRole("button", {
+    name: "Reject with reason",
+  });
+  const reasonField = card.getByLabel("Reason");
+  const confirmButton = card.getByRole("button", {
+    name: "Confirm rejection",
+  });
 
   await card.waitFor({
     state: "visible",
     timeout: browserTimeoutMs,
   });
-  await card.getByRole("button", {
-    name: "Reject with reason",
-  }).click();
-  await card.getByLabel("Reason").fill(reason);
-  await card.getByRole("button", {
-    name: "Confirm rejection",
-  }).click();
-};
-
-const launchBrowserAsync = async (): Promise<Browser> => {
-  try {
-    return await chromium.launch({
-      headless: true,
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "unknown browser launch error";
-
-    throw new Error(
-      `Failed to launch Playwright Chromium for browser smoke: ${errorMessage}. Run "npm --prefix apps/admin exec playwright install chromium" first.`
-    );
-  }
+  await rejectToggleButton.click();
+  await reasonField.waitFor({
+    state: "visible",
+    timeout: browserTimeoutMs,
+  });
+  await reasonField.fill(reason);
+  await confirmButton.click();
+  await confirmButton.waitFor({
+    state: "hidden",
+    timeout: browserTimeoutMs,
+  });
 };
 
 const run = async (): Promise<void> => {
   const outputs: string[] = [];
   const fixture = await seedReviewFixtureAsync(randomUUID().slice(0, 8).toUpperCase());
-  let browser: Browser | null = null;
+  let browser: Awaited<ReturnType<typeof launchBrowserAsync>> | null = null;
   let runError: Error | null = null;
 
   try {
-    await assertAdminAppReachableAsync();
+    await assertLoginPageReachableAsync(appBaseUrl);
     await assertFunctionServerReachableAsync();
-    browser = await launchBrowserAsync();
+    browser = await launchBrowserAsync(playwrightInstallCommand);
 
     const page = await browser.newPage();
-    await signInAsAdminAsync(page);
+    await signInWithPasswordAsync(
+      page,
+      appBaseUrl,
+      {
+        email: seededAdminEmail,
+        password: seededPassword,
+      },
+      "/admin",
+      "Operations dashboard",
+      browserTimeoutMs
+    );
     outputs.push("browser-login:SUCCESS");
 
     await openBusinessApplicationsAsync(page);

@@ -37,5 +37,14 @@ Focused browser click-path entry point for seeded admin login plus business appl
 npm run qa:browser-admin-review
 ```
 
+Hosted admin verification entry point for preview or staging URLs:
+
+```bash
+ADMIN_APP_BASE_URL=https://your-preview-or-staging-url \
+STAGING_ADMIN_EMAIL=admin@example.com \
+STAGING_ADMIN_PASSWORD=secret \
+npm run qa:staging-admin-verification
+```
+
 Testing prerequisites and the expanded smoke matrix live in [docs/TESTING.md](docs/TESTING.md).
 Launch, fallback, and event-day operating guidance lives in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).
