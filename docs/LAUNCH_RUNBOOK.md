@@ -68,6 +68,7 @@ Run these checks before a hosted pilot or a real event:
 - The admin app now also has a controlled apply command for the hosted auth-domain switch. Rehearse with `SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run` first; only use `apply` after the DNS and audit gates are green.
 - If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.
 - While the custom domain is not ready, the current preview deployment URL is acting as the temporary Site URL in Supabase Auth. Replace it with `https://admin.omaleima.fi` later in one controlled pass.
+- `https://admin.omaleima.fi` is currently just the planned future domain target. Do not treat it as an active requirement until the real domain has been purchased and delegated.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 - If the linked hosted Supabase project was just created, assume it is empty until `supabase db push --linked` has completed and a direct hosted API probe confirms tables like `profiles` and `clubs` are reachable.
 - The custom domain is now attached in Vercel, but DNS still needs `A admin.omaleima.fi 76.76.21.21` before Supabase Auth can move off the preview URL.
