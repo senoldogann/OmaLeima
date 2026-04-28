@@ -4,36 +4,38 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 ## Current Plan
 
-- **Date:** 2026-04-28
-- **Branch:** `feature/realtime-unlock-notification-followup`
-- **Goal:** Ship the smallest student reward notification behavior that works with the current Realtime foundation and does not overclaim remote push support yet.
+- **Date:** 2026-04-29
+- **Branch:** `feature/reward-unlocked-remote-push-delivery-and-device-smoke`
+- **Goal:** Ship the smallest honest remote `REWARD_UNLOCKED` push delivery path after successful scans, plus deterministic local smoke coverage and updated readiness docs.
 
 ## Architectural Decisions
 
-- Build the behavior inside a dedicated mobile notifications feature module instead of scattering ad hoc effects across multiple student screens.
-- Use the existing student reward overview as the single source of truth for unlock and stock-change detection.
-- Keep the notification bridge app-level so student reward notifications can fire outside the rewards tab.
-- Present local device notifications only when the app already has notification permission; do not auto-prompt again from this slice.
-- Seed first-load state without backfilling old unlocks so the bridge does not spam already claimable rewards on initial hydration.
+- Detect unlock boundaries inside `scan_stamp_atomic` by comparing the post-insert valid stamp count against the previous count.
+- Return unlock metadata from the RPC so `scan-qr` can build a remote push attempt without re-querying business rules from scratch.
+- Keep scan success authoritative. Remote push transport or token problems should be reflected in extra response metadata and persisted notification status, not by turning the scan into a retry-triggering error.
+- Use one grouped push payload per successful scan and student, even when multiple reward tiers unlock together.
+- Reuse the existing Expo push helper and `notifications` persistence style instead of adding a new dedicated Edge Function.
 
 ## Alternatives Considered
 
-- Adding backend `REWARD_UNLOCKED` push delivery now:
-  - rejected because it widens the slice into new Edge Function behavior, notification rows, and device-level delivery testing
-- Adding a full mobile notification center route now:
-  - rejected because the user already asked to defer the broader UI pass
-- Detecting unlocks separately on each reward screen:
-  - rejected because duplicate mounted screens would make de-duplication and future maintenance worse
+- Detecting unlocked tiers in `scan-qr` with broad reward tier reads after the RPC:
+  - rejected because it duplicates atomic business logic and makes later race analysis worse
+- Sending one notification row per unlocked reward tier:
+  - rejected because this slice only needs one push event per scan and would overcomplicate delivery/result bookkeeping
+- Turning remote push failure into `502` from `scan-qr`:
+  - rejected because the stamp would already exist, making scanner retries misleading and noisy
 
 ## Edge Cases
 
-- Web preview must not fail just because local device notifications are unavailable there.
-- Simulator and Expo Go behavior differ from physical-device remote push behavior, so this slice should stay honest about being local notification behavior first.
-- Reward overview can refetch with unchanged data; notifications must only fire on real transition boundaries.
-- A reward can become unavailable because another student claimed the last inventory slot, so stock-change detection must use the same shared inventory state the UI already shows.
+- Multiple reward tiers can unlock on the same stamp if they share the same required threshold.
+- A student can already have a `CLAIMED` or `REVOKED` reward claim; those tiers must not be sent as newly unlocked.
+- A reward can cross the stamp threshold while already out of stock; the scan should not send a false unlock push for that tier.
+- The local mock push server has to bind on the host because the function runtime reaches it through `host.docker.internal`.
+- Real remote push confirmation still requires a development build on physical devices, so docs must stay explicit about that gap.
 
 ## Validation Plan
 
-- Run `apps/mobile` lint, typecheck, and `export:web`.
-- Add or update a small repo-owned audit for the reward notification bridge if the code introduces behavior that could otherwise be overclaimed in docs.
-- Get a reviewer pass because duplicate notification and hidden spam regressions are easy to miss.
+- Run the new reward-unlocked push smoke against local functions with the host mock Expo server.
+- Run `apps/mobile` lint, typecheck, and current reward-notification audits so the previous local bridge stays aligned with the new backend story.
+- Run focused docs/readiness validation from the root wrapper if a new QA command is added.
+- Get a reviewer pass because the most likely mistakes here are duplicate unlock sends and scan-result honesty regressions.

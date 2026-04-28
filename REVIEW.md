@@ -4,9 +4,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Current Review
 
-- **Date:** 2026-04-28
-- **Branch:** `feature/realtime-unlock-notification-followup`
-- **Scope:** Add the smallest honest student reward notification behavior on top of the shipped Realtime foundation, without turning this slice into the later full notification center or UI pass.
+- **Date:** 2026-04-29
+- **Branch:** `feature/reward-unlocked-remote-push-delivery-and-device-smoke`
+- **Scope:** Add the smallest honest backend reward-unlocked remote push delivery on top of the shipped local notification and Realtime foundations, with deterministic smoke coverage and no broad UI work.
 
 ## Affected Files
 
@@ -14,44 +14,48 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/providers/app-providers.tsx`
-- `apps/mobile/src/features/notifications/student-reward-notifications.ts`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/features/rewards/student-rewards.ts`
-- `apps/mobile/src/features/realtime/student-realtime.ts`
-- `apps/mobile/src/features/auth/session-access.ts`
-- `apps/mobile/src/lib/push.ts`
+- `supabase/migrations/20260427181000_scan_stamp_atomic.sql`
+- `supabase/migrations/20260429113000_scan_stamp_atomic_reward_unlocks.sql`
+- `supabase/functions/scan-qr/index.ts`
+- `supabase/functions/_shared/expoPush.ts`
+- `apps/admin/scripts/_shared/function-smoke.ts`
+- `apps/admin/scripts/smoke-reward-unlocked-push.ts`
+- `apps/admin/package.json`
+- `package.json`
+- `tests/run-reward-unlocked-push-readiness.mjs`
 - `apps/mobile/README.md`
 - `LEIMA_APP_MASTER_PLAN.md`
+- `docs/EDGE_FUNCTIONS.md`
 - `docs/TESTING.md`
 
 ## Risks
 
-- Reward unlock alerts can become spammy if we notify on every refetch instead of on real state transitions.
-- Local notification APIs behave differently across web, simulators, and physical devices, so the code has to degrade cleanly without pretending remote push is solved here.
-- Reward state is derived from overview queries and Realtime invalidation, so the detector must not invent a second inconsistent source of truth.
-- This slice must stay focused on behavior. The user explicitly said the full UI redesign will happen later.
+- Scan success must stay truthful even if reward-unlocked push delivery fails after the stamp was already written. Returning a hard transport error here would make scanner retries dangerous.
+- Reward unlock delivery must not resend the same tier on later stamp scans. The unlock boundary has to be tied to the atomic stamp write, not to broad "currently claimable" reads.
+- Local smoke needs deterministic Expo push behavior. The project already points `EXPO_PUSH_API_URL` to `host.docker.internal`, so the script has to own a host-side mock server cleanly.
+- This slice must stay focused on backend delivery and validation. The user explicitly said the broader UI redesign will happen later.
 
 ## Dependencies
 
-- Existing student reward overview read model in `apps/mobile/src/features/rewards/student-rewards.ts`.
-- Current push preparation and notification handler setup in `apps/mobile/src/lib/push.ts`.
-- Session area resolution in `apps/mobile/src/features/auth/session-access.ts`.
-- Expo Notifications local presentation behavior and permission state.
+- Existing Expo push transport helper in `supabase/functions/_shared/expoPush.ts`.
+- Current stamp atomic path in `public.scan_stamp_atomic`.
+- Existing `notifications` table and delivery status conventions already used by promotion and reminder pushes.
+- Mobile local reward notification bridge shipped in the previous slice.
+- Expo push setup guidance that requires physical devices for real remote delivery verification.
 
 ## Existing Logic Checked
 
-- The previous two Realtime slices already cover current-student reward progress and shared inventory freshness.
-- Mobile currently prepares push permission and Expo token registration, but there is no student-side reward notification bridge yet.
-- There is no notification center route or shared notification feature in the current mobile app, so this slice should not pretend to ship one.
-- The master plan wants reward unlocked notifications, but the current repository does not yet distinguish between local foreground behavior and future remote push delivery.
+- `scan-qr` already delegates all stamp concurrency control to `scan_stamp_atomic`, so unlock detection should attach there instead of duplicating business logic in the function layer.
+- Promotion and reminder pushes already batch Expo sends and persist `notifications` rows with `SENT` or `FAILED`.
+- Mobile already registers Expo device tokens and already shows local foreground unlock notifications; remote reward-unlocked delivery is the missing half.
+- The repository does not yet have a deterministic smoke for reward-unlocked push delivery or its duplicate-boundary behavior.
 
 ## Review Outcome
 
-Build the smallest reward notification follow-up that:
+Build the smallest remote reward-unlocked delivery slice that:
 
-- detects real student reward state transitions from the existing overview read model
-- presents a local device notification for newly unlocked rewards and a restrained stock-change notice when a previously available reward becomes unavailable
-- avoids first-load backfill spam and avoids turning simple refetches into duplicate notifications
-- keeps remote reward-unlocked push delivery and the broader notification center for later
-- leaves the broader UI redesign explicitly out of scope
+- detects newly crossed reward thresholds inside the atomic stamp path
+- attempts Expo push delivery after a successful scan without turning transport issues into fake scan failures
+- persists honest `notifications` rows for shipped unlock pushes
+- proves duplicate safety with a deterministic local smoke using the existing host mock push pattern
+- keeps the broader notification center, stock-change remote push, and future UI pass out of scope

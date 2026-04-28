@@ -233,15 +233,46 @@ The audit is intentionally read-only. It verifies the current mobile repository 
 - the bridge reads the shared reward overview and reuses the existing student Realtime invalidation hooks
 - local foreground reward notifications are present for reward unlock and stock-change behavior
 - the rewards screen no longer owns a duplicate overview-level Realtime subscription
-- docs still describe this as local foreground behavior and still leave remote reward-unlocked push delivery deferred
+- docs still describe local foreground ownership honestly while also marking remote reward-unlocked push as backend-shipped
 
 Expected success output today:
 
 - `student-reward-notification-bridge:present`
 - `notification-mode:local-foreground`
-- `remote-reward-push:deferred`
+- `remote-reward-push:backend-shipped`
 - `reward-screen-ownership:provider-bridge`
 - `docs:aligned`
+
+## Reward-unlocked remote push smoke
+
+For the backend reward-unlocked push path:
+
+```bash
+npm run qa:reward-unlocked-push-readiness
+```
+
+This focused readiness wrapper currently does two things in order:
+
+1. `npm --prefix apps/admin run smoke:reward-unlocked-push`
+2. `npm --prefix apps/mobile run audit:reward-notification-bridge`
+
+The function smoke requires:
+
+- local Supabase stack
+- local function server from `supabase functions serve --env-file supabase/.env.local`
+- the default local `EXPO_PUSH_API_URL=http://host.docker.internal:8789`
+
+The smoke owns a temporary host-side mock Expo server on port `8789` and verifies:
+
+- direct client RPC execution of `scan_stamp_atomic` is denied after the new execute grant restriction
+- first scan unlocks only the first eligible reward tier
+- already sold-out reward tiers do not produce a false unlock push
+- second scan unlocks only the second threshold tier
+- two push batches are sent, one per newly crossed unlock boundary
+- two `REWARD_UNLOCKED` notification rows are recorded as `SENT`
+- a third unlock with the mock server stopped is still scanned successfully and is persisted as a `FAILED` reward notification
+
+This still does not replace native-device confirmation. Real remote receipt on iOS and Android remains a physical-device follow-up after the backend path is green.
 
 ## Hosted admin verification
 

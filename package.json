@@ -2,6 +2,7 @@
   "name": "omaleima",
   "private": true,
   "scripts": {
+    "qa:reward-unlocked-push-readiness": "node tests/run-reward-unlocked-push-readiness.mjs",
     "qa:mobile-reward-notification-readiness": "node tests/run-mobile-reward-notification-readiness.mjs",
     "qa:mobile-realtime-readiness": "node tests/run-mobile-realtime-readiness.mjs",
     "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",

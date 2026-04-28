@@ -35,10 +35,23 @@ export type FunctionJsonResponse = {
     type?: string;
     v?: number;
   };
+  rewardUnlockPush?: {
+    notificationRecorded?: boolean;
+    notificationsCreated?: number;
+    notificationsFailed?: number;
+    notificationsSent?: number;
+    status?: string;
+    unlockedRewardCount?: number;
+  };
   refreshAfterSeconds?: number;
   stampCount?: number;
   stampId?: string;
   status?: string;
+  unlockedRewardTiers?: Array<{
+    requiredStampCount?: number;
+    rewardTierId?: string;
+    title?: string;
+  }>;
 };
 
 export const seededAdminEmail = "admin@omaleima.test";
