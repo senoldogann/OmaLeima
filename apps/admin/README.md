@@ -34,6 +34,7 @@ npm run build
 npm run smoke:auth
 npm run smoke:business-applications
 npm run smoke:browser-admin-review
+npm run check:hosted-env
 npm run smoke:club-department-tags
 npm run smoke:club-events
 npm run smoke:club-claims
@@ -80,6 +81,16 @@ STAGING_ADMIN_PASSWORD=secret \
 npm run qa:staging-admin-verification
 ```
 
+Hosted env preflight:
+
+```bash
+npm run check:hosted-env
+REQUIRE_HOSTED_ADMIN_ENV=1 \
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_real_value \
+npm run check:hosted-env
+```
+
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
 Route-backed smokes that hit Edge Functions also expect the local function server to be running with secrets loaded:
 
@@ -95,6 +106,7 @@ npm exec playwright install chromium
 
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
 `npm run smoke:browser-admin-review` expects the local Supabase stack, the local admin app, the local function server, and the local Docker-backed Supabase DB container to be running so it can seed pending applications, sign in through the real `/login` page, click approve and reject in the browser, and verify the resulting DB state.
+`npm run check:hosted-env` always validates admin public env presence and URL shape. When `VERCEL=1` or `REQUIRE_HOSTED_ADMIN_ENV=1`, it additionally requires an `https` Supabase URL, rejects localhost/127.0.0.1 targets, and rejects obvious example publishable-key placeholders.
 `npm run smoke:hosted-admin-access` expects `ADMIN_APP_BASE_URL`, `STAGING_ADMIN_EMAIL`, and `STAGING_ADMIN_PASSWORD`. It does not seed data or touch review mutations; it signs in through the real login page, checks anonymous `/admin` redirect behavior, opens the admin dashboard, visits the three current admin routes, and signs out again.
 `npm run smoke:club-department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary organizer-club and club-staff fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
@@ -123,6 +135,21 @@ Required repository secrets:
 
 This workflow installs `apps/admin` dependencies, installs Playwright Chromium, and runs `node tests/run-staging-admin-verification.mjs`.
 
+## Vercel setup notes
+
+Expected Vercel project setup for the admin app:
+
+- Root Directory: `apps/admin`
+- Preview and Production env vars:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- Automatically expose System Environment Variables: enabled, so `VERCEL=1` and `VERCEL_TARGET_ENV` are available to the prebuild env check
+
+Preview verification also expects these GitHub repo secrets for `.github/workflows/staging-admin-verification.yml`:
+
+- `STAGING_ADMIN_EMAIL`
+- `STAGING_ADMIN_PASSWORD`
+
 ## Current routes
 
 - `/login`
@@ -148,6 +175,7 @@ This workflow installs `apps/admin` dependencies, installs Playwright Chromium, 
 - app-local review-flow smoke coverage for RLS visibility and stale-review handling
 - app-local browser click-path smoke coverage for seeded admin login plus approve and reject review actions through the real UI
 - hosted admin verification smoke coverage for login, redirect boundaries, admin navigation, and sign-out against deployed URLs
+- hosted env preflight coverage for Vercel Preview, Production, and custom hosted targets
 - department-tag moderation page with route-backed merge and block actions through atomic database functions
 - app-local department-tag smoke coverage for non-admin RLS, validation boundaries, and profile-link repair
 - platform oversight page for clubs, events, audit logs, and fraud signals

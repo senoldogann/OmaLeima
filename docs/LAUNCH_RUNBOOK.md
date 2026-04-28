@@ -22,19 +22,26 @@ Run these checks before a hosted pilot or a real event:
    - `QR_SIGNING_SECRET`
    - `SCHEDULED_JOB_SECRET`
    - `EXPO_PUSH_ACCESS_TOKEN` when push is enabled
-3. Hosted auth providers are configured:
+3. Hosted admin env is checked:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `npm --prefix apps/admin run check:hosted-env`
+4. Hosted preview verification credentials are set in GitHub repo secrets:
+   - `STAGING_ADMIN_EMAIL`
+   - `STAGING_ADMIN_PASSWORD`
+5. Hosted auth providers are configured:
    - Google auth redirect allow-list for the mobile app
    - admin and club password accounts only for approved operators
-4. Scheduled jobs are configured:
+6. Scheduled jobs are configured:
    - `scheduled-event-reminders`
    - `scheduled-leaderboard-refresh`
-5. Event data is checked:
+7. Event data is checked:
    - event window, join deadline, venue order, reward inventory, promotion limits
-6. Operator access is checked:
+8. Operator access is checked:
    - scanner accounts can sign in
    - club organizer and club staff routing works
    - platform admin review routes work
-7. Hosted admin verification is checked:
+9. Hosted admin verification is checked:
    - the latest preview or staging URL loads `/login`
    - anonymous `/admin` redirects to `/login`
    - admin sign-in, oversight, business applications, department tags, and sign-out all pass
@@ -43,6 +50,7 @@ Run these checks before a hosted pilot or a real event:
 
 - Vercel preview deployments use Preview environment variables by default.
 - If you create a dedicated Vercel custom environment such as `staging`, deploy with `vercel deploy --target=staging` and pull matching variables with `vercel pull --environment=staging`.
+- The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 
 ## Event-day checklist

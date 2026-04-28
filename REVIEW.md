@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-staging-verification-and-deploy-automation`
-- **Scope:** Post-Phase 6 hosted staging verification and deploy-adjacent automation for the admin panel, starting with a non-mutating browser smoke that can run against Vercel preview or staging URLs.
+- **Branch:** `feature/post-phase6-vercel-linking-and-preview-secrets`
+- **Scope:** Post-Phase 6 Vercel linking and preview-secret hardening for the admin panel, with repo-owned preflight checks that fail early when hosted env setup is incomplete.
 
 ## Affected Files
 
@@ -14,45 +14,43 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `.github/workflows/*`
 - `apps/admin/README.md`
+- `apps/admin/.env.example`
 - `apps/admin/package.json`
 - `apps/admin/scripts/*`
 - `docs/TESTING.md`
 - `docs/LAUNCH_RUNBOOK.md`
-- `tests/*`
+- `.github/workflows/*`
 - root `package.json`
 
 ## Risks
 
-- Hosted smoke can become flaky if it depends on local seed fixtures or mutating review actions. The hosted path must stay read-only and credential-driven.
-- Vercel preview protection can block unattended requests. The workflow must support manual URL input and the docs must say when a protected preview needs team access or a bypass path.
-- Deployment-status automation is only useful when the repository is actually connected to Vercel. The workflow should still be manually runnable without that integration.
-- Browser checks that only load `/login` are too weak; we need at least one authenticated navigation path across the real admin shell.
-- We should avoid assuming a specific hosted dataset. Assertions must target stable route titles and redirect behavior, not seed-specific queue contents.
+- Preview and staging deployments can fail with generic build errors if required public env vars are missing or still point at localhost.
+- A repo-level workflow is not enough if the app build itself does not enforce hosted-safe values. We need an explicit prebuild check.
+- We still do not have a visible linked Vercel project in this environment, so docs must avoid pretending the link already exists.
+- Secret setup can drift between Vercel Preview, Vercel Production, and GitHub Actions repo secrets. The required sets need to be explicit.
+- Over-documenting with vague deployment prose is not useful; the output should stay concrete and command-oriented.
 
 ## Dependencies
 
-- Existing admin smoke scripts in `apps/admin/scripts`, especially `smoke-browser-admin-review` and `smoke-routes`.
-- Existing local and hosted login screen plus admin shell routes: `/login`, `/admin`, `/admin/oversight`, `/admin/business-applications`, `/admin/department-tags`.
-- Project-local Playwright dependency and browser binary setup in `apps/admin`.
-- Existing feature-level docs in `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md`.
-- GitHub Actions workflow syntax and Playwright CI guidance.
-- Vercel preview deployment and custom environment behavior.
+- Existing admin env parsing in `apps/admin/src/lib/env.ts`.
+- Existing hosted verification workflow and smoke path added in the previous slice.
+- Existing admin README, testing docs, and launch runbook.
+- Vercel system environment variables and environment-scoped variable behavior.
+- GitHub Actions repo secrets used by the staging verification workflow.
 
 ## Existing Logic Checked
 
-- `smoke-browser-admin-review` now covers the highest-risk local mutation path, but it depends on local SQL seeding and cannot run unchanged against hosted staging.
-- `smoke-routes` proves route redirects with cookie-backed fetch requests, but it is not a browser flow and does not validate real interactive navigation on deployed URLs.
-- The admin shell already exposes stable page titles and navigation labels that can support a hosted read-only browser smoke without introducing product-only test hooks.
-- There is no current GitHub Actions workflow in the repo, so hosted smoke and deployment-adjacent verification are not yet automated.
+- `apps/admin/src/lib/env.ts` only validates presence and URL shape, not whether hosted builds accidentally point at local Supabase values.
+- `.github/workflows/staging-admin-verification.yml` already depends on `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD`, but the repo does not yet list the full Vercel and GitHub secret matrix in one place.
+- `apps/admin/.env.example` still reads like a local-only sample and does not clarify hosted expectations.
+- There is still no checked-in preflight that tells a future Vercel build “your preview env is incomplete” before Next.js starts building.
 
 ## Review Outcome
 
-Build the smallest high-value hosted verification slice that:
+Build the smallest high-value Vercel setup slice that:
 
-- adds a read-only Playwright smoke for hosted admin login and authenticated route navigation
-- keeps the hosted flow environment-driven so it can run against local, preview, or staging URLs
-- adds a root runner for hosted verification that does not assume local DB reset or function server access
-- adds a GitHub Actions workflow that can run manually and also react to successful deployment status events
-- updates launch and testing docs so preview, staging, and production verification expectations are explicit
+- adds a hosted env preflight script for the admin app
+- runs that preflight automatically during build when the app is actually building on Vercel
+- makes the required Vercel env vars and GitHub repo secrets explicit in repo docs
+- keeps the change admin-scoped and avoids speculative multi-app deployment work before the real Vercel link exists

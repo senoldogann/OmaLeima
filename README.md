@@ -46,5 +46,15 @@ STAGING_ADMIN_PASSWORD=secret \
 npm run qa:staging-admin-verification
 ```
 
+Admin hosted env preflight:
+
+```bash
+npm --prefix apps/admin run check:hosted-env
+REQUIRE_HOSTED_ADMIN_ENV=1 \
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_real_value \
+npm --prefix apps/admin run check:hosted-env
+```
+
 Testing prerequisites and the expanded smoke matrix live in [docs/TESTING.md](docs/TESTING.md).
 Launch, fallback, and event-day operating guidance lives in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).
