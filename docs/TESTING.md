@@ -155,6 +155,31 @@ supabase functions serve --env-file supabase/.env.local
 npm --prefix apps/admin run smoke:business-applications
 ```
 
+For the first real browser click-path on admin review:
+
+```bash
+npm --prefix apps/admin exec playwright install chromium
+supabase functions serve --env-file supabase/.env.local
+npm run qa:browser-admin-review
+```
+
+`qa:browser-admin-review` currently does four things in order:
+
+1. `supabase db reset --yes`
+2. `npm --prefix apps/admin run lint`
+3. `npm --prefix apps/admin run typecheck`
+4. `npm --prefix apps/admin run smoke:browser-admin-review`
+
+The browser smoke itself verifies:
+
+- the local admin app is reachable at `/login`
+- the local function server is reachable before the UI flow starts
+- seeded platform admin sign-in through the real login form
+- sidebar navigation to `/admin/business-applications`
+- one approve action and one reject-with-reason action in the real browser
+- resulting `business_applications` DB state after each click path
+- cleanup of temporary applications, approved business rows, and related audit rows
+
 For the full function-backed security matrix:
 
 ```bash
@@ -190,7 +215,7 @@ Current readiness matrix:
 The current local matrix is strong enough for branch-level Phase 6 work, but it still does not replace:
 
 - hosted staging verification
-- real browser click-path E2E on admin flows
+- broader browser click-path E2E across admin and club flows
 - pilot dry-run with real operator devices
 
 Event-day, fallback, and launch operations now live in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).
