@@ -377,6 +377,17 @@ Request:
 
 `businessId` is optional only when the scanner belongs to exactly one active business. It should be sent by clients once the business app supports multiple venues per user.
 
+Response notes:
+
+- A successful scan can now include `unlockedRewardTiers` and `rewardUnlockPush`.
+- `unlockedRewardTiers` only contains reward tiers whose `required_stamp_count` boundary was crossed by this stamp, that are still `ACTIVE`, have remaining inventory, and do not already have a `reward_claims` row for the student.
+- `rewardUnlockPush.status` is one of:
+  - `NONE`
+  - `QUEUED`
+  - `FAILED`
+- The remote reward-unlocked push now says the student reached the reward threshold and should check in-app availability; it does not reserve inventory.
+- Remote reward-unlocked push is post-stamp background behavior. A push delivery failure does not roll back the successful stamp.
+
 ## Smoke Test Flow
 
 1. Start Supabase:
@@ -418,6 +429,7 @@ supabase functions serve --env-file supabase/.env.local
 23. Call `scheduled-leaderboard-refresh` with an invalid secret and verify it returns `UNAUTHORIZED`.
 24. Call `scheduled-leaderboard-refresh` with the valid secret and verify `leaderboard_scores` and `leaderboard_updates` rows are written.
 25. Call it again and verify the already-fresh event is skipped.
+26. Run `npm --prefix apps/admin run smoke:reward-unlocked-push` and verify direct client RPC access is denied, first and second unlock pushes are emitted once each, and a third unlock persists a `FAILED` notification when the mock Expo server is stopped.
 
 Expected scan statuses:
 

@@ -28,6 +28,7 @@
     "smoke:leaderboard-load": "tsx scripts/smoke-leaderboard-load.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",
     "smoke:qr-security": "tsx scripts/smoke-qr-security.ts",
+    "smoke:reward-unlocked-push": "tsx scripts/smoke-reward-unlocked-push.ts",
     "smoke:rls-core": "tsx scripts/smoke-rls-core.ts",
     "smoke:scan-race": "tsx scripts/smoke-scan-race.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts",

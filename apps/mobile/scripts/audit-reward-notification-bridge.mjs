@@ -48,7 +48,8 @@ const main = async () => {
   const docsAligned =
     normalizedReadmeSource.includes("local foreground reward notifications") &&
     normalizedMasterPlanSource.includes("local foreground reward notifications are shipped") &&
-    normalizedMasterPlanSource.includes("remote reward-unlocked push delivery is still deferred");
+    normalizedReadmeSource.includes("remote reward-unlocked push delivery now ships") &&
+    normalizedMasterPlanSource.includes("remote reward-unlocked push delivery now ships");
 
   if (!providerWired || !bridgeMarkersPresent || !rewardsScreenTrimmed || !docsAligned) {
     fail("mobile-reward-notification-audit:failed", [
@@ -63,7 +64,7 @@ const main = async () => {
     [
       "student-reward-notification-bridge:present",
       "notification-mode:local-foreground",
-      "remote-reward-push:deferred",
+      "remote-reward-push:backend-shipped",
       "reward-screen-ownership:provider-bridge",
       "docs:aligned",
     ].join("|")

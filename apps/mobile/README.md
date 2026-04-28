@@ -45,7 +45,7 @@ The first dedicated mobile Realtime slice is now shipped:
 - the same module also subscribes to `stamps` and the current student’s `reward_claims` for progress freshness
 - the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
-- local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery is still deferred
+- local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 

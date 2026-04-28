@@ -20,6 +20,7 @@ export type ExpoPushSendResult =
 const expoPushMaxBatchSize = 100;
 const expoPushMaxAttempts = 3;
 const expoPushRetryBackoffMs = [300, 900];
+const expoPushRequestTimeoutMs = 4000;
 
 const buildHeaders = (accessToken: string | null): HeadersInit => {
   const headers: HeadersInit = {
@@ -125,12 +126,19 @@ const sendExpoPushBatch = async (
 
   while (attempt <= expoPushMaxAttempts) {
     let response: Response;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
+      const abortController = new AbortController();
+      timeoutId = setTimeout(() => {
+        abortController.abort(new Error(`Expo Push API request timed out after ${expoPushRequestTimeoutMs}ms.`));
+      }, expoPushRequestTimeoutMs);
+
       response = await fetch(pushApiUrl, {
         method: "POST",
         headers: buildHeaders(accessToken),
         body: JSON.stringify(messages),
+        signal: abortController.signal,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown Expo push transport error.";
@@ -147,6 +155,10 @@ const sendExpoPushBatch = async (
       }
 
       return buildFailureResults(messages.length, message, null);
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
     }
 
     const responseBody = await readResponseBody(response);

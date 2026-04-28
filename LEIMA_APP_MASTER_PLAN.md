@@ -2997,7 +2997,7 @@ Student leaderboard freshness now follows leaderboard_updates.
 The current student's stamp and claim progress now follows stamps and reward_claims invalidation.
 Shared reward inventory freshness now follows reward_tiers invalidation on the student views that expose stock state.
 Student local foreground reward notifications are shipped on top of the reward overview and Realtime invalidation.
-Remote reward-unlocked push delivery is still deferred.
+Remote reward-unlocked push delivery now ships from scan-qr.
 QR rotation still uses polling by design.
 ```
 
