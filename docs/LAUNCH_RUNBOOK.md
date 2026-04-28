@@ -65,6 +65,7 @@ Run these checks before a hosted pilot or a real event:
 - The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
 - The admin app now also has a read-only readiness audit. Run `npm --prefix apps/admin run audit:hosted-setup` after linking the real project or rotating secrets so the next hosted verification does not fail late.
 - The admin app also now has a read-only Supabase auth-config audit. Run `npm --prefix apps/admin run audit:supabase-auth-url-config` before and after the auth-domain cutover so the live `site_url`, redirect allow-list, and Google OAuth state are verified from the repo.
+- The admin app now also has a controlled apply command for the hosted auth-domain switch. Rehearse with `SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run` first; only use `apply` after the DNS and audit gates are green.
 - If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.
 - While the custom domain is not ready, the current preview deployment URL is acting as the temporary Site URL in Supabase Auth. Replace it with `https://admin.omaleima.fi` later in one controlled pass.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
@@ -79,8 +80,8 @@ Do the auth-domain cutover in this exact order:
 1. `npm --prefix apps/admin run audit:custom-domain-cutover`
 2. wait until the audit turns `READY`
 3. `npm --prefix apps/admin run audit:supabase-auth-url-config` and confirm it still reports `state:preview-site-url`
-4. change Supabase Site URL from the preview URL to `https://admin.omaleima.fi`
-5. keep the required redirect allow-list entries present, including `https://admin.omaleima.fi/auth/callback`
+4. `SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain npm --prefix apps/admin run apply:supabase-auth-url-config`
+5. `SUPABASE_AUTH_CONFIG_APPLY_MODE=apply SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain npm --prefix apps/admin run apply:supabase-auth-url-config`
 6. update Google OAuth allowed origins and redirect notes if they still mention the temporary preview URL
 7. rerun `npm --prefix apps/admin run audit:supabase-auth-url-config` and confirm it now reports `state:custom-domain-site-url`
 8. rerun hosted admin verification against `https://admin.omaleima.fi`

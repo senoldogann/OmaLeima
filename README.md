@@ -58,6 +58,9 @@ Supabase auth cutover readiness for the hosted preview-mode versus custom-domain
 ```bash
 npm run qa:supabase-auth-cutover-readiness
 npm --prefix apps/admin run audit:supabase-auth-url-config
+SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run \
+SUPABASE_AUTH_CONFIG_APPLY_TARGET=custom-domain \
+npm --prefix apps/admin run apply:supabase-auth-url-config
 ```
 
 Admin hosted env preflight:

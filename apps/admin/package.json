@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "apply:supabase-auth-url-config": "tsx scripts/apply-supabase-auth-url-config.ts",
     "audit:supabase-auth-url-config": "tsx scripts/audit-supabase-auth-url-config.ts",
     "audit:custom-domain-cutover": "tsx scripts/audit-custom-domain-cutover.ts",
     "audit:hosted-setup": "tsx scripts/audit-hosted-setup.ts",
@@ -30,6 +31,7 @@
     "smoke:rls-core": "tsx scripts/smoke-rls-core.ts",
     "smoke:scan-race": "tsx scripts/smoke-scan-race.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts",
+    "smoke:supabase-auth-url-config-apply": "tsx scripts/smoke-supabase-auth-url-config-apply.ts",
     "smoke:supabase-auth-url-config-audit": "tsx scripts/smoke-supabase-auth-url-config-audit.ts"
   },
   "dependencies": {
