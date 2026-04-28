@@ -1,24 +1,25 @@
 import { DashboardSectionsGrid } from "@/features/dashboard/components/dashboard-sections-grid";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
-import { clubDashboardNavigationItems, clubDashboardSections } from "@/features/dashboard/sections";
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { getClubDashboardNavigationItems, getClubDashboardSections } from "@/features/dashboard/sections";
+import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import { createServerComponentClient } from "@/lib/supabase/server";
 
 export default async function ClubPage() {
   const supabase = await createServerComponentClient();
-  const access = await resolveAdminAccessAsync(supabase);
+  const context = await fetchClubEventContextAsync(supabase);
+  const canManageRewards = context.memberships.some((membership) => membership.canCreateEvents);
 
   return (
     <DashboardShell
       activeHref="/club"
       areaLabel="Club operations"
-      navigationItems={clubDashboardNavigationItems}
-      roleLabel={access.primaryRole}
+      navigationItems={getClubDashboardNavigationItems(canManageRewards)}
+      roleLabel={context.access.primaryRole}
       subtitle="Configure club-owned events, track reward flow, and keep organizer-facing moderation surfaces in one place."
       title="Organizer dashboard"
-      userEmail={access.userEmail}
+      userEmail={context.access.userEmail}
     >
-      <DashboardSectionsGrid sections={clubDashboardSections} />
+      <DashboardSectionsGrid sections={getClubDashboardSections(canManageRewards)} />
     </DashboardShell>
   );
 }

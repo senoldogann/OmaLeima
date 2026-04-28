@@ -1,29 +1,33 @@
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
 import { getClubDashboardNavigationItems } from "@/features/dashboard/sections";
-import { ClubEventsPanel } from "@/features/club-events/components/club-events-panel";
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
-import { fetchClubEventsSnapshotAsync } from "@/features/club-events/read-model";
+import { ClubRewardsPanel } from "@/features/club-rewards/components/club-rewards-panel";
+import { fetchClubRewardsSnapshotAsync } from "@/features/club-rewards/read-model";
 import { createServerComponentClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default async function ClubEventsPage() {
+export default async function ClubRewardsPage() {
   const supabase = await createServerComponentClient();
-  const [context, snapshot] = await Promise.all([
-    fetchClubEventContextAsync(supabase),
-    fetchClubEventsSnapshotAsync(supabase),
-  ]);
+  const context = await fetchClubEventContextAsync(supabase);
   const canManageRewards = context.memberships.some((membership) => membership.canCreateEvents);
+
+  if (!canManageRewards) {
+    redirect("/forbidden");
+  }
+
+  const snapshot = await fetchClubRewardsSnapshotAsync(supabase);
 
   return (
     <DashboardShell
-      activeHref="/club/events"
+      activeHref="/club/rewards"
       areaLabel="Club operations"
       navigationItems={getClubDashboardNavigationItems(canManageRewards)}
       roleLabel={context.access.primaryRole}
-      subtitle="Create draft events for your active clubs, then continue with venues, rewards, and event-day preparation."
-      title="Club events"
+      subtitle="Manage event reward thresholds, stock visibility, and claim handoff instructions from one organizer surface."
+      title="Reward tiers"
       userEmail={context.access.userEmail}
     >
-      <ClubEventsPanel snapshot={snapshot} />
+      <ClubRewardsPanel snapshot={snapshot} />
     </DashboardShell>
   );
 }

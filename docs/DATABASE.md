@@ -24,6 +24,9 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260429020100_block_department_tag_atomic.sql`
 - `supabase/migrations/20260429030000_create_club_event_atomic.sql`
 - `supabase/migrations/20260429030100_restrict_club_event_writes.sql`
+- `supabase/migrations/20260429030200_manage_reward_tiers_atomic.sql`
+- `supabase/migrations/20260429030300_restrict_reward_tier_writes.sql`
+- `supabase/migrations/20260429030400_update_reward_tier_atomic.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -47,6 +50,8 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `join_business_event_atomic`
   - `leave_business_event_atomic`
   - `create_club_event_atomic`
+  - `create_reward_tier_atomic`
+  - `update_reward_tier_atomic`
 
 ## Department Tag Foundation
 
@@ -130,6 +135,54 @@ Current behavior:
   - `EVENT_MAX_PARTICIPANTS_INVALID`
   - `EVENT_MINIMUM_STAMPS_INVALID`
   - `EVENT_SLUG_CONFLICT`
+
+## Club Reward Tier Management Foundation
+
+Club-side reward-tier management is now enforced through:
+
+- `create_reward_tier_atomic(...)`
+- `update_reward_tier_atomic(...)`
+
+Current behavior:
+
+- The club web panel uses route-backed writes instead of direct browser inserts or updates.
+- Both functions lock the actor profile and target event or reward-tier rows before mutating stock configuration.
+- Create or update is allowed only when:
+  - caller is the same authenticated organizer or the service role
+  - profile is active
+  - target event exists
+  - caller is a platform admin or passes `is_club_event_editor_for(event.club_id)`
+  - event status is `DRAFT`, `PUBLISHED`, or `ACTIVE`
+- Validation guardrails:
+  - `title` is required
+  - `required_stamp_count > 0`
+  - `reward_type` must be `HAALARIMERKKI | PATCH | COUPON | PRODUCT | ENTRY | OTHER`
+  - `status` on update must be `ACTIVE | DISABLED`
+  - `inventory_total`, when present, must be `>= 0`
+  - update cannot lower `inventory_total` below current `inventory_claimed`
+- Successful writes always create:
+  - a new or updated `reward_tiers` row
+  - an `audit_logs` row with `REWARD_TIER_CREATED` or `REWARD_TIER_UPDATED`
+- Direct `reward_tiers` writes are now narrowed at the RLS layer:
+  - public and mobile read behavior stays intact
+  - only `OWNER` or `ORGANIZER` style event editors can insert, update, or delete `reward_tiers`
+  - `CLUB_STAFF` can no longer bypass the route through raw table writes
+- Known statuses returned by the RPCs:
+  - `SUCCESS`
+  - `AUTH_REQUIRED`
+  - `ACTOR_NOT_ALLOWED`
+  - `PROFILE_NOT_FOUND`
+  - `PROFILE_NOT_ACTIVE`
+  - `EVENT_NOT_FOUND`
+  - `REWARD_TIER_NOT_FOUND`
+  - `REWARD_TIER_EDITOR_NOT_ALLOWED`
+  - `EVENT_NOT_EDITABLE`
+  - `REWARD_TITLE_REQUIRED`
+  - `REWARD_REQUIRED_STAMPS_INVALID`
+  - `REWARD_TYPE_INVALID`
+  - `REWARD_STATUS_INVALID`
+  - `REWARD_INVENTORY_TOTAL_INVALID`
+  - `REWARD_INVENTORY_CONFLICT`
 
 Local seed coverage now includes:
 
