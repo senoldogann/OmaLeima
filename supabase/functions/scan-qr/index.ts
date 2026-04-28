@@ -136,12 +136,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const verifiedQrToken = await verifyQrToken(env.qrSigningSecret, body.qrToken);
 
     if (!verifiedQrToken.ok) {
-      return errorResponse(
-        verifiedQrToken.status === "QR_EXPIRED" ? 400 : 400,
-        verifiedQrToken.status,
-        verifiedQrToken.message,
-        {},
-      );
+      return errorResponse(400, verifiedQrToken.status, verifiedQrToken.message, {});
     }
 
     const { data: businessStaffRows, error: businessStaffError } = await supabase

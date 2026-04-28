@@ -4,14 +4,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/mobile-glass-design-foundation` branch.
-- [x] Update `REVIEW.md` for the mobile visual foundation scope.
-- [x] Update `PLAN.md` for the glass and motion slice.
+- [x] Create `feature/scanner-contract-hardening` branch.
+- [x] Update `REVIEW.md` for the scanner hardening scope.
+- [x] Update `PLAN.md` for the QR contract slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add shared mobile design tokens or helpers for background, glass surfaces, and motion.
-- [x] Upgrade `AppScreen`, `InfoCard`, and `StatusBadge` to the new shared language.
-- [x] Restyle the auth login surface and student tab shell.
-- [x] Apply the new language to the key student screens selected for this slice.
-- [x] Re-run mobile lint, typecheck, and `export:web`.
-- [x] Review the visual result, update handoff docs, and record the future custom-domain note as still parked.
-- [x] Commit, push, PR, merge, and branch cleanup.
+- [x] Align the mobile business scanner status union with the intended backend contract.
+- [x] Tighten `scan-transport` so unsupported backend statuses raise explicit errors instead of becoming fake scan results.
+- [x] Update the business scanner result copy for any newly supported statuses.
+- [x] Remove the dead conditional from `scan-qr` and document the forwarding-header trust assumption.
+- [x] Re-run mobile lint and typecheck plus the existing QR security smoke.
+- [x] Update `PROGRESS.md` and handoff notes, keeping the larger UI redesign explicitly deferred.
+- [ ] Commit, push, PR, merge, and branch cleanup.
