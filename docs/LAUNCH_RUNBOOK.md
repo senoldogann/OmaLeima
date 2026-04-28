@@ -37,6 +37,7 @@ Run these checks before a hosted pilot or a real event:
    - `gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'`
    - `gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'` when preview protection is enabled
    - `npm --prefix apps/admin run audit:hosted-setup`
+   - `npm --prefix apps/admin run audit:custom-domain-cutover`
 5. Hosted preview verification credentials are set in GitHub repo secrets:
    - `STAGING_ADMIN_EMAIL`
    - `STAGING_ADMIN_PASSWORD`
@@ -67,6 +68,18 @@ Run these checks before a hosted pilot or a real event:
 - While the custom domain is not ready, the current preview deployment URL is acting as the temporary Site URL in Supabase Auth. Replace it with `https://admin.omaleima.fi` later in one controlled pass.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 - If the linked hosted Supabase project was just created, assume it is empty until `supabase db push --linked` has completed and a direct hosted API probe confirms tables like `profiles` and `clubs` are reachable.
+- The custom domain is now attached in Vercel, but DNS still needs `A admin.omaleima.fi 76.76.21.21` before Supabase Auth can move off the preview URL.
+
+## Custom-domain cutover order
+
+Do the auth-domain cutover in this exact order:
+
+1. `npm --prefix apps/admin run audit:custom-domain-cutover`
+2. wait until the audit turns `READY`
+3. change Supabase Site URL from the preview URL to `https://admin.omaleima.fi`
+4. update Supabase redirect allow-list entries to use `https://admin.omaleima.fi/auth/callback`
+5. update Google OAuth allowed origins and redirect notes if they still mention the temporary preview URL
+6. rerun hosted admin verification against `https://admin.omaleima.fi`
 
 ## Event-day checklist
 
