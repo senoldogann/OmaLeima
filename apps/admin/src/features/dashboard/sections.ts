@@ -23,20 +23,27 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
   },
 ];
 
-export const clubDashboardNavigationItems: DashboardNavItem[] = [
-  {
-    href: "/club",
-    label: "Dashboard",
-  },
-  {
-    href: "/club/events",
-    label: "Club events",
-  },
-  {
-    href: "/forbidden",
-    label: "Access policy",
-  },
-];
+export const getClubDashboardNavigationItems = (canManageRewards: boolean): DashboardNavItem[] =>
+  [
+    {
+      href: "/club",
+      label: "Dashboard",
+    },
+    {
+      href: "/club/events",
+      label: "Club events",
+    },
+    canManageRewards
+      ? {
+          href: "/club/rewards",
+          label: "Reward tiers",
+        }
+      : null,
+    {
+      href: "/forbidden",
+      label: "Access policy",
+    },
+  ].flatMap((item) => (item === null ? [] : [item]));
 
 export const adminDashboardSections: DashboardSection[] = [
   {
@@ -61,11 +68,11 @@ export const adminDashboardSections: DashboardSection[] = [
   },
 ];
 
-export const clubDashboardSections: DashboardSection[] = [
+export const getClubDashboardSections = (canManageRewards: boolean): DashboardSection[] => [
   {
     title: "Event operations",
     tone: "accent",
-    items: ["Club events", "Manage venues", "Reward tiers"],
+    items: canManageRewards ? ["Club events", "Reward tiers", "Manage venues"] : ["Club events", "Manage venues"],
   },
   {
     title: "Attendance",

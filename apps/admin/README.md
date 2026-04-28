@@ -17,6 +17,12 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 npm run dev
 ```
 
+Recommended smoke-test URL:
+
+```bash
+npm run dev -- --hostname 127.0.0.1 --port 3001
+```
+
 Default local URL: [http://localhost:3000](http://localhost:3000)
 
 ## Validation
@@ -34,8 +40,15 @@ npm run smoke:routes
 ```
 
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
+Route-backed smokes that hit Edge Functions also expect the local function server to be running with secrets loaded:
+
+```bash
+supabase functions serve --env-file supabase/.env.local
+```
+
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
+`npm run smoke:club-rewards` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff and claimed-inventory fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so moderation fixtures can be seeded directly.
 `npm run smoke:oversight` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so oversight fixtures can be seeded directly.
 
@@ -48,6 +61,7 @@ npm run smoke:routes
 - `/admin/oversight`
 - `/club`
 - `/club/events`
+- `/club/rewards`
 - `/forbidden`
 
 ## Current auth shape
@@ -65,10 +79,13 @@ npm run smoke:routes
 - app-local oversight smoke coverage for admin-only audit visibility, event-scoped fraud visibility, and route rendering
 - club event creation page with organizer-only create access, club selection, recent draft visibility, and route-backed create flow
 - app-local club event smoke coverage for RLS insert blocking, malformed payload validation, concurrent slug creation, and fixture cleanup before later admin smokes
+- club reward-tier management page with organizer-only create/update access, event-scoped stock visibility, and route-backed mutation flow
+- app-local club reward smoke coverage for direct-write RLS blocking, claimed-stock inventory floor, and fixture cleanup isolation
 
 ## Next follow-up slices
 
-- club reward tier management
 - stronger CI smoke and RLS regression checks
 - concurrency and load-test harnesses for event-day traffic
+- club official department tag creation
+- club reward distribution validation screen
 - deployment and go-to-market runbooks for Vercel or Cloudflare
