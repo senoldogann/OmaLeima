@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",
+    "qa:hosted-admin-readiness": "node tests/run-hosted-admin-readiness.mjs",
     "qa:staging-admin-verification": "node tests/run-staging-admin-verification.mjs",
     "qa:phase6-core": "node tests/run-phase6-core.mjs",
     "qa:phase6-expanded": "node tests/run-phase6-expanded.mjs",

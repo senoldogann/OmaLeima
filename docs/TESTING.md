@@ -240,6 +240,50 @@ Vercel project env vars required for the admin app:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
+Hosted-admin readiness audit:
+
+```bash
+npm run qa:hosted-admin-readiness
+npm --prefix apps/admin run audit:hosted-setup
+```
+
+`qa:hosted-admin-readiness` currently does three things in order:
+
+1. `npm --prefix apps/admin run lint`
+2. `npm --prefix apps/admin run typecheck`
+3. `npm --prefix apps/admin run smoke:hosted-setup-audit`
+
+The real `audit:hosted-setup` command is read-only and checks:
+
+- Vercel CLI auth
+- GitHub CLI auth
+- linked `apps/admin/.vercel/project.json`
+- required Preview env vars in Vercel
+- required Production env vars in Vercel
+- required GitHub Actions repo secrets
+
+If it fails with a missing-link error, use:
+
+```bash
+vercel link --cwd apps/admin --project <project-name> --yes
+```
+
+If it fails with missing Vercel env vars, add them with:
+
+```bash
+vercel env add NEXT_PUBLIC_SUPABASE_URL preview --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY preview --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_URL production --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin
+```
+
+If it fails with missing GitHub Actions secrets, add them with:
+
+```bash
+gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
+gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
+```
+
 For the full function-backed security matrix:
 
 ```bash
