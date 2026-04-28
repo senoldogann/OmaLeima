@@ -150,10 +150,12 @@ This workflow installs `apps/admin` dependencies, installs Playwright Chromium, 
 Expected Vercel project setup for the admin app:
 
 - Root Directory: `apps/admin`
+- Framework preset pinned in repo by [`apps/admin/vercel.json`](/Users/dogan/Desktop/OmaLeima/apps/admin/vercel.json) with `framework: nextjs`
 - Preview and Production env vars:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - Automatically expose System Environment Variables: enabled, so `VERCEL=1` and `VERCEL_TARGET_ENV` are available to the prebuild env check
+- If Vercel project protection reports SSO for preview deployments, anonymous `curl` checks and the hosted verification workflow will still return `401` until you either disable SSO protection for the project or switch the verification path to an allowed bypass model.
 
 Preview verification also expects these GitHub repo secrets for `.github/workflows/staging-admin-verification.yml`:
 

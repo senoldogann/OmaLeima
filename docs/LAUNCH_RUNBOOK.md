@@ -61,6 +61,7 @@ Run these checks before a hosted pilot or a real event:
 - If you create a dedicated Vercel custom environment such as `staging`, deploy with `vercel deploy --target=staging` and pull matching variables with `vercel pull --environment=staging`.
 - The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
 - The admin app now also has a read-only readiness audit. Run `npm --prefix apps/admin run audit:hosted-setup` after linking the real project or rotating secrets so the next hosted verification does not fail late.
+- If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 
 ## Event-day checklist

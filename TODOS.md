@@ -4,16 +4,19 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/post-phase6-hosted-admin-readiness-audit` branch.
-- [x] Review the real hosted-admin readiness gap after env-hardening landed.
-- [x] Update `REVIEW.md` for the hosted-admin readiness scope.
-- [x] Update `PLAN.md` for the hosted-readiness slice.
+- [x] Create `feature/post-phase6-real-vercel-project-link` branch.
+- [x] Review the real Vercel-link and hosted-secret gap after the readiness audit landed.
+- [x] Update `REVIEW.md` for the external provisioning scope.
+- [x] Update `PLAN.md` for the real-hosting slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add an admin hosted-readiness audit script.
-- [x] Add deterministic smoke coverage for the audit and a root QA wrapper.
-- [x] Update deployment docs with exact `vercel link`, `vercel env add`, and `gh secret set` commands.
-- [x] Run the new audit smoke, root QA wrapper, and real audit command.
-- [x] Run admin lint and typecheck after the wiring.
-- [x] Update `PROGRESS.md` with the readiness-audit outcome.
-- [x] Review diff and any reviewer findings.
+- [x] Create or reuse the real Vercel admin project.
+- [x] Link `apps/admin` to the real Vercel project locally.
+- [x] Set the real Preview and Production admin public env vars.
+- [x] Fix any real Vercel deploy preset mismatch with repo-owned config.
+- [x] Verify hosted Supabase admin password auth against the real hosted project.
+- [ ] Set GitHub staging secrets if hosted auth is valid.
+- [x] Re-run the hosted readiness audit and capture the next remaining blocker.
+- [x] Capture the final external blockers in `PROGRESS.md`.
+- [x] Update `PROGRESS.md` with the external provisioning outcome.
+- [x] Review the final state and any reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.
