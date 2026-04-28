@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-custom-domain-delegation-guidance`
-- **Scope:** Post-Phase 6 custom-domain delegation guidance: refine the cutover audit and docs so they distinguish between an external registrar A record and Vercel nameserver delegation, because the Vercel DNS record now exists but is not active yet.
+- **Branch:** `feature/post-phase6-supabase-auth-cutover-audit`
+- **Scope:** Post-Phase 6 Supabase auth cutover audit: add a repo-owned read-only audit for hosted Supabase Auth URL configuration so we can verify preview-mode versus custom-domain-mode before and after DNS cutover.
 
 ## Affected Files
 
@@ -15,40 +15,42 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `TODOS.md`
 - `PROGRESS.md`
 - `package.json`
-- `tests/run-custom-domain-readiness.mjs`
+- `tests/run-supabase-auth-cutover-readiness.mjs`
 - `apps/admin/package.json`
-- `apps/admin/scripts/audit-custom-domain-cutover.ts`
-- `apps/admin/scripts/smoke-custom-domain-cutover-audit.ts`
+- `apps/admin/scripts/audit-supabase-auth-url-config.ts`
+- `apps/admin/scripts/smoke-supabase-auth-url-config-audit.ts`
 - `apps/admin/README.md`
 - `docs/TESTING.md`
 - `docs/LAUNCH_RUNBOOK.md`
 
 ## Risks
 
-- `admin.omaleima.fi` is attached to Vercel now, but public DNS is still empty; switching Supabase Site URL too early would break auth redirects instead of improving them.
-- A Vercel DNS record for `admin.omaleima.fi` now exists, but it does nothing until the registrar delegates nameservers to Vercel.
-- If the guidance says only “set an A record”, the next operator may miss the equally valid nameserver-delegation path and get stuck in the wrong dashboard.
+- If we keep Supabase Auth URL state only in the dashboard, the cutover can silently drift from repo docs and the next operator will not know whether preview-mode or custom-domain-mode is live.
+- Reading hosted auth config requires a Supabase management token; the audit must fail clearly if CLI auth or `SUPABASE_ACCESS_TOKEN` is unavailable.
+- We must not trigger any remote write before DNS is ready; this slice should stay read-only and should not mutate hosted auth config.
 
 ## Dependencies
 
-- Existing hosted readiness audit, hosted verification workflow, smoke path, and protected-preview bypass support.
-- Linked real Vercel project and preview deployment.
-- Linked real production deployment on Vercel.
-- Added custom domain object `admin.omaleima.fi` under the Vercel project.
-- Supabase Auth URL configuration that still points at the preview URL for now.
+- Existing custom-domain readiness audit and hosted verification workflow.
+- Hosted Supabase management API access through Supabase CLI login or `SUPABASE_ACCESS_TOKEN`.
+- The current hosted Supabase auth config, which already includes preview, custom-domain, mobile, and Expo web redirect URLs plus Google OAuth enablement.
+- The still-pending DNS cutover for `admin.omaleima.fi`.
 
 ## Existing Logic Checked
 
-- The production deployment is now `READY`, which removed the earlier Vercel blocker that prevented domain assignment.
-- `admin.omaleima.fi` is now attached to the Vercel project, and a Vercel DNS record `admin A 76.76.21.21` has been created inside the Vercel zone.
-- Public DNS for `admin.omaleima.fi` is still empty because the domain is not delegated to Vercel nameservers yet, so the domain cannot be used for Supabase Auth cutover yet.
-- The current preview URL remains the temporary Supabase Site URL until DNS and Vercel verification finish.
+- `apps/admin/scripts/audit-custom-domain-cutover.ts` already tells us when Vercel and DNS are ready, but it does not inspect the hosted Supabase auth config itself.
+- The real hosted auth config currently reports:
+  - `site_url = https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
+  - redirect allow-list includes preview callback, custom-domain callback, mobile deep link, Expo web callback, and preview wildcard
+  - Google OAuth is enabled with a real client id
+- That current preview-mode state is valid for now, but we do not yet have a repo-owned audit that can confirm when the switch to `https://admin.omaleima.fi` is complete.
 
 ## Review Outcome
 
-Build the smallest delegation-guidance slice that:
+Build the smallest Supabase-auth audit slice that:
 
-- keeps the existing cutover audit and smoke coverage intact
-- updates the audit error to mention both valid next paths: registrar A record or Vercel nameserver delegation
-- documents that a Vercel DNS record already exists but remains inactive until delegation happens
-- leaves the actual Supabase Site URL cutover for the moment when public DNS resolves and Vercel marks the domain verified
+- adds a read-only hosted auth-config audit under `apps/admin/scripts`
+- verifies the current state is either preview-mode or custom-domain-mode, never an unknown URL
+- verifies the required redirect URLs and Google OAuth enablement stay present across the cutover
+- adds deterministic smoke coverage and a small repo-root QA wrapper
+- leaves the actual remote write for the later moment when DNS goes green

@@ -248,6 +248,8 @@ npm run qa:hosted-admin-readiness
 npm --prefix apps/admin run audit:hosted-setup
 npm run qa:custom-domain-readiness
 npm --prefix apps/admin run audit:custom-domain-cutover
+npm run qa:supabase-auth-cutover-readiness
+npm --prefix apps/admin run audit:supabase-auth-url-config
 ```
 
 `qa:hosted-admin-readiness` currently does three things in order:
@@ -261,6 +263,12 @@ npm --prefix apps/admin run audit:custom-domain-cutover
 1. `npm --prefix apps/admin run lint`
 2. `npm --prefix apps/admin run typecheck`
 3. `npm --prefix apps/admin run smoke:custom-domain-cutover-audit`
+
+`qa:supabase-auth-cutover-readiness` currently does three things in order:
+
+1. `npm --prefix apps/admin run lint`
+2. `npm --prefix apps/admin run typecheck`
+3. `npm --prefix apps/admin run smoke:supabase-auth-url-config-audit`
 
 The real `audit:hosted-setup` command is read-only and checks:
 
@@ -277,6 +285,12 @@ The real `audit:custom-domain-cutover` command is read-only and checks:
 - `admin.omaleima.fi` is attached to the Vercel project
 - Vercel domain config is no longer marked misconfigured
 - public DNS resolves to the Vercel-recommended record
+
+The real `audit:supabase-auth-url-config` command is read-only and checks:
+
+- hosted Supabase Auth `site_url` is either the current preview URL or the final custom domain
+- required redirect URLs still include local web, preview web, custom-domain web, mobile deep link, Expo web, and preview wildcard entries
+- Google OAuth is still enabled and still has a client id configured
 
 Important hosted caveat:
 
@@ -318,6 +332,8 @@ If you prefer to use Vercel DNS instead of managing the A record at your registr
 ns1.vercel-dns.com
 ns2.vercel-dns.com
 ```
+
+While DNS is still pending, `audit:supabase-auth-url-config` should continue to report `state:preview-site-url`. After the domain turns green and the Supabase dashboard cutover is done, the same audit should report `state:custom-domain-site-url`.
 
 For the full function-backed security matrix:
 

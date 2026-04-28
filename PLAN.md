@@ -5,36 +5,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-custom-domain-delegation-guidance`
-- **Goal:** Refine the custom-domain cutover guidance so the audit and docs clearly explain the two valid ways forward: add the external A record or delegate the domain to Vercel nameservers.
+- **Branch:** `feature/post-phase6-supabase-auth-cutover-audit`
+- **Goal:** Add a repo-owned read-only audit for hosted Supabase Auth URL config so we can verify preview-mode now and custom-domain-mode later without guessing from the dashboard.
 
 ## Architectural Decisions
 
-- Keep the current hosted-preview verification path untouched; this slice is only about making the external DNS instruction unambiguous.
-- Reuse the existing custom-domain audit rather than adding another audit layer.
-- Teach the audit to mention both external-DNS options when the domain is still misconfigured:
-  - add `A admin.omaleima.fi 76.76.21.21` at the current DNS provider
-  - or switch nameservers to `ns1.vercel-dns.com`, `ns2.vercel-dns.com` so the existing Vercel DNS record becomes active
-- Update docs to state that the Vercel DNS record already exists inside the Vercel zone.
+- Keep this slice read-only; use the Supabase management API to inspect auth config, not to patch it yet.
+- Reuse the same audit/smoke pattern used by the hosted and custom-domain audits.
+- Treat two site URL states as valid:
+  - preview-mode: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
+  - custom-domain-mode: `https://admin.omaleima.fi`
+- Require the full redirect allow-list and Google OAuth enablement in both modes so the cutover does not regress mobile or web sign-in.
 
 ## Alternatives Considered
 
-- Leaving the audit error as “set the A record” only:
-  - rejected because the domain now also has a Vercel DNS path and the operator should see both choices
-- Trying to automate registrar nameserver changes from this repo:
-  - rejected because we do not have registrar control here
-- Starting the Supabase Auth cutover before public DNS resolves:
-  - rejected because it would break the current working hosted auth path
+- Relying on the Supabase dashboard by hand:
+  - rejected because the current state would stay invisible to the repo and easy to drift
+- Adding a write command first:
+  - rejected for this slice because DNS is still red and the first need is safe visibility
+- Folding this logic into the existing custom-domain audit:
+  - rejected because Vercel/DNS readiness and Supabase auth state are different checkpoints
 
 ## Edge Cases
 
-- The Vercel zone can contain the right DNS record while the public internet still resolves nothing; the audit message should say why.
-- Production can regress later; keep the production readiness check untouched.
-- The domain can resolve to multiple A values; if `76.76.21.21` is not present, keep the cutover blocked.
-- When the domain eventually turns green, the next step is operational cutover in Supabase and Google OAuth settings, not another code change first.
+- Hosted auth config can already contain the custom-domain redirect while `site_url` is still preview-mode; that should pass.
+- Google OAuth can be disabled or lose its client id while URL values still look right; the audit should fail on that.
+- The management token may only be available via the Supabase CLI keychain on macOS; fail with a precise message if neither keychain nor `SUPABASE_ACCESS_TOKEN` is available.
+- After the eventual cutover, preview callback URLs may still remain in the allow-list; that should not be treated as an error.
 
 ## Validation Plan
 
-- Update the existing custom-domain audit error guidance and keep the smoke passing.
-- Run lint, typecheck, `smoke:custom-domain-cutover-audit`, `qa:custom-domain-readiness`, and the real custom-domain audit again.
-- Update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, `TODOS.md`, `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md` with the clarified nameserver-delegation option.
+- Add `audit:supabase-auth-url-config` and `smoke:supabase-auth-url-config-audit`.
+- Add a repo-root `qa:supabase-auth-cutover-readiness` wrapper.
+- Run lint, typecheck, the new smoke, and one real hosted audit against the current preview-mode config.
+- Update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, `TODOS.md`, `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md` with the new read-only checkpoint.
