@@ -9,7 +9,7 @@ Digital leima pass for Finnish student overalls events.
 - Phase 3 complete
 - Phase 4 complete
 - Phase 5 complete
-- Phase 6 in progress
+- Phase 6 complete
 
 ## Testing
 
@@ -25,4 +25,11 @@ Function-backed expanded QA entry point:
 npm run qa:phase6-expanded
 ```
 
+Readiness entry point for the full current Phase 6 matrix plus leaderboard load validation:
+
+```bash
+npm run qa:phase6-readiness
+```
+
 Testing prerequisites and the expanded smoke matrix live in [docs/TESTING.md](docs/TESTING.md).
+Launch, fallback, and event-day operating guidance lives in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).

@@ -36,6 +36,7 @@ type AuthedClient = {
 
 type CookieBackedClient = {
   email: string;
+  hydrateFromResponse: (response: Response) => void;
   supabase: ReturnType<typeof createBrowserClient>;
   toCookieHeader: () => string;
 };
@@ -100,6 +101,26 @@ const runSqlAsync = async (sql: string): Promise<void> => {
 
 const createCookieBackedClientAsync = async (email: string, password: string): Promise<CookieBackedClient> => {
   const cookieJar = new Map<string, string>();
+  const hydrateFromResponse = (response: Response): void => {
+    const getSetCookie = response.headers.getSetCookie?.bind(response.headers);
+    const setCookieValues = typeof getSetCookie === "function"
+      ? getSetCookie()
+      : [];
+
+    for (const setCookieValue of setCookieValues) {
+      const [nameValuePair] = setCookieValue.split(";", 1);
+      const separatorIndex = nameValuePair.indexOf("=");
+
+      if (separatorIndex <= 0) {
+        continue;
+      }
+
+      const name = nameValuePair.slice(0, separatorIndex);
+      const value = nameValuePair.slice(separatorIndex + 1);
+
+      cookieJar.set(name, value);
+    }
+  };
   const supabase = createBrowserClient(supabaseUrl, publishableKey, {
     cookies: {
       getAll() {
@@ -126,6 +147,7 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
 
   return {
     email,
+    hydrateFromResponse,
     supabase,
     toCookieHeader: () =>
       Array.from(cookieJar.entries())
@@ -255,6 +277,7 @@ const assertPageContainsQueueAsync = async (
     },
     method: "GET",
   });
+  client.hydrateFromResponse(response);
   const html = await response.text();
 
   if (!response.ok) {
@@ -283,6 +306,7 @@ const invokeReviewRouteAsync = async (
     },
     method: "POST",
   });
+  client.hydrateFromResponse(response);
   const responseBody = (await response.json()) as ReviewMutationResponse;
 
   return {

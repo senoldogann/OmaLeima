@@ -29,6 +29,7 @@ OmaLeima uses Supabase PostgreSQL as the system of record. The database is desig
 - `supabase/migrations/20260429030400_update_reward_tier_atomic.sql`
 - `supabase/migrations/20260429030500_create_club_department_tag_atomic.sql`
 - `supabase/migrations/20260429030600_restrict_club_department_tag_writes.sql`
+- `supabase/migrations/20260429040000_latest_valid_stamp_by_events.sql`
 
 This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.md`:
 
@@ -45,6 +46,7 @@ This migration creates the production V1 foundation from `LEIMA_APP_MASTER_PLAN.
   - `scan_stamp_atomic`
   - `update_event_leaderboard`
   - `get_event_leaderboard`
+  - `get_latest_valid_stamp_by_events`
   - `claim_reward_atomic`
   - `approve_business_application_atomic`
   - `reject_business_application_atomic`
@@ -387,6 +389,7 @@ Current Phase 2 device token behavior:
 - `send-push-notification` currently supports `PROMOTION` delivery backed by the `promotions` table.
 - `scheduled-event-reminders` records one `EVENT_REMINDER` row per user reminder and uses successful notification history for duplicate protection.
 - `scheduled-leaderboard-refresh` refreshes stale event leaderboard rows by calling `update_event_leaderboard` only for events with new valid stamps.
+- Dirty-event detection now uses `get_latest_valid_stamp_by_events(...)` so the cron path does not miss late stamps once event volume grows beyond the API row cap.
 
 Reminder delivery indexes added in `20260427213000_notification_delivery_indexes.sql`:
 

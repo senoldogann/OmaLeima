@@ -11,6 +11,7 @@ const dockerBinary = process.env.DOCKER_BINARY ?? "/usr/local/bin/docker";
 const functionBaseUrl = process.env.SUPABASE_FUNCTIONS_BASE_URL ?? "http://127.0.0.1:54321/functions/v1";
 const localDatabaseContainer = process.env.SUPABASE_DB_CONTAINER ?? "supabase_db_omaleima";
 const qrSigningSecret = process.env.QR_SIGNING_SECRET;
+const scheduledJobSecret = process.env.SCHEDULED_JOB_SECRET;
 
 if (typeof supabaseUrl !== "string" || supabaseUrl.length === 0) {
   throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL for function smoke scripts.");
@@ -95,6 +96,7 @@ export const invokeFunctionAsync = async (
   functionName: string,
   accessToken: string | null,
   body: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<{ responseBody: FunctionJsonResponse; status: number }> => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -109,6 +111,39 @@ export const invokeFunctionAsync = async (
     body: JSON.stringify(body),
     headers,
     method: "POST",
+    signal,
+  });
+  const responseBody = (await response.json()) as FunctionJsonResponse;
+
+  return {
+    responseBody,
+    status: response.status,
+  };
+};
+
+export const requireScheduledJobSecret = (): string => {
+  if (typeof scheduledJobSecret !== "string" || scheduledJobSecret.length === 0) {
+    throw new Error("Missing SCHEDULED_JOB_SECRET for function smoke scripts.");
+  }
+
+  return scheduledJobSecret;
+};
+
+export const invokeScheduledFunctionAsync = async (
+  functionName: string,
+  scheduledSecret: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<{ responseBody: FunctionJsonResponse; status: number }> => {
+  const response = await fetch(`${functionBaseUrl}/${functionName}`, {
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      apikey: publishableKey,
+      "x-scheduled-job-secret": scheduledSecret,
+    },
+    method: "POST",
+    signal,
   });
   const responseBody = (await response.json()) as FunctionJsonResponse;
 

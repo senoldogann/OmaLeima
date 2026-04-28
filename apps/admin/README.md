@@ -37,6 +37,7 @@ npm run smoke:club-department-tags
 npm run smoke:club-events
 npm run smoke:club-claims
 npm run smoke:department-tags
+npm run smoke:leaderboard-load
 npm run smoke:oversight
 npm run smoke:qr-security
 npm run smoke:rls-core
@@ -56,6 +57,12 @@ Repo root expanded function-backed entry point:
 npm run qa:phase6-expanded
 ```
 
+Repo root readiness entry point:
+
+```bash
+npm run qa:phase6-readiness
+```
+
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
 Route-backed smokes that hit Edge Functions also expect the local function server to be running with secrets loaded:
 
@@ -70,6 +77,7 @@ supabase functions serve --env-file supabase/.env.local
 `npm run smoke:club-rewards` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff and claimed-inventory fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so moderation fixtures can be seeded directly.
 `npm run smoke:oversight` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so oversight fixtures can be seeded directly.
+`npm run smoke:leaderboard-load` expects the local Supabase stack, the local function server, and the local Docker-backed Supabase DB container to be running so an isolated 1000-student event, 5000 valid stamp rows, and a dirty refresh follow-up can be seeded and cleaned up around the scheduled leaderboard refresh smoke.
 `npm run smoke:qr-security` expects the local Supabase stack, the local function server, and the local Docker-backed Supabase DB container to be running so wrong-event fixtures can be seeded directly and function auth paths can be invoked.
 `npm run smoke:rls-core` expects the local Supabase stack and the local Docker-backed Supabase DB container to be running so cross-user stamp and audit-log fixtures can be seeded directly.
 `npm run smoke:scan-race` expects the local Supabase stack, the local function server, and the local Docker-backed Supabase DB container to be running so a second scanner fixture and isolated event rows can be seeded and cleaned up around the race test.
@@ -112,6 +120,5 @@ supabase functions serve --env-file supabase/.env.local
 
 ## Next follow-up slices
 
-- stronger CI smoke and RLS regression checks
-- concurrency and load-test harnesses for event-day traffic
-- deployment and go-to-market runbooks for Vercel or Cloudflare
+- hosted staging verification and browser click-path coverage
+- deployment automation for the chosen hosting target
