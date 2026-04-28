@@ -49,6 +49,13 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     ],
     "expo-secure-store",
     "expo-notifications",
+    [
+      "expo-camera",
+      {
+        cameraPermission: "Allow OmaLeima to access the camera for QR scanning.",
+        barcodeScannerEnabled: true,
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

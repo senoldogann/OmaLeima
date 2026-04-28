@@ -37,7 +37,7 @@ type EventRow = {
   start_at: string;
   end_at: string;
   join_deadline_at: string;
-  status: "PUBLISHED" | "ACTIVE" | "COMPLETED";
+  status: "PUBLISHED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
 };
 
 type UseBusinessHomeOverviewQueryParams = {
@@ -47,15 +47,15 @@ type UseBusinessHomeOverviewQueryParams = {
 
 export const businessHomeOverviewQueryKey = (userId: string) => ["business-home-overview", userId] as const;
 
-const deriveTimelineState = (startAt: string, endAt: string, now: number): BusinessTimelineState => {
+const deriveTimelineState = (eventStatus: EventRow["status"], startAt: string, endAt: string, now: number): BusinessTimelineState => {
   const startTime = new Date(startAt).getTime();
   const endTime = new Date(endAt).getTime();
 
-  if (now >= startTime && now <= endTime) {
+  if (eventStatus === "ACTIVE" && now >= startTime && now <= endTime) {
     return "ACTIVE";
   }
 
-  if (now < startTime) {
+  if ((eventStatus === "PUBLISHED" || eventStatus === "ACTIVE") && now < startTime) {
     return "UPCOMING";
   }
 
@@ -208,7 +208,7 @@ const mapJoinedEvents = (
         startAt: event.start_at,
         endAt: event.end_at,
         joinDeadlineAt: event.join_deadline_at,
-        timelineState: deriveTimelineState(event.start_at, event.end_at, now),
+        timelineState: deriveTimelineState(event.status, event.start_at, event.end_at, now),
         stampLabel: eventVenue.stamp_label,
         venueOrder: eventVenue.venue_order,
       },
