@@ -104,6 +104,8 @@ export const getBearerToken = (request: Request): string | null => {
 };
 
 export const getClientIp = (request: Request): string | null => {
+  // Supabase Edge sits behind platform-managed proxies, so forwarded IP headers are expected to be injected upstream.
+  // We still use this only for fraud telemetry and never as an authorization primitive.
   const forwardedFor = request.headers.get("x-forwarded-for");
 
   if (forwardedFor !== null && forwardedFor.length > 0) {

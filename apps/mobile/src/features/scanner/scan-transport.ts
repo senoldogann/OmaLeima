@@ -19,26 +19,61 @@ type ScanTimeoutError = {
   kind: "timeout";
 };
 
+const knownScanStatuses = [
+  "SUCCESS",
+  "QR_ALREADY_USED_OR_REPLAYED",
+  "ALREADY_STAMPED",
+  "EVENT_NOT_FOUND",
+  "INVALID_QR",
+  "INVALID_QR_TYPE",
+  "QR_EXPIRED",
+  "VENUE_NOT_IN_EVENT",
+  "EVENT_NOT_ACTIVE",
+  "STUDENT_NOT_REGISTERED",
+  "VENUE_JOINED_TOO_LATE",
+  "BUSINESS_STAFF_NOT_ALLOWED",
+  "NOT_BUSINESS_STAFF",
+  "BUSINESS_CONTEXT_REQUIRED",
+] as const satisfies readonly ScanQrResponse["status"][];
+
 const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["tone"]> = {
   SUCCESS: "success",
   QR_ALREADY_USED_OR_REPLAYED: "warning",
   ALREADY_STAMPED: "warning",
+  EVENT_NOT_FOUND: "neutral",
   INVALID_QR: "danger",
+  INVALID_QR_TYPE: "danger",
   QR_EXPIRED: "warning",
   VENUE_NOT_IN_EVENT: "danger",
   EVENT_NOT_ACTIVE: "neutral",
   STUDENT_NOT_REGISTERED: "danger",
   VENUE_JOINED_TOO_LATE: "danger",
   BUSINESS_STAFF_NOT_ALLOWED: "danger",
+  NOT_BUSINESS_STAFF: "danger",
+  BUSINESS_CONTEXT_REQUIRED: "warning",
 };
 
 const mapScanResponse = (response: ScanQrResponse): ScannerAttemptResult => ({
   status: response.status,
   message: response.message,
-  tone: scanResultTones[response.status] ?? "neutral",
+  tone: scanResultTones[response.status],
   stampId: response.stampId,
   stampCount: response.stampCount,
 });
+
+const isKnownScanResponse = (value: unknown): value is ScanQrResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return (
+    typeof candidate.status === "string" &&
+    typeof candidate.message === "string" &&
+    knownScanStatuses.includes(candidate.status as ScanQrResponse["status"])
+  );
+};
 
 export const requestScanQrAsync = async ({
   supabaseUrl,
@@ -71,14 +106,8 @@ export const requestScanQrAsync = async ({
   const responseBody = responseText.length === 0 ? null : JSON.parse(responseText);
 
   if (!response.ok) {
-    if (
-      responseBody !== null &&
-      typeof responseBody === "object" &&
-      !Array.isArray(responseBody) &&
-      typeof responseBody.status === "string" &&
-      typeof responseBody.message === "string"
-    ) {
-      return mapScanResponse(responseBody as ScanQrResponse);
+    if (isKnownScanResponse(responseBody)) {
+      return mapScanResponse(responseBody);
     }
 
     throw new Error(
@@ -86,19 +115,13 @@ export const requestScanQrAsync = async ({
     );
   }
 
-  if (
-    responseBody === null ||
-    typeof responseBody !== "object" ||
-    Array.isArray(responseBody) ||
-    typeof responseBody.status !== "string" ||
-    typeof responseBody.message !== "string"
-  ) {
+  if (!isKnownScanResponse(responseBody)) {
     throw new Error(
       `Scan request returned an invalid body with status ${response.status}: ${responseText.length === 0 ? "empty body" : responseText}`
     );
   }
 
-  return mapScanResponse(responseBody as ScanQrResponse);
+  return mapScanResponse(responseBody);
 };
 
 export const runScanWithTimeoutAsync = async ({

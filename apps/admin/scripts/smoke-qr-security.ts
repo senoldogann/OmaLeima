@@ -71,10 +71,15 @@ const createExpiredQrToken = (secret: string, eventId: string): string => {
 };
 
 const tamperToken = (token: string): string => {
-  const lastCharacter = token.slice(-1);
-  const replacementCharacter = lastCharacter === "a" ? "b" : "a";
+  const [header, payload, signature] = token.split(".");
 
-  return `${token.slice(0, -1)}${replacementCharacter}`;
+  if (typeof header !== "string" || typeof payload !== "string" || typeof signature !== "string") {
+    throw new Error("Expected QR token to contain header, payload, and signature segments.");
+  }
+
+  const replacementCharacter = payload.startsWith("a") ? "b" : "a";
+
+  return `${header}.${replacementCharacter}${payload.slice(1)}.${signature}`;
 };
 
 const seedWrongEventFixtureAsync = async (suffix: string): Promise<WrongEventFixture> => {
