@@ -2,9 +2,10 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
+  assertTargetStateReachedAsync,
   assertGoogleOAuthState,
   assertRequiredRedirectUrls,
-  buildCanonicalAuthConfigPatch,
+  buildManagedAuthConfigPatch,
   fetchAuthConfig,
   patchAuthConfig,
   readProjectRef,
@@ -94,7 +95,7 @@ const run = async (): Promise<void> => {
     domainGateOutput = runCustomDomainGate();
   }
 
-  const patch = buildCanonicalAuthConfigPatch(target);
+  const patch = buildManagedAuthConfigPatch(target, currentAuthConfig);
 
   if (applyMode === "dry-run") {
     console.log(
@@ -115,15 +116,11 @@ const run = async (): Promise<void> => {
 
   await patchAuthConfig(projectRef, patch);
 
-  const updatedAuthConfig = await fetchAuthConfig(projectRef);
+  const updatedAuthConfig = await assertTargetStateReachedAsync(projectRef, targetState);
   const updatedState = resolveSiteUrlState(updatedAuthConfig.site_url);
   const redirectUrls = assertRequiredRedirectUrls(updatedAuthConfig);
 
   assertGoogleOAuthState(updatedAuthConfig);
-
-  if (updatedState !== targetState) {
-    throw new Error(`Supabase auth config write completed but final state is ${updatedState}, expected ${targetState}.`);
-  }
 
   console.log(
     [

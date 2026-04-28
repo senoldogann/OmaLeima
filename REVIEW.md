@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-supabase-auth-cutover-apply`
-- **Scope:** Post-Phase 6 Supabase auth cutover apply slice: prepare a controlled dry-run/apply command for the hosted Supabase Auth URL cutover so the switch is not left as a manual dashboard-only step.
+- **Branch:** `bug/supabase-auth-cutover-hardening`
+- **Scope:** Hardening follow-up for the Supabase auth cutover apply flow: fix reviewer findings, preserve extra redirect URLs, add retry behavior, and document that the future custom domain stays parked until a real domain is purchased.
 
 ## Affected Files
 
@@ -28,9 +28,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- If the apply command can write without checking DNS and current state first, it can break working hosted auth while the custom domain is still dark.
-- The write path must not accidentally remove redirect entries that mobile or preview verification still need.
-- Hosted writes require a Supabase management token with `auth:write`; failures need to be explicit and safe.
+- The current apply flow can accidentally remove valid extra redirect URLs if it rewrites the allow-list too aggressively.
+- A single transient `429/5xx` or a slightly stale read-after-write can make an operator-facing cutover command look failed even when Supabase eventually applied it.
+- The smoke must verify the outgoing PATCH payload, not just the printed success line.
 
 ## Dependencies
 
@@ -47,14 +47,16 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
   - `site_url = https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
   - redirect allow-list includes preview callback, custom-domain callback, mobile deep link, Expo web callback, and preview wildcard
   - Google OAuth is enabled with a real client id
-- That current preview-mode state is valid for now, but we still do not have a repo-owned command that can safely apply the later switch to `https://admin.omaleima.fi`.
+- The current preview-mode state is valid for now, and the new apply command exists, but the reviewer found three real issues in its first version:
+  - it could delete extra redirect URLs
+  - it had no retry behavior for transient remote failures
+  - its smoke never asserted the actual PATCH payload
 
 ## Review Outcome
 
-Build the smallest Supabase-auth apply slice that:
+Build the smallest hardening slice that:
 
-- extracts the common hosted Supabase auth config access into a shared helper
-- adds a dry-run/apply command with explicit target states instead of manual dashboard steps
-- blocks apply unless the current state and target state make sense
-- reuses the existing DNS/custom-domain audit as a gate before custom-domain apply
-- adds deterministic smoke coverage without writing to the real hosted project
+- preserves any existing extra hosted redirect URLs while still guaranteeing the required ones
+- adds retry behavior and read-after-write verification retries for transient Supabase management API failures
+- makes the apply smoke assert the exact PATCH payload
+- leaves the future domain work parked until a real domain is bought

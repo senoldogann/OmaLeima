@@ -182,7 +182,8 @@ Expected Vercel project setup for the admin app:
 - Automatically expose System Environment Variables: enabled, so `VERCEL=1` and `VERCEL_TARGET_ENV` are available to the prebuild env check
 - If Vercel project protection reports SSO for preview deployments, anonymous `curl` checks and the hosted verification workflow will still return `401` until you either disable SSO protection for the project or switch the verification path to an allowed bypass model.
 - Current temporary Site URL: `https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app`
-- Future custom-domain replacement: `https://admin.omaleima.fi`
+- Future custom-domain replacement placeholder: `https://admin.omaleima.fi`
+- Keep the preview URL as the live hosted auth URL until a real domain is actually purchased and DNS is ready.
 - Current custom-domain DNS instruction: `A admin.omaleima.fi 76.76.21.21`
 - Alternative custom-domain DNS path: delegate the domain to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` so the existing Vercel DNS record becomes active
 

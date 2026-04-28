@@ -36,6 +36,8 @@ const assertIncludes = (output: string, expectedSubstring: string): void => {
   }
 };
 
+const extraRedirectUrl = "https://pilot.omaleima.fi/auth/callback";
+
 const createAuthConfig = (siteUrl: string): string =>
   JSON.stringify({
     external_google_client_id: "google-client-id",
@@ -48,6 +50,7 @@ const createAuthConfig = (siteUrl: string): string =>
       "omaleima://auth/callback",
       "http://localhost:8081/auth/callback",
       "https://*-senol-dogans-projects.vercel.app/**",
+      extraRedirectUrl,
     ].join(","),
   });
 
@@ -95,6 +98,7 @@ const run = async (): Promise<void> => {
   assertIncludes(previewToCustomDryRunOutput, "from:preview-site-url");
   assertIncludes(previewToCustomDryRunOutput, "to:custom-domain-site-url");
   assertIncludes(previewToCustomDryRunOutput, "domain-gate:passed");
+  assertIncludes(previewToCustomDryRunOutput, "redirect-count:7");
 
   const customToPreviewDryRunOutput = runApplyCommand({
     SUPABASE_AUTH_CONFIG_APPLY_MODE: "dry-run",
@@ -112,6 +116,18 @@ const run = async (): Promise<void> => {
     SUPABASE_AUTH_CONFIG_APPLY_PROJECT_REF: "test-project",
     SUPABASE_AUTH_CONFIG_APPLY_TARGET: "custom-domain",
     SUPABASE_AUTH_CONFIG_APPLY_DOMAIN_GATE_RESULT: "ready",
+    SUPABASE_AUTH_CONFIG_EXPECTED_PATCH_JSON: JSON.stringify({
+      site_url: "https://admin.omaleima.fi",
+      uri_allow_list: [
+        "http://localhost:3001/auth/callback",
+        "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app/auth/callback",
+        "https://admin.omaleima.fi/auth/callback",
+        "omaleima://auth/callback",
+        "http://localhost:8081/auth/callback",
+        "https://*-senol-dogans-projects.vercel.app/**",
+        extraRedirectUrl,
+      ].join(","),
+    }),
     SUPABASE_AUTH_CONFIG_PATCH_RESPONSE_JSON: JSON.stringify({ ok: true }),
     SUPABASE_AUTH_CONFIG_RESPONSE_SEQUENCE_JSON: JSON.stringify([
       JSON.parse(createAuthConfig("https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app")),
