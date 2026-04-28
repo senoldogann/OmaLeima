@@ -234,6 +234,7 @@ Workflow secrets required:
 
 - `STAGING_ADMIN_EMAIL`
 - `STAGING_ADMIN_PASSWORD`
+- `VERCEL_AUTOMATION_BYPASS_SECRET` when preview deployments are protected by Vercel SSO
 
 Vercel project env vars required for the admin app:
 
@@ -265,6 +266,7 @@ The real `audit:hosted-setup` command is read-only and checks:
 Important hosted caveat:
 
 - If the Vercel project has SSO protection enabled for preview deployments, the public URL can still return `401` even after deploy success and even after the readiness audit passes link and env checks. In that case the next step is an external protection decision, not another repo change.
+- The hosted smoke and workflow now support the `x-vercel-protection-bypass` header via `VERCEL_AUTOMATION_BYPASS_SECRET`, so a protected preview can still be tested without disabling SSO globally.
 
 If it fails with a missing-link error, use:
 
@@ -286,6 +288,7 @@ If it fails with missing GitHub Actions secrets, add them with:
 ```bash
 gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
 gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
+gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-bypass-secret'
 ```
 
 For the full function-backed security matrix:

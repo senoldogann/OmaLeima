@@ -72,20 +72,44 @@ const run = async (): Promise<void> => {
 
   assertIncludes(missingLinkError, "Missing linked Vercel project");
 
+  let missingBypassSecretError = "";
+
+  try {
+    runAuditCommand({
+      HOSTED_ADMIN_AUDIT_REPO: "senoldogann/OmaLeima",
+      HOSTED_ADMIN_AUDIT_VERCEL_WHOAMI: "senoldogan0233-7591",
+      HOSTED_ADMIN_AUDIT_GITHUB_LOGIN: "senoldogann",
+      HOSTED_ADMIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
+      HOSTED_ADMIN_AUDIT_PROTECTION_STATE: "requires-bypass",
+      HOSTED_ADMIN_AUDIT_VERCEL_PREVIEW_ENV_NAMES: "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      HOSTED_ADMIN_AUDIT_VERCEL_PRODUCTION_ENV_NAMES: "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      HOSTED_ADMIN_AUDIT_ACTION_SECRET_NAMES: "STAGING_ADMIN_EMAIL,STAGING_ADMIN_PASSWORD",
+    });
+  } catch (error) {
+    missingBypassSecretError = error instanceof Error ? error.message : String(error);
+  }
+
+  assertIncludes(missingBypassSecretError, "Missing GitHub Actions secrets: VERCEL_AUTOMATION_BYPASS_SECRET");
+
   const successOutput = runAuditCommand({
     HOSTED_ADMIN_AUDIT_REPO: "senoldogann/OmaLeima",
     HOSTED_ADMIN_AUDIT_VERCEL_WHOAMI: "senoldogan0233-7591",
     HOSTED_ADMIN_AUDIT_GITHUB_LOGIN: "senoldogann",
     HOSTED_ADMIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
+    HOSTED_ADMIN_AUDIT_PROTECTION_STATE: "requires-bypass",
     HOSTED_ADMIN_AUDIT_VERCEL_PREVIEW_ENV_NAMES: "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     HOSTED_ADMIN_AUDIT_VERCEL_PRODUCTION_ENV_NAMES: "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    HOSTED_ADMIN_AUDIT_ACTION_SECRET_NAMES: "STAGING_ADMIN_EMAIL,STAGING_ADMIN_PASSWORD",
+    HOSTED_ADMIN_AUDIT_ACTION_SECRET_NAMES:
+      "STAGING_ADMIN_EMAIL,STAGING_ADMIN_PASSWORD,VERCEL_AUTOMATION_BYPASS_SECRET",
   });
 
   assertIncludes(successOutput, "hosted-admin-readiness:READY");
   assertIncludes(successOutput, "project-id:prj_admin_test");
+  assertIncludes(successOutput, "protection-bypass-required:yes");
 
-  console.log("hosted-admin-audit-missing-link:SUCCESS|hosted-admin-audit-ready:SUCCESS");
+  console.log(
+    "hosted-admin-audit-missing-link:SUCCESS|hosted-admin-audit-missing-bypass:SUCCESS|hosted-admin-audit-ready:SUCCESS"
+  );
 };
 
 void run();

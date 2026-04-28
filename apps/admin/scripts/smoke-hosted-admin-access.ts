@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import {
   assertAnonymousRedirectAsync,
   assertLoginPageReachableAsync,
+  createBrowserHeaders,
   launchBrowserAsync,
   openRouteFromSidebarAsync,
   signInWithPasswordAsync,
@@ -14,6 +15,7 @@ import {
 const appBaseUrl = process.env.ADMIN_APP_BASE_URL;
 const stagingAdminEmail = process.env.STAGING_ADMIN_EMAIL;
 const stagingAdminPassword = process.env.STAGING_ADMIN_PASSWORD;
+const vercelAutomationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 const browserTimeoutMs = 15_000;
 const playwrightInstallCommand = "npm --prefix apps/admin exec playwright install chromium";
 
@@ -70,12 +72,18 @@ const run = async (): Promise<void> => {
   const outputs: string[] = [];
   const resolvedAppBaseUrl = requireEnvString(appBaseUrl, "ADMIN_APP_BASE_URL");
   const browser = await launchBrowserAsync(playwrightInstallCommand);
+  const bypassSecret = typeof vercelAutomationBypassSecret === "string" && vercelAutomationBypassSecret.length > 0
+    ? vercelAutomationBypassSecret
+    : null;
 
   try {
-    await assertLoginPageReachableAsync(resolvedAppBaseUrl);
+    await assertLoginPageReachableAsync(resolvedAppBaseUrl, bypassSecret);
     outputs.push("preflight-login:SUCCESS");
 
-    const page = await browser.newPage();
+    const context = await browser.newContext({
+      extraHTTPHeaders: createBrowserHeaders(bypassSecret),
+    });
+    const page = await context.newPage();
 
     await assertAnonymousRedirectAsync(page, resolvedAppBaseUrl, "/admin", browserTimeoutMs);
     outputs.push("anonymous-admin-redirect:SUCCESS");
@@ -100,6 +108,7 @@ const run = async (): Promise<void> => {
     outputs.push("sign-out:SUCCESS");
 
     console.log(outputs.join("|"));
+    await context.close();
   } finally {
     await browser.close();
   }
