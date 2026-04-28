@@ -19,6 +19,7 @@ npx expo start
 npm run lint
 npm run typecheck
 npm run export:web
+npm run audit:native-simulator-smoke
 npm run audit:native-push-device-readiness
 npm run audit:realtime-readiness
 npm run audit:reward-notification-bridge
@@ -27,6 +28,7 @@ npm run audit:reward-notification-bridge
 ## Current scope
 
 - Expo Router shell in `src/app`
+- Codex run actions via `script/build_and_run.sh` and `.codex/environments/environment.toml`
 - Supabase client bootstrap in `src/lib/supabase.ts`
 - Auth session provider in `src/providers/session-provider.tsx`
 - React Query provider in `src/providers/app-providers.tsx`
@@ -70,6 +72,12 @@ Use this command to confirm the current native push device-smoke readiness state
 npm run audit:native-push-device-readiness
 ```
 
+Use this command to confirm the current simulator and emulator wiring state:
+
+```bash
+npm run audit:native-simulator-smoke
+```
+
 ## OAuth setup notes
 
 - Enable Google as an Auth provider in Supabase.
@@ -80,3 +88,10 @@ npm run audit:native-push-device-readiness
 
 - Expo Go is still useful for routing and auth checks, but real remote push verification needs a development build on a physical device.
 - The current profile route is the manual smoke surface for that step.
+- Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
+- The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
+
+## Codex action note
+
+- In the Codex app, `apps/mobile` now exposes `Run`, `Run iOS`, `Run Android`, `Run Dev Client`, `Run Web`, `Expo Doctor`, and `Export Web` actions.
+- The same shell entrypoint is `./script/build_and_run.sh`.

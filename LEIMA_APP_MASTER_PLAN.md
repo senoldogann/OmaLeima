@@ -2999,6 +2999,7 @@ Shared reward inventory freshness now follows reward_tiers invalidation on the s
 Student local foreground reward notifications are shipped on top of the reward overview and Realtime invalidation.
 Remote reward-unlocked push delivery now ships from scan-qr.
 Native push diagnostics surface is shipped on the student profile route for development-build device smoke.
+Codex run actions and simulator-smoke guidance are shipped for the Expo app before the final physical-device push proof.
 QR rotation still uses polling by design.
 ```
 

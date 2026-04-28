@@ -5,35 +5,35 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/native-push-device-smoke-readiness`
-- **Goal:** Ship the smallest honest native push device-smoke readiness slice for mobile: Expo dev-client alignment, provider-owned notification diagnostics, and a focused QA audit for the next physical-device verification step.
+- **Branch:** `feature/native-simulator-smoke-pass`
+- **Goal:** Finish the last honest pre-device layer: simulator/emulator smoke readiness, concise operator guidance, and a minimal remaining physical-device checklist.
 
 ## Architectural Decisions
 
-- Add `expo-dev-client` and import it at the app root so the future development-build/device smoke path matches Expo’s current recommendation.
-- Keep push runtime and last-notification diagnostics in a dedicated provider-level module so listeners are created once and survive screen changes.
-- Reuse the current profile route for the manual smoke surface instead of inventing a new diagnostics screen.
-- Keep the new QA path read-only: a repository audit should prove the readiness wiring exists without pretending to replace real device testing.
+- Keep simulator/emulator work separate from real remote push claims. The output should say what is validated locally and what still needs a physical device.
+- Reuse the existing profile diagnostics surface and readiness gates instead of inventing another debug route.
+- Add one focused audit/wrapper for native simulator smoke if the current gates do not yet describe that state clearly enough.
+- Prefer concise runbook guidance over more product UI; this slice is mostly about operational clarity and repeatability.
 
 ## Alternatives Considered
 
-- Building the actual iOS and Android development binaries in this slice:
-  - rejected because the user asked for the next best step, and the repo still lacks a first-class in-app diagnostics surface for manual verification
-- Adding a separate hidden debug route for push diagnostics:
-  - rejected because the profile route already owns token registration and is the least surprising place for this information
-- Expanding the diagnostics surface into a full notification inbox:
-  - rejected because it would sprawl into UI/product work that the user explicitly wants to defer
+- Pretending simulator/emulator can fully replace the last physical push step:
+  - rejected because Expo’s current guidance still requires a real device for honest remote push confirmation
+- Shipping a large end-to-end automation harness for every local machine:
+  - rejected because simulator/emulator availability is environment-specific and brittle as a default repo gate
+- Doing nothing and only answering in chat:
+  - rejected because the user explicitly asked us to handle as much as possible inside the repo first
 
 ## Edge Cases
 
-- Expo Go can still request permissions, but remote push smoke should show it as a warning path rather than a green path.
-- Web export must keep working even after adding `expo-dev-client` and notification diagnostics imports.
-- Some runtimes may expose a last notification response before the app registers listeners on boot, so the provider should bootstrap that state explicitly.
-- Permission status can change outside the app, so diagnostics should refresh on app foreground instead of only on first mount.
+- A developer may have only Android tools or only iOS tools available. The guidance should degrade cleanly by platform.
+- A simulator or emulator may not be booted when we run local checks. Repo gates must stay read-only and environment-agnostic.
+- The final manual checklist must stay short enough that the user can actually follow it without wading through Expo docs again.
+- Existing readiness audits must continue to pass unchanged.
 
 ## Validation Plan
 
-- Install the new Expo dependency through the project package manager so `package-lock.json` stays aligned.
-- Run `apps/mobile` lint, typecheck, export, and the new native-push readiness audit.
-- Run the root wrapper for the new mobile readiness slice from the repo root.
-- Get a reviewer pass because the most likely mistakes here are duplicate listeners, false-green diagnostics, and web/export regressions.
+- Use relevant Expo / iOS / Android plugin capabilities when available to inspect the local native-smoke path.
+- Run `apps/mobile` lint, typecheck, export, and any new simulator-smoke audit.
+- Re-run the current native push, reward notification, and realtime audits so the new guidance layer does not regress existing readiness.
+- Get a reviewer pass if the repo change goes beyond docs-only clarification.

@@ -283,6 +283,40 @@ This audit does not claim that a notification was really delivered on a device. 
 5. confirm the profile diagnostics surface records the received notification and, after opening it, the notification response
 6. confirm those captured rows show a remote source, not only local foreground notification activity
 
+## Mobile native simulator and emulator wiring
+
+For the pre-device simulator and emulator wiring gate:
+
+```bash
+npm run qa:mobile-native-simulator-smoke
+```
+
+This focused wrapper currently does seven things in order:
+
+1. `bash -n apps/mobile/script/build_and_run.sh`
+2. `cd apps/mobile && ./script/build_and_run.sh --help`
+3. `npm --prefix apps/mobile run lint`
+4. `npm --prefix apps/mobile run typecheck`
+5. `npm --prefix apps/mobile run export:web`
+6. `npm --prefix apps/mobile run audit:native-push-device-readiness`
+7. `npm --prefix apps/mobile run audit:native-simulator-smoke`
+
+The audit is intentionally read-only. It verifies the repository now exposes a stable local run path before the final physical-device push check:
+
+- `apps/mobile/script/build_and_run.sh` supports `--ios`, `--android`, `--dev-client`, `--web`, `--doctor`, and `--export-web`
+- `apps/mobile/.codex/environments/environment.toml` exposes matching Codex actions
+- the existing native push diagnostics audit is still present
+- docs stay explicit that simulator or emulator smoke does not prove real APNs or FCM-backed delivery
+
+Expected success output today:
+
+- `native-simulator-wiring:repo-wired`
+- `codex-run-actions:present`
+- `dev-client-entrypoint:present`
+- `docs:aligned`
+
+This gate does not prove a successful native launch on an actual simulator or emulator, and it does not prove remote push delivery. It only proves the repo wiring and entrypoint surface are in place so the final human-driven device step is smaller.
+
 ## Reward-unlocked remote push smoke
 
 For the backend reward-unlocked push path:

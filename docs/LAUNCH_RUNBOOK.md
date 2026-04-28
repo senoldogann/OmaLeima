@@ -74,6 +74,25 @@ Run these checks before a hosted pilot or a real event:
 - The custom domain is now attached in Vercel, but DNS still needs `A admin.omaleima.fi 76.76.21.21` before Supabase Auth can move off the preview URL.
 - A matching Vercel DNS record already exists in the Vercel zone. If you want to use it, delegate the domain to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` instead of managing the A record externally.
 
+## Native push smoke handoff
+
+Before asking a human tester to do the final remote push proof on a physical device:
+
+1. `npm run qa:mobile-native-simulator-smoke`
+2. `npm run qa:mobile-native-push-readiness`
+3. confirm `apps/mobile/script/build_and_run.sh --help` works
+4. confirm Codex actions inside `apps/mobile/.codex/environments/environment.toml` are present
+
+This handoff does not mean simulator or emulator launch already passed. It only means the repo-owned entrypoints and diagnostics surface are wired and documented.
+
+At that point the remaining human step should be only:
+
+- install a development build on a physical device
+- sign in
+- enable notifications from the student profile route
+- trigger a real remote reward-unlocked push
+- confirm the diagnostics surface shows a remote source for both receipt and response
+
 ## Custom-domain cutover order
 
 Do the auth-domain cutover in this exact order:

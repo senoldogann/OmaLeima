@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/native-push-device-smoke-readiness`
-- **Scope:** Add the smallest honest native-device push smoke readiness slice on the mobile app: dev-client alignment, in-app push diagnostics, and a repo-owned audit path that makes the next physical iOS/Android verification step observable.
+- **Branch:** `feature/native-simulator-smoke-pass`
+- **Scope:** Do everything still possible without a physical device: simulator and emulator readiness, development-build launch guidance, and repo-owned QA/docs that shrink the final manual push step to the smallest honest checklist.
 
 ## Affected Files
 
@@ -20,42 +20,39 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/_layout.tsx`
 - `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/lib/push.ts`
-- `apps/mobile/src/providers/app-providers.tsx`
-- `apps/mobile/src/types/app.ts`
-- `apps/mobile/src/features/push/native-push-diagnostics.tsx`
-- `apps/mobile/scripts/audit-native-push-device-readiness.mjs`
-- `tests/run-mobile-native-push-readiness.mjs`
+- `apps/mobile/scripts/audit-native-simulator-smoke.mjs`
+- `tests/run-mobile-native-simulator-smoke.mjs`
 - `apps/mobile/README.md`
 - `LEIMA_APP_MASTER_PLAN.md`
 - `docs/TESTING.md`
+- `docs/LAUNCH_RUNBOOK.md`
 
 ## Risks
 
-- The app already prepares Expo push tokens, but real remote receipt still depends on a development build on a physical device. The new slice must not pretend Expo Go is good enough.
-- `expo-dev-client` alignment can affect app startup. The import and dependency change must stay minimal and still pass web export.
-- Notification listeners must not create duplicate subscriptions or stale snapshots across route changes. The diagnostics surface belongs at provider level, not inside one screen effect.
-- The diagnostics surface should help manual smoke work without becoming a notification center redesign. The user explicitly parked the big UI pass for later.
+- iOS Simulator and Android Emulator can validate launch flow, auth flow, and diagnostics wiring, but not honest remote push delivery. The new slice must keep that boundary explicit.
+- Any simulator/emulator-facing guidance should stay aligned with the current Expo SDK 55 development-build path instead of drifting back toward Expo Go.
+- This slice must not introduce fake automation claims if the local machine lacks a booted simulator or emulator.
+- The user wants us to handle as much as possible first, so the remaining manual step must be short, concrete, and production-minded.
 
 ## Dependencies
 
-- Existing Expo push preparation helper in `apps/mobile/src/lib/push.ts`.
-- Current student profile route, which already owns the notification registration action and is the most honest place to expose diagnostics.
-- Expo development build guidance, especially the `expo-dev-client` step and the requirement for a physical device for push verification.
-- Existing reward notification bridge and remote reward-unlocked backend path from the previous slice.
+- Existing native push diagnostics surface and readiness audit from the previous slice.
+- Expo development-build guidance and push-notification setup guidance from official docs.
+- Available Expo, iOS, and Android plugin capabilities for build or runtime smoke where the local environment allows it.
+- Current mobile profile route, which is still the honest place to observe diagnostics.
 
 ## Existing Logic Checked
 
-- `apps/mobile/src/lib/push.ts` already has permission requests, project id lookup, and Expo token preparation, but it does not expose runtime diagnostics or last notification capture.
-- `apps/mobile/src/app/student/profile.tsx` already has a notification-readiness card and backend token registration result, but it cannot yet show whether a remote push was actually received or opened.
-- `apps/mobile/package.json` has `expo-notifications`, `expo-device`, and `expo-constants`, but it does not currently include `expo-dev-client`.
-- The repository does not yet have a focused audit for native push device smoke readiness or a root QA wrapper for that state.
+- The app now exposes runtime, permission, and captured notification diagnostics on the student profile route.
+- The repository has a `qa:mobile-native-push-readiness` gate, but nothing yet that distinguishes what simulator/emulator smoke can honestly prove.
+- There is still no repo-owned condensed manual checklist for the final physical-device validation handoff.
 
 ## Review Outcome
 
-Build the smallest native push smoke readiness slice that:
+Build the smallest simulator/emulator follow-up slice that:
 
-- aligns the mobile app with Expo development-build guidance through `expo-dev-client`
-- captures last received notification and last notification response at provider level
-- exposes that diagnostics state on the student profile route that already owns push registration
-- adds a read-only audit and root QA wrapper so future device-smoke work starts from a measurable baseline
-- keeps full native build execution, store packaging, and the broader UI redesign out of scope
+- codifies what local native smoke can still prove before a physical-device push test
+- reuses official Expo development-build guidance instead of inventing a new flow
+- adds a focused audit and QA wrapper for simulator/emulator readiness if that state is not yet measurable
+- produces a short final manual checklist for the user instead of leaving a long ambiguous setup trail
+- keeps the broader UI redesign and full store/deploy work out of scope
