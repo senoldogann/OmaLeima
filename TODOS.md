@@ -4,17 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/admin-web-foundation` branch.
-- [x] Review Phase 5 admin scope, current repo structure, and official Next.js plus Supabase SSR guidance.
-- [x] Update `REVIEW.md` for the admin-web-foundation scope.
-- [x] Update `PLAN.md` for the admin-web-foundation scope.
+- [x] Create `feature/admin-business-applications-review` branch.
+- [x] Review the admin app foundation, business application schema, RLS, and existing approval or rejection backend contracts.
+- [x] Update `REVIEW.md` for the business application review scope.
+- [x] Update `PLAN.md` for the business application review scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Scaffold `apps/admin` with Next.js App Router and project-local scripts.
-- [x] Add env parsing plus Supabase SSR browser/server/proxy utilities.
-- [x] Add role access resolver and protected root redirects for admin, club, and unsupported sessions.
-- [x] Build real `/login`, `/admin`, and `/club` surfaces with sign-in and sign-out flows.
-- [x] Add app-local docs so env, run, validation, and later deploy path are explicit.
-- [x] Run admin validation commands and auth-backed smoke tests.
-- [x] Update `PROGRESS.md`.
+- [x] Add a dedicated `/admin/business-applications` route and server-side read model for pending plus recently reviewed applications.
+- [x] Add admin review controls that approve or reject through the existing Edge Functions and handle stale-review responses cleanly.
+- [x] Extend admin navigation and dashboard linkage so the new review queue is reachable from the existing shell.
+- [x] Add app-local smoke coverage for queue visibility, route protection, and approve or reject flow.
+- [x] Run admin validation commands plus review-flow smoke tests.
+- [x] Update `README.md`, `PROGRESS.md`, and any admin docs touched by the new route.
 - [x] Review diff.
 - [ ] Commit, push, PR, merge, and branch cleanup.

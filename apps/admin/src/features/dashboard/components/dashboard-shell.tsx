@@ -1,24 +1,28 @@
 import Link from "next/link";
 
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
-import type { DashboardSection } from "@/features/dashboard/types";
+import type { DashboardNavItem } from "@/features/dashboard/types";
 
 type DashboardShellProps = {
+  activeHref: string;
   areaLabel: string;
-  title: string;
-  subtitle: string;
-  userEmail: string | null;
+  children: React.ReactNode;
+  navigationItems: DashboardNavItem[];
   roleLabel: string | null;
-  sections: DashboardSection[];
+  subtitle: string;
+  title: string;
+  userEmail: string | null;
 };
 
 export const DashboardShell = ({
+  activeHref,
   areaLabel,
-  title,
-  subtitle,
-  userEmail,
+  children,
+  navigationItems,
   roleLabel,
-  sections,
+  subtitle,
+  title,
+  userEmail,
 }: DashboardShellProps) => (
   <div className="shell">
     <aside className="sidebar">
@@ -32,12 +36,15 @@ export const DashboardShell = ({
       </div>
 
       <nav className="stack-sm">
-        <Link className="nav-link nav-link-active" href={areaLabel === "Platform admin" ? "/admin" : "/club"}>
-          Dashboard
-        </Link>
-        <Link className="nav-link" href="/forbidden">
-          Access policy
-        </Link>
+        {navigationItems.map((item) => (
+          <Link
+            key={item.href}
+            className={`nav-link ${item.href === activeHref ? "nav-link-active" : ""}`}
+            href={item.href}
+          >
+            {item.label}
+          </Link>
+        ))}
       </nav>
 
       <SignOutButton />
@@ -50,26 +57,7 @@ export const DashboardShell = ({
         <p className="panel-copy">{subtitle}</p>
       </header>
 
-      <section className="content-grid">
-        {sections.map((section) => (
-          <article
-            key={section.title}
-            className={`panel ${section.tone === "accent" ? "panel-accent" : section.tone === "warning" ? "panel-warning" : ""}`}
-          >
-            <div className="stack-sm">
-              <h3 className="section-title">{section.title}</h3>
-              <ul className="list">
-                {section.items.map((item) => (
-                  <li key={item} className="list-item">
-                    <span>{item}</span>
-                    <span className="list-badge">Ready next</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </article>
-        ))}
-      </section>
+      {children}
     </main>
   </div>
 );

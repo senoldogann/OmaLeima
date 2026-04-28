@@ -1,4 +1,30 @@
-import type { DashboardSection } from "@/features/dashboard/types";
+import type { DashboardNavItem, DashboardSection } from "@/features/dashboard/types";
+
+export const adminDashboardNavigationItems: DashboardNavItem[] = [
+  {
+    href: "/admin",
+    label: "Dashboard",
+  },
+  {
+    href: "/admin/business-applications",
+    label: "Business applications",
+  },
+  {
+    href: "/forbidden",
+    label: "Access policy",
+  },
+];
+
+export const clubDashboardNavigationItems: DashboardNavItem[] = [
+  {
+    href: "/club",
+    label: "Dashboard",
+  },
+  {
+    href: "/forbidden",
+    label: "Access policy",
+  },
+];
 
 export const adminDashboardSections: DashboardSection[] = [
   {

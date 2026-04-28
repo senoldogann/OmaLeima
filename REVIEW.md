@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-web-foundation`
-- **Scope:** Phase 5 admin and club web foundation with real Next.js app shell, Supabase SSR auth, and role-gated dashboards.
+- **Branch:** `feature/admin-business-applications-review`
+- **Scope:** Phase 5 platform admin review queue for pending business applications, wired to existing approval and rejection backend flows.
 
 ## Affected Files
 
@@ -14,30 +14,35 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/admin/*`
+- `apps/admin/src/app/admin/*`
+- `apps/admin/src/features/business-applications/*`
+- `apps/admin/src/features/dashboard/*`
+- `apps/admin/scripts/*`
 - `docs/*`
 
 ## Risks
 
-- Server-side auth must not trust spoofable session cookies alone; protected route access has to be based on `getClaims()` plus profile lookup.
-- Role routing must not accidentally send students or business staff into admin or club surfaces.
-- The new web app must not quietly drift into a dead boilerplate scaffold with no real auth or dashboard structure.
-- CI and test posture is still thin at repo level, so this slice should at least leave clear app-local validation scripts and smoke paths.
-- GTM/deployment expectations for a second app surface should be documented enough that Vercel or Cloudflare onboarding is obvious later.
+- Pending application reads must stay behind admin-only RLS. Club, business, or student sessions must not see queue data.
+- Approve and reject actions must reuse the existing Edge Functions so the web panel does not fork business rules or bypass atomic review RPCs.
+- Review UI must stay deterministic under concurrent admin clicks. If another admin resolves the same application first, the web panel should surface `APPLICATION_NOT_PENDING` or similar status cleanly instead of assuming success.
+- CI and smoke posture is still thin at repo level, so this slice should leave explicit app-local review-flow smoke coverage, not just route rendering.
+- Documentation should stay deployment-aware: local app run, route scope, required function dependency, and next GTM/admin rollout steps must remain obvious.
 
 ## Dependencies
 
-- Existing Supabase Auth project and seeded `profiles` rows for `PLATFORM_ADMIN`, `CLUB_ORGANIZER`, `BUSINESS_STAFF`, and `STUDENT`.
-- Existing repo convention of `apps/*` for app surfaces.
-- Official Next.js App Router and Supabase SSR patterns verified from current docs.
+- Existing `business_applications` table plus admin-only RLS policy.
+- Existing `admin-approve-business` and `admin-reject-business` Edge Functions backed by atomic review RPCs.
+- Existing seeded `PLATFORM_ADMIN`, `CLUB_ORGANIZER`, and `STUDENT` accounts for auth-backed smoke.
+- Current `apps/admin` SSR auth foundation and role-gated `/admin` route.
+- Official Next.js App Router guidance for client boundaries and server mutations, plus current Supabase function invocation behavior.
 
 ## Existing Logic Checked
 
-- No admin web app exists yet; Phase 5 has to start from zero under `apps/admin`.
-- Mobile already has a session access resolver pattern that can be adapted to web role routing.
-- Master plan already defines `/admin` and club organizer scope, so the first slice should align to those routes instead of inventing a new IA.
-- Repo does not yet have a dedicated CI flow for the admin app, so local lint/build/smoke must be explicit.
+- `public.business_applications` already has a public-facing create policy plus full admin management policy. For deterministic smoke, this branch seeds reviewable rows through the admin session and then verifies non-admin visibility stays blocked.
+- Approval and rejection domain rules already live in `admin-approve-business` and `admin-reject-business`; this branch should only bind UI and auth-safe invocation.
+- `DashboardShell` and route guards already exist, so the new review route should extend the same admin surface instead of creating a parallel layout.
+- Existing app-local smoke scripts cover auth and route gating, but not review-flow reads or mutations yet.
 
 ## Review Outcome
 
-Create `apps/admin`, add Supabase SSR auth utilities plus role-gated root routing, ship real `/login`, `/admin`, and `/club` surfaces, and document how this web app will later plug into stronger CI, RLS smoke, load testing, and go-to-market deployment work.
+Add a dedicated `/admin/business-applications` route, load pending and recently reviewed applications through the authenticated admin session, bind approve and reject controls to the existing Edge Functions, extend navigation, and leave stronger smoke coverage for RLS visibility and review mutations.
