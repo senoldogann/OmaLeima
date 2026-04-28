@@ -4,14 +4,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/mobile-student-profile-tags` branch.
-- [x] Review the profile route, department-tag schema foundation, and current mobile query patterns.
-- [x] Update `REVIEW.md` for the student-profile-tags scope.
-- [x] Update `PLAN.md` for the student-profile-tags scope.
+- [x] Create `feature/mobile-business-auth-and-home` branch.
+- [x] Review the current auth redirects, route tree, and business data foundation.
+- [x] Update `REVIEW.md` for the business-auth-and-home scope.
+- [x] Update `PLAN.md` for the business-auth-and-home scope.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add a typed `features/profile` read-model and mutations.
-- [x] Replace the profile placeholder tag note with a real tag-management UI.
-- [x] Keep push registration and sign-out sections coherent inside the updated profile route.
+- [x] Add a shared auth access resolver for student vs business routing.
+- [x] Extend the login screen with business email/password sign-in.
+- [x] Add guarded `business` routes and the first home screen.
 - [x] Run mobile validation commands and local auth-backed smoke tests.
 - [x] Update `PROGRESS.md`.
 - [x] Review diff.

@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
@@ -7,7 +7,7 @@ import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { useSession } from "@/providers/session-provider";
 
-export default function StudentTabsLayout() {
+export default function BusinessLayout() {
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -17,9 +17,9 @@ export default function StudentTabsLayout() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Student" title="Checking session">
+        <InfoCard eyebrow="Business" title="Checking session">
           <Text selectable style={styles.bodyText}>
-            Confirming that the student area has an authenticated session.
+            Restoring the Supabase session before opening the business area.
           </Text>
         </InfoCard>
       </AppScreen>
@@ -33,9 +33,9 @@ export default function StudentTabsLayout() {
   if (accessQuery.isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Student" title="Resolving access">
+        <InfoCard eyebrow="Business" title="Resolving access">
           <Text selectable style={styles.bodyText}>
-            Checking whether this account should stay in the student area.
+            Confirming that this account has active business staff access.
           </Text>
         </InfoCard>
       </AppScreen>
@@ -46,7 +46,7 @@ export default function StudentTabsLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Student access check failed"
+          title="Business access check failed"
           detail={accessQuery.error.message}
           retryLabel="Retry access check"
           onRetry={() => void accessQuery.refetch()}
@@ -55,16 +55,16 @@ export default function StudentTabsLayout() {
     );
   }
 
-  if (accessQuery.data?.area === "business") {
-    return <Redirect href="/business/home" />;
+  if (accessQuery.data?.area === "student") {
+    return <Redirect href="/student/events" />;
   }
 
-  if (accessQuery.data?.area !== "student") {
+  if (accessQuery.data?.area !== "business") {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Student access not available"
-          detail="This authenticated account is not currently allowed inside the student mobile area."
+          title="Business access not available"
+          detail="This authenticated account does not currently have an active business membership tied to a readable active business."
           retryLabel={null}
           onRetry={null}
         />
@@ -73,26 +73,9 @@ export default function StudentTabsLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: "#2563EB",
-        tabBarInactiveTintColor: "#64748B",
-        tabBarStyle: {
-          backgroundColor: "#0F172A",
-          borderTopColor: "#1E293B",
-        },
-        sceneStyle: {
-          backgroundColor: "#0F172A",
-        },
-      }}
-    >
-      <Tabs.Screen name="events" options={{ title: "Events" }} />
-      <Tabs.Screen name="active-event" options={{ title: "My QR" }} />
-      <Tabs.Screen name="leaderboard" options={{ title: "Leaderboard" }} />
-      <Tabs.Screen name="rewards" options={{ title: "Rewards" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-    </Tabs>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="home" />
+    </Stack>
   );
 }
 

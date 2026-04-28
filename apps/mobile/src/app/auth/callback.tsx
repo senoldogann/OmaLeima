@@ -29,7 +29,7 @@ export default function AuthCallbackScreen() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/student/events");
+      router.replace("/");
     }
   }, [isAuthenticated, router]);
 
@@ -75,9 +75,9 @@ export default function AuthCallbackScreen() {
 
       setCallbackState({
         status: "ready",
-        detail: "Google sign-in completed. Redirecting to student events.",
+        detail: "OAuth sign-in completed. Redirecting to the correct mobile area.",
       });
-      router.replace("/student/events");
+      router.replace("/");
     };
 
     void exchangeCodeAsync();
@@ -89,9 +89,9 @@ export default function AuthCallbackScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Auth" title="Completing Google sign-in">
-        <Text style={styles.bodyText}>
-          OmaLeima is exchanging the returned OAuth code for a Supabase session.
+      <InfoCard eyebrow="Auth" title="Completing sign-in">
+        <Text selectable style={styles.bodyText}>
+          OmaLeima is exchanging the returned OAuth code for a Supabase session and then resolving the correct mobile area.
         </Text>
       </InfoCard>
 

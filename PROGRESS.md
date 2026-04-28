@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-28
-- **Branch:** `feature/mobile-student-profile-tags`
-- **Yapılan iş:** Faz 3 student profile route gerçek department-tag management ekranına dönüştürüldü. Yeni `features/profile` modülü ile profile overview query, selected tag listesi, official-first suggestion listesi, custom tag creation, primary tag switch ve remove akışları bağlandı. Mevcut push registration ve sign-out bölümleri aynı route içinde korunup ikincil bölümler olarak düzenlendi.
-- **Neden yapıldı:** Department tag schema foundation hazırdı ve Faz 3 checklist'inde kalan son açık öğrenci işi profile ekranının gerçek ürün akışına bağlanmasıydı. Bu adımla student MVP tarafı tamamlandı.
-- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası auth-backed smoke testlerde profile overview read, organizer ile yeni official tag create, student attach official tag, primary switch, primary remove + fallback, student custom tag create + attach ve final DB link state doğrulandı. Local web preview `http://localhost:8093/student/profile` route'u `200 OK` verdi.
-- **Sıradaki önerilen adım:** Yeni temiz branch ile `feature/mobile-business-auth-and-home` aç. Faz 4'e geçip mekan personeli auth ve yaklaşan etkinlik home akışı başlatılmalı.
-- **Açık risk/blokaj:** Profile tag create-and-attach hâlâ direct client writes ile ilerliyor; ileride club/admin moderation akışı büyüdüğünde daha kontrollü bir RPC yüzeyi mantıklı olabilir. Push registration tarafında gerçek native cihaz testi ihtiyacı da devam ediyor.
+- **Branch:** `feature/mobile-business-auth-and-home`
+- **Yapılan iş:** Faz 4'ün ilk dilimi açıldı. Mobil auth akışı artık student ve business kullanıcılarını ortak giriş ekranından doğru alana yönlendiriyor. `features/auth/session-access` ile profile role + active `business_staff` membership çözümü eklendi; `auth/login` ekranına business email/password modu bağlandı; yeni `business/_layout` ve `business/home` route'ları ile aktif mekan üyelikleri, joined live/upcoming events ve şehir bazlı public event fırsatları gösterilmeye başlandı.
+- **Neden yapıldı:** Faz 3 student MVP tamamlanmıştı. Faz 4'e geçerken en küçük doğru adım, mekan personelinin uygulamaya güvenli şekilde girebilmesi ve scanner akışından önce hangi etkinlik bağlamında çalıştığını görebilmesiydi.
+- **Doğrulama:** `apps/mobile` içinde `npm run lint`, `npm run typecheck` ve `npm run export:web` geçti. `supabase db reset` sonrası seeded scanner hesabı ile business profile ve active membership doğrulandı; joined `event_venues` ve karşılık gelen `events` sorguları smoke testten geçti; multi-business senaryosunda aynı şehirde yalnızca bir lokasyonun katıldığı published event'in diğer lokasyon için opportunity olarak görünmesi doğrulandı; iki business `SUSPENDED` yapıldığında access resolver'ın `unsupported` döndürdüğü doğrulandı. Test sonunda local DB seeded duruma geri alındı.
+- **Sıradaki önerilen adım:** Aynı dilimi temizledikten sonra yeni branch ile `feature/mobile-business-join-and-scanner-foundation` aç. Business home üzerinden joinable events action path, scanner ekranı foundation'ı ve scan request state machine başlatılmalı.
+- **Açık risk/blokaj:** Bu dilimde join/leave mutation yok; business home şu an bilerek read-only. Business auth tarafı local seed ile doğrulandı ama gerçek cihazda scanner, kamera izni ve zayıf ağ davranışı bir sonraki faz diliminde ayrıca test edilmeli.
 
 ## Faz 0: Planlama ve Kurallar
 - [x] Ana mimari ve master planın oluşturulması (`LEIMA_APP_MASTER_PLAN.md`)
@@ -53,7 +53,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - [x] Push Notifications: Bildirim izinlerinin alınması ve Expo Push Token entegrasyonu
 
 ## Faz 4: Mobil Uygulama - Mekan ve Tarayıcı Akışı (Mobile Business Agent)
-- [ ] Mekan Personeli (Business Staff) için email/şifre giriş ekranı
+- [x] Mekan Personeli (Business Staff) için email/şifre giriş ekranı
 - [ ] Mekan Ana Ekran: Katılınabilecek yaklaşan etkinlikler ve başlama saati öncesi katılma işlemleri
 - [ ] Kamera Tarayıcı (Scanner) Ekranı: UI tasarımı ve barkod okuma entegrasyonu
 - [ ] Tarama İsteği: `scan-qr` servisine istek atılması ve 4 saniyelik "Timeout / Zayıf İnternet" kontrolü
@@ -88,6 +88,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 - *2026-04-28*: Faz 3 mobile push registration tamamlandı; student profile tabı native permission + Expo token + backend device-token enrollment akışına bağlandı.
 - *2026-04-28*: Faz 3 department tag schema foundation tamamlandı; `department_tags` ve `profile_department_tags` tabloları, RLS politikaları, seeded local örnekler ve max 3 / max 1 primary kuralları eklendi.
 - *2026-04-28*: Faz 3 student profile tags tamamlandı; `student/profile` gerçek department tag selection, custom create, primary switch ve remove akışına bağlandı.
+- *2026-04-28*: Faz 4 business auth and home foundation tamamlandı; ortak auth entry student/business ayrımı yapacak şekilde genişletildi ve yeni `business/home` route'u aktif staff membership ile joined event context göstermeye başladı.
 - *2026-04-28*: Faz 3 event detail ve secure join flow tamamlandı; nested student event route, `register_event_atomic` RPC ve `generate-qr-token` registration alignment eklendi.
 - *2026-04-28*: Faz 3 öğrenci event discovery listesi tamamlandı; `student/events` gerçek Supabase event ve registration verisini loading/error/empty/content durumlarıyla göstermeye başladı.
 - *2026-04-28*: Faz 3 Google auth client flow eklendi; `auth/callback`, student route guard ve sign-out path hazırlandı, session storage `expo-secure-store` tabanına taşındı.

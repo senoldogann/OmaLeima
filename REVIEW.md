@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/mobile-student-profile-tags`
-- **Scope:** Phase 3 student profile screen for department-tag discovery, custom creation, primary selection, and self-management.
+- **Branch:** `feature/mobile-business-auth-and-home`
+- **Scope:** Phase 4 mobile business-staff email/password sign-in plus the first business home route.
 
 ## Affected Files
 
@@ -14,31 +14,36 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/features/profile/*`
-- `apps/mobile/src/components/*`
+- `apps/mobile/src/app/_layout.tsx`
+- `apps/mobile/src/app/index.tsx`
+- `apps/mobile/src/app/auth/*`
+- `apps/mobile/src/app/student/_layout.tsx`
+- `apps/mobile/src/app/business/*`
+- `apps/mobile/src/features/auth/*`
+- `apps/mobile/src/features/business/*`
 
 ## Risks
 
-- The database foundation exists, but there is still no single RPC for create-and-attach, so the mobile flow must make the direct-write path feel reliable and explicit.
-- Students can hold only 3 tags and 1 primary tag, so the UI must keep those constraints obvious before the server rejects writes.
-- Official tags should appear before custom tags, otherwise the student flow will push duplicate custom tag growth too aggressively.
-- Primary-tag switching is a two-step write with the current RLS model, so refetch behavior must keep the screen coherent after mutations.
-- The screen already owns push registration, so the new profile surface must add tag management without turning the route into a confusing wall of unrelated states.
+- The app currently assumes every authenticated user should land in the student area, so role-aware redirect logic must be fixed before business auth can feel correct.
+- Email/password sign-in must reject accounts that do not have at least one active readable business membership, otherwise suspended business access could slip into the wrong route.
+- Business home data spans `business_staff`, `businesses`, `event_venues`, and `events`, so the read model needs to avoid ad hoc per-row lookups.
+- Multi-business staff accounts can join different events per location, so city opportunities must stay business-specific instead of collapsing everything at the event level.
+- Join/leave mutations do not exist yet for business staff, so the first home route must stay honest about what is live now versus what lands next.
+- Student and business areas will now share one auth entry screen, so the UI must keep the two modes obvious instead of blending them into one confusing form.
 
 ## Dependencies
 
-- Existing Phase 3 mobile auth/session bootstrap and current `student/profile` route.
-- Newly merged `department_tags` and `profile_department_tags` schema foundation plus RLS policies.
-- Existing local student seed data and push-registration flow already on the profile tab.
+- Existing mobile auth bootstrap, route guards, and Google student login.
+- Existing database foundation for `business_staff`, `businesses`, `event_venues`, and `events`.
+- Local seeded scanner/business staff account for email/password smoke validation.
 
 ## Existing Logic Checked
 
-- `student/profile` currently still contains a placeholder tag note and the real push-registration section.
-- The app already has good patterns for Supabase-backed read models with React Query in events, rewards, and leaderboard modules.
-- The new database foundation allows direct student reads and `SELF_SELECTED` writes through RLS, so this slice can stay inside the mobile app without adding a new backend function first.
-- Push registration should remain on this screen, but the tag-management surface now deserves to become the primary focus of the route.
+- `auth/login`, `auth/_layout`, `auth/callback`, `index`, and `student/_layout` still hardcode student redirects.
+- There is no `business` route tree yet inside the mobile app.
+- Supabase auth is already wired for Google OAuth and persisted sessions, so password auth can reuse the same session bootstrap.
+- Database RLS already allows a user to read their own `business_staff` memberships and businesses can read joined event venue rows relevant to them.
 
 ## Review Outcome
 
-Build a dedicated `features/profile` module that reads the current student profile plus available department tags, lets the student attach up to 3 tags, create a custom tag when needed, switch the primary tag, remove self-selected tags, and leaves the existing push-registration block intact as a secondary section.
+Add a small shared auth-access read model that only routes through active readable businesses, extend the login screen with a business email/password mode, introduce the first `business/home` route with joined-event and per-business city-opportunity sections, and update route guards so authenticated users land in the correct area automatically.
