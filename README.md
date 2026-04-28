@@ -53,6 +53,13 @@ npm run qa:hosted-admin-readiness
 npm --prefix apps/admin run audit:hosted-setup
 ```
 
+Supabase auth cutover readiness for the hosted preview-mode versus custom-domain-mode switch:
+
+```bash
+npm run qa:supabase-auth-cutover-readiness
+npm --prefix apps/admin run audit:supabase-auth-url-config
+```
+
 Admin hosted env preflight:
 
 ```bash

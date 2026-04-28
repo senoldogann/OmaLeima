@@ -36,6 +36,7 @@ npm run smoke:business-applications
 npm run smoke:browser-admin-review
 npm run audit:custom-domain-cutover
 npm run audit:hosted-setup
+npm run audit:supabase-auth-url-config
 npm run check:hosted-env
 npm run smoke:club-department-tags
 npm run smoke:club-events
@@ -50,6 +51,7 @@ npm run smoke:qr-security
 npm run smoke:rls-core
 npm run smoke:scan-race
 npm run smoke:routes
+npm run smoke:supabase-auth-url-config-audit
 ```
 
 Repo root Phase 6 core entry point:
@@ -97,6 +99,12 @@ Repo root custom-domain readiness entry point:
 npm run qa:custom-domain-readiness
 ```
 
+Repo root Supabase auth cutover readiness entry point:
+
+```bash
+npm run qa:supabase-auth-cutover-readiness
+```
+
 Hosted env preflight:
 
 ```bash
@@ -124,10 +132,12 @@ npm exec playwright install chromium
 `npm run smoke:browser-admin-review` expects the local Supabase stack, the local admin app, the local function server, and the local Docker-backed Supabase DB container to be running so it can seed pending applications, sign in through the real `/login` page, click approve and reject in the browser, and verify the resulting DB state.
 `npm run audit:custom-domain-cutover` expects Vercel CLI auth and a linked `apps/admin/.vercel/project.json`. It is read-only and checks whether the latest production deployment is ready, whether `admin.omaleima.fi` is attached and verified in Vercel, and whether DNS now matches the Vercel-recommended record before Supabase Auth is switched away from the temporary preview URL.
 `npm run audit:hosted-setup` expects Vercel CLI auth, GitHub CLI auth, a linked `apps/admin/.vercel/project.json`, the required Preview and Production Vercel env names, and the required GitHub Actions repo secrets. It is read-only and meant to answer “are we actually ready to verify a hosted admin deployment from this workstation?”
+`npm run audit:supabase-auth-url-config` expects a hosted Supabase management token, either from `SUPABASE_ACCESS_TOKEN` or from an existing `supabase login` session in the macOS keychain. It is read-only and checks whether hosted Supabase Auth is still in the expected preview-mode or has already moved to custom-domain-mode, whether the required redirect URLs are all present, and whether Google OAuth is still enabled.
 `npm run check:hosted-env` always validates admin public env presence and URL shape. When `VERCEL=1` or `REQUIRE_HOSTED_ADMIN_ENV=1`, it additionally requires an `https` Supabase URL, rejects localhost/127.0.0.1 targets, and rejects obvious example publishable-key placeholders.
 `npm run smoke:hosted-admin-access` expects `ADMIN_APP_BASE_URL`, `STAGING_ADMIN_EMAIL`, and `STAGING_ADMIN_PASSWORD`. It does not seed data or touch review mutations; it signs in through the real login page, checks anonymous `/admin` redirect behavior, opens the admin dashboard, visits the three current admin routes, and signs out again.
 `npm run smoke:hosted-setup-audit` is the deterministic fixture-backed smoke for the audit script itself. It verifies one missing-link failure and one fully-ready success path without depending on a real linked project or real hosted secrets.
 `npm run smoke:custom-domain-cutover-audit` is the deterministic fixture-backed smoke for the custom-domain audit itself. It verifies one production-not-ready failure, one DNS-pending failure, and one fully-ready success path without depending on the live domain state.
+`npm run smoke:supabase-auth-url-config-audit` is the deterministic fixture-backed smoke for the hosted Supabase auth-config audit itself. It verifies one missing-redirect failure, one Google-disabled failure, one preview-mode success path, and one custom-domain-mode success path without touching the real hosted project.
 `npm run smoke:club-department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary organizer-club and club-staff fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
 `npm run smoke:club-claims` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff, reward-tier, stamp, and claim fixtures can be seeded and cleaned up around the route test.
@@ -218,6 +228,7 @@ npm run audit:custom-domain-cutover
 - app-local browser click-path smoke coverage for seeded admin login plus approve and reject review actions through the real UI
 - hosted admin verification smoke coverage for login, redirect boundaries, admin navigation, and sign-out against deployed URLs
 - hosted admin readiness audit coverage for linked project presence, required Vercel env names, and GitHub Actions repo secrets
+- hosted Supabase auth-config audit coverage for preview-mode versus custom-domain-mode, required redirect URLs, and Google OAuth enablement
 - hosted env preflight coverage for Vercel Preview, Production, and custom hosted targets
 - department-tag moderation page with route-backed merge and block actions through atomic database functions
 - app-local department-tag smoke coverage for non-admin RLS, validation boundaries, and profile-link repair

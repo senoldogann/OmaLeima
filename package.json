@@ -6,6 +6,7 @@
     "qa:custom-domain-readiness": "node tests/run-custom-domain-readiness.mjs",
     "qa:hosted-admin-readiness": "node tests/run-hosted-admin-readiness.mjs",
     "qa:staging-admin-verification": "node tests/run-staging-admin-verification.mjs",
+    "qa:supabase-auth-cutover-readiness": "node tests/run-supabase-auth-cutover-readiness.mjs",
     "qa:phase6-core": "node tests/run-phase6-core.mjs",
     "qa:phase6-expanded": "node tests/run-phase6-expanded.mjs",
     "qa:phase6-readiness": "node tests/run-phase6-readiness.mjs"
