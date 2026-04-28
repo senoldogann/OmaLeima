@@ -5,39 +5,40 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-hosted-verification-unblock`
-- **Goal:** Unblock the real hosted verification path by teaching the hosted smoke and audit about Vercel preview protection, while documenting the temporary preview-domain Site URL until the real custom domain exists.
+- **Branch:** `feature/post-phase6-hosted-live-verification`
+- **Goal:** Close the real hosted verification loop by bringing the linked Supabase project to the expected schema state, provisioning the hosted admin verification secrets, and proving the protected preview smoke passes end to end.
 
 ## Architectural Decisions
 
-- Keep the already-created real Vercel project and real env vars as-is; this slice is about verification access, not more provisioning.
-- Add one optional env var path for hosted verification:
-  - `VERCEL_AUTOMATION_BYPASS_SECRET`
-- Use the bypass secret as an HTTP header for both plain fetch preflight and Playwright browser requests.
-- Extend the hosted readiness audit so it checks project protection state and conditionally requires `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub Actions secrets when preview protection is active.
-- Keep `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD` conditional on real hosted credentials being available; do not fake readiness.
-- Update docs to note that the current preview URL is the temporary Site URL until `admin.omaleima.fi` is ready.
+- Keep the already-created real Vercel project and hosted public env vars as-is; this slice is about making the hosted verification path actually live.
+- Treat the linked hosted Supabase project as a first-class deployment target and push the full migration set before any hosted auth smoke is trusted.
+- Keep the hosted admin verification account password-based for now because `smoke:hosted-admin-access` tests the real password route.
+- Generate a Vercel protection bypass secret explicitly and store it in GitHub Actions as `VERCEL_AUTOMATION_BYPASS_SECRET`.
+- Use one real hosted admin identity for staging verification:
+  - `admin@omaleima.test`
+- Record the remote-schema bootstrap requirement in the launch runbook so the next hosted project does not fail late for the same reason.
 
 ## Alternatives Considered
 
-- Disabling preview protection manually as the only solution:
-  - rejected because the repo should also support the protected-preview path used by the current project
-- Baking the bypass secret into URLs:
-  - rejected because Vercel recommends headers when automation can set them
-- Marking hosted verification as green without understanding protection:
-  - rejected because the current `401` is not an app bug, but it is still a real blocker for the workflow
+- Skipping hosted schema push and creating only auth credentials:
+  - rejected because the admin app requires `profiles` and other public tables, not just auth users
+- Creating a Google-only hosted admin account:
+  - rejected because the current staging smoke validates the password sign-in path
+- Disabling preview protection:
+  - rejected because the project already supports the protected-preview header path and we want the real workflow to use it
 
 ## Edge Cases
 
-- The bypass secret may be absent in local runs; the hosted smoke should remain optional and only add headers when the secret exists.
-- The readiness audit must not require a bypass secret when preview protection is not active.
-- The temporary preview domain should not be mistaken for the final production domain; docs need to say it will be replaced later.
-- Hosted admin credentials may still be invalid even after bypass support lands; the slice should stop with that blocker clearly named.
+- The linked hosted project may be reachable by Auth but still missing PostgREST schema cache for the public tables; verify both auth and public tables before trusting the environment.
+- A pre-existing hosted admin auth user may already exist; update password and ensure the `profiles` row is still `PLATFORM_ADMIN` instead of assuming a clean create.
+- The preview domain should not be mistaken for the final production domain; docs need to keep the later custom-domain cutover explicit.
+- Hosted verification should fail loudly if any of the three GitHub secrets are missing, even after the local smoke path has already passed.
 
 ## Validation Plan
 
-- Add optional bypass support to the hosted smoke helpers and workflow.
-- Extend the hosted readiness audit and deterministic audit smoke for protected-preview projects.
-- Run lint, typecheck, `smoke:hosted-setup-audit`, and `qa:hosted-admin-readiness`.
-- Run the real hosted audit again and confirm the next blocker is now either missing secrets or invalid hosted admin credentials, not blind preview protection.
-- Update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, and `TODOS.md` with the new external-state understanding.
+- Apply the current migration set to the linked hosted Supabase project.
+- Provision or update the hosted admin account and set the three GitHub Actions secrets.
+- Run `npm --prefix apps/admin run audit:hosted-setup`.
+- Run `ADMIN_APP_BASE_URL=... npm run qa:staging-admin-verification` against the real preview URL with the bypass secret.
+- Verify the hosted `profiles` table and the hosted admin row directly through the hosted API.
+- Update `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, `TODOS.md`, and the launch runbook with the now-proven hosted bootstrap path.

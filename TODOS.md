@@ -4,16 +4,18 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/post-phase6-hosted-verification-unblock` branch.
-- [x] Review the hosted verification gap after real Vercel provisioning landed.
-- [x] Update `REVIEW.md` for the protected-preview verification scope.
-- [x] Update `PLAN.md` for the hosted-verification unblock slice.
+- [x] Create `feature/post-phase6-hosted-live-verification` branch.
+- [x] Re-check the real hosted blocker state after the protected-preview unblock slice.
+- [x] Update `REVIEW.md` for the hosted live-verification scope.
+- [x] Update `PLAN.md` for the hosted live-verification slice.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Add optional Vercel automation bypass support to the hosted smoke path.
-- [x] Extend the hosted readiness audit to require the bypass secret when preview protection is active.
-- [x] Update the workflow and docs with the protected-preview path and temporary preview-domain Site URL note.
-- [x] Run the updated audit smoke and QA wrapper.
+- [x] Confirm whether the linked hosted Supabase project actually has the expected schema.
+- [x] Apply the current migration set to the linked hosted Supabase project.
+- [x] Provision or update the real hosted `PLATFORM_ADMIN` verification account.
+- [x] Generate a Vercel automation bypass secret and store it as a GitHub Actions secret.
+- [x] Store `STAGING_ADMIN_EMAIL` and `STAGING_ADMIN_PASSWORD` as GitHub Actions secrets.
 - [x] Run the real hosted readiness audit again.
-- [x] Update `PROGRESS.md` with the new blocker state.
-- [ ] Review the final state and any reviewer findings.
+- [x] Run `qa:staging-admin-verification` against the protected preview URL.
+- [x] Update the launch runbook and `PROGRESS.md` with the hosted bootstrap path.
+- [x] Review the final state and any reviewer findings.
 - [ ] Commit, push, PR, merge, and branch cleanup.

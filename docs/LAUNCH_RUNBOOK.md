@@ -27,6 +27,7 @@ Run these checks before a hosted pilot or a real event:
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `npm --prefix apps/admin run check:hosted-env`
 4. Hosted admin setup is linked and audited:
+   - `supabase db push --linked` the first time this hosted project is used, before creating hosted verification credentials
    - `vercel link --cwd apps/admin --project <project-name> --yes`
    - `vercel env add NEXT_PUBLIC_SUPABASE_URL preview --cwd apps/admin`
    - `vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY preview --cwd apps/admin`
@@ -65,6 +66,7 @@ Run these checks before a hosted pilot or a real event:
 - If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.
 - While the custom domain is not ready, the current preview deployment URL is acting as the temporary Site URL in Supabase Auth. Replace it with `https://admin.omaleima.fi` later in one controlled pass.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
+- If the linked hosted Supabase project was just created, assume it is empty until `supabase db push --linked` has completed and a direct hosted API probe confirms tables like `profiles` and `clubs` are reachable.
 
 ## Event-day checklist
 
