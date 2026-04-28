@@ -180,6 +180,45 @@ The browser smoke itself verifies:
 - resulting `business_applications` DB state after each click path
 - cleanup of temporary applications, approved business rows, and related audit rows
 
+## Hosted admin verification
+
+For preview, staging, or production-like hosted checks:
+
+```bash
+npm --prefix apps/admin exec playwright install chromium
+ADMIN_APP_BASE_URL=https://your-preview-or-staging-url \
+STAGING_ADMIN_EMAIL=admin@example.com \
+STAGING_ADMIN_PASSWORD=secret \
+npm run qa:staging-admin-verification
+```
+
+`qa:staging-admin-verification` currently does three things in order:
+
+1. `npm --prefix apps/admin run lint`
+2. `npm --prefix apps/admin run typecheck`
+3. `npm --prefix apps/admin run smoke:hosted-admin-access`
+
+The hosted smoke verifies:
+
+- `/login` is reachable
+- anonymous `/admin` redirects back to `/login`
+- password sign-in works for the supplied admin credential
+- `/admin` loads the dashboard shell
+- `/admin/oversight`, `/admin/business-applications`, and `/admin/department-tags` all load through real sidebar navigation
+- sign-out returns the browser to `/login`
+
+The hosted smoke is intentionally read-only. It does not seed or mutate shared review data.
+
+The repository workflow `.github/workflows/staging-admin-verification.yml` can run the same smoke:
+
+- manually via `workflow_dispatch`
+- automatically from `deployment_status` when a successful deployment provides a target URL
+
+Workflow secrets required:
+
+- `STAGING_ADMIN_EMAIL`
+- `STAGING_ADMIN_PASSWORD`
+
 For the full function-backed security matrix:
 
 ```bash
@@ -214,7 +253,7 @@ Current readiness matrix:
 
 The current local matrix is strong enough for branch-level Phase 6 work, but it still does not replace:
 
-- hosted staging verification
+- broader hosted staging verification across club paths and controlled mutations
 - broader browser click-path E2E across admin and club flows
 - pilot dry-run with real operator devices
 

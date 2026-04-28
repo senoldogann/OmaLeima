@@ -16,6 +16,7 @@
     "smoke:club-events": "tsx scripts/smoke-club-events.ts",
     "smoke:club-rewards": "tsx scripts/smoke-club-rewards.ts",
     "smoke:department-tags": "tsx scripts/smoke-department-tags.ts",
+    "smoke:hosted-admin-access": "tsx scripts/smoke-hosted-admin-access.ts",
     "smoke:leaderboard-load": "tsx scripts/smoke-leaderboard-load.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",
     "smoke:qr-security": "tsx scripts/smoke-qr-security.ts",

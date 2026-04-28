@@ -1,0 +1,45 @@
+name: staging admin verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_app_base_url:
+        description: "Hosted admin base URL to verify"
+        required: true
+        type: string
+  deployment_status:
+
+jobs:
+  verify:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'deployment_status' &&
+        github.event.deployment_status.state == 'success' &&
+        github.event.deployment_status.target_url != ''
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ADMIN_APP_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.admin_app_base_url || github.event.deployment_status.target_url }}
+      STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
+      STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install admin dependencies
+        run: npm --prefix apps/admin ci
+
+      - name: Install Playwright Chromium
+        run: npm --prefix apps/admin exec playwright install --with-deps chromium
+
+      - name: Run hosted admin verification
+        run: node tests/run-staging-admin-verification.mjs

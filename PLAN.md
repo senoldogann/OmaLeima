@@ -5,50 +5,55 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-hosted-staging-and-clickpath`
-- **Goal:** Add one deterministic browser click-path smoke for the highest-risk admin review flow before moving on to hosted staging validation.
+- **Branch:** `feature/post-phase6-staging-verification-and-deploy-automation`
+- **Goal:** Add the first hosted staging verification layer and wire it into a reusable workflow path before touching production deploy automation.
 
 ## Architectural Decisions
 
-- Keep the browser smoke under `apps/admin/scripts/` and run it with `tsx`, matching the rest of the local QA surface.
-- Use Playwright in project dependencies instead of an ad hoc external tool so the repo owns the browser automation path.
-- Scope the first browser smoke to one flow only:
+- Keep hosted verification under `apps/admin/scripts/` and run it with `tsx`, matching the rest of the QA surface.
+- Reuse shared Playwright helpers from the local browser smoke instead of building a second browser stack from scratch.
+- Scope the first hosted smoke to one non-mutating admin flow:
   1. open `/login`
-  2. sign in as seeded platform admin
-  3. navigate to `/admin/business-applications`
-  4. approve one seeded pending application
-  5. reject one seeded pending application with a reason
-  6. verify resulting DB state
-- Reuse direct DB seeding and cleanup around the browser flow so the test stays deterministic and does not depend on old queue state.
-- Add stable selectors only where the current UI would otherwise force brittle nth-child or duplicate-button matching.
-- Add a small root runner that preflights the admin app and function server, then runs the browser smoke.
+  2. verify anonymous `/admin` redirects to `/login`
+  3. sign in as an env-provided admin credential
+  4. land on `/admin`
+  5. navigate to `/admin/oversight`
+  6. navigate to `/admin/business-applications`
+  7. navigate to `/admin/department-tags`
+  8. sign out and verify return to `/login`
+- Keep assertions dataset-independent by checking route URLs and top-level titles, not pending queue contents.
+- Add a root runner that validates required hosted env vars and runs the hosted smoke directly.
+- Add a GitHub Actions workflow with two triggers:
+  1. `workflow_dispatch` with URL input
+  2. `deployment_status` for successful deployments, using the target URL when available
 
 ## Alternatives Considered
 
-- Starting with hosted staging in this slice:
-  - rejected because we do not yet have a repo-owned browser click-path smoke to bring into staging unchanged
-- Covering multiple admin and club routes in one browser script:
-  - rejected because the first browser layer should stay small and reliable
-- Keeping the flow at fetch-only route smoke level:
-  - rejected because the missing assurance is the real browser interaction path, not another API-level confirmation
-- Adding broad UI refactors for testability:
-  - rejected because this slice only needs minimal selector anchors, not a redesign
+- Automating hosted approve/reject mutations immediately:
+  - rejected because hosted fixtures are not deterministic yet and we should not mutate shared staging state casually
+- Building Vercel-specific deploy scripts first:
+  - rejected because the repo is not yet linked in a visible, durable way and the first missing layer is verification, not another opaque deploy button
+- Limiting the workflow to manual dispatch only:
+  - rejected because deployment-status support is the cleanest bridge once Vercel Git integration is connected
+- Expanding into club routes in the same first hosted smoke:
+  - rejected because one admin-only path is enough to establish the pattern without making the workflow brittle
 
 ## Edge Cases
 
-- Login redirect must be awaited correctly or the script will race the dashboard shell.
-- Approve removes the card from the pending queue, while reject requires opening a hidden form first; both UI states need distinct waits.
-- Cleanup must remove approved `businesses` rows created by the approve path, not only application rows.
-- Browser binaries may be missing on a new machine, so docs must mention Playwright install explicitly.
-- The script should fail early with a clear message if the admin app or local function server is not reachable.
+- Hosted previews may be protected. The workflow and docs must make clear that inaccessible URLs will fail at preflight instead of silently skipping.
+- Some staging environments may redirect `/` differently than local. The script should anchor on `/login` and specific admin routes, not the root path.
+- Sign-in can race route hydration on hosted builds, so URL and heading checks both need bounded waits.
+- The workflow should skip deployment-status runs that do not include a target URL rather than failing with a null base URL.
+- Browser binaries may be missing in CI, so the workflow must install Chromium with Playwright’s supported path.
 
 ## Validation Plan
 
-- Install and wire Playwright in `apps/admin`.
-- Run direct validation while developing:
+- Add shared Playwright helpers and a new hosted admin smoke.
+- Add a root hosted verification runner.
+- Add a GitHub Actions workflow for manual and deployment-status execution.
+- Validate locally against the running admin app with seeded admin credentials:
   1. `rtk supabase db reset --yes`
-  2. `rtk supabase functions serve --env-file supabase/.env.local`
-  3. `cd apps/admin && rtk npm run smoke:browser-admin-review`
-- Run the root click-path runner:
-  1. `rtk node tests/run-browser-admin-review.mjs`
-- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `apps/admin/README.md`, `docs/TESTING.md`, and root `package.json`.
+  2. `cd apps/admin && rtk npm run dev -- --hostname 127.0.0.1 --port 3001`
+  3. `ADMIN_APP_BASE_URL=http://localhost:3001 STAGING_ADMIN_EMAIL=admin@omaleima.test STAGING_ADMIN_PASSWORD=password123 rtk npm --prefix apps/admin run smoke:hosted-admin-access`
+  4. `ADMIN_APP_BASE_URL=http://localhost:3001 STAGING_ADMIN_EMAIL=admin@omaleima.test STAGING_ADMIN_PASSWORD=password123 rtk node tests/run-staging-admin-verification.mjs`
+- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md`.

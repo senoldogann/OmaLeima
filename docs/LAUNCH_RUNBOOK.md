@@ -17,6 +17,7 @@ Run these checks before a hosted pilot or a real event:
    - `npm run qa:phase6-core`
    - `npm run qa:phase6-expanded`
    - `npm run qa:phase6-readiness`
+   - `ADMIN_APP_BASE_URL=https://your-preview-or-staging-url STAGING_ADMIN_EMAIL=... STAGING_ADMIN_PASSWORD=... npm run qa:staging-admin-verification`
 2. Hosted environment secrets are set:
    - `QR_SIGNING_SECRET`
    - `SCHEDULED_JOB_SECRET`
@@ -33,6 +34,16 @@ Run these checks before a hosted pilot or a real event:
    - scanner accounts can sign in
    - club organizer and club staff routing works
    - platform admin review routes work
+7. Hosted admin verification is checked:
+   - the latest preview or staging URL loads `/login`
+   - anonymous `/admin` redirects to `/login`
+   - admin sign-in, oversight, business applications, department tags, and sign-out all pass
+
+## Hosted staging notes
+
+- Vercel preview deployments use Preview environment variables by default.
+- If you create a dedicated Vercel custom environment such as `staging`, deploy with `vercel deploy --target=staging` and pull matching variables with `vercel pull --environment=staging`.
+- If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 
 ## Event-day checklist
 
