@@ -16,6 +16,7 @@
     "smoke:club-rewards": "tsx scripts/smoke-club-rewards.ts",
     "smoke:department-tags": "tsx scripts/smoke-department-tags.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",
+    "smoke:rls-core": "tsx scripts/smoke-rls-core.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts"
   },
   "dependencies": {

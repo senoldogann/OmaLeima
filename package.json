@@ -1,0 +1,7 @@
+{
+  "name": "omaleima",
+  "private": true,
+  "scripts": {
+    "qa:phase6-core": "node tests/run-phase6-core.mjs"
+  }
+}

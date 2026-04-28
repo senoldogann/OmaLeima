@@ -5,59 +5,57 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/admin-club-official-department-tags`
-- **Goal:** Finish the last remaining Phase 5 club panel workflow by adding organizer-owned official department tag creation.
+- **Branch:** `feature/phase-6-hardening-foundation`
+- **Goal:** Open Phase 6 with a reliable QA entry point, core RLS regression coverage, and explicit testing docs.
 
 ## Architectural Decisions
 
-- Keep this workflow in the existing `/club` shell and expose it as `/club/department-tags`.
-- Make the route organizer-only. Active `OWNER` and `ORGANIZER` memberships may create official tags; `CLUB_STAFF` may not.
-- Route writes through a server-side API boundary instead of direct browser inserts.
-- Add a database RPC for official club tag creation so:
-  1. actor profile and membership checks happen in one place
-  2. duplicate title checks stay explicit
-  3. club metadata can be copied consistently into the tag row
-  4. response statuses stay stable for the web UI and smoke scripts
-- Tighten direct write permissions for `CLUB` source tags so the browser cannot bypass the intended route or RPC path.
-- Keep student custom `USER` tag creation untouched. This slice should not change the mobile profile behavior.
-- Use a bounded read model that shows:
-  1. organizer-manageable clubs
-  2. existing official tags created by those clubs
-  3. a small recent list so organizers can verify what is already live
+- Add a root-level `package.json` for QA orchestration only. The repo currently has no single command surface, and Phase 6 needs one.
+- Keep orchestration in `tests/` to match the master plan output instead of burying it inside one app.
+- Use a small Node script in `tests/` that shells out to existing commands. This avoids duplicating smoke logic and keeps each feature-level smoke where it already belongs.
+- Introduce a dedicated `apps/admin/scripts/smoke-rls-core.ts` script for cross-cutting direct-access security assertions.
+- Make the first matrix intentionally scoped:
+  1. reset local DB
+  2. admin lint + typecheck + build
+  3. core auth and route smokes
+  4. core admin and club feature smokes
+  5. dedicated RLS regression smoke
+- Document two tiers:
+  1. core matrix that does not require local Edge Functions
+  2. expanded matrix that includes function-backed smokes once that layer is centralized later
 
 ## Alternatives Considered
 
-- Reusing plain `insert into department_tags` from the route handler: rejected because it would preserve the broad RLS path and make duplicate handling less explicit.
-- Letting `CLUB_STAFF` create official tags: rejected because it conflicts with the master plan and recent club panel patterns where catalog writes stay organizer-level.
-- Routing club-created official tags through the admin moderation queue first: rejected for this slice. The product plan frames these as organizer-created official tags for their own community, not admin-reviewed drafts.
-- Reusing the admin moderation page for club creation: rejected because the audience, permissions, and workflow are different.
+- Moving all smokes into one giant new script: rejected because it would duplicate proven slice-level scripts and become harder to maintain.
+- Starting with concurrency/load harness first: rejected because the repo still lacks a stable single QA entry point and dedicated RLS regression set.
+- Adding GitHub Actions immediately in the same slice: rejected for now. First we need a clean local foundation to automate later.
+- Writing the orchestrator in bash only: workable, but a small Node runner gives clearer preflight checks and is easier to extend.
 
 ## Edge Cases
 
-- Organizer may belong to multiple clubs and must choose the correct source club.
-- Organizer may have access to the club area but zero organizer-level memberships; route should redirect or deny cleanly.
-- Same club may try to create the same title twice; the response should be deterministic.
-- Different clubs may create the same visible title; that should remain possible without unstable slug conflicts.
-- Club city or university metadata may be null; tag creation should still succeed with nullable copied fields.
-- Existing staff memberships must still be able to read the club area generally, but must not gain this write path.
+- The local admin app may not be running; the matrix must fail early with a clear message.
+- Some smokes rely on Docker-backed DB access; docs must say that explicitly.
+- Some smokes rely on seeded accounts and `supabase db reset`; the matrix must own that reset step.
+- The dedicated RLS smoke must avoid colliding with feature-specific fixture data and must clean up after itself.
+- The new root package must not interfere with `apps/admin` or `apps/mobile` dependency management.
 
 ## Validation Plan
 
-- Run `apps/admin` validation:
-  1. `npm run lint`
-  2. `npm run typecheck`
-  3. `npm run build`
-- Run auth-backed smoke checks for:
-  1. organizer can open `/club/department-tags`
-  2. student is redirected away
-  3. staff is redirected or denied
-  4. direct club-source insert into `department_tags` is blocked by RLS
-  5. organizer route create succeeds
-  6. duplicate create returns the expected duplicate status
-  7. invalid club id or invalid title is rejected cleanly
-  8. created row has `source_type = 'CLUB'`, correct `source_club_id`, `created_by`, and copied club metadata
-  9. smoke cleanup leaves reruns stable
-- Open local preview and verify:
-  1. `/club`
-  2. `/club/department-tags`
-- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
+- Run root and admin validation:
+  1. `npm run qa:phase6-core`
+  2. `cd apps/admin && npm run smoke:rls-core`
+- Also run direct commands while developing:
+  1. `rtk supabase db reset`
+  2. `cd apps/admin && rtk npm run lint`
+  3. `cd apps/admin && rtk npm run typecheck`
+  4. `cd apps/admin && rtk npm run build`
+  5. `cd apps/admin && rtk npm run smoke:auth`
+  6. `cd apps/admin && rtk npm run smoke:routes`
+  7. `cd apps/admin && rtk npm run smoke:oversight`
+  8. `cd apps/admin && rtk npm run smoke:department-tags`
+  9. `cd apps/admin && rtk npm run smoke:club-events`
+  10. `cd apps/admin && rtk npm run smoke:club-rewards`
+  11. `cd apps/admin && rtk npm run smoke:club-claims`
+  12. `cd apps/admin && rtk npm run smoke:club-department-tags`
+  13. `cd apps/admin && rtk npm run smoke:rls-core`
+- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/README.md`, and `docs/TESTING.md`.
