@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "audit:hosted-setup": "tsx scripts/audit-hosted-setup.ts",
     "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",
     "build": "next build",
@@ -18,6 +19,7 @@
     "smoke:club-events": "tsx scripts/smoke-club-events.ts",
     "smoke:club-rewards": "tsx scripts/smoke-club-rewards.ts",
     "smoke:department-tags": "tsx scripts/smoke-department-tags.ts",
+    "smoke:hosted-setup-audit": "tsx scripts/smoke-hosted-setup-audit.ts",
     "smoke:hosted-admin-access": "tsx scripts/smoke-hosted-admin-access.ts",
     "smoke:leaderboard-load": "tsx scripts/smoke-leaderboard-load.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",

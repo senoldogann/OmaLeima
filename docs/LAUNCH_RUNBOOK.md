@@ -26,22 +26,31 @@ Run these checks before a hosted pilot or a real event:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `npm --prefix apps/admin run check:hosted-env`
-4. Hosted preview verification credentials are set in GitHub repo secrets:
+4. Hosted admin setup is linked and audited:
+   - `vercel link --cwd apps/admin --project <project-name> --yes`
+   - `vercel env add NEXT_PUBLIC_SUPABASE_URL preview --cwd apps/admin`
+   - `vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY preview --cwd apps/admin`
+   - `vercel env add NEXT_PUBLIC_SUPABASE_URL production --cwd apps/admin`
+   - `vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin`
+   - `gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'`
+   - `gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'`
+   - `npm --prefix apps/admin run audit:hosted-setup`
+5. Hosted preview verification credentials are set in GitHub repo secrets:
    - `STAGING_ADMIN_EMAIL`
    - `STAGING_ADMIN_PASSWORD`
-5. Hosted auth providers are configured:
+6. Hosted auth providers are configured:
    - Google auth redirect allow-list for the mobile app
    - admin and club password accounts only for approved operators
-6. Scheduled jobs are configured:
+7. Scheduled jobs are configured:
    - `scheduled-event-reminders`
    - `scheduled-leaderboard-refresh`
-7. Event data is checked:
+8. Event data is checked:
    - event window, join deadline, venue order, reward inventory, promotion limits
-8. Operator access is checked:
+9. Operator access is checked:
    - scanner accounts can sign in
    - club organizer and club staff routing works
    - platform admin review routes work
-9. Hosted admin verification is checked:
+10. Hosted admin verification is checked:
    - the latest preview or staging URL loads `/login`
    - anonymous `/admin` redirects to `/login`
    - admin sign-in, oversight, business applications, department tags, and sign-out all pass
@@ -51,6 +60,7 @@ Run these checks before a hosted pilot or a real event:
 - Vercel preview deployments use Preview environment variables by default.
 - If you create a dedicated Vercel custom environment such as `staging`, deploy with `vercel deploy --target=staging` and pull matching variables with `vercel pull --environment=staging`.
 - The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
+- The admin app now also has a read-only readiness audit. Run `npm --prefix apps/admin run audit:hosted-setup` after linking the real project or rotating secrets so the next hosted verification does not fail late.
 - If preview protection is enabled, make sure the verification workflow can access the URL before treating failures as app regressions.
 
 ## Event-day checklist

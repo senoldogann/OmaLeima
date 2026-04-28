@@ -5,51 +5,51 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-28
-- **Branch:** `feature/post-phase6-vercel-linking-and-preview-secrets`
-- **Goal:** Add repo-owned Vercel env and secret preflight for the admin app so preview and staging builds fail early with clear setup errors.
+- **Branch:** `feature/post-phase6-hosted-admin-readiness-audit`
+- **Goal:** Add a repo-owned hosted-admin readiness audit so the next agent can see, in one command, whether Vercel linking, required Vercel env names, and GitHub Actions secrets are actually ready.
 
 ## Architectural Decisions
 
-- Add one admin-only env preflight script under `apps/admin/scripts/` and run it with `tsx`.
-- The preflight should always validate local env shape, but only enforce hosted-safe rules when either:
-  1. `VERCEL=1`, or
-  2. `REQUIRE_HOSTED_ADMIN_ENV=1`
-- Hosted-safe rules should stay narrow and explicit:
-  1. `NEXT_PUBLIC_SUPABASE_URL` must be HTTPS
-  2. `NEXT_PUBLIC_SUPABASE_URL` must not point to localhost or 127.0.0.1
-  3. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` must not be an example placeholder
-- Run the preflight automatically via admin `prebuild` so real Vercel builds fail before Next.js compile work starts.
-- Document the exact config sets separately:
-  1. Vercel project env vars for Preview and Production
-  2. GitHub repo secrets for the hosted verification workflow
-  3. expected Vercel root directory for the admin app (`apps/admin`)
+- Add one admin-only readiness audit script under `apps/admin/scripts/` and run it with `tsx`.
+- The audit should verify four concrete things:
+  1. Vercel CLI auth works
+  2. GitHub CLI auth works
+  3. `apps/admin` is linked to a real Vercel project via `.vercel/project.json`
+  4. required Vercel Preview/Production env names and GitHub Actions secret names exist
+- Use explicit override env vars for the audit so we can smoke-test the script deterministically without depending on a real linked project or real secrets in CI.
+- Add a dedicated deterministic smoke script for the audit and a root QA wrapper for it.
+- Update docs with the exact commands for:
+  1. `vercel link --cwd apps/admin --project <project-name> --yes`
+  2. `vercel env add ... preview`
+  3. `vercel env add ... production`
+  4. `gh secret set ...`
 
 ## Alternatives Considered
 
-- Adding generic root-level deployment scripts for the whole monorepo:
-  - rejected because the immediate hosted surface is the admin app, and we still do not have a concrete linked Vercel project in view
-- Relying on Next runtime zod parsing alone:
-  - rejected because it does not distinguish “valid URL string” from “hosted-safe deployment config”
-- Adding separate docs for every environment type:
-  - rejected because one concise matrix in current docs is enough at this stage
-- Blocking all local builds with hosted-safe rules:
-  - rejected because local `.env.local` intentionally points at localhost Supabase
+- Attempting to create or link the real Vercel project automatically from the repo:
+  - rejected because the project name, dashboard ownership choice, and secret values are still external decisions
+- Relying only on docs and manual checklists:
+  - rejected because future agents need a machine-readable readiness signal
+- Reusing the existing `check:hosted-env` script for everything:
+  - rejected because env-shape validation and upstream hosting readiness are different concerns
+- Adding remote mutation coverage to this slice:
+  - rejected because the safer next move is read-only readiness and explicit setup commands before any real deploy automation
 
 ## Edge Cases
 
-- Local builds must keep working with `http://127.0.0.1:54321`, so hosted-only checks cannot run unconditionally.
-- Custom Vercel environments such as `staging` should be treated the same as hosted preview/production for env safety.
-- Placeholder values can vary, so the script should block only obvious example markers instead of inventing format rules for real publishable keys.
-- Docs must distinguish Vercel project env vars from GitHub Actions repo secrets; mixing them creates support churn.
+- A future workstation may already have Vercel auth but still have no linked admin project; the error needs to point at `vercel link`, not just say “not ready”.
+- A future workstation may have the app linked but be missing Preview or Production env names; the error needs to name the missing variables.
+- The repo may have no GitHub Actions secrets yet; the audit should fail with only the missing names, not generic GitHub CLI noise.
+- The smoke for this audit must stay deterministic even after the real project is eventually linked, so the test path cannot depend on the current machine state.
 
 ## Validation Plan
 
-- Add the admin hosted env preflight script and package.json wiring.
-- Validate local-safe mode:
-  1. `rtk npm --prefix apps/admin run check:hosted-env`
-- Validate hosted-required mode with good values:
-  1. `rtk env REQUIRE_HOSTED_ADMIN_ENV=1 NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_realistic_value npm --prefix apps/admin run check:hosted-env`
-- Validate hosted-required mode with bad localhost values:
-  1. `rtk env REQUIRE_HOSTED_ADMIN_ENV=1 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_local_or_hosted_key npm --prefix apps/admin run check:hosted-env`
+- Add the admin hosted-readiness audit script and package wiring.
+- Add deterministic smoke coverage for the audit script and a root QA wrapper.
+- Validate the deterministic smoke:
+  1. `rtk npm --prefix apps/admin run smoke:hosted-setup-audit`
+  2. `rtk npm run qa:hosted-admin-readiness`
+- Validate the real audit against the current workstation and capture the expected missing-link or missing-secret gap:
+  1. `rtk npm --prefix apps/admin run audit:hosted-setup`
 - Run existing admin lint and typecheck after the wiring.
-- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/.env.example`, `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md`.
+- Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, `PROGRESS.md`, `README.md`, `apps/admin/README.md`, `docs/TESTING.md`, and `docs/LAUNCH_RUNBOOK.md`.

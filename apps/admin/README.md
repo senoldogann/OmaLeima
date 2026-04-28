@@ -34,12 +34,14 @@ npm run build
 npm run smoke:auth
 npm run smoke:business-applications
 npm run smoke:browser-admin-review
+npm run audit:hosted-setup
 npm run check:hosted-env
 npm run smoke:club-department-tags
 npm run smoke:club-events
 npm run smoke:club-claims
 npm run smoke:department-tags
 npm run smoke:hosted-admin-access
+npm run smoke:hosted-setup-audit
 npm run smoke:leaderboard-load
 npm run smoke:oversight
 npm run smoke:qr-security
@@ -81,6 +83,12 @@ STAGING_ADMIN_PASSWORD=secret \
 npm run qa:staging-admin-verification
 ```
 
+Repo root hosted readiness audit entry point:
+
+```bash
+npm run qa:hosted-admin-readiness
+```
+
 Hosted env preflight:
 
 ```bash
@@ -106,8 +114,10 @@ npm exec playwright install chromium
 
 `npm run smoke:business-applications` expects the local Supabase stack and the local admin app to be running so the seeded auth users, `business_applications` table, review Edge Functions, and route-backed review API are all available.
 `npm run smoke:browser-admin-review` expects the local Supabase stack, the local admin app, the local function server, and the local Docker-backed Supabase DB container to be running so it can seed pending applications, sign in through the real `/login` page, click approve and reject in the browser, and verify the resulting DB state.
+`npm run audit:hosted-setup` expects Vercel CLI auth, GitHub CLI auth, a linked `apps/admin/.vercel/project.json`, the required Preview and Production Vercel env names, and the required GitHub Actions repo secrets. It is read-only and meant to answer “are we actually ready to verify a hosted admin deployment from this workstation?”
 `npm run check:hosted-env` always validates admin public env presence and URL shape. When `VERCEL=1` or `REQUIRE_HOSTED_ADMIN_ENV=1`, it additionally requires an `https` Supabase URL, rejects localhost/127.0.0.1 targets, and rejects obvious example publishable-key placeholders.
 `npm run smoke:hosted-admin-access` expects `ADMIN_APP_BASE_URL`, `STAGING_ADMIN_EMAIL`, and `STAGING_ADMIN_PASSWORD`. It does not seed data or touch review mutations; it signs in through the real login page, checks anonymous `/admin` redirect behavior, opens the admin dashboard, visits the three current admin routes, and signs out again.
+`npm run smoke:hosted-setup-audit` is the deterministic fixture-backed smoke for the audit script itself. It verifies one missing-link failure and one fully-ready success path without depending on a real linked project or real hosted secrets.
 `npm run smoke:club-department-tags` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary organizer-club and club-staff fixtures can be seeded and cleaned up around the route test.
 `npm run smoke:club-events` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so a temporary club staff fixture can be seeded and cleaned up around the route test.
 `npm run smoke:club-claims` expects the local Supabase stack, the local admin app, and the local Docker-backed Supabase DB container to be running so temporary club staff, reward-tier, stamp, and claim fixtures can be seeded and cleaned up around the route test.
@@ -150,6 +160,19 @@ Preview verification also expects these GitHub repo secrets for `.github/workflo
 - `STAGING_ADMIN_EMAIL`
 - `STAGING_ADMIN_PASSWORD`
 
+Recommended setup commands:
+
+```bash
+vercel link --cwd apps/admin --project <project-name> --yes
+vercel env add NEXT_PUBLIC_SUPABASE_URL preview --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY preview --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_URL production --cwd apps/admin
+vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin
+gh secret set STAGING_ADMIN_EMAIL --body 'admin@example.com'
+gh secret set STAGING_ADMIN_PASSWORD --body 'replace-with-real-password'
+npm run audit:hosted-setup
+```
+
 ## Current routes
 
 - `/login`
@@ -175,6 +198,7 @@ Preview verification also expects these GitHub repo secrets for `.github/workflo
 - app-local review-flow smoke coverage for RLS visibility and stale-review handling
 - app-local browser click-path smoke coverage for seeded admin login plus approve and reject review actions through the real UI
 - hosted admin verification smoke coverage for login, redirect boundaries, admin navigation, and sign-out against deployed URLs
+- hosted admin readiness audit coverage for linked project presence, required Vercel env names, and GitHub Actions repo secrets
 - hosted env preflight coverage for Vercel Preview, Production, and custom hosted targets
 - department-tag moderation page with route-backed merge and block actions through atomic database functions
 - app-local department-tag smoke coverage for non-admin RLS, validation boundaries, and profile-link repair
@@ -192,4 +216,4 @@ Preview verification also expects these GitHub repo secrets for `.github/workflo
 ## Next follow-up slices
 
 - broader hosted browser coverage for club routes and staged business review mutations
-- concrete deploy automation for the chosen hosting target once the repo is linked to the real Vercel project
+- real preview deployment verification after the Vercel project is linked and secrets are set

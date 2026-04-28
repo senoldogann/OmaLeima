@@ -46,6 +46,13 @@ STAGING_ADMIN_PASSWORD=secret \
 npm run qa:staging-admin-verification
 ```
 
+Hosted admin readiness audit for real Vercel link, Vercel env names, and GitHub Actions secrets:
+
+```bash
+npm run qa:hosted-admin-readiness
+npm --prefix apps/admin run audit:hosted-setup
+```
+
 Admin hosted env preflight:
 
 ```bash
