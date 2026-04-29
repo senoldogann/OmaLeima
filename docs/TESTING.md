@@ -220,7 +220,7 @@ When no physical Android phone is available, use the Android emulator as a parti
 What the emulator can still validate:
 
 - development-build launch
-- Google sign-in flow
+- Expo Go app launch and route shell
 - session restore and route guards
 - event list and event join flow
 - active-event and QR screen rendering
@@ -229,6 +229,7 @@ What the emulator can still validate:
 
 What the emulator does **not** prove:
 
+- student Google sign-in through the native Android callback path when the app is only running in Expo Go
 - real Expo remote push delivery on Android
 - notification tap/open behavior through the real Android push service
 - final Android release-mode push behavior
@@ -250,8 +251,16 @@ cd apps/mobile
 npx expo start --android
 ```
 
-3. use the emulator to verify login, event, QR, and scanner flows
+3. use the emulator to verify business login, event, QR, and scanner flows
 4. keep Android remote push as an explicit open risk until a real Android phone is available
+
+Current readiness matrix:
+
+- iPhone student Google login: passed on a physical development build
+- iPhone remote push receipt and open response: passed on a physical development build
+- Android emulator business email/password flow: passed
+- Android emulator student Google login in Expo Go: not treated as a reliable proof
+- Android remote push: still requires a real Android device
 
 ## Mobile reward notification bridge
 

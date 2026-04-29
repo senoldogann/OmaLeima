@@ -17,13 +17,25 @@ Current verified state:
 
 - hosted admin verification is wired
 - iPhone student login, push, QR rotation, scanner fallback, stamp creation, and reward-unlock push are verified
+- Android emulator app-flow smoke is usable for OmaLeima on Expo Go
+- Android emulator business email/password sign-in is verified
 
-Still pending before a broader public launch:
+Must-have before a private pilot:
+
+- final operator credential rotation away from smoke accounts
+- one last pilot dry-run with real operator accounts
+
+Needed before a broader public launch:
 
 - Android remote-push physical-device smoke
-- final operator credential rotation
 - custom domain cutover
 - public store release steps
+- Android student Google sign-in proof on a real Android development build
+
+Later:
+
+- full mobile UI redesign and broad visual polish
+- broader Android release confidence beyond the first supported operator path
 
 For the short owner-facing next steps in Turkish, see the `Senin icin kisa not (TR)` section in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).
 
