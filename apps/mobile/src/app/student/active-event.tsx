@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -32,35 +32,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 });
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
-
-// Rotating border animation for live QR
-const useRotatingBorder = (enabled: boolean) => {
-  const rotation = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!enabled) {
-      rotation.setValue(0);
-      return;
-    }
-
-    const loop = Animated.loop(
-      Animated.timing(rotation, {
-        toValue: 1,
-        duration: 4000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [enabled, rotation]);
-
-  return rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-};
 
 export default function StudentActiveEventScreen() {
   const router = useRouter();
@@ -120,7 +91,6 @@ export default function StudentActiveEventScreen() {
   const refreshProgressRatio =
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
-  const borderRotation = useRotatingBorder(isQrLive);
   const showProtectionNotice = protection.status === "ERROR";
 
   return (
@@ -217,18 +187,28 @@ export default function StudentActiveEventScreen() {
 
           {/* QR block — full width, stands on its own */}
           <View style={styles.qrBlock}>
-            {/* Rotating lime corner indicator */}
-            {isQrLive ? (
-              <Animated.View
-                style={[
-                  styles.qrRotatingIndicator,
-                  { transform: [{ rotate: borderRotation }] },
-                ]}
-              />
-            ) : null}
+            <View style={styles.qrSceneHeader}>
+              <View style={styles.qrSceneTitleGroup}>
+                <Text style={styles.qrSceneEyebrow}>Active leima pass</Text>
+                <Text style={styles.qrSceneTitle}>Show at the venue desk</Text>
+              </View>
+              {isQrLive ? (
+                <View style={styles.qrLiveBadge}>
+                  <View style={styles.qrLiveDot} />
+                  <Text style={styles.qrLiveBadgeText}>LIVE</Text>
+                </View>
+              ) : null}
+            </View>
 
-            {/* QR canvas */}
-            <View style={styles.qrInner}>
+            <View style={styles.qrFrame}>
+              <View style={[styles.qrCorner, styles.qrCornerTopLeft]} />
+              <View style={[styles.qrCorner, styles.qrCornerTopRight]} />
+              <View style={[styles.qrCorner, styles.qrCornerBottomLeft]} />
+              <View style={[styles.qrCorner, styles.qrCornerBottomRight]} />
+              <View style={styles.qrGuideLine} />
+
+              {/* QR canvas */}
+              <View style={styles.qrInner}>
               {qrTokenQuery.isLoading || qrSvgQuery.isLoading ? (
                 <View style={styles.qrPlaceholder}>
                   <Text style={styles.qrPlaceholderText}>Loading QR…</Text>
@@ -243,10 +223,10 @@ export default function StudentActiveEventScreen() {
                 </View>
               ) : null}
             </View>
+            </View>
 
             {/* Live indicator strip under QR */}
             <View style={styles.qrFooter}>
-              <View style={styles.qrLiveDot} />
               <Text style={styles.qrLiveText}>LEIMA QR</Text>
               {isQrLive ? (
                 <Text style={styles.qrCountdownText}>
@@ -392,32 +372,111 @@ const styles = StyleSheet.create({
 
   // --- QR block ---
   qrBlock: {
-    alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL1,
     borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.scene,
     borderWidth: 1,
     overflow: "hidden",
+    padding: 16,
     ...interactiveSurfaceShadowStyle,
   },
-  qrRotatingIndicator: {
+  qrSceneHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 14,
+    gap: 12,
+  },
+  qrSceneTitleGroup: {
+    flex: 1,
+    gap: 4,
+  },
+  qrSceneEyebrow: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    letterSpacing: 1.0,
+    textTransform: "uppercase",
+  },
+  qrSceneTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  qrLiveBadge: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  qrLiveBadgeText: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    letterSpacing: 0.8,
+  },
+  qrFrame: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderSubtle,
+    borderRadius: mobileTheme.radius.qr,
+    borderWidth: 1,
+    justifyContent: "center",
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  qrCorner: {
+    borderColor: mobileTheme.colors.lime,
+    height: 28,
     position: "absolute",
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: mobileTheme.radius.scene + 2,
-    borderWidth: 2,
-    borderColor: "transparent",
-    borderTopColor: mobileTheme.colors.lime,
-    borderRightColor: "transparent",
+    width: 28,
+  },
+  qrCornerTopLeft: {
+    borderLeftWidth: 2,
+    borderTopWidth: 2,
+    left: 12,
+    top: 12,
+  },
+  qrCornerTopRight: {
+    borderRightWidth: 2,
+    borderTopWidth: 2,
+    right: 12,
+    top: 12,
+  },
+  qrCornerBottomLeft: {
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    bottom: 12,
+    left: 12,
+  },
+  qrCornerBottomRight: {
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    bottom: 12,
+    right: 12,
+  },
+  qrGuideLine: {
+    backgroundColor: mobileTheme.colors.limeBorder,
+    height: 1,
+    left: 34,
+    position: "absolute",
+    right: 34,
+    top: "50%",
   },
   qrInner: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.qrCanvas,
-    justifyContent: "center",
-    margin: 16,
     borderRadius: mobileTheme.radius.card,
+    justifyContent: "center",
     minHeight: 304,
     padding: 16,
   },
@@ -440,9 +499,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 4,
+    paddingTop: 14,
   },
   qrLiveDot: {
     backgroundColor: mobileTheme.colors.lime,
@@ -453,14 +510,16 @@ const styles = StyleSheet.create({
   qrLiveText: {
     color: mobileTheme.colors.lime,
     flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
     letterSpacing: 1.2,
   },
   qrCountdownText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "500",
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
 
   // --- Progress ---

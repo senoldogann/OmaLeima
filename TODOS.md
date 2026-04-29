@@ -27,13 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Rewards + Showcase Preview Pass)
+## Current Todos (QR + Rewards Polish Pass)
 
-- [x] Review the current rewards, QR, and event preview surfaces again.
-- [x] Remove repeated numbers from `student/rewards` summary and event cards.
-- [x] Add a hosted showcase event bootstrap script.
-- [x] Seed a few temporary showcase events and register active student profiles.
-- [x] Confirm the QR route can become visible from seeded hosted data.
+- [x] Review the current active-event QR scene and rewards density again.
+- [x] Replace the rotating QR indicator with a calmer frame treatment.
+- [x] Fix the clipped `0 leimat` reward hero number.
+- [x] Convert rewards event cards into a horizontal rail.
 - [x] Run mobile lint, typecheck, and export validation.
-- [x] Run admin lint, typecheck, and showcase bootstrap validation.
-- [x] Update `PROGRESS.md` with the preview-pass handoff note.
+- [x] Update `PROGRESS.md` with the new handoff note.

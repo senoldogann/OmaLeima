@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { useRouter } from "expo-router";
 
@@ -13,6 +13,7 @@ import { useSession } from "@/providers/session-provider";
 
 export default function StudentRewardsScreen() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const studentId = session?.user.id ?? null;
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
@@ -24,6 +25,7 @@ export default function StudentRewardsScreen() {
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
   const claimableCount = events.filter((e) => e.claimableTierCount > 0).length;
   const totalStamps = events.reduce((acc, e) => acc + e.stampCount, 0);
+  const railCardWidth = Math.max(Math.min(windowWidth - 52, 420), 286);
   const summaryLabel =
     registeredEventCount === 0
       ? "Leimat appear here after your first joined event."
@@ -91,13 +93,34 @@ export default function StudentRewardsScreen() {
       ) : null}
 
       {/* Event cards */}
-      {events.map((event) => (
-        <RewardProgressCard
-          key={event.id}
-          event={event}
-          onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
-        />
-      ))}
+      {events.length > 0 ? (
+        <View style={styles.railSection}>
+          <View style={styles.railHeader}>
+            <Text style={styles.railTitle}>Event rewards</Text>
+            <Text style={styles.railMeta}>
+              {events.length} event{events.length === 1 ? "" : "s"}
+            </Text>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.railContent}
+            decelerationRate="fast"
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToAlignment="start"
+            snapToInterval={railCardWidth + 14}
+          >
+            {events.map((event) => (
+              <View key={event.id} style={[styles.railCardWrap, { width: railCardWidth }]}>
+                <RewardProgressCard
+                  event={event}
+                  onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
     </AppScreen>
   );
 }
@@ -156,6 +179,33 @@ const styles = StyleSheet.create({
     fontFamily: mobileTheme.typography.families.bold,
     fontSize: mobileTheme.typography.sizes.bodySmall,
     letterSpacing: 0.3,
+  },
+  railCardWrap: {
+    marginRight: 14,
+  },
+  railContent: {
+    paddingRight: 6,
+  },
+  railHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  railMeta: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+  },
+  railSection: {
+    gap: 12,
+  },
+  railTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   screenHeader: {
     gap: 8,

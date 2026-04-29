@@ -261,20 +261,22 @@ const styles = StyleSheet.create({
   // --- Stamp hero ---
   stampHero: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     gap: 10,
+    minHeight: 82,
   },
   stampNumber: {
     color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: 68,
-    lineHeight: 70,
+    fontSize: 60,
+    lineHeight: 76,
     letterSpacing: -2,
+    paddingTop: 6,
     fontVariant: ["tabular-nums"],
   },
   stampMeta: {
     gap: 4,
-    paddingBottom: 12,
+    paddingBottom: 8,
     alignItems: "flex-start",
   },
   stampUnit: {
@@ -320,8 +322,8 @@ const styles = StyleSheet.create({
   summaryText: {
     color: mobileTheme.colors.textSecondary,
     fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
 
   dateLine: {
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
 
   // --- Memory tokens ---
   memorySection: {
-    gap: 10,
+    gap: 8,
   },
   sectionLabel: {
     color: mobileTheme.colors.textDim,
@@ -372,12 +374,12 @@ const styles = StyleSheet.create({
 
   // --- Tiers ---
   tierSection: {
-    gap: 10,
+    gap: 8,
   },
   tierRow: {
     borderRadius: mobileTheme.radius.card,
     gap: 8,
-    padding: 14,
+    padding: 12,
     backgroundColor: mobileTheme.colors.surfaceL2,
     ...interactiveSurfaceShadowStyle,
   },
