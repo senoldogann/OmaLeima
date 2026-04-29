@@ -27,10 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Discovery + QR + Profile Cleanup)
+## Current Todos (Stamp Delight + Leaderboard Restyle)
 
-- [x] Review the current discovery, My QR, and profile redundancies.
-- [x] Make discovery slides use explicitly different fallback images.
-- [x] Remove duplicate user/tag chrome from My QR and profile.
+- [x] Review scanner success, profile status chrome, and leaderboard composition.
+- [x] Add stamp-hit success animation to scanner.
+- [x] Remove redundant active/profile status text.
+- [x] Restyle leaderboard to match the rest of the student app.
 - [x] Run mobile lint, typecheck, and export.
-- [ ] Update `PROGRESS.md` with the new handoff note.
+- [x] Update `PROGRESS.md` with the new handoff note.

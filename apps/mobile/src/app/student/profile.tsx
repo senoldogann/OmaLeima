@@ -219,11 +219,6 @@ export default function StudentProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.accountMetaRow}>
-            <Text selectable style={styles.accountMetaInline}>
-              {profileOverview.status.toLowerCase()}
-            </Text>
-          </View>
         </View>
       ) : null}
 
@@ -369,17 +364,6 @@ const styles = StyleSheet.create({
     fontFamily: mobileTheme.typography.families.medium,
     fontSize: mobileTheme.typography.sizes.bodySmall,
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  accountMetaInline: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  accountMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
   },
   avatarCore: {
     alignItems: "center",

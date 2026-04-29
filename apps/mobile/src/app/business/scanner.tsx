@@ -106,6 +106,21 @@ const scanResultDetails: Record<ScannerAttemptResult["status"], string> = {
   NETWORK_TIMEOUT: "No response arrived within 4 seconds. Retry or use manual fallback.",
 };
 
+const createStampSealLabel = (value: string | null): string => {
+  const source = value?.trim() ?? "LEIMA";
+
+  if (source.length === 0) {
+    return "LEIMA";
+  }
+
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ")
+    .slice(0, 14)
+    .toUpperCase();
+};
+
 const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
   const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -136,6 +151,75 @@ const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
   return { scale, opacity };
 };
 
+const useStampHitAnimation = (result: ScannerAttemptResult | null) => {
+  const stampOpacity = useRef(new Animated.Value(0)).current;
+  const stampScale = useRef(new Animated.Value(1.38)).current;
+  const stampRotation = useRef(new Animated.Value(-14)).current;
+  const pulseOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    stampOpacity.stopAnimation();
+    stampScale.stopAnimation();
+    stampRotation.stopAnimation();
+    pulseOpacity.stopAnimation();
+
+    if (result?.status !== "SUCCESS") {
+      stampOpacity.setValue(0);
+      stampScale.setValue(1.38);
+      stampRotation.setValue(-14);
+      pulseOpacity.setValue(0);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(stampOpacity, {
+          toValue: 1,
+          duration: 110,
+          useNativeDriver: true,
+        }),
+        Animated.delay(120),
+      ]),
+      Animated.spring(stampScale, {
+        toValue: 1,
+        damping: 12,
+        stiffness: 190,
+        mass: 0.78,
+        useNativeDriver: true,
+      }),
+      Animated.spring(stampRotation, {
+        toValue: -7,
+        damping: 14,
+        stiffness: 170,
+        mass: 0.88,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(pulseOpacity, {
+          toValue: 0.24,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseOpacity, {
+          toValue: 0,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [pulseOpacity, result, stampOpacity, stampRotation, stampScale]);
+
+  return {
+    pulseOpacity,
+    stampOpacity,
+    stampRotation: stampRotation.interpolate({
+      inputRange: [-20, 20],
+      outputRange: ["-20deg", "20deg"],
+    }),
+    stampScale,
+  };
+};
+
 export default function BusinessScannerScreen() {
   const params = useLocalSearchParams<{ eventVenueId?: string }>();
   const { session } = useSession();
@@ -152,9 +236,16 @@ export default function BusinessScannerScreen() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
+  const [lastScanStampSealLabel, setLastScanStampSealLabel] = useState<string>("LEIMA");
 
   const { scale: resultScale, opacity: resultOpacity } =
     useScanResultAnimation(lastResult);
+  const {
+    pulseOpacity,
+    stampOpacity,
+    stampRotation,
+    stampScale,
+  } = useStampHitAnimation(lastResult);
 
   const activeJoinedEvents = useMemo(
     () => homeOverviewQuery.data?.joinedActiveEvents ?? [],
@@ -191,12 +282,12 @@ export default function BusinessScannerScreen() {
       null,
     [activeJoinedEvents, selectedEventVenueId]
   );
-
   const resetScanner = (): void => {
     setIsScannerLocked(false);
     setIsSubmitting(false);
     setSubmitError(null);
     setLastResult(null);
+    setLastScanStampSealLabel("LEIMA");
     setManualToken("");
   };
 
@@ -209,6 +300,9 @@ export default function BusinessScannerScreen() {
     setIsSubmitting(true);
     setSubmitError(null);
     setLastResult(null);
+    setLastScanStampSealLabel(
+      createStampSealLabel(selectedEvent.stampLabel ?? selectedEvent.businessName)
+    );
 
     try {
       const result = await scanQrWithTimeoutAsync(
@@ -282,10 +376,12 @@ export default function BusinessScannerScreen() {
                   return (
                     <Pressable
                       key={event.eventVenueId}
+                      disabled={isScannerLocked || isSubmitting}
                       onPress={() => setSelectedEventVenueId(event.eventVenueId)}
                       style={[
                         styles.eventSelectorCard,
                         isSelected ? styles.eventSelectorCardSelected : null,
+                        isScannerLocked || isSubmitting ? styles.disabledButton : null,
                       ]}
                     >
                       <Text style={styles.eventSelectorTitle}>{event.eventName}</Text>
@@ -366,41 +462,65 @@ export default function BusinessScannerScreen() {
       {lastResult !== null ? (
         <Animated.View style={{ transform: [{ scale: resultScale }], opacity: resultOpacity }}>
           <InfoCard eyebrow={toneConfig[lastResult.tone].eyebrow} title={scanResultTitles[lastResult.status]}>
-            <View
-              style={[
-                styles.resultHeroCard,
-                {
-                  backgroundColor: toneConfig[lastResult.tone].bg,
-                  borderColor: toneConfig[lastResult.tone].border,
-                },
-              ]}
-            >
-              <Text style={[styles.resultIcon, { color: toneConfig[lastResult.tone].accentColor }]}>
-                {toneConfig[lastResult.tone].icon}
-              </Text>
-
-              {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
-                <View style={styles.stampCountBlock}>
-                  <Text
+            <View style={styles.resultHeroStack}>
+              {lastResult.status === "SUCCESS" ? (
+                <>
+                  <Animated.View style={[styles.stampPulse, { opacity: pulseOpacity }]} />
+                  <Animated.View
                     style={[
-                      styles.stampCountNumber,
-                      { color: toneConfig[lastResult.tone].accentColor },
+                      styles.stampSeal,
+                      {
+                        opacity: stampOpacity,
+                        transform: [{ rotate: stampRotation }, { scale: stampScale }],
+                      },
                     ]}
                   >
-                    {lastResult.stampCount}
-                  </Text>
-                  <Text style={styles.stampCountLabel}>STAMPS</Text>
-                </View>
+                    <View style={styles.stampSealInner}>
+                      <Text style={styles.stampSealEyebrow}>LEIMA</Text>
+                      <Text numberOfLines={1} style={styles.stampSealTitle}>
+                        {lastScanStampSealLabel}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                </>
               ) : null}
 
-              <Text
+              <View
                 style={[
-                  styles.resultMessage,
-                  { color: toneConfig[lastResult.tone].accentColor },
+                  styles.resultHeroCard,
+                  {
+                    backgroundColor: toneConfig[lastResult.tone].bg,
+                    borderColor: toneConfig[lastResult.tone].border,
+                  },
                 ]}
               >
-                {lastResult.message}
-              </Text>
+                <Text style={[styles.resultIcon, { color: toneConfig[lastResult.tone].accentColor }]}>
+                  {toneConfig[lastResult.tone].icon}
+                </Text>
+
+                {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
+                  <View style={styles.stampCountBlock}>
+                    <Text
+                      style={[
+                        styles.stampCountNumber,
+                        { color: toneConfig[lastResult.tone].accentColor },
+                      ]}
+                    >
+                      {lastResult.stampCount}
+                    </Text>
+                    <Text style={styles.stampCountLabel}>STAMPS</Text>
+                  </View>
+                ) : null}
+
+                <Text
+                  style={[
+                    styles.resultMessage,
+                    { color: toneConfig[lastResult.tone].accentColor },
+                  ]}
+                >
+                  {lastResult.message}
+                </Text>
+              </View>
             </View>
 
             <Text style={styles.bodyText}>{scanResultDetails[lastResult.status]}</Text>
@@ -571,6 +691,63 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 10,
     padding: 24,
+    position: "relative",
+    zIndex: 2,
+  },
+  resultHeroStack: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 220,
+    position: "relative",
+  },
+  stampPulse: {
+    backgroundColor: mobileTheme.colors.limeSurface,
+    borderRadius: 999,
+    height: 172,
+    position: "absolute",
+    width: 172,
+    zIndex: 0,
+  },
+  stampSeal: {
+    alignItems: "center",
+    backgroundColor: "rgba(200, 255, 71, 0.12)",
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderStyle: "dashed",
+    borderWidth: 2,
+    height: 142,
+    justifyContent: "center",
+    position: "absolute",
+    right: -8,
+    top: -10,
+    width: 142,
+    zIndex: 3,
+  },
+  stampSealEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
+  stampSealInner: {
+    alignItems: "center",
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    gap: 6,
+    height: 110,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    width: 110,
+  },
+  stampSealTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: 14,
+    letterSpacing: 0.4,
+    textAlign: "center",
   },
   resultIcon: {
     fontSize: 42,

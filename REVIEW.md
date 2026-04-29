@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Finish the follow-up student polish by removing duplicate discovery imagery, cleaning duplicate tag counts in profile, and simplifying the My QR top stack after the new motion pass.
+- **Scope:** Add the first in-app stamp-hit animation, remove the redundant active/profile status label, and restyle leaderboard so it feels like the same product as the other student screens.
 
 ## Affected Files
 
@@ -20,12 +20,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/student/active-event.tsx`
 - `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/app/student/rewards.tsx`
+- `apps/mobile/src/app/student/leaderboard.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/features/leaderboard/components/leaderboard-entry-card.tsx`
 
 ## Risks
 
-- The deterministic fallback image hash can still produce repeated visuals across discovery slides unless selection is made explicit.
-- My QR can get noisy again if we keep both the hero title and another identity label above the QR canvas.
-- Profile can still feel redundant if the same tag-count information appears in both account summary and department-tag entry.
+- Scanner success animation cannot delay or obscure the real scan result long enough to confuse staff during a live queue.
+- Leaderboard restyle should improve hierarchy without making ranking less scannable.
+- Removing the profile status label must not leave the account hero visually empty.
 
 ## Dependencies
 
@@ -36,15 +39,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- The shared event visual helper already owns the fallback image list, so discovery can select explicit unique images there instead of hashing keys.
-- My QR hero already carries the event identity, so the second student-name row above the QR is optional chrome and safe to remove.
-- Profile status can still be shown without repeating tag totals in the account hero.
+- Scanner already uses `Animated` for the result card reveal, so the first stamp-hit layer can reuse the same animation stack.
+- Leaderboard already has a podium/list split, so the biggest gain is better scene composition instead of changing data flow.
+- Profile account area already has email and tag identity, so the status chip is optional and safe to remove.
 
 ## Review Outcome
 
-Do a small cleanup pass:
+Do a focused delight pass:
 
-- make discovery slides use explicitly different fallback imagery
-- remove redundant student/tag count chrome from My QR and profile
-- keep the new motion rail behavior intact
+- add a short stamp-hit overlay to scanner success
+- remove the redundant profile status row
+- restyle leaderboard with stronger podium, event hero, and standings composition
 - re-run mobile validation and keep backend logic unchanged

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppScreen } from "@/components/app-screen";
+import { AppIcon } from "@/components/app-icon";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
@@ -52,6 +54,26 @@ const getPodiumInitials = (value: string | null, rank: number): string => {
   }
 
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+};
+
+const createLeaderboardHeroLabel = (
+  selectedEventName: string | null,
+  top10Count: number,
+  currentRank: number | null
+): string => {
+  if (selectedEventName === null) {
+    return "Choose an event to see the live standings.";
+  }
+
+  if (top10Count === 0) {
+    return `${selectedEventName} is ready, but no ranked leima streak is visible yet.`;
+  }
+
+  if (currentRank !== null) {
+    return `${selectedEventName} top 10 is live. Your current place is #${currentRank}.`;
+  }
+
+  return `${selectedEventName} top 10 is live now.`;
 };
 
 export default function StudentLeaderboardScreen() {
@@ -106,6 +128,8 @@ export default function StudentLeaderboardScreen() {
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const leaderboardVersion = leaderboardQuery.data?.version ?? null;
   const freshness = getFreshnessBadge(leaderboardRefreshedAt);
+  const heroCoverSource = getEventCoverSource(null, selectedEvent?.id ?? "leaderboard-hero");
+  const heroLabel = createLeaderboardHeroLabel(selectedEvent?.name ?? null, top10.length, currentUser?.rank ?? null);
 
   const overviewState = overviewQuery.error
     ? "error"
@@ -165,63 +189,85 @@ export default function StudentLeaderboardScreen() {
       ) : null}
 
       {events.length > 0 ? (
-        <InfoCard eyebrow="Event" title={selectedEvent?.name ?? "Select event"}>
-          {selectedEvent ? (
-            <View style={styles.selectedEventSummary}>
+        <>
+          <ImageBackground imageStyle={styles.heroImage} source={heroCoverSource} style={styles.heroBand}>
+            <View style={styles.heroOverlay} />
+            <View style={styles.heroContent}>
               <View style={styles.badges}>
-                <StatusBadge
-                  label={selectedEvent.timelineState.toLowerCase()}
-                  state={
-                    selectedEvent.timelineState === "ACTIVE"
-                      ? "ready"
-                      : selectedEvent.timelineState === "UPCOMING"
-                        ? "pending"
-                        : "warning"
-                  }
-                />
+                {selectedEvent ? (
+                  <StatusBadge
+                    label={selectedEvent.timelineState.toLowerCase()}
+                    state={
+                      selectedEvent.timelineState === "ACTIVE"
+                        ? "ready"
+                        : selectedEvent.timelineState === "UPCOMING"
+                          ? "pending"
+                          : "warning"
+                    }
+                  />
+                ) : null}
                 <StatusBadge label={freshness.label} state={freshness.state} />
               </View>
-              <View style={styles.summaryBand}>
-                <View style={styles.summaryMetric}>
-                  <Text selectable style={styles.summaryMetricValue}>{selectedEvent.city}</Text>
-                  <Text selectable style={styles.summaryMetricLabel}>city</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryMetric}>
-                  <Text selectable numberOfLines={1} style={styles.summaryMetricValue}>
-                    {formatDateTime(selectedEvent.startAt)}
-                  </Text>
-                  <Text selectable style={styles.summaryMetricLabel}>starts</Text>
-                </View>
-              </View>
-              <Text selectable style={styles.metaText}>
-                {leaderboardRefreshedAt === null
-                  ? "Leaderboard has not refreshed yet."
-                  : `Last refreshed ${formatDateTime(leaderboardRefreshedAt)}${leaderboardVersion === null ? "" : ` · v${leaderboardVersion}`}`}
-              </Text>
-            </View>
-          ) : null}
 
-          <ScrollView
-            contentContainerStyle={styles.eventSelector}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {events.map((event) => (
-              <Pressable
-                key={event.id}
-                onPress={() => setSelectedEventId(event.id)}
-                style={[
-                  styles.eventChip,
-                  selectedEvent?.id === event.id ? styles.selectedEventChip : null,
-                ]}
-              >
-                <Text style={styles.eventChipTitle}>{event.name}</Text>
-                <Text style={styles.eventChipMeta}>{event.timelineState.toLowerCase()}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </InfoCard>
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroEyebrow}>Student standings</Text>
+                <Text style={styles.heroTitle}>{selectedEvent?.name ?? "Leaderboard"}</Text>
+                <Text style={styles.heroMeta}>{heroLabel}</Text>
+              </View>
+
+              {selectedEvent ? (
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStat}>
+                    <Text style={styles.heroStatValue}>{selectedEvent.city}</Text>
+                    <Text style={styles.heroStatLabel}>city</Text>
+                  </View>
+                  <View style={styles.heroStatDivider} />
+                  <View style={styles.heroStat}>
+                    <Text numberOfLines={1} style={styles.heroStatValue}>
+                      {formatDateTime(selectedEvent.startAt)}
+                    </Text>
+                    <Text style={styles.heroStatLabel}>starts</Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          </ImageBackground>
+
+          <View style={styles.eventSelectorSection}>
+            <View style={styles.eventSelectorHeader}>
+              <Text style={styles.sectionKicker}>Choose event</Text>
+              {leaderboardRefreshedAt !== null ? (
+                <Text style={styles.eventSelectorMeta}>
+                  Refreshed {formatDateTime(leaderboardRefreshedAt)}
+                  {leaderboardVersion === null ? "" : ` · v${leaderboardVersion}`}
+                </Text>
+              ) : null}
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.eventSelector}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {events.map((event) => (
+                <Pressable
+                  key={event.id}
+                  onPress={() => setSelectedEventId(event.id)}
+                  style={[
+                    styles.eventChip,
+                    selectedEvent?.id === event.id ? styles.selectedEventChip : null,
+                  ]}
+                >
+                  <Text style={styles.eventChipTitle}>{event.name}</Text>
+                  <View style={styles.eventChipRow}>
+                    <Text style={styles.eventChipMeta}>{event.timelineState.toLowerCase()}</Text>
+                    <AppIcon color={selectedEvent?.id === event.id ? mobileTheme.colors.lime : mobileTheme.colors.textMuted} name="chevron-right" size={14} />
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </>
       ) : null}
 
       {rankingState === "loading" || rankingState === "error" || rankingState === "empty" ? (
@@ -255,7 +301,7 @@ export default function StudentLeaderboardScreen() {
       ) : null}
 
       {top10.length > 0 ? (
-        <InfoCard eyebrow="Top 10" title="Standings">
+        <View style={styles.standingsStage}>
           {podiumEntries.length > 0 ? (
             <View style={styles.podiumSection}>
               <Text style={styles.sectionKicker}>Top three</Text>
@@ -329,7 +375,7 @@ export default function StudentLeaderboardScreen() {
               Your row appears after the first valid leima is refreshed into the leaderboard.
             </Text>
           ) : null}
-        </InfoCard>
+        </View>
       ) : null}
     </AppScreen>
   );
@@ -358,6 +404,12 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 12,
   },
+  eventChipRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "space-between",
+  },
   eventChip: {
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.card,
@@ -383,6 +435,91 @@ const styles = StyleSheet.create({
   eventSelector: {
     paddingRight: 4,
   },
+  eventSelectorHeader: {
+    gap: 4,
+  },
+  eventSelectorMeta: {
+    color: mobileTheme.colors.textDim,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+  },
+  eventSelectorSection: {
+    gap: 10,
+  },
+  heroBand: {
+    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
+    marginTop: -mobileTheme.spacing.screenVertical,
+    minHeight: 248,
+    position: "relative",
+  },
+  heroContent: {
+    flex: 1,
+    gap: 16,
+    justifyContent: "space-between",
+    padding: 22,
+  },
+  heroCopy: {
+    gap: 8,
+    maxWidth: 300,
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
+  },
+  heroImage: {
+    borderRadius: 0,
+  },
+  heroMeta: {
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.56)",
+  },
+  heroStat: {
+    flex: 1,
+    gap: 4,
+  },
+  heroStatDivider: {
+    alignSelf: "stretch",
+    backgroundColor: mobileTheme.colors.borderStrong,
+    width: 1,
+  },
+  heroStats: {
+    backgroundColor: "rgba(8, 9, 14, 0.56)",
+    borderRadius: mobileTheme.radius.card,
+    flexDirection: "row",
+    gap: 12,
+    padding: 14,
+  },
+  heroStatLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  heroStatValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.titleLarge,
+    letterSpacing: -0.8,
+    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
+  },
   listGroup: {
     gap: 10,
   },
@@ -394,8 +531,10 @@ const styles = StyleSheet.create({
   },
   podiumAvatar: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL4,
+    backgroundColor: "rgba(0, 0, 0, 0.36)",
+    borderColor: mobileTheme.colors.limeBorder,
     borderRadius: 999,
+    borderWidth: 1,
     height: 52,
     justifyContent: "center",
     width: 52,
@@ -410,6 +549,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.scene,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderDefault,
     flex: 1,
     gap: 8,
     justifyContent: "flex-end",
@@ -420,9 +561,11 @@ const styles = StyleSheet.create({
   },
   podiumCardCurrent: {
     backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
   },
   podiumCardFirst: {
     backgroundColor: mobileTheme.colors.surfaceL3,
+    borderColor: mobileTheme.colors.limeBorder,
   },
   podiumName: {
     color: mobileTheme.colors.textPrimary,
@@ -501,38 +644,16 @@ const styles = StyleSheet.create({
   },
   selectedEventChip: {
     backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderWidth: 1,
   },
-  selectedEventSummary: {
-    gap: 10,
-  },
-  summaryBand: {
-    alignItems: "stretch",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
-    flexDirection: "row",
-    gap: 12,
-    padding: 14,
-  },
-  summaryDivider: {
-    alignSelf: "stretch",
-    backgroundColor: mobileTheme.colors.borderDefault,
-    width: 1,
-  },
-  summaryMetric: {
-    flex: 1,
-    gap: 4,
-  },
-  summaryMetricLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  summaryMetricValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
+  standingsStage: {
+    backgroundColor: mobileTheme.colors.surfaceL1,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.scene,
+    borderWidth: 1,
+    gap: 16,
+    padding: 18,
+    ...interactiveSurfaceShadowStyle,
   },
 });
