@@ -258,7 +258,7 @@ export default function StudentActiveEventScreen() {
                 1. Long-press the token below and copy it.
               </Text>
               <Text selectable style={styles.metaLine}>
-                2. Sign out and switch into business staff with `scanner@omaleima.test / password123`.
+                2. Sign out and switch into the current hosted scanner account.
               </Text>
               <Text selectable style={styles.metaLine}>
                 3. Open Business - Scanner and paste the token into the manual fallback box.

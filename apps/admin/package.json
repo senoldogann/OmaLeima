@@ -8,6 +8,7 @@
     "audit:custom-domain-cutover": "tsx scripts/audit-custom-domain-cutover.ts",
     "audit:hosted-setup": "tsx scripts/audit-hosted-setup.ts",
     "audit:pilot-operator-hygiene": "tsx scripts/audit-pilot-operator-hygiene.ts",
+    "bootstrap:pilot-operator-accounts": "tsx scripts/bootstrap-pilot-operator-accounts.ts",
     "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",
     "build": "next build",

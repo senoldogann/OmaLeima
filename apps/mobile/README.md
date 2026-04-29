@@ -106,7 +106,7 @@ npm run audit:hosted-business-scan-readiness
 
 ## Hosted same-device scanner smoke
 
-- The hosted smoke fixture now includes `scanner@omaleima.test / password123`, an active event, a joined venue, and a student registration.
+- The hosted smoke fixture now depends on the current hosted scanner credential from the local operator file, plus an active event, a joined venue, and a student registration.
 - In development builds only, the active student event screen exposes a `Hosted scanner smoke token` card while a live QR token exists.
 - The intended one-phone flow is:
   1. sign in as the student and open `My QR`

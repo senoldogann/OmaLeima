@@ -16,15 +16,17 @@ Digital leima pass for Finnish student overalls events.
 Current verified state:
 
 - hosted admin verification is wired
+- hosted pilot operator hygiene audit is green
+- placeholder pilot admin, organizer, and scanner accounts now exist with random passwords generated locally
 - iPhone student login, push, QR rotation, scanner fallback, stamp creation, and reward-unlock push are verified
 - Android emulator app-flow smoke is usable for OmaLeima on Expo Go
 - Android emulator business email/password sign-in is verified
 
 Must-have before a private pilot:
 
-- final operator credential rotation away from smoke accounts
 - one last pilot dry-run with real operator accounts
-- hosted pilot-operator hygiene audit green
+- replacing the placeholder pilot operator emails with real club/operator emails once the first pilot club is known
+- keeping the local operator credential file stored safely outside the repo
 
 Needed before a broader public launch:
 

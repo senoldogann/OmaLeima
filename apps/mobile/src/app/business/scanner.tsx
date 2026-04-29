@@ -283,7 +283,7 @@ export default function BusinessScannerScreen() {
           </Text>
           {__DEV__ ? (
             <Text selectable style={styles.metaText}>
-              Same-device hosted smoke: sign in as a student first, copy the active token from My QR, then sign back in here with `scanner@omaleima.test / password123` and paste it below.
+              Same-device hosted smoke: sign in as a student first, copy the active token from My QR, then sign back in here with the current hosted scanner account and paste it below.
             </Text>
           ) : null}
           <TextInput
