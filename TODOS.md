@@ -27,12 +27,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (QR + Rewards + Discovery Motion Pass)
+## Current Todos (Discovery + QR + Profile Cleanup)
 
-- [x] Review the current QR, rewards rail, and discovery hero structure.
-- [x] Add a shared auto-advancing horizontal rail.
-- [x] Turn rewards into an idle auto-slider with manual swipe still enabled.
-- [x] Turn discovery into a multi-slide visual/text hero.
-- [x] Compress My QR so the code sits above the fold more reliably.
+- [x] Review the current discovery, My QR, and profile redundancies.
+- [x] Make discovery slides use explicitly different fallback images.
+- [x] Remove duplicate user/tag chrome from My QR and profile.
 - [x] Run mobile lint, typecheck, and export.
 - [ ] Update `PROGRESS.md` with the new handoff note.

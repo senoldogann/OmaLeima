@@ -5,7 +5,7 @@ import { ImageBackground, Pressable, StyleSheet, Text, View, useWindowDimensions
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { EventCard } from "@/features/events/components/event-card";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
@@ -77,10 +77,10 @@ export default function StudentEventsScreen() {
         itemWidth={heroWidth}
         keyExtractor={(slide: DiscoverySlide) => slide.key}
         railStyle={styles.heroRail}
-        renderItem={(slide: DiscoverySlide) => (
+        renderItem={(slide: DiscoverySlide, index: number) => (
           <ImageBackground
             imageStyle={styles.heroImage}
-            source={getEventCoverSource(null, slide.key)}
+            source={getFallbackCoverSourceByIndex(index)}
             style={styles.heroBand}
           >
             <View style={styles.heroOverlay} />

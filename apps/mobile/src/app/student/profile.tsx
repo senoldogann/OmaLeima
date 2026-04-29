@@ -221,14 +221,6 @@ export default function StudentProfileScreen() {
 
           <View style={styles.accountMetaRow}>
             <Text selectable style={styles.accountMetaInline}>
-              {selectedTags.length} tag{selectedTags.length === 1 ? "" : "s"}
-            </Text>
-            <Text selectable style={styles.accountMetaDot}>•</Text>
-            <Text selectable style={styles.accountMetaInline}>
-              {remainingTagSlots} left
-            </Text>
-            <Text selectable style={styles.accountMetaDot}>•</Text>
-            <Text selectable style={styles.accountMetaInline}>
               {profileOverview.status.toLowerCase()}
             </Text>
           </View>
@@ -374,12 +366,6 @@ export default function StudentProfileScreen() {
 const styles = StyleSheet.create({
   accountEmail: {
     color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  accountMetaDot: {
-    color: mobileTheme.colors.textDim,
     fontFamily: mobileTheme.typography.families.medium,
     fontSize: mobileTheme.typography.sizes.bodySmall,
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,

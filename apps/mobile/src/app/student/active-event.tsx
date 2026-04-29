@@ -195,18 +195,12 @@ export default function StudentActiveEventScreen() {
       {selectedEvent?.viewState === "ACTIVE" ? (
         <>
           <View style={styles.activeSummaryBar}>
-            <View style={styles.activeSummaryCopy}>
-              <View style={styles.badges}>
-                <StatusBadge label="active now" state="ready" />
-                <StatusBadge
-                  label={qrTokenQuery.error ? "refresh error" : "live"}
-                  state={qrTokenQuery.error ? "error" : "ready"}
-                />
-              </View>
-
-              <Text style={styles.identityValue} numberOfLines={1}>
-                {qrContextQuery.data?.studentDisplayName ?? session?.user.email ?? "Unknown"}
-              </Text>
+            <View style={styles.badges}>
+              <StatusBadge label="active now" state="ready" />
+              <StatusBadge
+                label={qrTokenQuery.error ? "refresh error" : "live"}
+                state={qrTokenQuery.error ? "error" : "ready"}
+              />
             </View>
 
             <Text style={styles.identityMeta}>Until {formatDateTime(selectedEvent.endAt)}</Text>
@@ -343,10 +337,6 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "space-between",
   },
-  activeSummaryCopy: {
-    flex: 1,
-    gap: 10,
-  },
   badges: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -358,7 +348,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   eventHero: {
-    minHeight: 156,
+    minHeight: 182,
     marginHorizontal: -mobileTheme.spacing.screenHorizontal,
     marginTop: -mobileTheme.spacing.screenVertical,
     overflow: "hidden",
@@ -367,10 +357,10 @@ const styles = StyleSheet.create({
   eventHeroContent: {
     gap: 8,
     justifyContent: "flex-end",
-    minHeight: 156,
-    paddingBottom: 18,
+    minHeight: 182,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    paddingTop: 38,
+    paddingTop: 42,
   },
   eventHeroEyebrow: {
     color: mobileTheme.colors.lime,
@@ -420,13 +410,6 @@ const styles = StyleSheet.create({
     lineHeight: mobileTheme.typography.lineHeights.caption,
     maxWidth: 112,
     textAlign: "right",
-  },
-  identityValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    letterSpacing: -0.3,
-    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   primaryButton: {
     alignItems: "center",

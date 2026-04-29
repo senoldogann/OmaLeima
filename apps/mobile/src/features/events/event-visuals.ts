@@ -28,6 +28,12 @@ const createFallbackCoverSource = (eventKey: string): ImageSourcePropType => {
   return fallbackCoverSources[index];
 };
 
+export const getFallbackCoverSourceByIndex = (index: number): ImageSourcePropType => {
+  const normalizedIndex = Math.abs(index) % fallbackCoverSources.length;
+
+  return fallbackCoverSources[normalizedIndex];
+};
+
 const createRemoteCoverSource = (coverImageUrl: string | null): ImageSourcePropType | null => {
   if (coverImageUrl === null) {
     return null;
