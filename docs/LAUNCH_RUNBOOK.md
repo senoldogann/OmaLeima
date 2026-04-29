@@ -21,11 +21,13 @@ As of `2026-04-29`, the following paths are already verified in the current host
 - remote push receipt and notification-open response on the same physical iPhone
 - active-event QR generation and 30-second QR rotation
 - hosted event registration for the student test fixture
-- business scanner sign-in with the hosted scanner fixture account
+- business scanner sign-in with a hosted password account
 - real hosted `scan-qr` execution through the mobile scanner fallback
 - stamp creation plus reward-unlock push delivery through the real product path
 - Android emulator app-flow smoke through Expo Go
 - Android emulator business email/password sign-in
+- hosted placeholder pilot operator accounts are bootstrapped with random passwords
+- hosted fixture operator accounts are archived and the hygiene audit is green
 
 What is **not** yet fully verified:
 
@@ -33,7 +35,7 @@ What is **not** yet fully verified:
 - Android student Google sign-in on a real Android development build
 - public App Store or Play Store distribution
 - public custom domain cutover
-- production-strength operator credentials replacing seeded smoke accounts
+- real club/operator email identities replacing the current placeholder pilot operator emails
 
 ## Priority matrix
 
@@ -43,7 +45,7 @@ What is **not** yet fully verified:
 2. Run one final dry-run with those real operator accounts.
 3. Keep iPhone as the already-proven student and push path if Android remote push is still unverified.
 4. Confirm the first pilot club, event, venue list, and scanner roster.
-5. Get `audit:pilot-operator-hygiene` to pass on the hosted project.
+5. Replace the current placeholder pilot operator emails with the real club/operator emails once the first pilot club is known.
 
 ### Needed before a broader public launch
 
@@ -65,12 +67,12 @@ These are the next user-owned tasks outside the repo. Split them into “needed 
 
 ### Needed before a private hosted pilot
 
-1. Replace temporary hosted smoke accounts with real operator credentials.
-2. Decide the first real pilot club, event, venue list, and scanner staff roster.
-3. Confirm the hosted Supabase project is the one you want to keep using for the pilot.
+1. Decide the first real pilot club, event, venue list, and scanner staff roster.
+2. Confirm the hosted Supabase project is the one you want to keep using for the pilot.
+3. Replace the current placeholder pilot operator emails with the real club/operator emails when the first real pilot club is ready.
 4. Set the final hosted secrets and rotate any weak placeholder values.
-5. Run one last pilot dry-run with real operator accounts before the event date.
-6. Run `npm --prefix apps/admin run audit:pilot-operator-hygiene` and make sure it no longer finds any `@omaleima.test` operator accounts or active privileged memberships.
+5. Run one last pilot dry-run with the current operator accounts before the event date.
+6. Run `npm --prefix apps/admin run audit:pilot-operator-hygiene` and make sure it stays green after the real-operator swap.
 
 ### Can wait until later
 
@@ -95,9 +97,9 @@ Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
 ### Uygulama biraz daha tamamlandiginda senden istenecekler
 
 1. Gorusecegin ilk kulubu secmek
-2. O kulup icin gercek organizer hesabini acmak
-3. Gercek scanner/staff hesaplarini acmak
-4. Gecici smoke hesaplarini kapatmak
+2. Desktop'taki `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt` dosyasini guvenli bir yere tasimak
+3. O kulup icin gercek organizer hesabini acmak
+4. Gercek scanner/staff hesaplarini acmak
 5. Ilk pilot etkinlik ve venue listesini netlemek
 6. Hosted secret ve sifreleri nihai degerlere cevirmek
 
@@ -150,11 +152,15 @@ The following accounts exist only to support hosted smoke and manual validation.
 - `admin@omaleima.test`
 - any account still using `password123`
 
-Before a private pilot:
+Current bootstrap output on this workstation:
 
-1. create real operator accounts
-2. verify access with those accounts
-3. remove or disable temporary smoke accounts
+- `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt`
+
+Before a private pilot with a real club:
+
+1. keep the generated operator file somewhere safer than the Desktop
+2. replace the placeholder pilot operator emails with the real club/operator emails
+3. verify access with those accounts
 4. rotate any shared passwords used during development
 
 ## Private-pilot go or no-go gate
@@ -167,7 +173,7 @@ Treat the project as ready for a **private hosted pilot** only when all of the f
 - iPhone scanner flow passes
 - remote reward-unlock push is seen on the physical device
 - `audit:pilot-operator-hygiene` passes on the hosted project
-- real pilot operator credentials are in place
+- current pilot operator credentials are in place
 - seeded smoke credentials are disabled or removed
 - event-day fallback ownership is assigned to named people
 

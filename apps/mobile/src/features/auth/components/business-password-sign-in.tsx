@@ -9,8 +9,8 @@ import { supabase } from "@/lib/supabase";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
-  const [email, setEmail] = useState<string>("scanner@omaleima.test");
-  const [password, setPassword] = useState<string>("password123");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -67,7 +67,7 @@ export const BusinessPasswordSignIn = () => {
           editable={!isLoading}
           keyboardType="email-address"
           onChangeText={setEmail}
-          placeholder="scanner@omaleima.test"
+          placeholder="scanner@example.com"
           placeholderTextColor="#64748B"
           style={styles.input}
           value={email}
@@ -79,7 +79,7 @@ export const BusinessPasswordSignIn = () => {
         <TextInput
           editable={!isLoading}
           onChangeText={setPassword}
-          placeholder="password123"
+          placeholder="Use the current hosted scanner password"
           placeholderTextColor="#64748B"
           secureTextEntry
           style={styles.input}
@@ -102,7 +102,7 @@ export const BusinessPasswordSignIn = () => {
 
       {__DEV__ ? (
         <Text style={styles.helperText}>
-          Hosted smoke account: `scanner@omaleima.test / password123`
+          Hosted smoke account: use the current scanner credential from the local operator file.
         </Text>
       ) : null}
 

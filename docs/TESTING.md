@@ -282,6 +282,12 @@ The real hosted audit is:
 npm --prefix apps/admin run audit:pilot-operator-hygiene
 ```
 
+The hosted bootstrap command that creates placeholder pilot operator accounts and writes the local credential file is:
+
+```bash
+npm --prefix apps/admin run bootstrap:pilot-operator-accounts
+```
+
 It is read-only and checks:
 
 - whether known fixture users like `admin@omaleima.test`, `organizer@omaleima.test`, and `scanner@omaleima.test` still exist in hosted auth
@@ -382,7 +388,7 @@ The audit is intentionally read-only. It verifies the current repository state s
 - the active student event screen has a development-only `Hosted scanner smoke token` surface
 - that token helper stays scoped to `__DEV__`
 - the business scanner still explains the same-device manual fallback path
-- the business password sign-in helper text stays aligned with the hosted scanner fixture account
+- the business password sign-in helper text stays aligned with the current hosted scanner credential guidance
 - the docs still describe the same physical iPhone flow honestly
 
 The intended manual smoke sequence is:
@@ -390,7 +396,7 @@ The intended manual smoke sequence is:
 1. sign in as the student on the physical iPhone
 2. open `My QR`
 3. copy the development-only token from `Hosted scanner smoke token`
-4. sign out and switch into `scanner@omaleima.test / password123`
+4. sign out and switch into the current hosted scanner account from the local operator credential file
 5. open `Business > Scanner`
 6. paste the token into the manual fallback box and submit it
 

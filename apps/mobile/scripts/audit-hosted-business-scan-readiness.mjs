@@ -52,14 +52,14 @@ const main = async () => {
     studentActiveEventSource.includes("Hosted scanner smoke token") &&
     studentActiveEventSource.includes("showHostedSmokeCard") &&
     studentActiveEventSource.includes("__DEV__") &&
-    studentActiveEventSource.includes("scanner@omaleima.test / password123") &&
+    studentActiveEventSource.includes("current hosted scanner account") &&
     studentActiveEventSource.includes("raw QR JWT should never be exposed");
   const scannerFallbackGuidancePresent =
     businessScannerSource.includes("Same-device hosted smoke") &&
     businessScannerSource.includes("copy the active token from My QR") &&
-    businessScannerSource.includes("scanner@omaleima.test / password123");
+    businessScannerSource.includes("current hosted scanner account");
   const businessSignInCopyAligned =
-    businessPasswordSignInSource.includes("Hosted smoke account") &&
+    businessPasswordSignInSource.includes("current scanner credential from the local operator file") &&
     businessPasswordSignInSource.includes("__DEV__");
 
   const normalizedReadme = readmeSource.toLowerCase();

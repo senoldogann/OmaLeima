@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/pilot-operator-hygiene-audit`
-- **Scope:** Add a read-only hosted audit that tells us whether temporary smoke operator accounts are still alive in the hosted project and whether any privileged pilot path still depends on them.
+- **Branch:** `feature/operator-account-bootstrap`
+- **Scope:** Create real hosted operator accounts with strong random passwords, save them to a local Desktop file, reassign hosted pilot access away from fixture accounts, and get the hosted operator-hygiene audit to pass.
 
 ## Affected Files
 
@@ -17,18 +17,18 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `README.md`
 - `docs/LAUNCH_RUNBOOK.md`
 - `docs/TESTING.md`
-- `package.json`
 - `apps/admin/package.json`
 - `apps/admin/README.md`
+- `apps/admin/scripts/_shared/hosted-project-admin.ts`
 - `apps/admin/scripts/audit-pilot-operator-hygiene.ts`
-- `apps/admin/scripts/smoke-pilot-operator-hygiene-audit.ts`
-- `tests/run-pilot-operator-readiness.mjs`
+- `apps/admin/scripts/bootstrap-pilot-operator-accounts.ts`
 
 ## Risks
 
-- The audit should be read-only. It must not mutate hosted users, memberships, or passwords.
-- It should fail with concrete fixture emails and membership contexts, not with a generic “not ready” message.
-- The script must not rely on local seeded data; it should read the real hosted project.
+- The bootstrap flow will mutate the real hosted project, so it must only touch the intended operator accounts and hosted memberships.
+- Existing fixture users can still be referenced by old records like events or reviews, so deleting them outright may break foreign-key integrity.
+- The generated credentials file must stay outside the repo and must not leak into git.
+- Hosted verification flows currently rely on an admin password account, so secret rotation must stay aligned with the new admin credential.
 
 ## Dependencies
 
@@ -36,17 +36,20 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `supabase projects api-keys` to read a service-role key for hosted inspection
 - `@supabase/supabase-js` already present in `apps/admin`
 - Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
+- GitHub CLI auth if we rotate hosted verification secrets from the same machine
 
 ## Existing Logic Checked
 
 - The launch docs already say temporary fixture accounts must be removed before a private pilot.
-- There is no repo-owned audit yet that checks whether those fixture accounts still exist in hosted auth or still hold active club/business access.
-- Existing hosted audits already follow a pattern: one real read-only audit script, one deterministic smoke for the script itself, and one root QA wrapper.
+- The new hosted hygiene audit already tells us exactly which fixture users and memberships are still active.
+- Existing hosted helper logic already knows how to read the hosted service-role key through the Supabase CLI.
+- The mobile business sign-in and hosted smoke copy still reference seeded hosted credentials directly, so those strings need to become generic before fixture cleanup is complete.
 
 ## Review Outcome
 
-Ship a narrow hosted-readiness follow-up that:
+Ship a narrow hosted-operator bootstrap follow-up that:
 
-- reads the hosted project and finds fixture users by email
-- checks whether any such users still hold active privileged memberships
-- exposes the result through a real audit, a deterministic smoke, and a root QA wrapper
+- creates one real hosted admin, one hosted club organizer, and one hosted scanner account
+- saves the generated credentials into a Desktop file outside the repo
+- reassigns hosted club/business access away from seeded `@omaleima.test` users
+- archives seeded hosted operator accounts so the hygiene audit can turn green

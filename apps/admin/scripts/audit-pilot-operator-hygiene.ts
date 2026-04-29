@@ -1,8 +1,7 @@
-import { spawnSync } from "node:child_process";
-
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { createAdminClient, readServiceRoleKey, readSupabaseUrl } from "./_shared/hosted-project-admin";
 import { readProjectRef } from "./_shared/supabase-auth-config";
 
 const fixtureEmails = [
@@ -45,12 +44,6 @@ const clubMemberRowSchema = z.object({
   user_id: z.string().min(1),
 });
 
-const apiKeySchema = z.object({
-  api_key: z.string().min(1),
-  name: z.string().min(1),
-  type: z.string().min(1),
-});
-
 type AuthUser = z.infer<typeof authUserSchema>;
 type ProfileRow = z.infer<typeof profileRowSchema>;
 type BusinessStaffRow = z.infer<typeof businessStaffRowSchema>;
@@ -84,67 +77,6 @@ type AuditReadinessState = {
   projectRef: string;
 };
 
-const runCommand = (command: string, args: string[]): string => {
-  const commandResult = spawnSync(command, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  if (commandResult.status === 0) {
-    return commandResult.stdout.trim();
-  }
-
-  const stderr = commandResult.stderr.trim();
-  const stdout = commandResult.stdout.trim();
-  const errorOutput = stderr.length > 0 ? stderr : stdout;
-
-  throw new Error(
-    errorOutput.length > 0 ? errorOutput : `Command ${command} failed with status ${commandResult.status ?? "unknown"}.`
-  );
-};
-
-const readSupabaseUrl = (projectRef: string): string => {
-  const overrideUrl = process.env.PILOT_OPERATOR_AUDIT_SUPABASE_URL;
-
-  if (typeof overrideUrl === "string" && overrideUrl.trim().length > 0) {
-    return overrideUrl.trim();
-  }
-
-  return `https://${projectRef}.supabase.co`;
-};
-
-const readServiceRoleKeyFromCli = (projectRef: string): string => {
-  const rawApiKeys = runCommand("supabase", ["projects", "api-keys", "--project-ref", projectRef, "-o", "json"]);
-  const apiKeys = z.array(apiKeySchema).parse(JSON.parse(rawApiKeys) as unknown);
-  const legacyServiceRoleKey = apiKeys.find((apiKey) => apiKey.name === "service_role" && apiKey.type === "legacy");
-
-  if (typeof legacyServiceRoleKey?.api_key === "string" && !legacyServiceRoleKey.api_key.includes("·")) {
-    return legacyServiceRoleKey.api_key;
-  }
-
-  const nonRedactedSecretKey = apiKeys.find(
-    (apiKey) => apiKey.name === "default" && apiKey.type === "secret" && !apiKey.api_key.includes("·")
-  );
-
-  if (typeof nonRedactedSecretKey?.api_key === "string") {
-    return nonRedactedSecretKey.api_key;
-  }
-
-  throw new Error(
-    `Could not read a non-redacted service-role key for project ${projectRef}. Run "supabase projects api-keys --project-ref ${projectRef} -o json" and verify the CLI can access the hosted keys.`
-  );
-};
-
-const readServiceRoleKey = (projectRef: string): string => {
-  const overrideKey = process.env.PILOT_OPERATOR_AUDIT_SERVICE_ROLE_KEY;
-
-  if (typeof overrideKey === "string" && overrideKey.trim().length > 0) {
-    return overrideKey.trim();
-  }
-
-  return readServiceRoleKeyFromCli(projectRef);
-};
-
 const readOverrideRows = <T>(environmentVariableName: string, schema: z.ZodType<T>): T[] | null => {
   const rawValue = process.env[environmentVariableName];
 
@@ -154,14 +86,6 @@ const readOverrideRows = <T>(environmentVariableName: string, schema: z.ZodType<
 
   return z.array(schema).parse(JSON.parse(rawValue) as unknown);
 };
-
-const createAdminClient = (supabaseUrl: string, serviceRoleKey: string): SupabaseClient =>
-  createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
 
 const fetchAllAuthUsersAsync = async (adminClient: SupabaseClient): Promise<AuthUser[]> => {
   const users: AuthUser[] = [];
@@ -289,7 +213,7 @@ const fetchClubMemberRowsAsync = async (adminClient: SupabaseClient, userIds: st
 
 const readHostedAuditStateAsync = async (): Promise<HostedAuditState> => {
   const projectRef = readProjectRef("PILOT_OPERATOR_AUDIT_PROJECT_REF");
-  const supabaseUrl = readSupabaseUrl(projectRef);
+  const supabaseUrl = readSupabaseUrl(projectRef, "PILOT_OPERATOR_AUDIT_SUPABASE_URL");
   const overrideAuthUsers = readOverrideRows("PILOT_OPERATOR_AUDIT_AUTH_USERS_JSON", authUserSchema);
   const overrideProfiles = readOverrideRows("PILOT_OPERATOR_AUDIT_PROFILES_JSON", profileRowSchema);
   const overrideBusinessStaff = readOverrideRows("PILOT_OPERATOR_AUDIT_BUSINESS_STAFF_JSON", businessStaffRowSchema);
@@ -311,7 +235,7 @@ const readHostedAuditStateAsync = async (): Promise<HostedAuditState> => {
     };
   }
 
-  const serviceRoleKey = readServiceRoleKey(projectRef);
+  const serviceRoleKey = readServiceRoleKey(projectRef, "PILOT_OPERATOR_AUDIT_SERVICE_ROLE_KEY");
   const adminClient = createAdminClient(supabaseUrl, serviceRoleKey);
   const authUsers = await fetchAllAuthUsersAsync(adminClient);
   const userIds = authUsers.map((user) => user.id);
