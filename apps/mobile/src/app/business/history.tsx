@@ -62,8 +62,8 @@ export default function BusinessHistoryScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Scan history</Text>
-        <Text selectable style={styles.metaText}>Your latest scan outcomes.</Text>
+        <Text style={styles.screenTitle}>History</Text>
+        <Text selectable style={styles.metaText}>Latest scan results from this account.</Text>
       </View>
       <View style={styles.actionRow}>
         <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
@@ -92,7 +92,7 @@ export default function BusinessHistoryScreen() {
       ) : null}
 
       {!historyQuery.isLoading && !historyQuery.error ? (
-        <InfoCard eyebrow="Recent" title="Latest 20 scan outcomes">
+        <InfoCard eyebrow="Recent" title="Latest scans">
           {historyEntries.length === 0 ? (
             <Text selectable style={styles.bodyText}>
               No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.
@@ -143,25 +143,28 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   cardTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   eyebrowText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   primaryButton: {
     alignItems: "center",
@@ -183,7 +186,7 @@ const styles = StyleSheet.create({
   rowCard: {
     borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
-    gap: 6,
+    gap: 5,
     padding: 14,
   },
   secondaryButton: {
@@ -209,9 +212,10 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
     letterSpacing: -0.8,
+    lineHeight: mobileTheme.typography.lineHeights.title,
   },
   stack: {
     gap: 12,

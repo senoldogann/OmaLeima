@@ -9,6 +9,7 @@ import { InfoCard } from "@/components/info-card";
 import { getEventCoverSource } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { mobileTheme } from "@/features/foundation/theme";
+import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
@@ -17,6 +18,7 @@ export default function StudentRewardsScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
+  const { triggerRewardCelebration } = useStudentRewardCelebration();
   const studentId = session?.user.id ?? null;
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
     studentId: studentId ?? "",
@@ -40,12 +42,32 @@ export default function StudentRewardsScreen() {
         ? "Leimat appear here after your first joined event."
         : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
 
+  const handlePreviewCelebration = (): void => {
+    const previewEvent = featuredEvent ?? null;
+
+    triggerRewardCelebration([
+      {
+        kind: "STAMP",
+        key: "preview:reward",
+        eventId: previewEvent?.id ?? "preview-event",
+        eventName: previewEvent?.name ?? "OmaLeima night",
+        coverImageUrl: previewEvent?.coverImageUrl ?? null,
+        stampCount: Math.max((previewEvent?.stampCount ?? 0) + 1, 1),
+      },
+    ]);
+  };
+
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
         <Text style={styles.screenEyebrow}>Rewards</Text>
         <Text style={styles.screenTitle}>Rewards</Text>
         <Text style={styles.metaText}>Track collected leimas and see what is ready for claim.</Text>
+        {__DEV__ ? (
+          <Pressable onPress={handlePreviewCelebration} style={styles.previewButton}>
+            <Text style={styles.previewButtonText}>Preview leima</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ImageBackground imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
@@ -192,6 +214,21 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 22,
     paddingVertical: 14,
+  },
+  previewButton: {
+    alignSelf: "flex-start",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  previewButtonText: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
   primaryButtonText: {
     color: "#08090E",

@@ -50,16 +50,29 @@ export default function BusinessHomeScreen() {
 
   return (
     <AppScreen>
-      {/* Identity hero */}
-      <View style={styles.identityHero}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {session?.user.email?.[0]?.toUpperCase() ?? "B"}
-          </Text>
-        </View>
-        <Text style={styles.emailText}>{session?.user.email}</Text>
-        <Text style={styles.roleLabel}>BUSINESS ACCOUNT</Text>
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Business</Text>
+        <Text style={styles.metaText}>Scanner, joined events, and event-day status.</Text>
       </View>
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <View style={styles.summaryStrip}>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Live</Text>
+            <Text style={styles.summaryValue}>{activeJoinedEvents.length}</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Upcoming</Text>
+            <Text style={styles.summaryValue}>{joinedUpcomingEvents.length}</Text>
+          </View>
+          <View style={styles.summaryCardWide}>
+            <Text numberOfLines={1} style={styles.summaryEmail}>
+              {session?.user.email ?? "business account"}
+            </Text>
+            <Text style={styles.summaryLabel}>signed in</Text>
+          </View>
+        </View>
+      ) : null}
 
       {/* Loading */}
       {homeOverviewQuery.isLoading ? (
@@ -83,13 +96,10 @@ export default function BusinessHomeScreen() {
         <InfoCard
           eyebrow="SCANNER"
           title={activeJoinedEvents.length > 0 ? "Scanner ready" : "No active events"}
-          variant={activeJoinedEvents.length > 0 ? "scene" : "card"}
         >
           {activeJoinedEvents.length > 0 ? (
             <>
-              <Text style={styles.bodyText}>
-                You have {activeJoinedEvents.length} active event{activeJoinedEvents.length === 1 ? "" : "s"} live right now.
-              </Text>
+              <Text style={styles.bodyText}>Open the scanner and keep the line moving.</Text>
               <View style={styles.actionRow}>
                 <Pressable
                   style={[styles.primaryButton, styles.actionFlex]}
@@ -109,9 +119,7 @@ export default function BusinessHomeScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.bodyText}>
-                There are no active events for your business right now. You cannot use the scanner until an event starts.
-              </Text>
+              <Text style={styles.bodyText}>The scanner opens automatically once a joined event is live.</Text>
               <View style={styles.actionRow}>
                 <Pressable
                   onPress={() => router.push("/business/events")}
@@ -135,7 +143,7 @@ export default function BusinessHomeScreen() {
 
       {/* Joined Events List */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
-        <InfoCard eyebrow="DIRECTORY" title="Your joined events">
+        <InfoCard eyebrow="DIRECTORY" title="Joined events">
           <View style={styles.eventList}>
             {joinedEvents.map((event) => {
               const timelineBadge = getTimelineBadge(event);
@@ -178,43 +186,10 @@ export default function BusinessHomeScreen() {
 const styles = StyleSheet.create({
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
-
-  // --- Identity hero ---
-  identityHero: {
-    alignItems: "center",
-    paddingVertical: 32,
-    gap: 12,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  avatarText: {
-    color: mobileTheme.colors.lime,
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  emailText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  roleLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-  },
-
-  // --- Actions ---
   actionRow: {
     flexDirection: "row",
     gap: 10,
@@ -292,5 +267,66 @@ const styles = StyleSheet.create({
   dangerZone: {
     alignItems: "center",
     marginTop: 16,
+  },
+  metaText: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  screenHeader: {
+    gap: 4,
+    marginBottom: 2,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
+    lineHeight: mobileTheme.typography.lineHeights.title,
+  },
+  summaryCard: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
+    borderWidth: 1,
+    gap: 6,
+    minWidth: 88,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  summaryCardWide: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
+    borderWidth: 1,
+    flex: 1,
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 84,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  summaryEmail: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  summaryLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  summaryStrip: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  summaryValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: 32,
+    lineHeight: 36,
   },
 });

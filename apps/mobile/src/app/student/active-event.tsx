@@ -10,6 +10,7 @@ import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import {
   selectStudentQrEvent,
   useActiveAppState,
@@ -67,6 +68,7 @@ export default function StudentActiveEventScreen() {
   const now = useCurrentTime(isFocused && isAppActive);
   const protection = useQrScreenProtection();
   const { session } = useSession();
+  const { triggerRewardCelebration } = useStudentRewardCelebration();
   const studentId = session?.user.id ?? null;
   const accessToken = session?.access_token ?? null;
 
@@ -126,6 +128,23 @@ export default function StudentActiveEventScreen() {
         : getEventCoverSource(selectedRewardEvent?.coverImageUrl ?? null, `${selectedEvent.id}:${selectedEvent.name}`),
     [selectedEvent, selectedRewardEvent?.coverImageUrl]
   );
+
+  const handlePreviewLeima = (): void => {
+    if (selectedEvent === null) {
+      return;
+    }
+
+    triggerRewardCelebration([
+      {
+        kind: "STAMP",
+        key: `preview:stamp:${selectedEvent.id}`,
+        eventId: selectedEvent.id,
+        eventName: selectedEvent.name,
+        coverImageUrl: selectedRewardEvent?.coverImageUrl ?? null,
+        stampCount: Math.max((selectedRewardEvent?.stampCount ?? 0) + 1, 1),
+      },
+    ]);
+  };
 
   return (
     <AppScreen>
@@ -205,6 +224,12 @@ export default function StudentActiveEventScreen() {
 
             <Text style={styles.identityMeta}>Until {formatDateTime(selectedEvent.endAt)}</Text>
           </View>
+
+          {__DEV__ ? (
+            <Pressable onPress={handlePreviewLeima} style={styles.previewButton}>
+              <Text style={styles.previewButtonText}>Preview leima</Text>
+            </Pressable>
+          ) : null}
 
           <View style={styles.qrBlock}>
             <View style={styles.qrSceneHeader}>
@@ -423,6 +448,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     letterSpacing: 0.3,
+  },
+  previewButton: {
+    alignSelf: "flex-start",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.button,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  previewButtonText: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   progressFill: {
     backgroundColor: mobileTheme.colors.lime,

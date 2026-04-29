@@ -27,13 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Login + Render Hardening)
+## Current Todos (Student Celebration + Business Cleanup)
 
-- [x] Review the mobile render regression and current login/auth surfaces.
-- [x] Remove the `Link asChild` crash path from the affected business screens.
-- [x] Simplify the login screen and replace extra copy with lightweight onboarding slides.
-- [x] Improve loading feedback for Google sign-in, business sign-in, and post-auth routing.
-- [x] Make the hosted admin login page render safely for anonymous visitors while preserving signed-in redirects.
+- [x] Review the current business scanner delight mismatch and the reward bridge hooks.
+- [x] Move the main celebration logic to the student side and connect it to new leima gains.
+- [x] Keep a dev-only student preview entry point for quick visual tuning.
+- [x] Remove the fake celebratory stamp treatment from the business scanner result.
+- [x] Simplify business home, events, history, and scanner copy/hierarchy for staff use.
 - [x] Run mobile lint, typecheck, and export.
-- [x] Run admin lint, typecheck, and build.
 - [x] Update `PROGRESS.md` with the new handoff note.

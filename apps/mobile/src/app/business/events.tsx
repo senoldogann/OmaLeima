@@ -102,8 +102,8 @@ export default function BusinessEventsScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Business events</Text>
-        <Text style={styles.metaText}>Join what is next, scan what is live, leave what has not started.</Text>
+        <Text style={styles.screenTitle}>Events</Text>
+        <Text style={styles.metaText}>Join upcoming nights and open the scanner when one goes live.</Text>
       </View>
 
       {homeOverviewQuery.isLoading ? (
@@ -144,7 +144,7 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Live" title="Ready for scanning">
+        <InfoCard eyebrow="Live" title="Scanner queue">
           {activeJoinedEvents.length === 0 ? (
             <Text selectable style={styles.bodyText}>
               No joined event is active right now.
@@ -188,7 +188,7 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Upcoming" title="Joined upcoming events">
+        <InfoCard eyebrow="Upcoming" title="Joined next">
           {upcomingJoinedEvents.length === 0 ? (
             <Text selectable style={styles.bodyText}>No upcoming joined event yet.</Text>
           ) : (
@@ -234,7 +234,7 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Available" title="Joinable public events">
+        <InfoCard eyebrow="Available" title="Available to join">
           {cityOpportunities.length === 0 ? (
             <Text selectable style={styles.bodyText}>
               No joinable public event is visible in the linked business cities right now.
@@ -296,13 +296,15 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   cardTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   disabledButton: {
     opacity: 0.7,
@@ -313,8 +315,9 @@ const styles = StyleSheet.create({
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   primaryButton: {
     alignItems: "center",
@@ -333,7 +336,7 @@ const styles = StyleSheet.create({
   rowCard: {
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.inner,
-    gap: 8,
+    gap: 6,
     padding: 14,
     ...interactiveSurfaceShadowStyle,
   },
@@ -343,9 +346,10 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
     letterSpacing: -0.8,
+    lineHeight: mobileTheme.typography.lineHeights.title,
   },
   secondaryButton: {
     alignItems: "center",
