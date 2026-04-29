@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 
@@ -7,7 +7,6 @@ import { AppScreen } from "@/components/app-screen";
 import { AppIcon } from "@/components/app-icon";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource } from "@/features/events/event-visuals";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
@@ -66,7 +65,7 @@ const createLeaderboardHeroLabel = (
   }
 
   if (top10Count === 0) {
-    return `${selectedEventName} is ready, but no ranked leima streak is visible yet.`;
+    return `${selectedEventName} is live, but the standings are still empty.`;
   }
 
   if (currentRank !== null) {
@@ -128,7 +127,6 @@ export default function StudentLeaderboardScreen() {
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const leaderboardVersion = leaderboardQuery.data?.version ?? null;
   const freshness = getFreshnessBadge(leaderboardRefreshedAt);
-  const heroCoverSource = getEventCoverSource(null, selectedEvent?.id ?? "leaderboard-hero");
   const heroLabel = createLeaderboardHeroLabel(selectedEvent?.name ?? null, top10.length, currentUser?.rank ?? null);
 
   const overviewState = overviewQuery.error
@@ -190,9 +188,14 @@ export default function StudentLeaderboardScreen() {
 
       {events.length > 0 ? (
         <>
-          <ImageBackground imageStyle={styles.heroImage} source={heroCoverSource} style={styles.heroBand}>
-            <View style={styles.heroOverlay} />
+          <View style={styles.heroBand}>
             <View style={styles.heroContent}>
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroEyebrow}>Live standings</Text>
+                <Text style={styles.heroTitle}>{selectedEvent?.name ?? "Leaderboard"}</Text>
+                <Text style={styles.heroMeta}>{heroLabel}</Text>
+              </View>
+
               <View style={styles.badges}>
                 {selectedEvent ? (
                   <StatusBadge
@@ -208,30 +211,8 @@ export default function StudentLeaderboardScreen() {
                 ) : null}
                 <StatusBadge label={freshness.label} state={freshness.state} />
               </View>
-
-              <View style={styles.heroCopy}>
-                <Text style={styles.heroEyebrow}>Student standings</Text>
-                <Text style={styles.heroTitle}>{selectedEvent?.name ?? "Leaderboard"}</Text>
-                <Text style={styles.heroMeta}>{heroLabel}</Text>
-              </View>
-
-              {selectedEvent ? (
-                <View style={styles.heroStats}>
-                  <View style={styles.heroStat}>
-                    <Text style={styles.heroStatValue}>{selectedEvent.city}</Text>
-                    <Text style={styles.heroStatLabel}>city</Text>
-                  </View>
-                  <View style={styles.heroStatDivider} />
-                  <View style={styles.heroStat}>
-                    <Text numberOfLines={1} style={styles.heroStatValue}>
-                      {formatDateTime(selectedEvent.startAt)}
-                    </Text>
-                    <Text style={styles.heroStatLabel}>starts</Text>
-                  </View>
-                </View>
-              ) : null}
             </View>
-          </ImageBackground>
+          </View>
 
           <View style={styles.eventSelectorSection}>
             <View style={styles.eventSelectorHeader}>
@@ -305,7 +286,9 @@ export default function StudentLeaderboardScreen() {
           {podiumEntries.length > 0 ? (
             <View style={styles.podiumSection}>
               <Text style={styles.sectionKicker}>Top three</Text>
-              <View style={styles.podiumRow}>
+              <View style={styles.podiumStage}>
+                <View style={styles.stageGlow} />
+                <View style={styles.podiumRow}>
                 {podiumEntries
                   .slice()
                   .sort((left, right) => {
@@ -325,7 +308,7 @@ export default function StudentLeaderboardScreen() {
                       ]}
                     >
                       <View style={styles.podiumRankBubble}>
-                        <Text style={styles.podiumRankText}>#{entry.rank}</Text>
+                        <Text style={styles.podiumRankText}>{entry.rank}</Text>
                       </View>
                       <View style={styles.podiumAvatar}>
                         <Text style={styles.podiumAvatarText}>
@@ -335,11 +318,14 @@ export default function StudentLeaderboardScreen() {
                       <Text numberOfLines={1} style={styles.podiumName}>
                         {entry.displayName ?? `Student ${entry.rank}`}
                       </Text>
-                      <Text style={styles.podiumScore}>{entry.stampCount}</Text>
-                      <Text style={styles.podiumScoreLabel}>leima</Text>
-                      {entry.studentId === studentId ? <StatusBadge label="you" state="ready" /> : null}
+                      <View style={styles.podiumScoreRow}>
+                        <Text style={styles.podiumScore}>{entry.stampCount}</Text>
+                        <Text style={styles.podiumScoreLabel}>leima</Text>
+                      </View>
+                      {entry.studentId === studentId ? <Text style={styles.youLabel}>You</Text> : null}
                     </View>
                   ))}
+                </View>
               </View>
             </View>
           ) : null}
@@ -448,20 +434,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   heroBand: {
-    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
-    marginTop: -mobileTheme.spacing.screenVertical,
-    minHeight: 248,
-    position: "relative",
+    backgroundColor: mobileTheme.colors.surfaceL1,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.scene,
+    borderWidth: 1,
+    padding: 18,
+    ...interactiveSurfaceShadowStyle,
   },
   heroContent: {
-    flex: 1,
     gap: 16,
-    justifyContent: "space-between",
-    padding: 22,
   },
   heroCopy: {
     gap: 8,
-    maxWidth: 300,
   },
   heroEyebrow: {
     color: mobileTheme.colors.lime,
@@ -477,39 +461,6 @@ const styles = StyleSheet.create({
   heroMeta: {
     color: mobileTheme.colors.textSecondary,
     fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.56)",
-  },
-  heroStat: {
-    flex: 1,
-    gap: 4,
-  },
-  heroStatDivider: {
-    alignSelf: "stretch",
-    backgroundColor: mobileTheme.colors.borderStrong,
-    width: 1,
-  },
-  heroStats: {
-    backgroundColor: "rgba(8, 9, 14, 0.56)",
-    borderRadius: mobileTheme.radius.card,
-    flexDirection: "row",
-    gap: 12,
-    padding: 14,
-  },
-  heroStatLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  heroStatValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
     fontSize: mobileTheme.typography.sizes.body,
     lineHeight: mobileTheme.typography.lineHeights.body,
   },
@@ -531,13 +482,13 @@ const styles = StyleSheet.create({
   },
   podiumAvatar: {
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.36)",
+    backgroundColor: "rgba(8, 9, 14, 0.92)",
     borderColor: mobileTheme.colors.limeBorder,
     borderRadius: 999,
     borderWidth: 1,
-    height: 52,
+    height: 58,
     justifyContent: "center",
-    width: 52,
+    width: 58,
   },
   podiumAvatarText: {
     color: mobileTheme.colors.textPrimary,
@@ -552,7 +503,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: mobileTheme.colors.borderDefault,
     flex: 1,
-    gap: 8,
+    gap: 10,
     justifyContent: "flex-end",
     maxWidth: 122,
     paddingHorizontal: 12,
@@ -564,7 +515,7 @@ const styles = StyleSheet.create({
     borderColor: mobileTheme.colors.limeBorder,
   },
   podiumCardFirst: {
-    backgroundColor: mobileTheme.colors.surfaceL3,
+    backgroundColor: "#20212B",
     borderColor: mobileTheme.colors.limeBorder,
   },
   podiumName: {
@@ -575,23 +526,34 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   podiumRankBubble: {
-    backgroundColor: mobileTheme.colors.limeSurface,
-    borderColor: mobileTheme.colors.limeBorder,
+    backgroundColor: mobileTheme.colors.screenBase,
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    height: 34,
+    justifyContent: "center",
+    minWidth: 34,
+    paddingHorizontal: 8,
+    position: "absolute",
+    top: -17,
+    zIndex: 3,
   },
   podiumRankText: {
-    color: mobileTheme.colors.lime,
+    color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.bold,
     fontSize: mobileTheme.typography.sizes.caption,
     lineHeight: mobileTheme.typography.lineHeights.caption,
+    textAlign: "center",
   },
   podiumRow: {
     alignItems: "flex-end",
     flexDirection: "row",
     gap: 10,
+  },
+  podiumScoreRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
   },
   podiumScore: {
     color: mobileTheme.colors.textPrimary,
@@ -608,6 +570,17 @@ const styles = StyleSheet.create({
   },
   podiumSection: {
     gap: 12,
+  },
+  podiumStage: {
+    backgroundColor: "#171821",
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.scene,
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingHorizontal: 14,
+    paddingBottom: 16,
+    paddingTop: 24,
+    position: "relative",
   },
   screenHeader: {
     gap: 8,
@@ -655,5 +628,22 @@ const styles = StyleSheet.create({
     gap: 16,
     padding: 18,
     ...interactiveSurfaceShadowStyle,
+  },
+  stageGlow: {
+    backgroundColor: "rgba(200, 255, 71, 0.08)",
+    borderRadius: 999,
+    height: 140,
+    left: "50%",
+    marginLeft: -120,
+    position: "absolute",
+    top: -50,
+    width: 240,
+  },
+  youLabel: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    textTransform: "uppercase",
   },
 });

@@ -27,11 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Stamp Delight + Leaderboard Restyle)
+## Current Todos (Stamp Preview + Leaderboard Polish)
 
-- [x] Review scanner success, profile status chrome, and leaderboard composition.
-- [x] Add stamp-hit success animation to scanner.
-- [x] Remove redundant active/profile status text.
-- [x] Restyle leaderboard to match the rest of the student app.
+- [x] Review the current scanner animation path and the new leaderboard direction.
+- [x] Add a temporary dev-only preview trigger for the stamp animation.
+- [x] Push leaderboard closer to a podium/list composition.
+- [x] Decide whether profile needs a separate history surface right now.
 - [x] Run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the new handoff note.

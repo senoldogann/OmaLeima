@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { StatusBadge } from "@/components/status-badge";
 import { mobileTheme } from "@/features/foundation/theme";
 
 import type { LeaderboardEntry } from "@/features/leaderboard/types";
@@ -9,16 +8,6 @@ type LeaderboardEntryCardProps = {
   entry: LeaderboardEntry;
   isCurrentUser: boolean;
 };
-
-const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const formatDateTime = (value: string | null): string =>
-  value === null ? "No stamp yet" : dateTimeFormatter.format(new Date(value));
 
 const getDisplayName = (entry: LeaderboardEntry): string => entry.displayName ?? `Student ${entry.rank}`;
 const getInitials = (value: string | null, rank: number): string => {
@@ -52,23 +41,17 @@ export const LeaderboardEntryCard = ({ entry, isCurrentUser }: LeaderboardEntryC
       </View>
 
       <View style={styles.copyGroup}>
-        <View style={styles.nameRow}>
-          <Text selectable style={styles.nameText}>
-            {getDisplayName(entry)}
-          </Text>
-          {isCurrentUser ? <StatusBadge label="you" state="ready" /> : null}
-        </View>
-        <Text selectable style={styles.metaText}>
-          Last valid leima {formatDateTime(entry.lastStampAt)}
+        <Text selectable style={[styles.nameText, isCurrentUser ? styles.currentUserNameText : null]}>
+          {getDisplayName(entry)}
         </Text>
       </View>
     </View>
 
     <View style={styles.scoreGroup}>
-      <Text selectable style={styles.scoreText}>
+      <Text selectable style={[styles.scoreText, isCurrentUser ? styles.currentUserScoreText : null]}>
         {entry.stampCount}
       </Text>
-      <Text selectable style={styles.scoreLabel}>
+      <Text selectable style={[styles.scoreLabel, isCurrentUser ? styles.currentUserScoreLabel : null]}>
         leima
       </Text>
     </View>
@@ -113,11 +96,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   currentUserCard: {
-    backgroundColor: mobileTheme.colors.limeSurface,
+    backgroundColor: mobileTheme.colors.lime,
     borderColor: mobileTheme.colors.limeBorder,
   },
+  currentUserNameText: {
+    color: mobileTheme.colors.screenBase,
+  },
   currentUserRankBubble: {
-    backgroundColor: mobileTheme.colors.lime,
+    backgroundColor: "rgba(8, 9, 14, 0.16)",
+  },
+  currentUserScoreLabel: {
+    color: "rgba(8, 9, 14, 0.74)",
+  },
+  currentUserScoreText: {
+    color: mobileTheme.colors.screenBase,
   },
   leftGroup: {
     alignItems: "center",
@@ -125,23 +117,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-  },
-  nameRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   nameText: {
     color: mobileTheme.colors.textPrimary,
     flexShrink: 1,
     fontFamily: mobileTheme.typography.families.semibold,
     fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   rankBubble: {
     alignItems: "center",
@@ -160,7 +141,7 @@ const styles = StyleSheet.create({
   },
   scoreGroup: {
     alignItems: "flex-end",
-    minWidth: 52,
+    minWidth: 58,
   },
   scoreLabel: {
     color: mobileTheme.colors.textMuted,

@@ -19,6 +19,7 @@ import { useSession } from "@/providers/session-provider";
 
 const scanTimeoutMs = 4_000;
 const isWeb = process.env.EXPO_OS === "web";
+const isDevelopmentPreviewEnabled = __DEV__;
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
   weekday: "short",
@@ -339,6 +340,24 @@ export default function BusinessScannerScreen() {
     void submitScanAsync(result.data.trim());
   };
 
+  const handlePreviewStampAnimationPress = (): void => {
+    if (selectedEvent === null || isSubmitting) {
+      return;
+    }
+
+    setIsScannerLocked(true);
+    setSubmitError(null);
+    setLastScanStampSealLabel(
+      createStampSealLabel(selectedEvent.stampLabel ?? selectedEvent.businessName)
+    );
+    setLastResult({
+      status: "SUCCESS",
+      message: `${selectedEvent.businessName} stamp preview`,
+      tone: "success",
+      stampCount: 7,
+    });
+  };
+
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
@@ -398,6 +417,16 @@ export default function BusinessScannerScreen() {
                   Ends {formatDateTime(selectedEvent.endAt)}
                   {selectedEvent.stampLabel ? ` · ${selectedEvent.stampLabel}` : ""}
                 </Text>
+              ) : null}
+
+              {isDevelopmentPreviewEnabled && selectedEvent !== null ? (
+                <Pressable
+                  disabled={isSubmitting}
+                  onPress={handlePreviewStampAnimationPress}
+                  style={[styles.previewButton, isSubmitting ? styles.disabledButton : null]}
+                >
+                  <Text style={styles.previewButtonText}>Preview stamp animation</Text>
+                </Pressable>
               ) : null}
 
               {selectedEvent ? (
@@ -684,6 +713,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     letterSpacing: 0.3,
+  },
+  previewButton: {
+    alignSelf: "flex-start",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  previewButtonText: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   resultHeroCard: {
     alignItems: "center",

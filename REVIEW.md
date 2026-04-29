@@ -4,9 +4,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Current Review
 
-- **Date:** 2026-04-29
+- **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Add the first in-app stamp-hit animation, remove the redundant active/profile status label, and restyle leaderboard so it feels like the same product as the other student screens.
+- **Scope:** Add a temporary stamp-animation preview trigger, push leaderboard closer to a true podium/standings scene, and sanity-check whether profile needs a separate history surface.
 
 ## Affected Files
 
@@ -26,9 +26,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- Scanner success animation cannot delay or obscure the real scan result long enough to confuse staff during a live queue.
-- Leaderboard restyle should improve hierarchy without making ranking less scannable.
-- Removing the profile status label must not leave the account hero visually empty.
+- The preview trigger must stay clearly temporary and must not contaminate the real scanner flow or backend state.
+- Leaderboard can easily become more decorative but less legible if podium/list hierarchy is overworked.
+- Adding a profile history entry prematurely could duplicate rewards/events rather than clarify the product.
 
 ## Dependencies
 
@@ -39,15 +39,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- Scanner already uses `Animated` for the result card reveal, so the first stamp-hit layer can reuse the same animation stack.
-- Leaderboard already has a podium/list split, so the biggest gain is better scene composition instead of changing data flow.
-- Profile account area already has email and tag identity, so the status chip is optional and safe to remove.
+- Scanner already uses `Animated` and a locked review state, so a dev-only preview can reuse the same result surface without touching RPC behavior.
+- Leaderboard already has the right data split (`top10`, `currentUser`), so the pass should stay presentational.
+- Profile already has events and rewards surfaces elsewhere, so a separate history route is optional rather than structurally required right now.
 
 ## Review Outcome
 
-Do a focused delight pass:
+Do a focused follow-up pass:
 
-- add a short stamp-hit overlay to scanner success
-- remove the redundant profile status row
-- restyle leaderboard with stronger podium, event hero, and standings composition
+- add a temporary dev-only stamp preview trigger
+- tighten leaderboard toward a cleaner podium/list composition
+- keep history as a product decision note instead of adding a redundant route right now
 - re-run mobile validation and keep backend logic unchanged
