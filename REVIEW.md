@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Finish the current student polish slice by fixing the event discovery hero fill, removing duplicate profile role wording, and making event detail back navigation safe.
+- **Scope:** Polish the next student visual issues by moving event-detail back navigation above the hero and giving My QR the same image-led top scene language.
 
 ## Affected Files
 
@@ -16,17 +16,13 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PROGRESS.md`
 - `apps/mobile/src/app/student/events/index.tsx`
 - `apps/mobile/src/app/student/events/[eventId].tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
-- `apps/mobile/src/components/app-icon.tsx`
 
 ## Risks
 
-- The discovery hero currently sits inside an outer card, so image padding reads like broken empty space.
-- Profile role copy can easily repeat itself once tags and role labels both surface in the hero.
-- A blind `router.back()` call can throw a development warning when the detail screen is opened directly.
+- Event detail now uses a full-bleed hero, so an ordinary flow-order back button can end up visually buried underneath it.
+- My QR still starts with a text-heavy block instead of the same visual entrance used by discovery and event detail.
+- The QR screen already carries a lot of functional state, so the added hero cannot make the page longer or noisier.
 
 ## Dependencies
 
@@ -37,15 +33,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- Discovery already has the right image source, so the remaining issue is layout chrome around it.
-- Profile now has the right avatar direction, but role copy still duplicates the student identity.
-- Event detail uses direct push navigation, so `back()` needs a safe fallback route.
+- Event detail already has safe `goBack` fallback logic; the remaining problem is only visual stacking.
+- QR state already knows the selected event and reward overview, so we can derive a cover image without adding new backend calls.
+- Event image fallback logic already lives in `features/events/event-visuals.ts` and should be reused.
 
 ## Review Outcome
 
-Do a small stabilization pass:
+Do a small visual stabilization pass:
 
-- make discovery hero fill its own full area without outer black padding
-- replace the duplicate profile role wording with the active tag when available
-- make event detail back navigation fall back to `/student/events`
+- anchor the event-detail back button above the hero surface
+- add a full-width image band to My QR using the existing event cover helper
+- keep the QR page shorter by reusing existing event data instead of adding new sections
 - re-run mobile validation and keep logic unchanged

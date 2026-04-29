@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -265,7 +266,10 @@ export default function StudentEventDetailScreen() {
   return (
     <AppScreen>
       <Pressable onPress={handleBackPress} style={styles.backButton}>
-        <Text style={styles.backButtonText}>Back</Text>
+        <View style={styles.backButtonRow}>
+          <AppIcon color={mobileTheme.colors.textPrimary} name="chevron-left" size={16} />
+          <Text style={styles.backButtonText}>Back</Text>
+        </View>
       </Pressable>
 
       {detailQuery.isLoading ? (
@@ -417,16 +421,26 @@ export default function StudentEventDetailScreen() {
 const styles = StyleSheet.create({
   backButton: {
     alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.actionNeutral,
+    backgroundColor: "rgba(8, 9, 14, 0.84)",
     borderRadius: mobileTheme.radius.button,
-    marginBottom: -4,
+    left: mobileTheme.spacing.screenHorizontal,
+    position: "absolute",
+    top: mobileTheme.spacing.screenVertical,
+    zIndex: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    ...interactiveSurfaceShadowStyle,
+  },
+  backButtonRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   backButtonText: {
-    color: mobileTheme.colors.textSecondary,
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
     fontSize: 13,
-    fontWeight: "700",
+    lineHeight: 16,
   },
   badges: {
     flexDirection: "row",
@@ -453,6 +467,7 @@ const styles = StyleSheet.create({
     gap: 18,
     justifyContent: "space-between",
     padding: 18,
+    paddingTop: 72,
   },
   heroEyebrow: {
     color: mobileTheme.colors.lime,

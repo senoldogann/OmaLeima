@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -8,6 +8,7 @@ import { SvgXml } from "react-native-svg";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   selectStudentQrEvent,
@@ -118,6 +119,13 @@ export default function StudentActiveEventScreen() {
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
   const showProtectionNotice = protection.status === "ERROR";
+  const eventCoverSource = useMemo(
+    () =>
+      selectedEvent === null
+        ? null
+        : getEventCoverSource(selectedRewardEvent?.coverImageUrl ?? null, `${selectedEvent.id}:${selectedEvent.name}`),
+    [selectedEvent, selectedRewardEvent?.coverImageUrl]
+  );
 
   return (
     <AppScreen>
@@ -139,6 +147,21 @@ export default function StudentActiveEventScreen() {
             <Text style={styles.primaryButtonText}>Open events</Text>
           </Pressable>
         </InfoCard>
+      ) : null}
+
+      {selectedEvent !== null && eventCoverSource ? (
+        <ImageBackground imageStyle={styles.eventHeroImage} source={eventCoverSource} style={styles.eventHero}>
+          <View style={styles.eventHeroOverlay} />
+          <View style={styles.eventHeroContent}>
+            <Text style={styles.eventHeroEyebrow}>{selectedEvent.city}</Text>
+            <Text style={styles.eventHeroTitle}>{selectedEvent.name}</Text>
+            <Text style={styles.eventHeroMeta}>
+              {selectedEvent.viewState === "ACTIVE"
+                ? `Live now until ${formatDateTime(selectedEvent.endAt)}`
+                : `Starts ${formatDateTime(selectedEvent.startAt)}`}
+            </Text>
+          </View>
+        </ImageBackground>
       ) : null}
 
       {selectedEvent?.viewState === "UPCOMING" ? (
@@ -323,6 +346,49 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 22,
+  },
+  eventHero: {
+    minHeight: 208,
+    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
+    marginTop: -mobileTheme.spacing.screenVertical,
+    overflow: "hidden",
+    position: "relative",
+  },
+  eventHeroContent: {
+    gap: 8,
+    justifyContent: "flex-end",
+    minHeight: 208,
+    paddingBottom: 22,
+    paddingHorizontal: 20,
+    paddingTop: 48,
+  },
+  eventHeroEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
+  },
+  eventHeroImage: {
+    borderRadius: 0,
+  },
+  eventHeroMeta: {
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  eventHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
+  },
+  eventHeroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
+    letterSpacing: -0.5,
+    lineHeight: mobileTheme.typography.lineHeights.title,
   },
   ghostButton: {
     alignSelf: "flex-start",

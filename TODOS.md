@@ -27,11 +27,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Discovery + Profile + Back Stabilization)
+## Current Todos (Event Detail Back + My QR Hero)
 
-- [x] Review the current rewards, discovery, profile, and stamp-rule shape again.
-- [x] Make discovery hero fill its own visual surface without outer black gaps.
-- [x] Replace duplicate profile role wording with active tag context.
-- [x] Add a safe fallback around event detail back navigation.
-- [x] Run mobile lint, typecheck, export, and route sanity validation.
-- [x] Update `PROGRESS.md` with the new handoff note.
+- [x] Review the current event-detail hero stacking and My QR opening state.
+- [x] Move the event-detail back action above the hero.
+- [x] Add a full-width event cover band to My QR.
+- [x] Run mobile lint, typecheck, and export.
+- [ ] Update `PROGRESS.md` with the new handoff note.
