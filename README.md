@@ -11,6 +11,20 @@ Digital leima pass for Finnish student overalls events.
 - Phase 5 complete
 - Phase 6 complete
 
+## Current readiness
+
+Current verified state:
+
+- hosted admin verification is wired
+- iPhone student login, push, QR rotation, scanner fallback, stamp creation, and reward-unlock push are verified
+
+Still pending before a broader public launch:
+
+- Android physical-device smoke
+- final operator credential rotation
+- custom domain cutover
+- public store release steps
+
 ## Testing
 
 The current local QA entry point is:
