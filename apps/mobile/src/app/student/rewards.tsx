@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useRouter } from "expo-router";
 
@@ -26,9 +26,16 @@ export default function StudentRewardsScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Student" title="Reward progress">
-        <Text style={styles.bodyText}>
-          Track event rewards here. Claimable tiers still require club or venue staff handoff even when the mobile app shows that you are eligible.
-        </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text selectable style={styles.heroEyebrow}>Collected memories</Text>
+          <Text selectable style={styles.heroTitle}>
+            Every leima gets its own place here before the club handoff happens.
+          </Text>
+          <Text selectable style={styles.bodyText}>
+            Track event rewards here. Claimable tiers still require club or venue staff handoff even when the mobile app shows that you are eligible.
+          </Text>
+        </View>
       </InfoCard>
 
       {rewardOverviewQuery.isLoading ? (
@@ -67,6 +74,16 @@ export default function StudentRewardsScreen() {
 
       {events.length > 0 ? (
         <InfoCard eyebrow="Summary" title="Reward status">
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text selectable style={styles.summaryValue}>{registeredEventCount}</Text>
+              <Text selectable style={styles.summaryLabel}>registered events</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Text selectable style={styles.summaryValue}>{claimableEventCount}</Text>
+              <Text selectable style={styles.summaryLabel}>claimable now</Text>
+            </View>
+          </View>
           <Text style={styles.bodyText}>
             {claimableEventCount > 0
               ? `${claimableEventCount} event${claimableEventCount === 1 ? "" : "s"} currently has at least one claimable reward tier.`
@@ -94,6 +111,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintWarm,
+    borderRadius: 132,
+    height: 148,
+    opacity: 0.42,
+    position: "absolute",
+    right: -40,
+    top: -56,
+    width: 148,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
   secondaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.actionNeutral,
@@ -108,5 +158,32 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
+  },
+  summaryCard: {
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
+    borderWidth: 1,
+    flex: 1,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    ...interactiveSurfaceShadowStyle,
+  },
+  summaryLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  summaryValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 28,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
   },
 });

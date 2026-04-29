@@ -6,6 +6,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
 import { useStudentRewardInventoryRealtime } from "@/features/realtime/student-realtime";
 import { useActiveAppState } from "@/features/qr/student-qr";
@@ -182,6 +183,18 @@ const getRewardInventoryCopy = (rewardTier: RewardTierSummary): string => {
   return `${remaining} reward(s) left`;
 };
 
+const getRewardChipColor = (rewardTier: RewardTierSummary): string => {
+  if (rewardTier.inventoryTotal === null) {
+    return mobileTheme.colors.chromeTintIndigo;
+  }
+
+  if (rewardTier.inventoryClaimed >= rewardTier.inventoryTotal) {
+    return mobileTheme.colors.dangerSurface;
+  }
+
+  return mobileTheme.colors.chromeTintWarm;
+};
+
 export default function StudentEventDetailScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -256,30 +269,56 @@ export default function StudentEventDetailScreen() {
       {event ? (
         <>
           <InfoCard eyebrow={event.city} title={event.name}>
-            <View style={styles.badges}>
-              <StatusBadge label={event.status.toLowerCase()} state={event.status === "PUBLISHED" ? "ready" : "warning"} />
-              {registrationBadge ? (
-                <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-              ) : null}
+            <View style={styles.heroCard}>
+              <View style={styles.heroGlow} />
+              <View style={styles.heroTopRow}>
+                <Text style={styles.heroKicker}>{event.country}</Text>
+                <View style={styles.badges}>
+                  <StatusBadge label={event.status.toLowerCase()} state={event.status === "PUBLISHED" ? "ready" : "warning"} />
+                  {registrationBadge ? (
+                    <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+                  ) : null}
+                </View>
+              </View>
+
+              <Text style={styles.heroSummary}>
+                {event.description ?? "The organizer has not added a description for this event yet."}
+              </Text>
+
+              <View style={styles.heroStatsRow}>
+                <View style={styles.heroStatCard}>
+                  <Text style={styles.heroStatLabel}>Starts</Text>
+                  <Text style={styles.heroStatValue}>{formatDateTime(event.startAt)}</Text>
+                </View>
+                <View style={styles.heroStatCard}>
+                  <Text style={styles.heroStatLabel}>Join deadline</Text>
+                  <Text style={styles.heroStatValue}>{formatDateTime(event.joinDeadlineAt)}</Text>
+                </View>
+              </View>
             </View>
 
-            <Text style={styles.bodyText}>
-              {event.description ?? "The organizer has not added a description for this event yet."}
-            </Text>
-
-            <View style={styles.metaGroup}>
-              <Text style={styles.metaLine}>Starts {formatDateTime(event.startAt)}</Text>
-              <Text style={styles.metaLine}>Ends {formatDateTime(event.endAt)}</Text>
-              <Text style={styles.metaLine}>Join deadline {formatDateTime(event.joinDeadlineAt)}</Text>
-              <Text style={styles.metaLine}>
-                {event.maxParticipants === null ? "Open capacity" : `${event.maxParticipants} participant cap`}
-              </Text>
-              <Text style={styles.metaLine}>Minimum leimat required: {event.minimumStampsRequired}</Text>
+            <View style={styles.metaStrip}>
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillValue}>
+                  {event.maxParticipants === null ? "Open capacity" : `${event.maxParticipants} participant cap`}
+                </Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillValue}>Minimum {event.minimumStampsRequired} leima</Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Text style={styles.metaPillValue}>Ends {formatDateTime(event.endAt)}</Text>
+              </View>
             </View>
           </InfoCard>
 
           <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
-            <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
+            <View style={styles.joinCallout}>
+              <View style={styles.joinCopy}>
+                <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
+              </View>
+              {joinAvailability ? <StatusBadge label={joinAvailability.state} state={joinAvailability.state} /> : null}
+            </View>
             <Pressable
               disabled={!joinAvailability?.canJoin || joinMutation.isPending}
               onPress={() => void handleJoinPress()}
@@ -310,10 +349,15 @@ export default function StudentEventDetailScreen() {
               <View style={styles.listGroup}>
                 {event.venues.map((venue) => (
                   <View key={venue.id} style={styles.listRow}>
-                    <Text style={styles.listTitle}>
-                      {venue.venueOrder ?? "-"} . {venue.name}
-                    </Text>
-                    <Text style={styles.metaLine}>{venue.city}</Text>
+                    <View style={styles.venueHeader}>
+                      <View style={styles.venueOrderBubble}>
+                        <Text style={styles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
+                      </View>
+                      <View style={styles.venueCopy}>
+                        <Text style={styles.listTitle}>{venue.name}</Text>
+                        <Text style={styles.metaLine}>{venue.city}</Text>
+                      </View>
+                    </View>
                     {venue.stampLabel ? <Text style={styles.metaLine}>Stamp label: {venue.stampLabel}</Text> : null}
                     {venue.customInstructions ? <Text style={styles.metaLine}>{venue.customInstructions}</Text> : null}
                   </View>
@@ -329,9 +373,12 @@ export default function StudentEventDetailScreen() {
               <View style={styles.listGroup}>
                 {event.rewardTiers.map((rewardTier) => (
                   <View key={rewardTier.id} style={styles.listRow}>
-                    <Text style={styles.listTitle}>
-                      {rewardTier.requiredStampCount} leima - {rewardTier.title}
-                    </Text>
+                    <View style={styles.rewardHeader}>
+                      <View style={[styles.rewardRequirementBadge, { backgroundColor: getRewardChipColor(rewardTier) }]}>
+                        <Text style={styles.rewardRequirementText}>{rewardTier.requiredStampCount} leima</Text>
+                      </View>
+                      <Text style={styles.listTitle}>{rewardTier.title}</Text>
+                    </View>
                     <Text style={styles.metaLine}>{rewardTier.rewardType}</Text>
                     <Text style={styles.metaLine}>{getRewardInventoryCopy(rewardTier)}</Text>
                     {rewardTier.description ? <Text style={styles.metaLine}>{rewardTier.description}</Text> : null}
@@ -367,14 +414,17 @@ export default function StudentEventDetailScreen() {
 const styles = StyleSheet.create({
   backButton: {
     alignSelf: "flex-start",
-    borderRadius: 8,
-    borderColor: "#334155",
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
+    marginBottom: -4,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    ...interactiveSurfaceShadowStyle,
   },
   backButtonText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -384,55 +434,192 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   disabledButton: {
-    backgroundColor: "#334155",
+    opacity: 0.6,
+  },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 16,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    borderRadius: 120,
+    height: 144,
+    opacity: 0.62,
+    position: "absolute",
+    right: -34,
+    top: -48,
+    width: 144,
+  },
+  heroKicker: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroSummary: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 24,
+  },
+  heroTopRow: {
+    gap: 12,
+  },
+  heroStatsRow: {
+    gap: 10,
+  },
+  heroStatCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.055)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  heroStatLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+  },
+  heroStatValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  joinCallout: {
+    alignItems: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
+  joinCopy: {
+    gap: 8,
   },
   listGroup: {
     gap: 10,
   },
   listRow: {
-    gap: 4,
-    paddingBottom: 2,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 8,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   listTitle: {
-    color: "#F8FAFC",
-    fontSize: 14,
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  metaPill: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  metaPillValue: {
+    color: mobileTheme.colors.textSecondary,
+    fontSize: 13,
     fontWeight: "600",
   },
-  metaGroup: {
-    gap: 6,
+  metaStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   metaLine: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
+  rewardHeader: {
+    gap: 10,
+  },
+  rewardRequirementBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  rewardRequirementText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
   secondaryButton: {
     alignSelf: "flex-start",
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.actionNeutral,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
+    fontWeight: "700",
+  },
+  venueCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  venueHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  venueOrderBubble: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.chromeTint,
+    borderColor: mobileTheme.colors.cardBorderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  venueOrderText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 13,
     fontWeight: "700",
   },
 });

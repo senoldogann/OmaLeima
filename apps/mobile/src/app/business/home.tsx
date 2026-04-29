@@ -5,6 +5,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useSession } from "@/providers/session-provider";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
@@ -33,9 +34,16 @@ export default function BusinessHomeScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Business" title="Scanner home">
-        <Text selectable style={styles.bodyText}>
-          This route now acts as the business launchpad. Staff can jump into event joining or scanner work from here while still seeing the current joined-event context.
-        </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text selectable style={styles.heroEyebrow}>Operator launchpad</Text>
+          <Text selectable style={styles.heroTitle}>
+            Keep the venue team close to the next scan, not buried in admin noise.
+          </Text>
+          <Text selectable style={styles.bodyText}>
+            This route now acts as the business launchpad. Staff can jump into event joining or scanner work from here while still seeing the current joined-event context.
+          </Text>
+        </View>
         <View style={styles.actionRow}>
           <Link href="/business/events" asChild>
             <Pressable style={styles.primaryButton}>
@@ -210,69 +218,107 @@ export default function BusinessHomeScreen() {
 
 const styles = StyleSheet.create({
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   cardTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   ghostButton: {
     alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   ghostButtonText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     fontWeight: "700",
   },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.accentBlue,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTint,
+    borderRadius: 140,
+    height: 152,
+    opacity: 0.5,
+    position: "absolute",
+    right: -42,
+    top: -58,
+    width: 152,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
   metaText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     flex: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#E2E8F0",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   rowCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 6,
-    padding: 14,
+    gap: 8,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   stack: {
     gap: 12,

@@ -6,6 +6,7 @@ import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
 import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import {
@@ -325,9 +326,16 @@ export default function StudentProfileScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Student" title="Profile">
-        <Text selectable style={styles.bodyText}>
-          Manage the study or department labels that describe this student profile. Official tags appear first, custom tags can still be created when the right label is missing, and one selected tag can stay primary for public display later.
-        </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text selectable style={styles.heroEyebrow}>Identity and tags</Text>
+          <Text selectable style={styles.heroTitle}>
+            Keep your student identity clear before the next party night starts.
+          </Text>
+          <Text selectable style={styles.bodyText}>
+            Manage the study or department labels that describe this student profile. Official tags appear first, custom tags can still be created when the right label is missing, and one selected tag can stay primary for public display later.
+          </Text>
+        </View>
       </InfoCard>
 
       <FoundationStatusCard
@@ -374,6 +382,16 @@ export default function StudentProfileScreen() {
 
       {profileOverview ? (
         <InfoCard eyebrow="Account" title={profileOverview.displayName ?? "Student profile"}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text selectable style={styles.summaryValue}>{selectedTags.length}</Text>
+              <Text selectable style={styles.summaryLabel}>active tags</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Text selectable style={styles.summaryValue}>{remainingTagSlots}</Text>
+              <Text selectable style={styles.summaryLabel}>slots left</Text>
+            </View>
+          </View>
           <View style={styles.badgeRow}>
             <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
             <StatusBadge label={profileOverview.status.toLowerCase()} state="ready" />
@@ -613,18 +631,18 @@ export default function StudentProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
   },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -636,43 +654,79 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  input: {
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
     borderWidth: 1,
-    color: "#F8FAFC",
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.accentRose,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintRose,
+    borderRadius: 140,
+    height: 148,
+    opacity: 0.58,
+    position: "absolute",
+    right: -44,
+    top: -52,
+    width: 148,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
+  input: {
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   metaText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -680,12 +734,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   suggestionCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 12,
-    padding: 14,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   suggestionCopy: {
     flex: 1,
@@ -698,8 +753,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   suggestionTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
+  },
+  summaryCard: {
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
+    borderWidth: 1,
+    flex: 1,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    ...interactiveSurfaceShadowStyle,
+  },
+  summaryLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  summaryValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 28,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
   },
 });

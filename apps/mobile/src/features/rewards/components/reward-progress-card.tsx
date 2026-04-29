@@ -125,6 +125,35 @@ const getEventSummaryCopy = (event: StudentRewardEventProgress): string => {
   return "Keep collecting leima to unlock the next reward tier.";
 };
 
+type MemoryStripItem =
+  | { kind: "stamp"; index: number }
+  | { kind: "overflow"; remainingCount: number };
+
+const maxVisibleMemoryTokens = 8;
+
+const getMemoryStripItems = (stampCount: number): MemoryStripItem[] => {
+  if (stampCount <= maxVisibleMemoryTokens) {
+    return Array.from({ length: stampCount }, (_, index) => ({
+      kind: "stamp",
+      index,
+    }));
+  }
+
+  const visibleStampCount = maxVisibleMemoryTokens - 1;
+  const visibleItems = Array.from({ length: visibleStampCount }, (_, index) => ({
+    kind: "stamp" as const,
+    index,
+  }));
+
+  return [
+    ...visibleItems,
+    {
+      kind: "overflow",
+      remainingCount: stampCount - visibleStampCount,
+    },
+  ];
+};
+
 export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => (
   <InfoCard eyebrow={event.city} title={event.name}>
     <View style={styles.heroCard}>
@@ -152,6 +181,27 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
     <View style={styles.progressTrack}>
       <View style={[styles.progressFill, { width: `${event.goalProgressRatio * 100}%` }]} />
     </View>
+
+    {event.stampCount > 0 ? (
+      <>
+        <View style={styles.memoryStrip}>
+          {getMemoryStripItems(event.stampCount).map((item) =>
+            item.kind === "stamp" ? (
+              <View key={`${event.id}-stamp-${item.index}`} style={styles.memoryToken}>
+                <View style={[styles.memoryDot, styles.memoryDotCollected]} />
+              </View>
+            ) : (
+              <View key={`${event.id}-overflow`} style={styles.memoryOverflowToken}>
+                <Text style={styles.memoryOverflowText}>+{item.remainingCount}</Text>
+              </View>
+            )
+          )}
+        </View>
+        <Text style={styles.secondaryText}>
+          Recent leima memory strip for this event. The main progress bar above still reflects full reward progress.
+        </Text>
+      </>
+    ) : null}
 
     {event.tiers.length === 0 ? (
       <Text style={styles.secondaryText}>The organizer has not published reward tiers for this event yet.</Text>
@@ -219,6 +269,47 @@ const styles = StyleSheet.create({
   },
   metaGroup: {
     gap: 4,
+  },
+  memoryDot: {
+    borderRadius: 999,
+    height: 12,
+    width: 12,
+  },
+  memoryDotCollected: {
+    backgroundColor: mobileTheme.colors.accentMint,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    borderWidth: 1,
+  },
+  memoryOverflowText: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  memoryOverflowToken: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.warningSurface,
+    borderColor: "rgba(255, 217, 138, 0.22)",
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    minWidth: 40,
+    paddingHorizontal: 8,
+  },
+  memoryStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  memoryToken: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.035)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
   },
   metaLine: {
     color: mobileTheme.colors.textSoft,

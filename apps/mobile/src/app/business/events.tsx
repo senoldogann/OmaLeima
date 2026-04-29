@@ -6,6 +6,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { useJoinBusinessEventMutation, useLeaveBusinessEventMutation } from "@/features/business/business-events";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useSession } from "@/providers/session-provider";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
@@ -85,9 +86,16 @@ export default function BusinessEventsScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Business" title="Event participation">
-        <Text selectable style={styles.bodyText}>
-          This screen is the business-side control point for venue participation. Joinable public events stay grouped by business location, and live joined events can jump straight into the scanner.
-        </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text selectable style={styles.heroEyebrow}>Venue participation</Text>
+          <Text selectable style={styles.heroTitle}>
+            Move between live nights and upcoming joins without losing the event-day rhythm.
+          </Text>
+          <Text selectable style={styles.bodyText}>
+            This screen is the business-side control point for venue participation. Joinable public events stay grouped by business location, and live joined events can jump straight into the scanner.
+          </Text>
+        </View>
       </InfoCard>
 
       {homeOverviewQuery.isLoading ? (
@@ -302,20 +310,53 @@ export default function BusinessEventsScreen() {
 
 const styles = StyleSheet.create({
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   cardTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   disabledButton: {
     opacity: 0.7,
   },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintWarm,
+    borderRadius: 140,
+    height: 150,
+    opacity: 0.42,
+    position: "absolute",
+    right: -44,
+    top: -58,
+    width: 150,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
   metaText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -325,59 +366,65 @@ const styles = StyleSheet.create({
   },
   dangerButton: {
     alignItems: "center",
-    backgroundColor: "#7F1D1D",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.dangerSurface,
+    borderColor: "rgba(255, 176, 205, 0.28)",
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   dangerButtonText: {
-    color: "#FEE2E2",
+    color: mobileTheme.colors.accentRose,
     fontSize: 14,
     fontWeight: "700",
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderRadius: mobileTheme.radius.button,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   rowCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 8,
-    padding: 14,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   stack: {
     gap: 12,
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#E2E8F0",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },

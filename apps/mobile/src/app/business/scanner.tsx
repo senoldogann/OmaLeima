@@ -8,6 +8,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type { ScannerAttemptResult } from "@/features/scanner/types";
 import { useSession } from "@/providers/session-provider";
@@ -186,9 +187,16 @@ export default function BusinessScannerScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Scanner" title="QR scanner">
-        <Text selectable style={styles.bodyText}>
-          Active joined events can scan now. The scanner locks after a read and waits for a result or timeout before staff can explicitly scan again.
-        </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text selectable style={styles.heroEyebrow}>Event-day mode</Text>
+          <Text selectable style={styles.heroTitle}>
+            Keep the scanner focused, fast, and obvious even when the bar gets crowded.
+          </Text>
+          <Text selectable style={styles.bodyText}>
+            Active joined events can scan now. The scanner locks after a read and waits for a result or timeout before staff can explicitly scan again.
+          </Text>
+        </View>
       </InfoCard>
 
       {homeOverviewQuery.isLoading ? (
@@ -368,23 +376,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   cameraFrame: {
     aspectRatio: 3 / 4,
-    backgroundColor: "#020617",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.screenElevated,
+    borderColor: mobileTheme.colors.cardBorderStrong,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
     overflow: "hidden",
+    ...interactiveSurfaceShadowStyle,
   },
   cameraView: {
     flex: 1,
   },
   cardTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -392,69 +401,106 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   eventSelectorCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 6,
-    padding: 14,
+    gap: 8,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   eventSelectorCardSelected: {
-    borderColor: "#2563EB",
-    backgroundColor: "#172554",
+    borderColor: mobileTheme.colors.accentBlue,
+    backgroundColor: "rgba(105, 189, 255, 0.12)",
+  },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroEyebrow: {
+    color: mobileTheme.colors.accentBlue,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTint,
+    borderRadius: 140,
+    height: 152,
+    opacity: 0.48,
+    position: "absolute",
+    right: -44,
+    top: -60,
+    width: 152,
+  },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
   },
   metaText: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    borderRadius: mobileTheme.radius.button,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   resultCard: {
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 6,
-    padding: 14,
+    gap: 8,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   stack: {
     gap: 12,
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
-    color: "#E2E8F0",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },
   textArea: {
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: 24,
     borderWidth: 1,
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     minHeight: 120,
     paddingHorizontal: 14,
