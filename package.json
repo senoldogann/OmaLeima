@@ -2,6 +2,7 @@
   "name": "omaleima",
   "private": true,
   "scripts": {
+    "qa:mobile-hosted-business-scan-readiness": "node tests/run-mobile-hosted-business-scan-readiness.mjs",
     "qa:mobile-native-simulator-smoke": "node tests/run-mobile-native-simulator-smoke.mjs",
     "qa:mobile-native-push-readiness": "node tests/run-mobile-native-push-readiness.mjs",
     "qa:reward-unlocked-push-readiness": "node tests/run-reward-unlocked-push-readiness.mjs",

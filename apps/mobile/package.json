@@ -10,6 +10,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
+    "audit:hosted-business-scan-readiness": "node scripts/audit-hosted-business-scan-readiness.mjs",
     "audit:native-simulator-smoke": "node scripts/audit-native-simulator-smoke.mjs",
     "audit:realtime-readiness": "node scripts/audit-realtime-readiness.mjs",
     "audit:reward-notification-bridge": "node scripts/audit-reward-notification-bridge.mjs",

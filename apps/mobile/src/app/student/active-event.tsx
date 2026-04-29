@@ -101,6 +101,8 @@ export default function StudentActiveEventScreen() {
   const countdownSeconds = useQrCountdown(refreshAfterSeconds, qrTokenQuery.dataUpdatedAt, shouldRefreshQr);
   const refreshProgressRatio =
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
+  const hostedSmokeToken = qrTokenQuery.data?.qrPayload.token ?? null;
+  const showHostedSmokeCard = __DEV__ && selectedEvent?.viewState === "ACTIVE" && typeof hostedSmokeToken === "string";
 
   return (
     <AppScreen>
@@ -246,17 +248,45 @@ export default function StudentActiveEventScreen() {
               Do not screenshot or screen-record this QR. It is short-lived and should only be shown to participating venues during the active event window.
             </Text>
           </InfoCard>
+
+          {showHostedSmokeCard ? (
+            <InfoCard eyebrow="Smoke" motionIndex={6} title="Hosted scanner smoke token">
+              <Text selectable style={styles.bodyText}>
+                This development-only helper lets one physical iPhone exercise the real hosted `scan-qr` path without a second device.
+              </Text>
+              <Text selectable style={styles.metaLine}>
+                1. Long-press the token below and copy it.
+              </Text>
+              <Text selectable style={styles.metaLine}>
+                2. Sign out and switch into business staff with `scanner@omaleima.test / password123`.
+              </Text>
+              <Text selectable style={styles.metaLine}>
+                3. Open Business - Scanner and paste the token into the manual fallback box.
+              </Text>
+              <Text selectable style={styles.metaLine}>
+                4. The scan should record a real stamp and trigger the reward-unlock push path for this device.
+              </Text>
+              <View style={styles.tokenBox}>
+                <Text selectable style={styles.tokenText}>
+                  {hostedSmokeToken}
+                </Text>
+              </View>
+              <Text selectable style={styles.warningText}>
+                Keep this helper in development builds only. The raw QR JWT should never be exposed in the shipped student UI.
+              </Text>
+            </InfoCard>
+          ) : null}
         </>
       ) : null}
 
       {selectedEvent !== null && rewardOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Progress" motionIndex={6} title="Updating reward progress">
+        <InfoCard eyebrow="Progress" motionIndex={7} title="Updating reward progress">
           <Text style={styles.bodyText}>Loading leima counts, reward tiers, and claimed state for this event.</Text>
         </InfoCard>
       ) : null}
 
       {selectedEvent !== null && rewardOverviewQuery.error ? (
-        <InfoCard eyebrow="Progress" motionIndex={6} title="Reward progress unavailable">
+        <InfoCard eyebrow="Progress" motionIndex={7} title="Reward progress unavailable">
           <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
           <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Retry reward progress</Text>
@@ -351,6 +381,19 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
+  },
+  tokenBox: {
+    backgroundColor: "#020617",
+    borderColor: "rgba(255, 255, 255, 0.18)",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  tokenText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 12,
+    lineHeight: 18,
   },
   warningText: {
     color: mobileTheme.colors.accentGold,

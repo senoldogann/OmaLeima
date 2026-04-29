@@ -251,7 +251,7 @@ For the native push device-smoke readiness gate:
 npm run qa:mobile-native-push-readiness
 ```
 
-This focused audit currently does three things in order:
+This focused audit currently does four things in order:
 
 1. `npm --prefix apps/mobile run lint`
 2. `npm --prefix apps/mobile run typecheck`
@@ -282,6 +282,40 @@ This audit does not claim that a notification was really delivered on a device. 
 4. trigger a real remote push path such as reward unlock delivery
 5. confirm the profile diagnostics surface records the received notification and, after opening it, the notification response
 6. confirm those captured rows show a remote source, not only local foreground notification activity
+
+## Mobile hosted business scan readiness
+
+For the hosted one-device student-to-scanner smoke wiring:
+
+```bash
+npm run qa:mobile-hosted-business-scan-readiness
+```
+
+This focused audit currently does four things in order:
+
+1. `npm --prefix apps/mobile run lint`
+2. `npm --prefix apps/mobile run typecheck`
+3. `npm --prefix apps/mobile run export:web`
+4. `npm --prefix apps/mobile run audit:hosted-business-scan-readiness`
+
+The audit is intentionally read-only. It verifies the current repository state still supports the hosted fallback path we used on the physical iPhone:
+
+- the active student event screen has a development-only `Hosted scanner smoke token` surface
+- that token helper stays scoped to `__DEV__`
+- the business scanner still explains the same-device manual fallback path
+- the business password sign-in helper text stays aligned with the hosted scanner fixture account
+- the docs still describe the same physical iPhone flow honestly
+
+The intended manual smoke sequence is:
+
+1. sign in as the student on the physical iPhone
+2. open `My QR`
+3. copy the development-only token from `Hosted scanner smoke token`
+4. sign out and switch into `scanner@omaleima.test / password123`
+5. open `Business > Scanner`
+6. paste the token into the manual fallback box and submit it
+
+That path still exercises the real hosted `scan-qr` backend and is the supported fallback when we only have one same physical iPhone available for scanner smoke.
 
 ## Mobile native simulator and emulator wiring
 
