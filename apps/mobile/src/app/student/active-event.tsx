@@ -194,23 +194,23 @@ export default function StudentActiveEventScreen() {
 
       {selectedEvent?.viewState === "ACTIVE" ? (
         <>
-          <InfoCard eyebrow={selectedEvent.city} motionIndex={1} title={selectedEvent.name} variant="scene">
-            <View style={styles.badges}>
-              <StatusBadge label="active now" state="ready" />
-              <StatusBadge
-                label={qrTokenQuery.error ? "refresh error" : "live"}
-                state={qrTokenQuery.error ? "error" : "ready"}
-              />
-            </View>
+          <View style={styles.activeSummaryBar}>
+            <View style={styles.activeSummaryCopy}>
+              <View style={styles.badges}>
+                <StatusBadge label="active now" state="ready" />
+                <StatusBadge
+                  label={qrTokenQuery.error ? "refresh error" : "live"}
+                  state={qrTokenQuery.error ? "error" : "ready"}
+                />
+              </View>
 
-            <View style={styles.identityRow}>
-              <Text style={styles.identityLabel}>STUDENT</Text>
               <Text style={styles.identityValue} numberOfLines={1}>
                 {qrContextQuery.data?.studentDisplayName ?? session?.user.email ?? "Unknown"}
               </Text>
-              <Text style={styles.identityMeta}>Until {formatDateTime(selectedEvent.endAt)}</Text>
             </View>
-          </InfoCard>
+
+            <Text style={styles.identityMeta}>Until {formatDateTime(selectedEvent.endAt)}</Text>
+          </View>
 
           <View style={styles.qrBlock}>
             <View style={styles.qrSceneHeader}>
@@ -337,6 +337,16 @@ export default function StudentActiveEventScreen() {
 }
 
 const styles = StyleSheet.create({
+  activeSummaryBar: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  activeSummaryCopy: {
+    flex: 1,
+    gap: 10,
+  },
   badges: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -348,7 +358,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   eventHero: {
-    minHeight: 208,
+    minHeight: 156,
     marginHorizontal: -mobileTheme.spacing.screenHorizontal,
     marginTop: -mobileTheme.spacing.screenVertical,
     overflow: "hidden",
@@ -357,10 +367,10 @@ const styles = StyleSheet.create({
   eventHeroContent: {
     gap: 8,
     justifyContent: "flex-end",
-    minHeight: 208,
-    paddingBottom: 22,
+    minHeight: 156,
+    paddingBottom: 18,
     paddingHorizontal: 20,
-    paddingTop: 48,
+    paddingTop: 38,
   },
   eventHeroEyebrow: {
     color: mobileTheme.colors.lime,
@@ -403,27 +413,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  identityLabel: {
-    color: mobileTheme.colors.lime,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-  },
   identityMeta: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-  },
-  identityRow: {
-    borderLeftColor: mobileTheme.colors.lime,
-    borderLeftWidth: 3,
-    gap: 4,
-    paddingLeft: 14,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    maxWidth: 112,
+    textAlign: "right",
   },
   identityValue: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 20,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
     letterSpacing: -0.3,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   primaryButton: {
     alignItems: "center",
@@ -465,7 +468,7 @@ const styles = StyleSheet.create({
     borderRadius: mobileTheme.radius.scene,
     borderWidth: 1,
     overflow: "hidden",
-    padding: 16,
+    padding: 14,
     ...interactiveSurfaceShadowStyle,
   },
   qrCorner: {
@@ -523,7 +526,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: "center",
     overflow: "hidden",
-    padding: 18,
+    padding: 12,
     position: "relative",
   },
   qrGuideLine: {
@@ -539,8 +542,8 @@ const styles = StyleSheet.create({
     backgroundColor: mobileTheme.colors.qrCanvas,
     borderRadius: mobileTheme.radius.card,
     justifyContent: "center",
-    minHeight: 304,
-    padding: 16,
+    minHeight: 272,
+    padding: 12,
   },
   qrLiveBadge: {
     alignItems: "center",

@@ -1,15 +1,27 @@
+import { useMemo } from "react";
 import { useRouter } from "expo-router";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { EventCard } from "@/features/events/components/event-card";
 import { getEventCoverSource } from "@/features/events/event-visuals";
+import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useSession } from "@/providers/session-provider";
 
+type DiscoverySlide = {
+  copy: string;
+  eyebrow: string;
+  key: string;
+  meta: string;
+  title: string;
+};
+
 export default function StudentEventsScreen() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const studentId = session?.user.id ?? null;
   const eventsQuery = useStudentEventsQuery({
@@ -20,7 +32,33 @@ export default function StudentEventsScreen() {
   const activeEvents = eventsQuery.data?.activeEvents ?? [];
   const upcomingEvents = eventsQuery.data?.upcomingEvents ?? [];
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
-  const heroCoverSource = getEventCoverSource(null, "event-discovery-hero");
+  const heroWidth = windowWidth;
+  const discoverySlides = useMemo<readonly DiscoverySlide[]>(
+    () => [
+      {
+        copy: "Pick the next student night, save your route, and arrive with the QR already waiting.",
+        eyebrow: "Student nights",
+        key: "discovery-neon",
+        meta: `${activeEvents.length} live now`,
+        title: "Event discovery",
+      },
+      {
+        copy: "Follow the city rhythm, jump between venues, and collect the night one leima at a time.",
+        eyebrow: "Route energy",
+        key: "discovery-route",
+        meta: `${upcomingEvents.length} coming up`,
+        title: "Plan the next round",
+      },
+      {
+        copy: "Join early, keep the QR ready, and turn every venue stop into a visible streak.",
+        eyebrow: "Before the first scan",
+        key: "discovery-streak",
+        meta: `${activeEvents.length + upcomingEvents.length} nights visible`,
+        title: "Catch the next unlock",
+      },
+    ],
+    [activeEvents.length, upcomingEvents.length]
+  );
 
   const openEventDetail = (eventId: string): void => {
     router.push({
@@ -31,24 +69,41 @@ export default function StudentEventsScreen() {
 
   return (
     <AppScreen>
-      <ImageBackground imageStyle={styles.heroImage} source={heroCoverSource} style={styles.heroBand}>
-        <View style={styles.heroOverlay} />
-        <View style={styles.heroContent}>
-          <View style={styles.heroCopyBlock}>
-            <Text style={styles.heroEyebrow}>Student</Text>
-            <Text style={styles.heroTitle}>Event discovery</Text>
-            <Text style={styles.heroCopy}>
-              Pick the next student night, check the route, and open the event before the first scan starts.
-            </Text>
-          </View>
+      <AutoAdvancingRail
+        contentContainerStyle={styles.heroRailContent}
+        intervalMs={3000}
+        itemGap={0}
+        items={discoverySlides}
+        itemWidth={heroWidth}
+        keyExtractor={(slide: DiscoverySlide) => slide.key}
+        railStyle={styles.heroRail}
+        renderItem={(slide: DiscoverySlide) => (
+          <ImageBackground
+            imageStyle={styles.heroImage}
+            source={getEventCoverSource(null, slide.key)}
+            style={styles.heroBand}
+          >
+            <View style={styles.heroOverlay} />
+            <View style={styles.heroContent}>
+              <View style={styles.heroCopyBlock}>
+                <Text style={styles.heroEyebrow}>{slide.eyebrow}</Text>
+                <Text style={styles.heroTitle}>{slide.title}</Text>
+                <Text style={styles.heroCopy}>{slide.copy}</Text>
+              </View>
 
-          <View style={styles.heroMetaRow}>
-            <Text style={styles.heroMetaText}>{activeEvents.length} live now</Text>
-            <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{upcomingEvents.length} coming up</Text>
-          </View>
-        </View>
-      </ImageBackground>
+              <View style={styles.heroMetaRow}>
+                <Text style={styles.heroMetaText}>{slide.meta}</Text>
+                <View style={styles.heroMetaDot} />
+                <View style={styles.heroMetaHint}>
+                  <Text style={styles.heroMetaText}>Auto</Text>
+                  <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={14} />
+                </View>
+              </View>
+            </View>
+          </ImageBackground>
+        )}
+        showsIndicators={false}
+      />
 
       {eventsQuery.error ? (
         <View style={styles.messageCard}>
@@ -110,10 +165,8 @@ const styles = StyleSheet.create({
   },
   heroBand: {
     minHeight: 248,
-    overflow: "hidden",
     position: "relative",
-    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
-    marginTop: -mobileTheme.spacing.screenVertical,
+    width: "100%",
     ...interactiveSurfaceShadowStyle,
   },
   heroCopy: {
@@ -142,6 +195,11 @@ const styles = StyleSheet.create({
   heroImage: {
     borderRadius: 0,
   },
+  heroMetaHint: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
   heroMetaDot: {
     backgroundColor: mobileTheme.colors.limeBorder,
     borderRadius: 999,
@@ -162,6 +220,13 @@ const styles = StyleSheet.create({
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.58)",
+  },
+  heroRail: {
+    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
+    marginTop: -mobileTheme.spacing.screenVertical,
+  },
+  heroRailContent: {
+    paddingRight: 0,
   },
   heroTitle: {
     color: mobileTheme.colors.textPrimary,

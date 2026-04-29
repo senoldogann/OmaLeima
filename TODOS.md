@@ -27,10 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Event Detail Back + My QR Hero)
+## Current Todos (QR + Rewards + Discovery Motion Pass)
 
-- [x] Review the current event-detail hero stacking and My QR opening state.
-- [x] Move the event-detail back action above the hero.
-- [x] Add a full-width event cover band to My QR.
+- [x] Review the current QR, rewards rail, and discovery hero structure.
+- [x] Add a shared auto-advancing horizontal rail.
+- [x] Turn rewards into an idle auto-slider with manual swipe still enabled.
+- [x] Turn discovery into a multi-slide visual/text hero.
+- [x] Compress My QR so the code sits above the fold more reliably.
 - [x] Run mobile lint, typecheck, and export.
 - [ ] Update `PROGRESS.md` with the new handoff note.

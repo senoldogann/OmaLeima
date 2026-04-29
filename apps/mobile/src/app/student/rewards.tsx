@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { useRouter } from "expo-router";
 
@@ -7,6 +7,7 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { getEventCoverSource } from "@/features/events/event-visuals";
+import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { mobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
@@ -111,31 +112,32 @@ export default function StudentRewardsScreen() {
           <View style={styles.railHeader}>
             <View style={styles.railHeaderCopy}>
               <Text style={styles.railTitle}>Event rewards</Text>
-              <Text style={styles.railMeta}>Slide through active reward paths.</Text>
+              <Text style={styles.railMeta}>Slides automatically when idle.</Text>
             </View>
             <View style={styles.railHint}>
-              <Text style={styles.railHintText}>Swipe</Text>
+              <Text style={styles.railHintText}>Auto</Text>
               <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={16} />
             </View>
           </View>
 
-          <ScrollView
+          <AutoAdvancingRail
             contentContainerStyle={styles.railContent}
-            decelerationRate="fast"
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToAlignment="start"
-            snapToInterval={railCardWidth + 14}
-          >
-            {events.map((event) => (
-              <View key={event.id} style={[styles.railCardWrap, { width: railCardWidth }]}>
+            intervalMs={3000}
+            itemGap={14}
+            items={events}
+            itemWidth={railCardWidth}
+            keyExtractor={(event) => event.id}
+            railStyle={null}
+            renderItem={(event) => (
+              <View style={styles.railCardWrap}>
                 <RewardProgressCard
                   event={event}
                   onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
                 />
               </View>
-            ))}
-          </ScrollView>
+            )}
+            showsIndicators={false}
+          />
         </View>
       ) : null}
     </AppScreen>

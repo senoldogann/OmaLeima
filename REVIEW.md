@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Polish the next student visual issues by moving event-detail back navigation above the hero and giving My QR the same image-led top scene language.
+- **Scope:** Make the next student motion/layout pass by shortening My QR so the code is visible without scrolling, auto-advancing rewards, and turning event discovery into an animated image/text slider.
 
 ## Affected Files
 
@@ -14,15 +14,16 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
+- `apps/mobile/src/features/foundation/components/auto-advancing-rail.tsx`
 - `apps/mobile/src/app/student/events/index.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
 - `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/student/rewards.tsx`
 
 ## Risks
 
-- Event detail now uses a full-bleed hero, so an ordinary flow-order back button can end up visually buried underneath it.
-- My QR still starts with a text-heavy block instead of the same visual entrance used by discovery and event detail.
-- The QR screen already carries a lot of functional state, so the added hero cannot make the page longer or noisier.
+- My QR already carries both event context and the QR canvas, so adding more top chrome can easily push the actual code below the fold.
+- Auto-advancing rails can feel broken if manual dragging and timer-driven scrolling fight each other.
+- Discovery slider copy must stay legible over every image variant and still feel related to the current black/lime palette.
 
 ## Dependencies
 
@@ -33,15 +34,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- Event detail already has safe `goBack` fallback logic; the remaining problem is only visual stacking.
-- QR state already knows the selected event and reward overview, so we can derive a cover image without adding new backend calls.
-- Event image fallback logic already lives in `features/events/event-visuals.ts` and should be reused.
+- QR already knows the selected event and reward overview, so the visible-above-the-fold fix can stay in layout territory.
+- Rewards already render a horizontal rail, so the missing piece is timed paging plus a clearer slide cue.
+- Discovery hero already uses the shared event-cover helper, so the slider can reuse the same visual pool instead of inventing a new asset pipeline.
 
 ## Review Outcome
 
-Do a small visual stabilization pass:
+Do a focused motion/layout pass:
 
-- anchor the event-detail back button above the hero surface
-- add a full-width image band to My QR using the existing event cover helper
-- keep the QR page shorter by reusing existing event data instead of adding new sections
-- re-run mobile validation and keep logic unchanged
+- compress the active-event top section so the QR itself appears without extra scrolling
+- reuse a shared auto-advancing horizontal rail for rewards and discovery
+- keep manual swipe intact while letting the rail advance every few seconds when idle
+- re-run mobile validation and keep backend logic unchanged
