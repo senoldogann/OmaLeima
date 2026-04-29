@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/mobile-diagnostics-cleanup`
-- **Scope:** Clean up the remaining mobile diagnostics debt from the physical-device smoke by classifying the current iPhone dev-client runtime correctly and making push diagnostics refresh visibly react in the profile route.
+- **Branch:** `feature/launch-readiness-pack`
+- **Scope:** Turn the current launch guidance into a practical owner-facing rollout pack: what is already verified, what still needs user-owned external setup, which seeded credentials must never survive to a real pilot, and what the public-pilot go/no-go gate actually is.
 
 ## Affected Files
 
@@ -14,34 +14,33 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/lib/push.ts`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/scripts/audit-native-push-device-readiness.mjs`
+- `README.md`
+- `docs/LAUNCH_RUNBOOK.md`
 - `apps/mobile/README.md`
 - `docs/TESTING.md`
 
 ## Risks
 
-- The runtime label should become more accurate without falsely claiming that Expo Go or web counts as a real native push runtime.
-- The refresh button fix should give the user visible feedback without changing the underlying push registration logic or notification capture behavior.
-- The native push readiness audit must stay aligned with the profile diagnostics copy or it will produce false failures.
+- The repo already has several launch-related notes spread across `README.md`, `docs/TESTING.md`, `docs/LAUNCH_RUNBOOK.md`, and the master plan. We should consolidate without duplicating or contradicting those files.
+- Some current hosted smoke credentials are intentionally weak fixtures. The runbook must clearly mark them as temporary and non-production.
+- We should separate “needed before a private hosted pilot” from “needed before public launch” so the user does not feel blocked by domain purchase or store release work too early.
 
 ## Dependencies
 
-- Existing runtime classification helper in `apps/mobile/src/lib/push.ts`
-- Existing diagnostics provider in `apps/mobile/src/features/push/native-push-diagnostics.tsx`
-- Existing profile diagnostics surface and native push readiness audit
+- Existing hosted admin and mobile verification notes in `README.md`
+- Existing event-day operations in `docs/LAUNCH_RUNBOOK.md`
+- Existing architecture and production-readiness ideas in `LEIMA_APP_MASTER_PLAN.md`
 
 ## Existing Logic Checked
 
-- `readPushRuntimeMode()` currently falls back to `bare` whenever `expo-constants` does not report `StoreClient`, even though the user’s physical iPhone smoke is running through a dev client
-- `handleRefreshPushDiagnosticsPress()` currently refreshes permission state but leaves no visible loading or success feedback, so the button looks inert when nothing changes
-- `audit-native-push-device-readiness.mjs` still only checks the older diagnostics copy
+- The project already passed hosted mobile auth, push, QR rotation, manual scanner fallback, stamp creation, and reward-unlock push on a real iPhone.
+- `docs/LAUNCH_RUNBOOK.md` already has strong event-day fallback guidance but does not yet clearly call out owner-only action items and the seeded-account cleanup step.
+- `README.md` links to testing and launch docs but does not yet summarize the current readiness state or the remaining external tasks in one place.
 
 ## Review Outcome
 
-Ship a small diagnostics follow-up that:
+Ship a focused launch-readiness follow-up that:
 
-- classifies the current physical-device dev-client path as a development build when the Expo runtime signals are clearly coming from Metro plus an EAS project id
-- gives the profile diagnostics refresh action visible loading or refreshed feedback
-- updates the existing audit and docs so the diagnostics story stays honest after the smoke we just completed
+- clarifies what has already been verified versus what still needs the user to do outside the repo
+- turns the launch runbook into a practical pilot checklist instead of a generic notes dump
+- marks temporary fixture credentials and public-launch blockers clearly so the next decisions are less fuzzy

@@ -4,10 +4,84 @@
 
 This document is the current launch and event-day operating guide for OmaLeima. It covers:
 
+- what is already verified today
+- what the owner still needs to do outside the repo
 - pre-launch readiness checks
 - event-day operator flow
 - manual fallback when scanning cannot continue normally
 - pilot rollout and rollback expectations
+
+## Current verified state
+
+As of `2026-04-29`, the following paths are already verified in the current hosted setup:
+
+- hosted admin auth and route verification
+- student Google login on a physical iPhone development build
+- hosted device-token registration for push notifications
+- remote push receipt and notification-open response on the same physical iPhone
+- active-event QR generation and 30-second QR rotation
+- hosted event registration for the student test fixture
+- business scanner sign-in with the hosted scanner fixture account
+- real hosted `scan-qr` execution through the mobile scanner fallback
+- stamp creation plus reward-unlock push delivery through the real product path
+
+What is **not** yet fully verified:
+
+- Android physical-device smoke
+- public App Store or Play Store distribution
+- public custom domain cutover
+- production-strength operator credentials replacing seeded smoke accounts
+
+## Owner action items
+
+These are the next user-owned tasks outside the repo. Split them into “needed before a private pilot” and “can wait until a broader public launch.”
+
+### Needed before a private hosted pilot
+
+1. Replace temporary hosted smoke accounts with real operator credentials.
+2. Decide the first real pilot club, event, venue list, and scanner staff roster.
+3. Confirm the hosted Supabase project is the one you want to keep using for the pilot.
+4. Set the final hosted secrets and rotate any weak placeholder values.
+5. Run one last pilot dry-run with real operator accounts before the event date.
+
+### Can wait until later
+
+1. Buying the final custom domain
+2. Moving Supabase Auth off the temporary preview URL
+3. Public App Store submission
+4. Public Play Store submission
+5. Full visual polish pass across the whole mobile UI
+
+## Temporary fixture credentials
+
+The following accounts exist only to support hosted smoke and manual validation. They must not survive into a real pilot unchanged:
+
+- `organizer@omaleima.test`
+- `scanner@omaleima.test`
+- `admin@omaleima.test`
+- any account still using `password123`
+
+Before a private pilot:
+
+1. create real operator accounts
+2. verify access with those accounts
+3. remove or disable temporary smoke accounts
+4. rotate any shared passwords used during development
+
+## Private-pilot go or no-go gate
+
+Treat the project as ready for a **private hosted pilot** only when all of the following are true:
+
+- hosted admin verification passes
+- local QA gates still pass
+- iPhone student flow passes
+- iPhone scanner flow passes
+- remote reward-unlock push is seen on the physical device
+- real pilot operator credentials are in place
+- seeded smoke credentials are disabled or removed
+- event-day fallback ownership is assigned to named people
+
+If any of those are false, the pilot is not green yet.
 
 ## Pre-launch readiness
 
@@ -57,6 +131,11 @@ Run these checks before a hosted pilot or a real event:
    - the latest preview or staging URL loads `/login`
    - anonymous `/admin` redirects to `/login`
    - admin sign-in, oversight, business applications, department tags, and sign-out all pass
+11. Temporary fixture credentials are cleaned up:
+   - `organizer@omaleima.test`
+   - `scanner@omaleima.test`
+   - `admin@omaleima.test`
+   - any credential still using `password123`
 
 ## Hosted staging notes
 
@@ -92,6 +171,15 @@ At that point the remaining human step should be only:
 - enable notifications from the student profile route
 - trigger a real remote reward-unlocked push
 - confirm the diagnostics surface shows a remote source for both receipt and response
+
+## Physical device verification status
+
+Current reality:
+
+- iPhone development-build smoke: passed
+- Android physical-device smoke: not yet passed
+
+That means a private pilot can still move forward if iPhone is the only supported operator path for the first event, but broader public rollout should wait until Android is also validated or intentionally declared out of scope for launch.
 
 ## Custom-domain cutover order
 
@@ -184,6 +272,14 @@ Start with a narrow hosted pilot:
 4. known scanner staff
 5. limited reward inventory
 
+Recommended owner constraint for the first pilot:
+
+- one real organizer
+- one backup organizer
+- one to three scanner staff
+- one fallback communication channel outside the app
+- one named person responsible for manual fallback reconciliation
+
 Success signals for the pilot:
 
 - students can join and open rotating QR without support
@@ -191,6 +287,13 @@ Success signals for the pilot:
 - leaderboard updates stay consistent after repeated refreshes
 - reward claim flow does not oversell stock
 - no unexpected fraud or RLS leaks appear in oversight review
+
+Pilot stop signals:
+
+- scanner staff cannot reliably finish scans within the live event window
+- student login or QR generation fails for multiple users
+- push works inconsistently enough that operators lose trust in reward state
+- seeded or temporary credentials are still mixed into live operator access
 
 ## Rollback
 

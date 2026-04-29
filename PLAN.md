@@ -5,34 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/mobile-diagnostics-cleanup`
-- **Goal:** Remove the last misleading mobile diagnostics states by identifying the current dev-client runtime correctly and making the push diagnostics refresh visibly react on the student profile route.
+- **Branch:** `feature/launch-readiness-pack`
+- **Goal:** Make launch readiness concrete: what is already proven, what still needs user-owned external setup, and what the real private-pilot versus public-launch gates are.
 
 ## Architectural Decisions
 
-- Keep the fix in JavaScript and inside the existing diagnostics path so the already-installed development build can pick it up from Metro without another iOS build.
-- Tighten runtime classification in `readPushRuntimeMode()` using Expo runtime evidence we already have locally: physical-device state, Metro-hosted config, and the EAS project id.
-- Add visible refresh state in the profile route instead of silently refreshing in the background.
-- Extend the current native push readiness audit rather than creating a second overlapping diagnostics audit.
+- Keep this slice documentation-first. The code and smoke path are already in good shape; the missing piece is operational clarity.
+- Reuse `docs/LAUNCH_RUNBOOK.md` as the single home for pilot rollout, rollback, and owner action items instead of adding another overlapping launch doc.
+- Add a short readiness summary to `README.md` so the repo landing page reflects the actual current state without making the user dig through progress notes.
+- Keep domain purchase and app-store work explicitly parked unless they are true blockers for the next hosted pilot.
 
 ## Alternatives Considered
 
-- Leaving the runtime label as `bare`:
-  - rejected because the user already proved a real Expo dev client on a physical iPhone, so the diagnostics would stay misleading
-- Adding a brand new diagnostics provider field for every tap:
-  - rejected because the profile screen can own the short-lived UI feedback locally
-- Ignoring the refresh button complaint and only changing docs:
-  - rejected because the current UX makes a working button feel broken
+- Creating a brand new GTM or rollout document:
+  - rejected because the current runbook already covers event-day and rollback logic; it just needs tighter owner-facing sections
+- Leaving launch guidance only in `PROGRESS.md` handoffs:
+  - rejected because that makes the next human setup steps easy to miss
+- Treating domain purchase and public-store release as immediate blockers:
+  - rejected because the user explicitly wants those later and the next practical step is a controlled pilot, not public release
 
 ## Edge Cases
 
-- Expo Go must still stay a warning state even if it is on a physical device.
-- Web preview must stay `pending` and never be promoted to a native-ready runtime.
-- A manual refresh should not erase the captured notification rows.
-- The audit should fail if the runtime copy or refresh feedback drifts out of sync with the shipped UI.
+- The runbook must clearly distinguish temporary hosted smoke accounts from real operator credentials.
+- The user should be able to see which tasks are mandatory before a private pilot and which can wait until public launch.
+- We should not imply Android or public store readiness is complete when only the iPhone path has been physically verified.
+- The updated README summary must stay short and should point to the runbook rather than duplicate it.
 
 ## Validation Plan
 
-- Run mobile `lint`, `typecheck`, and `export:web`.
-- Run the existing native push device readiness audit after updating it for the new runtime and refresh signals.
-- Update `apps/mobile/README.md`, `docs/TESTING.md`, and the handoff docs with the diagnostics cleanup result.
+- Review and update `docs/LAUNCH_RUNBOOK.md` and `README.md`.
+- Run a lightweight documentation sanity pass by checking the updated sections render logically and do not contradict the current hosted smoke state.
+- Update `PROGRESS.md` and the working docs with the new launch-readiness guidance.
