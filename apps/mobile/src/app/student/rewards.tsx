@@ -1,12 +1,13 @@
-import { useMemo } from "react";
-import { ImageBackground, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { mobileTheme } from "@/features/foundation/theme";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
@@ -57,6 +58,10 @@ export default function StudentRewardsScreen() {
     ]);
   };
 
+  useEffect(() => {
+    void prefetchEventCoverUrls(events.map((event) => event.coverImageUrl));
+  }, [events]);
+
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
@@ -70,7 +75,7 @@ export default function StudentRewardsScreen() {
         ) : null}
       </View>
 
-      <ImageBackground imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
+      <CoverImageSurface imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
         <View style={styles.summaryHeroOverlay} />
         <View style={styles.summaryLead}>
           <Text style={styles.summaryEyebrow}>Reward trail</Text>
@@ -84,7 +89,7 @@ export default function StudentRewardsScreen() {
           <Text style={styles.summaryNumber}>{totalStamps}</Text>
           <Text style={styles.summaryCountLabel}>leimat</Text>
         </View>
-      </ImageBackground>
+      </CoverImageSurface>
 
       {claimableCount > 0 ? (
         <View style={styles.claimableAlert}>

@@ -34,5 +34,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Keep a dev-only student preview entry point for quick visual tuning.
 - [x] Remove the fake celebratory stamp treatment from the business scanner result.
 - [x] Simplify business home, events, history, and scanner copy/hierarchy for staff use.
+- [x] Fix real-device keyboard overlap on the business sign-in flow.
+- [x] Improve event cover loading with a cached image surface and route-level prefetch.
 - [x] Run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the new handoff note.

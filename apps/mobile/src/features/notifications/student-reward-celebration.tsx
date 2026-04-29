@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   Animated,
-  ImageBackground,
   Modal,
   Pressable,
   StyleSheet,
@@ -19,7 +18,8 @@ import {
 } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { CoverImageSurface } from "@/components/cover-image-surface";
+import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { mobileTheme } from "@/features/foundation/theme";
 import type { StudentRewardCelebrationCandidate } from "@/features/notifications/student-reward-notification-model";
 
@@ -276,6 +276,10 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
           `${heroCandidate.eventId}:${heroCandidate.eventName}`
         );
 
+  useEffect(() => {
+    void prefetchEventCoverUrls([heroCandidate?.coverImageUrl ?? null]);
+  }, [heroCandidate?.coverImageUrl]);
+
   return (
     <StudentRewardCelebrationContext.Provider value={contextValue}>
       {children}
@@ -295,7 +299,7 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
                 },
               ]}
             >
-              <ImageBackground
+              <CoverImageSurface
                 imageStyle={styles.heroImage}
                 source={coverSource ?? getEventCoverSource(null, "celebration")}
                 style={styles.card}
@@ -346,7 +350,7 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
                     </Text>
                   </Animated.View>
                 </View>
-              </ImageBackground>
+              </CoverImageSurface>
             </Animated.View>
           </Pressable>
         </Animated.View>

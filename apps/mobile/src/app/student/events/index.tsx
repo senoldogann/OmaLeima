@@ -1,11 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "expo-router";
-import { ImageBackground, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { EventCard } from "@/features/events/components/event-card";
-import { getFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
+import {
+  getFallbackCoverSourceByIndex,
+  prefetchEventCoverUrls,
+} from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
@@ -29,10 +33,20 @@ export default function StudentEventsScreen() {
     isEnabled: studentId !== null,
   });
 
-  const activeEvents = eventsQuery.data?.activeEvents ?? [];
-  const upcomingEvents = eventsQuery.data?.upcomingEvents ?? [];
+  const activeEvents = useMemo(
+    () => eventsQuery.data?.activeEvents ?? [],
+    [eventsQuery.data?.activeEvents]
+  );
+  const upcomingEvents = useMemo(
+    () => eventsQuery.data?.upcomingEvents ?? [],
+    [eventsQuery.data?.upcomingEvents]
+  );
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
   const heroWidth = windowWidth;
+  const coverImageUrls = useMemo(
+    () => [...activeEvents, ...upcomingEvents].map((event) => event.coverImageUrl),
+    [activeEvents, upcomingEvents]
+  );
   const discoverySlides = useMemo<readonly DiscoverySlide[]>(
     () => [
       {
@@ -67,6 +81,10 @@ export default function StudentEventsScreen() {
     });
   };
 
+  useEffect(() => {
+    void prefetchEventCoverUrls(coverImageUrls);
+  }, [coverImageUrls]);
+
   return (
     <AppScreen>
       <AutoAdvancingRail
@@ -78,7 +96,7 @@ export default function StudentEventsScreen() {
         keyExtractor={(slide: DiscoverySlide) => slide.key}
         railStyle={styles.heroRail}
         renderItem={(slide: DiscoverySlide, index: number) => (
-          <ImageBackground
+          <CoverImageSurface
             imageStyle={styles.heroImage}
             source={getFallbackCoverSourceByIndex(index)}
             style={styles.heroBand}
@@ -100,7 +118,7 @@ export default function StudentEventsScreen() {
                 </View>
               </View>
             </View>
-          </ImageBackground>
+          </CoverImageSurface>
         )}
         showsIndicators={false}
       />

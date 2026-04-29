@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useRouter } from "expo-router";
@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
+  const passwordInputRef = useRef<TextInput | null>(null);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -59,6 +60,8 @@ export const BusinessPasswordSignIn = () => {
     }
   };
 
+  const canSubmit = !isLoading && email.trim().length > 0 && password.length > 0;
+
   return (
     <View style={styles.container}>
       <View style={styles.fieldGroup}>
@@ -69,9 +72,12 @@ export const BusinessPasswordSignIn = () => {
           editable={!isLoading}
           keyboardType="email-address"
           onChangeText={setEmail}
+          onSubmitEditing={() => passwordInputRef.current?.focus()}
           placeholder="scanner@example.com"
           placeholderTextColor="#64748B"
+          returnKeyType="next"
           style={styles.input}
+          submitBehavior="submit"
           value={email}
         />
       </View>
@@ -81,16 +87,24 @@ export const BusinessPasswordSignIn = () => {
         <TextInput
           editable={!isLoading}
           onChangeText={setPassword}
+          onSubmitEditing={() => {
+            if (canSubmit) {
+              void handlePress();
+            }
+          }}
           placeholder="Use the current hosted scanner password"
           placeholderTextColor="#64748B"
+          ref={passwordInputRef}
+          returnKeyType="done"
           secureTextEntry
           style={styles.input}
+          submitBehavior="blurAndSubmit"
           value={password}
         />
       </View>
 
       <Pressable
-        disabled={isLoading || email.trim().length === 0 || password.length === 0}
+        disabled={!canSubmit}
         onPress={handlePress}
         style={({ pressed }) => [
           styles.button,

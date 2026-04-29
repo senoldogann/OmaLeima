@@ -1,5 +1,6 @@
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
@@ -67,7 +68,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
       style={({ pressed }) => [styles.pressable, pressed ? styles.pressablePressed : null]}
     >
       <InfoCard eyebrow={event.city} motionIndex={motionIndex} title={event.name}>
-        <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
+        <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
           <View style={styles.heroOverlay} />
           <View style={styles.heroContent}>
             <View style={styles.badges}>
@@ -80,7 +81,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
               <Text style={styles.heroTimeline}>{formatDateTime(event.startAt)}</Text>
             </View>
           </View>
-        </ImageBackground>
+        </CoverImageSurface>
 
         <Text style={styles.description}>
           {event.description ?? "Event description will be added by the organizer."}

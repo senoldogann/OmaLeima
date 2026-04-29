@@ -1,13 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo } from "react";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   useJoinEventMutation,
@@ -226,6 +227,10 @@ export default function StudentEventDetailScreen() {
 
   const joinMutation = useJoinEventMutation();
 
+  useEffect(() => {
+    void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
+  }, [detailQuery.data?.coverImageUrl]);
+
   if (eventId === null) {
     return (
       <AppScreen>
@@ -289,7 +294,7 @@ export default function StudentEventDetailScreen() {
 
       {event ? (
         <>
-          <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
+          <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
             <View style={styles.heroOverlay} />
             <View style={styles.heroContent}>
               <View style={styles.heroHeading}>
@@ -327,7 +332,7 @@ export default function StudentEventDetailScreen() {
                 </View>
               </View>
             </View>
-          </ImageBackground>
+          </CoverImageSurface>
 
           <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
             <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>

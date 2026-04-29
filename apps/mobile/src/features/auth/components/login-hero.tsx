@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  ImageBackground,
   StyleSheet,
   Text,
   View,
@@ -8,6 +7,7 @@ import {
 } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { getFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { mobileTheme } from "@/features/foundation/theme";
@@ -62,7 +62,7 @@ export const LoginHero = () => {
         keyExtractor={(slide: OnboardingSlide) => slide.key}
         railStyle={styles.rail}
         renderItem={(slide: OnboardingSlide, index: number) => (
-          <ImageBackground
+          <CoverImageSurface
             imageStyle={styles.slideImage}
             source={getFallbackCoverSourceByIndex(index)}
             style={styles.slide}
@@ -77,7 +77,7 @@ export const LoginHero = () => {
                 <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={14} />
               </View>
             </View>
-          </ImageBackground>
+          </CoverImageSurface>
         )}
         showsIndicators={false}
       />

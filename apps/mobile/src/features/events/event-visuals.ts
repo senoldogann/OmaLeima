@@ -1,4 +1,5 @@
 import type { ImageSourcePropType } from "react-native";
+import { Image } from "react-native";
 
 const fallbackCoverSources = [
   require("../../../assets/event-covers/laser-crowd.jpg"),
@@ -59,4 +60,25 @@ export const getEventCoverSource = (
   }
 
   return createFallbackCoverSource(eventKey);
+};
+
+export const prefetchEventCoverUrls = async (
+  coverImageUrls: readonly (string | null)[]
+): Promise<void> => {
+  const uniqueUrls = [...new Set(coverImageUrls)]
+    .filter((value): value is string => value !== null)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  await Promise.all(
+    uniqueUrls.map(async (url) => {
+      try {
+        await Image.prefetch(url);
+      } catch {
+        return false;
+      }
+
+      return true;
+    })
+  );
 };

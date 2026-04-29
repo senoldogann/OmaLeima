@@ -1,14 +1,15 @@
-import { useMemo } from "react";
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { SvgXml } from "react-native-svg";
 
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import {
@@ -146,6 +147,10 @@ export default function StudentActiveEventScreen() {
     ]);
   };
 
+  useEffect(() => {
+    void prefetchEventCoverUrls([selectedRewardEvent?.coverImageUrl ?? null]);
+  }, [selectedRewardEvent?.coverImageUrl]);
+
   return (
     <AppScreen>
       {qrContextQuery.error ? (
@@ -169,7 +174,7 @@ export default function StudentActiveEventScreen() {
       ) : null}
 
       {selectedEvent !== null && eventCoverSource ? (
-        <ImageBackground imageStyle={styles.eventHeroImage} source={eventCoverSource} style={styles.eventHero}>
+        <CoverImageSurface imageStyle={styles.eventHeroImage} source={eventCoverSource} style={styles.eventHero}>
           <View style={styles.eventHeroOverlay} />
           <View style={styles.eventHeroContent}>
             <Text style={styles.eventHeroEyebrow}>{selectedEvent.city}</Text>
@@ -180,7 +185,7 @@ export default function StudentActiveEventScreen() {
                 : `Starts ${formatDateTime(selectedEvent.startAt)}`}
             </Text>
           </View>
-        </ImageBackground>
+        </CoverImageSurface>
       ) : null}
 
       {selectedEvent?.viewState === "UPCOMING" ? (

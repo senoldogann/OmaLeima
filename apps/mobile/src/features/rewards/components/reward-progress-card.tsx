@@ -1,5 +1,6 @@
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
@@ -133,7 +134,7 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       title={event.name}
       variant={hasClaimable ? "scene" : "card"}
     >
-      <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
+      <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
         <View style={styles.heroOverlay} />
         <View style={styles.heroContent}>
           <View style={styles.badges}>
@@ -146,7 +147,7 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
             {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
           </Text>
         </View>
-      </ImageBackground>
+      </CoverImageSurface>
 
       {/* Badges */}
       
