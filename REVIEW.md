@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Review the new STARK theme wave started by another agent, make sure it does not break the product, fix the real compile/runtime issues it introduced, and carry the same theme language into the remaining mobile surfaces that still look half-updated.
+- **Scope:** Remove user-facing diagnostics and internal status surfaces from the mobile product UI, keep only genuinely useful user/business flows visible, and verify whether the hosted admin login page is actually blank or blocked by deployment protection.
 
 ## Affected Files
 
@@ -28,16 +28,21 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/student/events/index.tsx`
 - `apps/mobile/src/app/student/leaderboard.tsx`
 - `apps/mobile/src/app/auth/login.tsx`
+- `apps/mobile/src/app/auth/callback.tsx`
+- `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/features/auth/components/login-hero.tsx`
 - `apps/mobile/src/features/events/components/event-card.tsx`
 - `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/admin/src/app/login/page.tsx`
+- `apps/admin/src/features/auth/components/admin-login-panel.tsx`
+- `apps/admin/src/app/globals.css`
 
 ## Risks
 
-- The new STARK wave already introduced a real compile break in `business/home.tsx`; we need to treat this as a live integration pass, not just visual polish.
-- Several screens now mix the new opaque STARK tokens with older blue/glass accents, which can make the app feel inconsistent even when each file looks fine alone.
-- The QR and scanner flows are already physically validated, so theme continuation must not weaken readability, countdown clarity, or scan-result urgency.
-- The agent changed admin global CSS heavily; mobile continuation should stay focused and not casually reopen web logic or routing.
+- Some of the current status cards are not just ugly; they leak internal implementation details such as redirect URIs, backend token registration state, and diagnostics phrasing that users never need to read.
+- The profile route currently mixes real user settings with deep technical push smoke output. Removing too much could make notification opt-in harder, but leaving it as-is hurts product trust.
+- The QR route still contains a dev smoke token block and extra readiness copy. That is fine for engineering, not for a real user-facing app.
+- The hosted admin page may look blank because of Vercel preview protection rather than broken app code; we need to verify the deployment response before touching auth logic unnecessarily.
 
 ## Dependencies
 
@@ -52,17 +57,18 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- Another agent already started a new STARK theme direction: darker opaque surfaces, lime/cyan/pink accents, less glass and fewer soft halos.
-- That direction is materially different from the earlier liquid-glass pass, but the user explicitly asked us to continue this new theme logic and color language rather than revert it.
-- The branch currently fails mobile lint/typecheck because `business/home.tsx` imports the wrong Supabase module and references a non-existent `joinedEvents` field.
-- `student/events/index.tsx`, `student/leaderboard.tsx`, `business/history.tsx`, `auth/login.tsx`, and `login-hero.tsx` still show clear pre-STARK visual leftovers.
-- `reward-progress-card.tsx`, `student/rewards.tsx`, `student/active-event.tsx`, and `business/scanner.tsx` are already partially migrated and should become the reference for the rest of this pass.
+- The STARK theme continuation is already in place and technically stable after the previous regression fixes.
+- `auth/login.tsx` still shows an `Access status` panel with Supabase URL, redirect URI, and route diagnostics that normal users should never see.
+- `student/events/index.tsx` still shows a `Student events query` status panel that repeats implementation details instead of helping the student make a choice.
+- `student/active-event.tsx` still exposes QR readiness diagnostics and a dev smoke token surface.
+- `student/profile.tsx` still shows large push smoke panels for runtime path, project id, last received notification, and last notification response.
+- The hosted admin login build succeeds locally, while the hosted URL currently responds with HTTP 401 from Vercel, which strongly points to preview protection rather than a broken Next.js route.
 
 ## Review Outcome
 
-Continue the redesign in the new STARK direction, but do it as a hardening pass:
+Keep the STARK direction, but tighten the product boundary:
 
-- fix the real compile and lint regressions first
-- normalize the remaining mobile surfaces to the same theme language
-- preserve validated product behavior while changing presentation only
-- keep admin work out of scope unless a clear shared-token issue forces it
+- remove user-facing diagnostics and readiness panels from normal flows
+- leave only user-meaningful content, actions, and error states
+- simplify the profile push area into a normal notification preference surface
+- treat the hosted admin blank-page report as a deployment protection issue unless a local build or route check says otherwise

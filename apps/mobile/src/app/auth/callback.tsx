@@ -4,7 +4,6 @@ import { StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
@@ -89,26 +88,28 @@ export default function AuthCallbackScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Auth" title="Completing sign-in">
+      <InfoCard eyebrow="Auth" title={createCallbackTitle(callbackState.status)}>
         <Text selectable style={styles.bodyText}>
-          OmaLeima is exchanging the returned OAuth code for a Supabase session and then resolving the correct mobile area.
+          {callbackState.detail}
         </Text>
       </InfoCard>
-
-      <FoundationStatusCard
-        eyebrow="Callback"
-        title="OAuth callback status"
-        items={[
-          {
-            label: "Result",
-            value: callbackState.detail,
-            state: callbackState.status,
-          },
-        ]}
-      />
     </AppScreen>
   );
 }
+
+const createCallbackTitle = (status: AppReadinessState): string => {
+  switch (status) {
+    case "error":
+      return "Sign-in could not finish";
+    case "warning":
+      return "Sign-in needs attention";
+    case "ready":
+      return "Sign-in complete";
+    case "loading":
+    case "pending":
+      return "Completing sign-in";
+  }
+};
 
 const styles = StyleSheet.create({
   bodyText: {

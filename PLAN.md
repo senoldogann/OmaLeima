@@ -6,44 +6,51 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Stabilize and continue the new STARK theme wave so the current branch is both visually coherent and technically safe.
+- **Goal:** Strip engineering diagnostics out of the shipped mobile UI, keep the STARK theme intact, and verify whether the hosted admin login issue is a real app bug or just preview protection.
 
 ## Architectural Decisions
 
-- Accept the new STARK direction as the active redesign language for this branch instead of trying to merge two competing styles.
-- Fix compile/runtime issues before broadening the theme pass any further.
-- Use already-migrated STARK surfaces (`active-event`, `rewards`, `scanner`, `reward-progress-card`) as the style reference for remaining screens.
-- Keep the scope on mobile surfaces in this turn; admin already typechecks and the user’s immediate concern is the app theme continuity.
-- Preserve all validated product logic and stay at the presentation/layout/token layer.
+- Keep the current STARK theme language; this pass is about product boundary cleanup, not another visual pivot.
+- Remove debug and diagnostics panels from normal user flows instead of merely restyling them.
+- Preserve true error states and recovery actions; users still need graceful failure handling.
+- Simplify notification settings into a user-facing opt-in card rather than exposing runtime smoke internals.
+- Treat the hosted admin report as two separate checks:
+  - local admin app must still lint, typecheck, and build
+  - hosted login URL must be checked at the HTTP layer for protection vs runtime failure
 
 ## Alternatives Considered
 
-- Revert the STARK wave back to the previous liquid-glass pass:
-  - rejected because the user explicitly wants us to continue the new theme language
-- Keep only the compile fix and avoid touching the remaining old-looking screens:
-  - rejected because the branch would still feel visually split and unfinished
-- Continue into admin pages in the same pass:
-  - rejected because the highest-value inconsistency is still in the mobile routes
+- Leave diagnostics visible but hide them under smaller cards:
+  - rejected because the issue is not only visual noise; the content itself is not meant for normal users
+- Remove all error and auth-state feedback too:
+  - rejected because that would hurt recovery when auth or profile loading actually fails
+- Change hosted admin auth logic immediately:
+  - rejected because the current evidence points to Vercel preview protection, so changing route code first would be guesswork
 
 ## Edge Cases
 
-- The new theme intentionally uses older compatibility aliases in `mobileTheme`; if we replace too many at once, we can cause unnecessary wide diffs.
-- Some screens still rely on `InfoCard` and `StatusBadge` as structure. The safest continuation is to restyle through those primitives and local screen layout, not invent parallel one-off blocks everywhere.
-- Student event and leaderboard screens carry dense information; the STARK pass must improve hierarchy without flattening everything into identical boxes.
-- Login and history screens should join the new direction without losing clarity around auth mode and operator actions.
+- The profile screen still needs a clear notification action even after diagnostics are removed; otherwise push opt-in becomes harder to discover.
+- The QR route still needs visible error and retry behavior when token refresh fails.
+- Some status cards are used in auth callback and access-resolution flows. Those should become simple loading or error copy, not disappear entirely.
+- The hosted admin URL may remain inaccessible from the browser until the Vercel protection layer is satisfied, even if local code is healthy.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the STARK continuation slice.
-- Fix `business/home.tsx` so mobile lint/typecheck go green again.
-- Move the most obviously inconsistent mobile screens onto the same STARK language:
-  - `student/events/index.tsx`
-  - `student/leaderboard.tsx`
-  - `business/history.tsx`
-  - `auth/login.tsx`
-  - `login-hero.tsx`
-  - `event-card.tsx`
-- Run `npm --prefix apps/mobile run lint`.
-- Run `npm --prefix apps/mobile run typecheck`.
-- Run `npm --prefix apps/mobile run export:web`.
-- Update `PROGRESS.md` with the STARK continuation handoff note.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the UI cleanup slice.
+- Remove diagnostics from:
+  - `auth/login`
+  - `auth/callback`
+  - `student/events/index`
+  - `student/active-event`
+  - `student/profile`
+- Keep push enablement functional while simplifying profile presentation.
+- Verify admin locally with:
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run build`
+- Verify hosted admin response with a direct HTTP check.
+- Verify mobile with:
+  - `npm --prefix apps/mobile run lint`
+  - `npm --prefix apps/mobile run typecheck`
+  - `npm --prefix apps/mobile run export:web`
+- Update `PROGRESS.md` with the cleanup handoff note and the Vercel protection finding.

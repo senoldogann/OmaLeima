@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { EventCard } from "@/features/events/components/event-card";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useSession } from "@/providers/session-provider";
@@ -47,30 +46,6 @@ export default function StudentEventsScreen() {
           </View>
         </View>
       </InfoCard>
-
-      <FoundationStatusCard
-        eyebrow="Status"
-        title="Student events query"
-        items={[
-          {
-            label: "Session",
-            value: studentId ?? "No authenticated student session.",
-            state: studentId ? "ready" : "error",
-          },
-          {
-            label: "Event listing",
-            value: eventsQuery.isLoading
-              ? "Loading public active and upcoming events."
-              : eventsQuery.error?.message ?? `${activeEvents.length + upcomingEvents.length} visible events loaded.`,
-            state: eventsQuery.isLoading ? "loading" : eventsQuery.error ? "error" : "ready",
-          },
-          {
-            label: "Detail route",
-            value: "Each event card now opens a nested event detail screen inside the Events tab.",
-            state: "ready",
-          },
-        ]}
-      />
 
       {eventsQuery.error ? (
         <InfoCard eyebrow="Error" motionIndex={2} title="Could not load events">

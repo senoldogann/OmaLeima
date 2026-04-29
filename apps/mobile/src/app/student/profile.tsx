@@ -5,7 +5,6 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
 import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
@@ -22,30 +21,6 @@ import {
   type PushDeviceRegistrationResult,
 } from "@/features/push/device-registration";
 import { useSession } from "@/providers/session-provider";
-import type { AppReadinessState, PushNotificationCapture } from "@/types/app";
-
-const diagnosticsRefreshFormatter = new Intl.DateTimeFormat("en-FI", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
-const mapPushResultState = (state: PushDeviceRegistrationResult["state"]): AppReadinessState => {
-  switch (state) {
-    case "registered":
-      return "ready";
-    case "denied":
-      return "warning";
-    case "misconfigured":
-      return "error";
-    case "error":
-      return "error";
-    case "granted":
-      return "ready";
-    case "unavailable":
-      return "pending";
-  }
-};
 
 const createTagSummary = (count: number, remainingTagSlots: number): string => {
   if (count === 0) {
@@ -72,65 +47,6 @@ const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
 const createMutationError = (errors: (string | null)[]): string | null =>
   errors.find((error): error is string => error !== null) ?? null;
 
-const mapPushRuntimeState = (
-  runtime: "web" | "expo-go" | "development-build" | "standalone" | "bare",
-  isPhysicalDevice: boolean
-): AppReadinessState => {
-  if (runtime === "development-build" && isPhysicalDevice) {
-    return "ready";
-  }
-
-  if (runtime === "standalone" && isPhysicalDevice) {
-    return "ready";
-  }
-
-  if (runtime === "expo-go") {
-    return "warning";
-  }
-
-  if (runtime === "web") {
-    return "pending";
-  }
-
-  return "warning";
-};
-
-const createPushRuntimeDetail = (
-  runtime: "web" | "expo-go" | "development-build" | "standalone" | "bare",
-  isPhysicalDevice: boolean
-): string => {
-  const deviceDetail = isPhysicalDevice ? "physical device" : "simulator or desktop runtime";
-
-  switch (runtime) {
-    case "development-build":
-      return `Development build on ${deviceDetail}.`;
-    case "standalone":
-      return `Standalone build on ${deviceDetail}.`;
-    case "expo-go":
-      return `Expo Go on ${deviceDetail}; remote push smoke still needs a development build.`;
-    case "web":
-      return "Web preview cannot receive native remote push notifications.";
-    case "bare":
-      return `Bare runtime on ${deviceDetail}.`;
-  }
-};
-
-const mapPushPermissionState = (
-  state: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
-): AppReadinessState => {
-  switch (state) {
-    case "granted":
-    case "provisional":
-      return "ready";
-    case "denied":
-      return "warning";
-    case "undetermined":
-      return "pending";
-    case "unavailable":
-      return "pending";
-  }
-};
-
 const createPushPermissionDetail = (
   state: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
 ): string => {
@@ -148,72 +64,23 @@ const createPushPermissionDetail = (
   }
 };
 
-const createNotificationCaptureDetail = (
-  capture: PushNotificationCapture | null,
-  emptyDetail: string
+const createPushPreferenceSummary = (
+  permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable",
+  pushState: PushDeviceRegistrationResult | null
 ): string => {
-  if (capture === null) {
-    return emptyDetail;
+  if (pushState?.state === "registered") {
+    return "Notifications are active on this device.";
   }
 
-  const summaryParts = [
-    capture.title ?? "Untitled notification",
-    `${capture.source} / ${capture.triggerType}`,
-    capture.dataType,
-    capture.eventId,
-    capture.rewardTierId,
-    capture.actionIdentifier,
-    capture.capturedAt,
-  ].filter((part): part is string => part !== null && part.length > 0);
-
-  return summaryParts.join(" · ");
-};
-
-const mapNotificationCaptureState = (capture: PushNotificationCapture | null): AppReadinessState => {
-  if (capture === null) {
-    return "pending";
-  }
-
-  if (capture.source === "remote") {
-    return "ready";
-  }
-
-  return "warning";
-};
-
-const createNotificationCaptureStatusDetail = (
-  capture: PushNotificationCapture | null,
-  emptyDetail: string
-): string => {
-  const detail = createNotificationCaptureDetail(capture, emptyDetail);
-
-  if (capture === null || capture.source === "remote") {
-    return detail;
-  }
-
-  return `${detail} · Local notification activity does not prove remote APNs or FCM delivery yet.`;
-};
-
-const createDiagnosticsRefreshDetail = (value: string | null): string => {
-  if (value === null) {
-    return "No manual diagnostics refresh has been recorded in this app session yet.";
-  }
-
-  return `Last refreshed at ${diagnosticsRefreshFormatter.format(new Date(value))}.`;
+  return createPushPermissionDetail(permissionState);
 };
 
 export default function StudentProfileScreen() {
-  const { bootstrapError, session } = useSession();
-  const {
-    clearCapturedPushActivity,
-    diagnostics,
-    refreshPushPermissionStateAsync,
-  } = useNativePushDiagnostics();
+  const { session } = useSession();
+  const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
-  const [isRefreshingPushDiagnostics, setIsRefreshingPushDiagnostics] = useState<boolean>(false);
-  const [lastPushDiagnosticsRefreshAt, setLastPushDiagnosticsRefreshAt] = useState<string | null>(null);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -257,18 +124,6 @@ export default function StudentProfileScreen() {
     });
     setPushState(result);
     await refreshPushPermissionStateAsync();
-    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
-  };
-
-  const handleRefreshPushDiagnosticsPress = async (): Promise<void> => {
-    setIsRefreshingPushDiagnostics(true);
-
-    try {
-      await refreshPushPermissionStateAsync();
-      setLastPushDiagnosticsRefreshAt(new Date().toISOString());
-    } finally {
-      setIsRefreshingPushDiagnostics(false);
-    }
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -320,8 +175,6 @@ export default function StudentProfileScreen() {
   };
 
   const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
-  const hasCapturedPushActivity =
-    diagnostics.lastNotification !== null || diagnostics.lastNotificationResponse !== null;
 
   return (
     <AppScreen>
@@ -337,31 +190,6 @@ export default function StudentProfileScreen() {
           </Text>
         </View>
       </InfoCard>
-
-      <FoundationStatusCard
-        eyebrow="Session"
-        title="Profile state"
-        items={[
-          {
-            label: "Persisted session",
-            value: session?.user.email ?? bootstrapError ?? "No user session yet.",
-            state: session ? "ready" : bootstrapError ? "error" : "pending",
-          },
-          {
-            label: "Department tags",
-            value:
-              profileOverviewQuery.isLoading
-                ? "Loading selected and suggested department tags."
-                : profileOverviewQuery.error?.message ?? createTagSummary(selectedTags.length, remainingTagSlots),
-            state: profileOverviewQuery.isLoading ? "loading" : profileOverviewQuery.error ? "error" : "ready",
-          },
-          {
-            label: "Push backend",
-            value: "register-device-token stays available for this student profile route.",
-            state: "ready",
-          },
-        ]}
-      />
 
       {profileOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening profile">
@@ -507,13 +335,18 @@ export default function StudentProfileScreen() {
         </InfoCard>
       ) : null}
 
-      <InfoCard eyebrow="Push" title="Notification readiness">
+      <InfoCard eyebrow="Push" title="Notifications">
         <Text selectable style={styles.bodyText}>
-          Enable notifications on a physical device to request permission, obtain the Expo push token, and register it with the backend for this signed-in student.
+          Turn on notifications here so reward unlocks and event-day updates can reach this device.
         </Text>
         <Text selectable style={styles.metaText}>
-          Expo Go is not enough for remote push testing on SDK 53 and later. Use a development build on a physical device for the full path.
+          {createPushPreferenceSummary(diagnostics.permissionState, pushState)}
         </Text>
+        {pushState !== null ? (
+          <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
+            {pushState.detail}
+          </Text>
+        ) : null}
         <Pressable
           style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
           onPress={handleRegisterPushPress}
@@ -523,101 +356,6 @@ export default function StudentProfileScreen() {
             {registerPushMutation.isPending ? "Enabling notifications..." : "Enable notifications on this device"}
           </Text>
         </Pressable>
-      </InfoCard>
-
-      {pushState ? (
-        <FoundationStatusCard
-          eyebrow="Result"
-          title="Last notification registration result"
-          items={[
-            {
-              label: "Device state",
-              value: pushState.detail,
-              state: mapPushResultState(pushState.state),
-            },
-            {
-              label: "Expo token",
-              value: pushState.expoPushToken ?? "No token produced in this run.",
-              state: pushState.expoPushToken ? "ready" : "pending",
-            },
-            {
-              label: "Backend registration",
-              value:
-                pushState.backendDeviceTokenId === null
-                  ? pushState.backendStatus ?? "Token was not registered with the backend in this run."
-                  : `Device token stored as ${pushState.backendDeviceTokenId}.`,
-              state: pushState.backendDeviceTokenId === null ? mapPushResultState(pushState.state) : "ready",
-            },
-          ]}
-        />
-      ) : null}
-
-      <FoundationStatusCard
-        eyebrow="Diagnostics"
-        title="Native push device smoke"
-        items={[
-          {
-            label: "Runtime path",
-            value: createPushRuntimeDetail(diagnostics.runtime, diagnostics.isPhysicalDevice),
-            state: mapPushRuntimeState(diagnostics.runtime, diagnostics.isPhysicalDevice),
-          },
-          {
-            label: "EAS project id",
-            value: diagnostics.projectId ?? "Project id is missing from the app config.",
-            state: diagnostics.projectId === null ? "error" : "ready",
-          },
-          {
-            label: "Last diagnostics refresh",
-            value: createDiagnosticsRefreshDetail(lastPushDiagnosticsRefreshAt),
-            state: lastPushDiagnosticsRefreshAt === null ? "pending" : "ready",
-          },
-          {
-            label: "Permission snapshot",
-            value: createPushPermissionDetail(diagnostics.permissionState),
-            state: mapPushPermissionState(diagnostics.permissionState),
-          },
-          {
-            label: "Last received notification",
-            value: createNotificationCaptureStatusDetail(
-              diagnostics.lastNotification,
-              "No notification has been captured in this app session yet."
-            ),
-            state: mapNotificationCaptureState(diagnostics.lastNotification),
-          },
-          {
-            label: "Last notification response",
-            value: createNotificationCaptureStatusDetail(
-              diagnostics.lastNotificationResponse,
-              "No notification open or action response has been captured yet."
-            ),
-            state: mapNotificationCaptureState(diagnostics.lastNotificationResponse),
-          },
-        ]}
-      />
-
-      <InfoCard eyebrow="Smoke" title="Manual device verification">
-        <Text selectable style={styles.bodyText}>
-          After installing a development build on a physical iPhone or Android device, use this profile route to confirm runtime mode, permission state, and the last remote push that reached or opened the app.
-        </Text>
-        <Text selectable style={styles.metaText}>
-          Local foreground reward notifications can still appear here, but only rows marked from a remote source prove APNs or FCM-backed delivery.
-        </Text>
-        <View style={styles.actionRow}>
-          <Pressable
-            disabled={isRefreshingPushDiagnostics}
-            onPress={() => void handleRefreshPushDiagnosticsPress()}
-            style={[styles.secondaryButton, isRefreshingPushDiagnostics ? styles.disabledButton : null]}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isRefreshingPushDiagnostics ? "Refreshing..." : "Refresh push diagnostics"}
-            </Text>
-          </Pressable>
-          {hasCapturedPushActivity ? (
-            <Pressable onPress={clearCapturedPushActivity} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
-            </Pressable>
-          ) : null}
-        </View>
       </InfoCard>
 
       <InfoCard eyebrow="Account" title="Session actions">
@@ -631,11 +369,6 @@ export default function StudentProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",

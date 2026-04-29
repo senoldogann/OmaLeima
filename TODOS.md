@@ -27,13 +27,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (STARK Continuation Wave)
+## Current Todos (UI Cleanup and Hosted Login Check)
 
-- [x] Review the new STARK theme changes and identify real regressions.
-- [x] Fix current compile/lint regressions in `business/home.tsx` and related imports.
-- [x] Bring `student/events/index.tsx` onto the STARK theme language.
-- [x] Bring `student/leaderboard.tsx` onto the STARK theme language.
-- [x] Bring `business/history.tsx` onto the STARK theme language.
-- [x] Bring `auth/login.tsx`, `login-hero.tsx`, and `event-card.tsx` onto the STARK theme language.
+- [x] Review the remaining user-facing diagnostics and identify which ones should disappear entirely.
+- [x] Remove internal auth diagnostics from the mobile login and callback routes.
+- [x] Remove event and QR readiness diagnostics from the student event surfaces.
+- [x] Simplify the profile push area into a normal notification settings surface.
+- [x] Verify whether the hosted admin login issue is a real app failure or Vercel preview protection.
+- [x] Run admin lint, typecheck, and production build validation.
 - [x] Run mobile lint, typecheck, and export validation.
-- [x] Update `PROGRESS.md` with the STARK continuation handoff note.
+- [x] Update `PROGRESS.md` with the cleanup handoff note.

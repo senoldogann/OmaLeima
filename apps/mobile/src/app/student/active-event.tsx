@@ -8,7 +8,6 @@ import { SvgXml } from "react-native-svg";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   selectStudentQrEvent,
@@ -23,7 +22,6 @@ import {
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
-import type { AppReadinessState } from "@/types/app";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
   weekday: "short",
@@ -34,17 +32,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 });
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
-
-const mapProtectionState = (
-  status: "ACTIVE" | "UNAVAILABLE" | "WEB_PREVIEW" | "ERROR"
-): AppReadinessState => {
-  switch (status) {
-    case "ACTIVE": return "ready";
-    case "ERROR": return "error";
-    case "UNAVAILABLE": return "warning";
-    case "WEB_PREVIEW": return "pending";
-  }
-};
 
 // Rotating border animation for live QR
 const useRotatingBorder = (enabled: boolean) => {
@@ -132,10 +119,6 @@ export default function StudentActiveEventScreen() {
   const countdownSeconds = useQrCountdown(refreshAfterSeconds, qrTokenQuery.dataUpdatedAt, shouldRefreshQr);
   const refreshProgressRatio =
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
-  const hostedSmokeToken = qrTokenQuery.data?.qrPayload.token ?? null;
-  const showHostedSmokeCard =
-    __DEV__ && selectedEvent?.viewState === "ACTIVE" && typeof hostedSmokeToken === "string";
-
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
   const borderRotation = useRotatingBorder(isQrLive);
 
@@ -301,44 +284,9 @@ export default function StudentActiveEventScreen() {
             </Text>
           </View>
 
-          {/* Diagnostics — only when protection is not ACTIVE */}
           {protection.status !== "ACTIVE" ? (
-            <FoundationStatusCard
-              eyebrow="Readiness"
-              title="QR screen status"
-              items={[
-                {
-                  label: "Registered event",
-                  value:
-                    selectedEvent === null
-                      ? "No registered active or upcoming event found."
-                      : `${selectedEvent.name} (${selectedEvent.viewState.toLowerCase()})`,
-                  state: selectedEvent === null ? "warning" : "ready",
-                },
-                {
-                  label: "QR refresh",
-                  value:
-                    qrTokenQuery.isLoading
-                      ? "Requesting QR token."
-                      : qrTokenQuery.error?.message ?? "Token refresh loop ready.",
-                  state: qrTokenQuery.isLoading ? "loading" : qrTokenQuery.error ? "error" : "ready",
-                },
-                {
-                  label: "Capture protection",
-                  value: protection.detail,
-                  state: mapProtectionState(protection.status),
-                },
-              ]}
-            />
-          ) : null}
-
-          {/* Dev smoke */}
-          {showHostedSmokeCard ? (
-            <InfoCard eyebrow="Dev" motionIndex={6} title="Smoke token">
-              <View style={styles.tokenBox}>
-                <Text selectable style={styles.tokenText}>{hostedSmokeToken}</Text>
-              </View>
-              <Text style={styles.dimText}>Dev builds only.</Text>
+            <InfoCard eyebrow="Notice" motionIndex={6} title="Screen capture protection is limited here">
+              <Text style={styles.bodyText}>{protection.detail}</Text>
             </InfoCard>
           ) : null}
         </>
@@ -384,11 +332,6 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 22,
-  },
-  dimText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
   },
 
   // --- Identity block ---
@@ -586,19 +529,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // --- Dev token ---
-  tokenBox: {
-    backgroundColor: mobileTheme.colors.surfaceL3,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.inner,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  tokenText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 11,
-    lineHeight: 17,
-    fontFamily: "monospace",
-  },
 });
