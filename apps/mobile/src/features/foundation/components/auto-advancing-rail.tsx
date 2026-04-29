@@ -9,7 +9,8 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 type AutoAdvancingRailProps<TItem> = {
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -48,6 +49,7 @@ export const AutoAdvancingRail = <TItem,>({
   renderItem,
   showsIndicators,
 }: AutoAdvancingRailProps<TItem>) => {
+  const styles = useThemeStyles(createStyles);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [lastInteractionAt, setLastInteractionAt] = useState<number>(Date.now());
@@ -136,25 +138,26 @@ export const AutoAdvancingRail = <TItem,>({
   );
 };
 
-const styles = StyleSheet.create({
-  indicatorDot: {
-    backgroundColor: mobileTheme.colors.borderStrong,
-    borderRadius: 999,
-    height: 6,
-    width: 6,
-  },
-  indicatorDotActive: {
-    backgroundColor: mobileTheme.colors.lime,
-    width: 18,
-  },
-  indicatorRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  itemWrap: {
-    flexShrink: 0,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    indicatorDot: {
+      backgroundColor: theme.colors.borderStrong,
+      borderRadius: 999,
+      height: 6,
+      width: 6,
+    },
+    indicatorDotActive: {
+      backgroundColor: theme.colors.lime,
+      width: 18,
+    },
+    indicatorRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+      justifyContent: "center",
+      marginTop: 12,
+    },
+    itemWrap: {
+      flexShrink: 0,
+    },
+  });

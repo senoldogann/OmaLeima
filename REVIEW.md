@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Add a real light mode beside the existing dark mode, introduce Finnish-first bilingual mobile copy (Finnish + English), and add a proper description section to event detail while checking every current mobile route for leftover hardcoded theme/copy issues.
+- **Scope:** Audit the redesign branch after the light-mode/i18n wave, fix the remaining business-side dark-only / English-only regressions, and close the last shared mobile helpers that still depended on module-static dark tokens.
 
 ## Affected Files
 
@@ -58,35 +58,37 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- The current mobile theme is module-static; if theme tokens stay embedded in `StyleSheet.create(...)` at import time, light mode will look partially broken.
-- A literal machine translation tone will make Finnish copy feel fake even if technically correct.
-- Date/time, tab labels, access cards, auth buttons, reward states, and leaderboard/status surfaces all carry visible user copy; missing just a few will make the bilingual pass feel inconsistent.
-- If event detail keeps only a short hero summary, long organizer descriptions still remain buried.
-- Preference persistence must not race with session/bootstrap and create flicker between dark/light or English/Finnish on launch.
+- Business routes were still importing `mobileTheme` directly, so student/auth looked correct in light mode while operator screens stayed dark-only.
+- Business operator copy was still English-heavy, which broke the Finnish-first promise and made the translation pass feel incomplete.
+- Shared helpers like `student-reward-celebration`, `foundation-status-card`, and `auto-advancing-rail` still baked dark tokens at module load time, so a theme toggle could leave those surfaces visually inconsistent.
+- The hosted Vercel login error the user saw may be a stale deployment rather than a live code bug; the review must separate buildable code issues from deploy freshness.
 
 ## Dependencies
 
-- Existing STARK redesign branch state in `feature/full-ui-redesign-foundation`
-- Existing mobile typography and cover-image redesign
-- `expo-secure-store` for persisted UI preferences
-- Existing student/business route tree in Expo Router
-- Existing event/reward/leaderboard/profile data flows so the theme/i18n pass stays presentation-focused
+- Existing light/dark + `fi/en` mobile infrastructure already added on this branch
+- Existing student-side theme/copy migration, which should remain untouched except for shared helper compatibility
+- Existing business query/mutation/RPC flows, which must stay behavior-identical while presentation and copy are fixed
+- Existing admin login code path, which builds locally and should not regress while the mobile review slice lands
 
 ## Existing Logic Checked
 
-- Mobile currently has no app-level i18n system; nearly all visible copy is hardcoded in English inside route components and shared cards.
-- Mobile currently has only one exported `mobileTheme`; route and component styles bake dark tokens directly into static styles.
-- `app/_layout.tsx` already reads the device color scheme for React Navigation, but the actual app UI ignores it.
-- Event detail already receives `description`, but it is only used as a short hero summary instead of a real long-form section.
-- Session, reward, leaderboard, QR, and business flows already exist and should not need logic rewrites for this slice.
+- Student/auth routes already consume runtime theme + bilingual copy correctly and validate cleanly.
+- The remaining obvious drift lived in:
+  - `apps/mobile/src/app/business/home.tsx`
+  - `apps/mobile/src/app/business/events.tsx`
+  - `apps/mobile/src/app/business/history.tsx`
+  - `apps/mobile/src/app/business/scanner.tsx`
+  - `apps/mobile/src/features/notifications/student-reward-celebration.tsx`
+  - `apps/mobile/src/features/foundation/components/foundation-status-card.tsx`
+  - `apps/mobile/src/features/foundation/components/auto-advancing-rail.tsx`
+- The hosted admin login route already builds locally; the blank hosted page likely needs a fresh deploy to reflect the code path fix.
 
 ## Review Outcome
 
-Do a focused mobile platform pass:
+Do a focused hardening pass:
 
-- add a persisted UI preference layer for theme mode and language
-- convert the shared mobile foundation and all current mobile routes to theme-aware styling
-- add Finnish-first bilingual copy across student, business, auth, and shared mobile surfaces
-- keep English as a clean fallback, not a separate visual mode
-- promote event detail description into its own readable section under the hero
-- re-run mobile validation after the refactor and update the handoff honestly
+- migrate the remaining business mobile routes to runtime theme-aware styles
+- add Finnish-first business operator copy while keeping English fallback clean
+- convert the last shared mobile helpers off module-static `mobileTheme`
+- rerun mobile + admin validation
+- update the handoff honestly with what is code-closed vs. still deployment- or launch-related

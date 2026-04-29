@@ -10,7 +10,15 @@ import {
   useLeaveBusinessEventMutation,
 } from "@/features/business/business-events";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import type {
+  BusinessJoinEventStatus,
+  BusinessLeaveEventStatus,
+  BusinessOpportunitySummary,
+  BusinessJoinedEventSummary,
+} from "@/features/business/types";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 type FeedbackState = {
@@ -19,41 +27,201 @@ type FeedbackState = {
   message: string;
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
+const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
+  formatter.format(new Date(value));
+
+const createJoinResultMessages = (
+  language: "fi" | "en"
+): Record<BusinessJoinEventStatus, string> => ({
+  SUCCESS:
+    language === "fi"
+      ? "Yritys liitettiin tapahtumaan onnistuneesti."
+      : "Business joined the event successfully.",
+  ALREADY_JOINED:
+    language === "fi"
+      ? "Yritys on jo liitetty tähän tapahtumaan."
+      : "This business already joined the event.",
+  EVENT_NOT_FOUND:
+    language === "fi"
+      ? "Tapahtumaa ei enää löytynyt."
+      : "The event was not found anymore.",
+  EVENT_NOT_AVAILABLE:
+    language === "fi"
+      ? "Tapahtumaa ei voi liittää yritykselle juuri nyt."
+      : "This event is not available for business joining.",
+  EVENT_JOIN_CLOSED:
+    language === "fi"
+      ? "Liittymisikkuna on jo sulkeutunut."
+      : "Join window has already closed for this event.",
+  BUSINESS_NOT_ACTIVE:
+    language === "fi"
+      ? "Valittu yritys ei ole enää aktiivinen."
+      : "The target business is not active anymore.",
+  BUSINESS_STAFF_NOT_ALLOWED:
+    language === "fi"
+      ? "Tällä tunnuksella ei voi liittää tätä yritystä tapahtumaan."
+      : "This account cannot join events for that business.",
+  PROFILE_NOT_ACTIVE:
+    language === "fi"
+      ? "Profiili ei ole aktiivinen."
+      : "The profile is no longer active.",
+  PROFILE_NOT_FOUND:
+    language === "fi"
+      ? "Profiilia ei löytynyt."
+      : "The profile could not be found.",
+  VENUE_REMOVED:
+    language === "fi"
+      ? "Tämä piste on poistettu tapahtumasta eikä sitä voi liittää uudelleen."
+      : "This venue was removed from the event and cannot self-rejoin.",
+  AUTH_REQUIRED:
+    language === "fi" ? "Kirjaudu sisään uudelleen." : "Sign in again.",
+  ACTOR_NOT_ALLOWED:
+    language === "fi"
+      ? "Toimijalla ei ole oikeutta tähän pyyntöön."
+      : "The current actor is not allowed to do this.",
 });
 
-const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
+const createLeaveResultMessages = (
+  language: "fi" | "en"
+): Record<BusinessLeaveEventStatus, string> => ({
+  SUCCESS:
+    language === "fi"
+      ? "Yritys poistui tapahtumasta ennen live-vaihetta."
+      : "Business left the event before the live window started.",
+  EVENT_NOT_FOUND:
+    language === "fi"
+      ? "Tapahtumaa ei enää löytynyt."
+      : "The event was not found anymore.",
+  EVENT_LEAVE_CLOSED:
+    language === "fi"
+      ? "Poistumisikkuna sulkeutui, koska tapahtuma on jo alkanut tai tila muuttui."
+      : "Leave window closed because the event has already started or changed state.",
+  BUSINESS_NOT_ACTIVE:
+    language === "fi"
+      ? "Valittu yritys ei ole enää aktiivinen."
+      : "The target business is not active anymore.",
+  BUSINESS_STAFF_NOT_ALLOWED:
+    language === "fi"
+      ? "Tällä tunnuksella ei voi poistaa tätä yritystä tapahtumasta."
+      : "This account cannot leave events for that business.",
+  VENUE_NOT_FOUND:
+    language === "fi"
+      ? "Tälle yritykselle ei löytynyt pistettä tapahtumasta."
+      : "No venue row was found for this business on that event.",
+  VENUE_NOT_JOINED:
+    language === "fi"
+      ? "Yritys ei ole tällä hetkellä mukana tässä tapahtumassa."
+      : "This business is not currently joined to that event.",
+  VENUE_ALREADY_LEFT:
+    language === "fi"
+      ? "Yritys on jo poistunut tästä tulevasta tapahtumasta."
+      : "This business already left that upcoming event.",
+  VENUE_REMOVED:
+    language === "fi"
+      ? "Tämä piste on poistettu tapahtumasta eikä sitä voi hallita itse."
+      : "This venue was removed from the event and cannot self-manage anymore.",
+  PROFILE_NOT_FOUND:
+    language === "fi" ? "Profiilia ei löytynyt." : "The profile could not be found.",
+  PROFILE_NOT_ACTIVE:
+    language === "fi" ? "Profiili ei ole aktiivinen." : "The profile is no longer active.",
+  AUTH_REQUIRED:
+    language === "fi" ? "Kirjaudu sisään uudelleen." : "Sign in again.",
+  ACTOR_NOT_ALLOWED:
+    language === "fi"
+      ? "Toimijalla ei ole oikeutta tähän pyyntöön."
+      : "The current actor is not allowed to do this.",
+});
 
-const joinResultMessages: Record<string, string> = {
-  SUCCESS: "Business joined the event successfully.",
-  ALREADY_JOINED: "This business already joined the event.",
-  EVENT_JOIN_CLOSED: "Join window has already closed for this event.",
-  EVENT_NOT_AVAILABLE: "This event is not available for business joining.",
-  BUSINESS_STAFF_NOT_ALLOWED: "This account cannot join events for that business.",
-  BUSINESS_NOT_ACTIVE: "The target business is not active anymore.",
-  VENUE_REMOVED: "This venue was removed from the event and cannot self-rejoin.",
+const createFeedback = (
+  language: "fi" | "en",
+  joinStatus: BusinessJoinEventStatus | undefined,
+  leaveStatus: BusinessLeaveEventStatus | undefined
+): FeedbackState | null => {
+  if (typeof joinStatus !== "undefined") {
+    const messages = createJoinResultMessages(language);
+
+    return {
+      tone: joinStatus === "SUCCESS" || joinStatus === "ALREADY_JOINED" ? "ready" : "warning",
+      title: joinStatus,
+      message: messages[joinStatus],
+    };
+  }
+
+  if (typeof leaveStatus !== "undefined") {
+    const messages = createLeaveResultMessages(language);
+
+    return {
+      tone: leaveStatus === "SUCCESS" ? "ready" : "warning",
+      title: leaveStatus,
+      message: messages[leaveStatus],
+    };
+  }
+
+  return null;
 };
 
-const leaveResultMessages: Record<string, string> = {
-  SUCCESS: "Business left the event before the live window started.",
-  EVENT_LEAVE_CLOSED: "Leave window closed because the event has already started or changed state.",
-  BUSINESS_STAFF_NOT_ALLOWED: "This account cannot leave events for that business.",
-  BUSINESS_NOT_ACTIVE: "The target business is not active anymore.",
-  VENUE_NOT_FOUND: "No venue row was found for this business on that event.",
-  VENUE_NOT_JOINED: "This business is not currently joined to that event.",
-  VENUE_ALREADY_LEFT: "This business already left that upcoming event.",
-  VENUE_REMOVED: "This venue was removed from the event and cannot self-manage anymore.",
+const createEventMeta = (
+  event: BusinessJoinedEventSummary | BusinessOpportunitySummary,
+  formatter: Intl.DateTimeFormat,
+  language: "fi" | "en"
+): string => {
+  const startsLabel = language === "fi" ? "Alkaa" : "Starts";
+
+  return `${event.businessName} · ${event.city} · ${startsLabel} ${formatDateTime(formatter, event.startAt)}`;
 };
 
 export default function BusinessEventsScreen() {
   const router = useRouter();
+  const styles = useThemeStyles(createStyles);
   const { session } = useSession();
+  const { copy, language, localeTag } = useUiPreferences();
   const userId = session?.user.id ?? null;
+
+  const formatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(localeTag, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [localeTag]
+  );
+
+  const labels = useMemo(
+    () => ({
+      loadingTitle: language === "fi" ? "Avataan tapahtumia" : "Opening business events",
+      loadingBody:
+        language === "fi"
+          ? "Ladataan liittyneet tapahtumat ja avoimet mahdollisuudet."
+          : "Loading joined events and public opportunities for this account.",
+      errorTitle:
+        language === "fi"
+          ? "Yritystapahtumat eivät latautuneet"
+          : "Could not load business events",
+      requestFailedTitle: language === "fi" ? "Pyyntö epäonnistui" : "Request failed",
+      updateEyebrow: language === "fi" ? "Päivitys" : "Update",
+      queueEmptyBody: copy.business.noActiveEvents,
+      joinedNextEmptyBody:
+        language === "fi"
+          ? "Ei vielä yhtään tulevaa liittynyttä tapahtumaa."
+          : "No upcoming joined event yet.",
+      availableEmptyBody:
+        language === "fi"
+          ? "Liitetyissä kaupungeissa ei ole juuri nyt avoimia julkisia tapahtumia."
+          : "No joinable public event is visible in the linked business cities right now.",
+      openScanner: copy.business.openScanner,
+      openHistory: copy.business.history,
+      leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",
+      leavingEvent: language === "fi" ? "Poistutaan..." : "Leaving...",
+      joinEvent: language === "fi" ? "Liity tapahtumaan" : "Join event",
+      joiningEvent: language === "fi" ? "Liitytään..." : "Joining...",
+      joinDeadline: language === "fi" ? "Liittyminen sulkeutuu" : "Join deadline",
+    }),
+    [copy.business.history, copy.business.noActiveEvents, copy.business.openScanner, language]
+  );
+
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
@@ -72,93 +240,62 @@ export default function BusinessEventsScreen() {
     ? `${leaveMutation.variables.businessId}:${leaveMutation.variables.eventId}`
     : null;
 
-  const feedback = useMemo<FeedbackState | null>(() => {
-    if (joinMutation.data !== undefined) {
-      return {
-        tone:
-          joinMutation.data.status === "SUCCESS" || joinMutation.data.status === "ALREADY_JOINED"
-            ? "ready"
-            : "warning",
-        title: joinMutation.data.status,
-        message:
-          joinResultMessages[joinMutation.data.status] ??
-          `Join returned ${joinMutation.data.status}.`,
-      };
-    }
-
-    if (leaveMutation.data !== undefined) {
-      return {
-        tone: leaveMutation.data.status === "SUCCESS" ? "ready" : "warning",
-        title: leaveMutation.data.status,
-        message:
-          leaveResultMessages[leaveMutation.data.status] ??
-          `Leave returned ${leaveMutation.data.status}.`,
-      };
-    }
-
-    return null;
-  }, [joinMutation.data, leaveMutation.data]);
+  const feedback = useMemo(
+    () => createFeedback(language, joinMutation.data?.status, leaveMutation.data?.status),
+    [joinMutation.data?.status, language, leaveMutation.data?.status]
+  );
 
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Events</Text>
-        <Text style={styles.metaText}>Join upcoming nights and open the scanner when one goes live.</Text>
+        <Text style={styles.screenTitle}>{copy.common.events}</Text>
+        <Text style={styles.metaText}>{copy.business.eventsMeta}</Text>
       </View>
 
       {homeOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening business events">
-          <Text selectable style={styles.bodyText}>
-            Loading joined events and public opportunities for this account.
-          </Text>
+        <InfoCard eyebrow={copy.common.loading} title={labels.loadingTitle}>
+          <Text style={styles.bodyText}>{labels.loadingBody}</Text>
         </InfoCard>
       ) : null}
 
       {homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load business events">
-          <Text selectable style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
-          <Pressable
-            onPress={() => void homeOverviewQuery.refetch()}
-            style={styles.primaryButton}
-          >
-            <Text style={styles.primaryButtonText}>Retry</Text>
+        <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
+          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {joinMutation.isError || leaveMutation.isError ? (
-        <InfoCard eyebrow="Error" title="Request failed">
-          <Text selectable style={styles.bodyText}>
+        <InfoCard eyebrow={copy.common.error} title={labels.requestFailedTitle}>
+          <Text style={styles.bodyText}>
             {joinMutation.error?.message ?? leaveMutation.error?.message}
           </Text>
         </InfoCard>
       ) : null}
 
       {feedback ? (
-        <InfoCard eyebrow="Update" title={feedback.title}>
+        <InfoCard eyebrow={labels.updateEyebrow} title={feedback.title}>
           <View style={styles.feedbackRow}>
             <StatusBadge label={feedback.tone} state={feedback.tone} />
-            <Text selectable style={styles.bodyText}>{feedback.message}</Text>
+            <Text style={styles.bodyText}>{feedback.message}</Text>
           </View>
         </InfoCard>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Live" title="Scanner queue">
+        <InfoCard eyebrow={copy.business.live} title={copy.business.scannerQueue}>
           {activeJoinedEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No joined event is active right now.
-            </Text>
+            <Text style={styles.bodyText}>{labels.queueEmptyBody}</Text>
           ) : (
             <View style={styles.stack}>
               {activeJoinedEvents.map((event) => (
                 <View key={event.eventVenueId} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
-                  <Text selectable style={styles.metaText}>
-                    {event.businessName} · {event.city}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    Ends {formatDateTime(event.endAt)}
+                  <Text style={styles.cardTitle}>{event.eventName}</Text>
+                  <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
+                  <Text style={styles.metaText}>
+                    {(language === "fi" ? "Päättyy" : "Ends")} {formatDateTime(formatter, event.endAt)}
                     {event.stampLabel ? ` · ${event.stampLabel}` : ""}
                   </Text>
                   <View style={styles.actionRow}>
@@ -171,13 +308,13 @@ export default function BusinessEventsScreen() {
                       }
                       style={[styles.primaryButton, styles.actionFlex]}
                     >
-                      <Text style={styles.primaryButtonText}>Open scanner</Text>
+                      <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => router.push("/business/history")}
                       style={[styles.secondaryButton, styles.actionFlex]}
                     >
-                      <Text style={styles.secondaryButtonText}>History</Text>
+                      <Text style={styles.secondaryButtonText}>{labels.openHistory}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -188,9 +325,9 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Upcoming" title="Joined next">
+        <InfoCard eyebrow={copy.business.upcoming} title={copy.business.joinedNext}>
           {upcomingJoinedEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>No upcoming joined event yet.</Text>
+            <Text style={styles.bodyText}>{labels.joinedNextEmptyBody}</Text>
           ) : (
             <View style={styles.stack}>
               {upcomingJoinedEvents.map((event) => {
@@ -199,12 +336,10 @@ export default function BusinessEventsScreen() {
 
                 return (
                   <View key={event.eventVenueId} style={styles.rowCard}>
-                    <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
-                    <Text selectable style={styles.metaText}>
-                      {event.businessName} · Starts {formatDateTime(event.startAt)}
-                    </Text>
-                    <Text selectable style={styles.metaText}>
-                      Join deadline {formatDateTime(event.joinDeadlineAt)}
+                    <Text style={styles.cardTitle}>{event.eventName}</Text>
+                    <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
+                    <Text style={styles.metaText}>
+                      {labels.joinDeadline} {formatDateTime(formatter, event.joinDeadlineAt)}
                     </Text>
                     <Pressable
                       disabled={userId === null || isLeaving}
@@ -222,7 +357,7 @@ export default function BusinessEventsScreen() {
                       style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
                     >
                       <Text style={styles.secondaryButtonText}>
-                        {isLeaving ? "Leaving..." : "Leave event"}
+                        {isLeaving ? labels.leavingEvent : labels.leaveEvent}
                       </Text>
                     </Pressable>
                   </View>
@@ -234,11 +369,9 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Available" title="Available to join">
+        <InfoCard eyebrow={copy.common.manage} title={copy.business.availableToJoin}>
           {cityOpportunities.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No joinable public event is visible in the linked business cities right now.
-            </Text>
+            <Text style={styles.bodyText}>{labels.availableEmptyBody}</Text>
           ) : (
             <View style={styles.stack}>
               {cityOpportunities.map((event) => {
@@ -247,12 +380,10 @@ export default function BusinessEventsScreen() {
 
                 return (
                   <View key={joinKey} style={styles.rowCard}>
-                    <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
-                    <Text selectable style={styles.metaText}>
-                      {event.businessName} · {event.city}
-                    </Text>
-                    <Text selectable style={styles.metaText}>
-                      Starts {formatDateTime(event.startAt)} · Join deadline {formatDateTime(event.joinDeadlineAt)}
+                    <Text style={styles.cardTitle}>{event.eventName}</Text>
+                    <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
+                    <Text style={styles.metaText}>
+                      {labels.joinDeadline} {formatDateTime(formatter, event.joinDeadlineAt)}
                     </Text>
                     <Pressable
                       disabled={userId === null || isPending}
@@ -267,10 +398,14 @@ export default function BusinessEventsScreen() {
                           staffUserId: userId,
                         });
                       }}
-                      style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
+                      style={[
+                        styles.primaryButton,
+                        styles.elevatedButton,
+                        isPending ? styles.disabledButton : null,
+                      ]}
                     >
                       <Text style={styles.primaryButtonText}>
-                        {isPending ? "Joining..." : "Join event"}
+                        {isPending ? labels.joiningEvent : labels.joinEvent}
                       </Text>
                     </Pressable>
                   </View>
@@ -284,87 +419,92 @@ export default function BusinessEventsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actionFlex: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  cardTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  feedbackRow: {
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    ...interactiveSurfaceShadowStyle,
-  },
-  primaryButtonText: {
-    color: "#08090E",
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  rowCard: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.inner,
-    gap: 6,
-    padding: 14,
-    ...interactiveSurfaceShadowStyle,
-  },
-  screenHeader: {
-    gap: 6,
-    marginBottom: 4,
-  },
-  screenTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.title,
-    letterSpacing: -0.8,
-    lineHeight: mobileTheme.typography.lineHeights.title,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    ...interactiveSurfaceShadowStyle,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  stack: {
-    gap: 10,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    actionFlex: {
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    cardTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    disabledButton: {
+      opacity: 0.7,
+    },
+    elevatedButton: {
+      ...interactiveSurfaceShadowStyle,
+    },
+    feedbackRow: {
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      minHeight: 46,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    rowCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 7,
+      padding: 14,
+    },
+    screenHeader: {
+      gap: 6,
+      marginBottom: 4,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    secondaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      minHeight: 46,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    stack: {
+      gap: 12,
+    },
+  });

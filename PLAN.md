@@ -6,48 +6,39 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Ship a real light mode, Finnish-first bilingual mobile copy, and a proper event detail description section without breaking the existing student/business flows.
+- **Goal:** Finish the redesign branch review by closing the remaining business-side light-mode/i18n gaps and removing the last shared components that still depend on static dark-theme tokens.
 
 ## Architectural Decisions
 
-- Add a persisted mobile UI preference provider above the current app tree and let it own:
-  - theme mode (`dark` / `light`)
-  - language (`fi` / `en`)
-- Keep Finnish as the default when the device locale starts with `fi`; otherwise fall back to English.
-- Move the shared foundation from a single exported dark token object to dual dark/light theme objects plus a current-theme hook.
-- Convert route and shared component styles to runtime theme-aware factories instead of relying on module-static dark tokens.
-- Keep translations local to the mobile app with a strict typed dictionary instead of adding a heavyweight i18n framework for this slice.
-- Promote event descriptions into their own content section under the hero so long organizer copy remains readable.
+- Keep the already-shipped student/auth theme+i18n infrastructure intact and extend the same runtime pattern into the remaining business routes instead of inventing a parallel operator-only styling path.
+- Use runtime theme style factories (`useThemeStyles(createStyles)`) everywhere a file still imports `mobileTheme` directly.
+- Keep business status/result copy close to the route when the text is highly screen-specific; the goal of this review slice is coverage and consistency, not building a second translation framework.
+- Leave business logic, scanner RPC semantics, and session flows unchanged; this pass is for correctness of theme/copy integration and review hardening.
 
 ## Alternatives Considered
 
-- Add only a system-color-scheme switch and skip persisted preferences:
-  - rejected because the user explicitly asked for a real open/dark theme addition across the app, not a hidden OS-only behavior
-- Keep the current static `mobileTheme` and try to patch just route backgrounds:
-  - rejected because shared cards, badges, tabs, and auth controls would remain visually inconsistent in light mode
-- Add a third-party i18n library immediately:
-  - rejected because the app only needs two languages right now and we need tight control over Finnish wording
-- Keep event description as hero summary text:
-  - rejected because detailed events need a dedicated readable block
+- Leave business screens on the old static dark tokens and call the student-side migration “done”:
+  - rejected because that would leave a real broken platform state, not a cosmetic preference
+- Delay shared helper cleanup (`celebration`, `rail`, `status card`) to a future redesign wave:
+  - rejected because code review should close hidden theme regressions now, while the branch context is fresh
+- Treat the hosted Vercel blank login page as a code bug without checking local build state:
+  - rejected because deployment freshness and code correctness are different failure modes
 
 ## Edge Cases
 
-- The first render should not flash dark English UI and then jump to light Finnish once preferences load.
-- Shared formatters (dates, counts, tab titles, status strings) must respect the current language.
-- Business and student layouts both have access/loading/error states that need translation too, not just the “happy path” screens.
-- Some copy comes from helper functions inside feature components (`reward-progress-card`, `leaderboard-entry-card`, tag cards); those must not stay English-only.
-- The event detail description section must still read well when `description` is missing.
+- Business scanner strings are dense and shown during live queue work; Finnish labels still need to remain compact enough for buttons and result cards.
+- Theme switching must cover the reward celebration overlay and rail indicators, not just route backgrounds.
+- Validation needs to include admin lint/typecheck so the review slice can honestly say the repo still builds beyond the mobile app.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this slice.
-- Add UI preference + i18n infrastructure above the existing mobile app tree.
-- Convert shared mobile foundation pieces to runtime theme-aware styles.
-- Translate student, business, auth, and shared mobile surfaces into Finnish/English.
-- Add explicit description content on event detail.
-- Manually sweep the current mobile routes for missed hardcoded strings or dark-only assumptions.
-- Verify mobile with:
-  - `rtk npm --prefix /Users/dogan/Desktop/OmaLeima/apps/mobile run lint`
-  - `rtk npm --prefix /Users/dogan/Desktop/OmaLeima/apps/mobile run typecheck`
-  - `rtk npm --prefix /Users/dogan/Desktop/OmaLeima/apps/mobile run export:web`
-- Update `PROGRESS.md` with the new handoff note.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the review/hardening slice.
+- Rewrite the remaining business routes to runtime theme + Finnish-first copy.
+- Convert `student-reward-celebration`, `foundation-status-card`, and `auto-advancing-rail` off static dark tokens.
+- Verify:
+  - `npm --prefix apps/mobile run lint`
+  - `npm --prefix apps/mobile run typecheck`
+  - `npm --prefix apps/mobile run export:web`
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run typecheck`
+- Update `PROGRESS.md` with the review outcome and next remaining risks.

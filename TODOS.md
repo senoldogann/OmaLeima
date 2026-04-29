@@ -27,15 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Light Mode + Finnish/English Mobile)
+## Current Todos (Review Hardening)
 
-- [x] Review the current mobile routes and shared components for hardcoded dark-theme tokens and English-only copy.
-- [x] Add persisted mobile UI preferences for theme mode and language.
-- [x] Convert shared mobile foundation pieces to runtime theme-aware styles.
-- [x] Translate the auth flow and loading/access cards to Finnish-first bilingual copy.
-- [x] Translate student routes and related shared cards/components.
-- [ ] Translate business routes and related shared cards/components.
-- [x] Add a dedicated event description section to event detail.
-- [ ] Sweep the current mobile routes for missed strings and layout regressions.
-- [x] Run mobile lint, typecheck, and export.
-- [x] Update `PROGRESS.md` with the new handoff note.
+- [x] Audit the redesign branch for remaining static dark-theme dependencies and English-only mobile screens.
+- [x] Convert the last shared helper components to runtime theme-aware styling.
+- [x] Translate and theme the remaining business routes (`home`, `events`, `history`, `scanner`).
+- [x] Re-run mobile lint, typecheck, and export.
+- [x] Re-run admin lint and typecheck to ensure the review slice did not drift repo-wide.
+- [x] Update `PROGRESS.md` with the review handoff note.

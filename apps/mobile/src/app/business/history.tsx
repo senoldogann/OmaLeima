@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -5,53 +6,93 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { useBusinessScanHistoryQuery } from "@/features/business/business-history";
-import { mobileTheme } from "@/features/foundation/theme";
 import type { BusinessScanHistoryEntry } from "@/features/business/types";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
-
-const historyStatusMeta: Record<
-  BusinessScanHistoryEntry["validationStatus"],
-  {
-    eyebrow: string;
-    borderColor: string;
-    backgroundColor: string;
-    detail: string;
-  }
-> = {
-  VALID: {
-    eyebrow: "Valid",
-    borderColor: mobileTheme.colors.successBorder,
-    backgroundColor: mobileTheme.colors.successSurface,
-    detail: "Stamp was accepted and counted toward the student progress.",
-  },
-  MANUAL_REVIEW: {
-    eyebrow: "Review",
-    borderColor: mobileTheme.colors.warningBorder,
-    backgroundColor: mobileTheme.colors.warningSurface,
-    detail: "This scan needs manual follow-up before it should be treated as final.",
-  },
-  REVOKED: {
-    eyebrow: "Revoked",
-    borderColor: mobileTheme.colors.dangerBorder,
-    backgroundColor: mobileTheme.colors.dangerSurface,
-    detail: "This stamp was later revoked and should not be counted as an active stamp.",
-  },
+type HistoryStatusMeta = {
+  eyebrow: string;
+  detail: string;
+  backgroundColor: string;
+  borderColor: string;
 };
+
+const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
+  formatter.format(new Date(value));
 
 export default function BusinessHistoryScreen() {
   const router = useRouter();
+  const styles = useThemeStyles(createStyles);
   const { session } = useSession();
+  const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
+
+  const formatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(localeTag, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [localeTag]
+  );
+
+  const labels = useMemo(
+    () => ({
+      loadingTitle: language === "fi" ? "Avataan historiaa" : "Opening scan history",
+      loadingBody:
+        language === "fi"
+          ? "Ladataan tämän käyttäjän uusimmat skannaukset."
+          : "Loading the latest operator-owned scan rows.",
+      errorTitle:
+        language === "fi" ? "Skannaushistoria ei avautunut" : "Could not load scan history",
+      latestTitle: language === "fi" ? "Viimeisimmät skannaukset" : "Latest scans",
+      emptyBody:
+        language === "fi"
+          ? "Tällä tunnuksella ei ole vielä skannauksia. Hyväksytyt ja tarkistukseen jääneet skannaukset näkyvät täällä."
+          : "No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.",
+      scannedAt: language === "fi" ? "Skannattu" : "Scanned",
+      studentReference: language === "fi" ? "Opiskelijaviite" : "Student reference",
+    }),
+    [language]
+  );
+
+  const historyStatusMeta = useMemo<Record<BusinessScanHistoryEntry["validationStatus"], HistoryStatusMeta>>(
+    () => ({
+      VALID: {
+        eyebrow: language === "fi" ? "Hyväksytty" : "Valid",
+        borderColor: theme.colors.successBorder,
+        backgroundColor: theme.colors.successSurface,
+        detail:
+          language === "fi"
+            ? "Leima hyväksyttiin ja se lasketaan mukaan opiskelijan etenemiseen."
+            : "Stamp was accepted and counted toward the student progress.",
+      },
+      MANUAL_REVIEW: {
+        eyebrow: language === "fi" ? "Tarkistus" : "Review",
+        borderColor: theme.colors.warningBorder,
+        backgroundColor: theme.colors.warningSurface,
+        detail:
+          language === "fi"
+            ? "Tämä skannaus vaatii manuaalisen tarkistuksen ennen lopullista vahvistusta."
+            : "This scan needs manual follow-up before it should be treated as final.",
+      },
+      REVOKED: {
+        eyebrow: language === "fi" ? "Peruttu" : "Revoked",
+        borderColor: theme.colors.dangerBorder,
+        backgroundColor: theme.colors.dangerSurface,
+        detail:
+          language === "fi"
+            ? "Tämä leima on myöhemmin peruttu eikä sitä lasketa aktiiviseksi leimaksi."
+            : "This stamp was later revoked and should not be counted as an active stamp.",
+      },
+    }),
+    [language, theme.colors.dangerBorder, theme.colors.dangerSurface, theme.colors.successBorder, theme.colors.successSurface, theme.colors.warningBorder, theme.colors.warningSurface]
+  );
+
   const historyQuery = useBusinessScanHistoryQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
@@ -62,41 +103,40 @@ export default function BusinessHistoryScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>History</Text>
-        <Text selectable style={styles.metaText}>Latest scan results from this account.</Text>
+        <Text style={styles.screenTitle}>{copy.business.history}</Text>
+        <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
       </View>
+
       <View style={styles.actionRow}>
         <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
-          <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
-          <Text style={styles.primaryButtonText}>Scanner</Text>
+          <AppIcon color={theme.colors.screenBase} name="scan" size={18} />
+          <Text style={styles.primaryButtonText}>{copy.business.scanner}</Text>
         </Pressable>
         <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
-          <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
-          <Text style={styles.secondaryButtonText}>Events</Text>
+          <AppIcon color={theme.colors.textPrimary} name="calendar" size={17} />
+          <Text style={styles.secondaryButtonText}>{copy.common.events}</Text>
         </Pressable>
       </View>
 
       {historyQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening scan history">
-          <Text selectable style={styles.bodyText}>Loading the latest operator-owned scan rows.</Text>
+        <InfoCard eyebrow={copy.common.loading} title={labels.loadingTitle}>
+          <Text style={styles.bodyText}>{labels.loadingBody}</Text>
         </InfoCard>
       ) : null}
 
       {historyQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load scan history">
-          <Text selectable style={styles.bodyText}>{historyQuery.error.message}</Text>
+        <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
+          <Text style={styles.bodyText}>{historyQuery.error.message}</Text>
           <Pressable onPress={() => void historyQuery.refetch()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+            <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {!historyQuery.isLoading && !historyQuery.error ? (
-        <InfoCard eyebrow="Recent" title="Latest scans">
+        <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
           {historyEntries.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.
-            </Text>
+            <Text style={styles.bodyText}>{labels.emptyBody}</Text>
           ) : (
             <View style={styles.stack}>
               {historyEntries.map((entry) => {
@@ -113,18 +153,18 @@ export default function BusinessHistoryScreen() {
                       },
                     ]}
                   >
-                    <Text selectable style={styles.eyebrowText}>
-                      {statusMeta.eyebrow}
-                    </Text>
-                    <Text selectable style={styles.cardTitle}>
-                      {entry.studentLabel}
-                    </Text>
-                    <Text selectable style={styles.metaText}>
+                    <Text style={styles.eyebrowText}>{statusMeta.eyebrow}</Text>
+                    <Text style={styles.cardTitle}>{entry.studentLabel}</Text>
+                    <Text style={styles.metaText}>
                       {entry.eventName} · {entry.businessName}
                     </Text>
-                    <Text selectable style={styles.metaText}>Scanned {formatDateTime(entry.scannedAt)}</Text>
-                    <Text selectable style={styles.bodyText}>{statusMeta.detail}</Text>
-                    <Text selectable style={styles.metaText}>Student reference: {entry.studentId}</Text>
+                    <Text style={styles.metaText}>
+                      {labels.scannedAt} {formatDateTime(formatter, entry.scannedAt)}
+                    </Text>
+                    <Text style={styles.bodyText}>{statusMeta.detail}</Text>
+                    <Text style={styles.metaText}>
+                      {labels.studentReference}: {entry.studentId}
+                    </Text>
                   </View>
                 );
               })}
@@ -136,88 +176,91 @@ export default function BusinessHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  cardTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  eyebrowText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
-    flexDirection: "row",
-    gap: 8,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  primaryButtonText: {
-    color: mobileTheme.colors.screenBase,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  rowCard: {
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    gap: 5,
-    padding: 14,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.button,
-    flexDirection: "row",
-    gap: 8,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  screenHeader: {
-    gap: 6,
-    marginBottom: 4,
-  },
-  screenTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.title,
-    letterSpacing: -0.8,
-    lineHeight: mobileTheme.typography.lineHeights.title,
-  },
-  stack: {
-    gap: 12,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    cardTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    eyebrowText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    rowCard: {
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 5,
+      padding: 14,
+    },
+    screenHeader: {
+      gap: 6,
+      marginBottom: 4,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    secondaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    stack: {
+      gap: 12,
+    },
+  });

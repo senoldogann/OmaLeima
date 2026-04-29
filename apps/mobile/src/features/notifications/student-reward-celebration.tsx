@@ -20,8 +20,9 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
 import type { StudentRewardCelebrationCandidate } from "@/features/notifications/student-reward-notification-model";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 
 type StudentRewardCelebrationContextValue = {
   triggerRewardCelebration: (candidates: StudentRewardCelebrationCandidate[]) => void;
@@ -30,36 +31,60 @@ type StudentRewardCelebrationContextValue = {
 const StudentRewardCelebrationContext =
   createContext<StudentRewardCelebrationContextValue | null>(null);
 
-const createCelebrationTitle = (candidates: StudentRewardCelebrationCandidate[]): string => {
+const createCelebrationTitle = (
+  candidates: StudentRewardCelebrationCandidate[],
+  language: "fi" | "en"
+): string => {
   const [firstCandidate] = candidates;
 
   if (typeof firstCandidate === "undefined") {
-    return "Leima earned";
+    return language === "fi" ? "Leima saatu" : "Leima earned";
   }
 
   if (firstCandidate.kind === "STAMP") {
+    if (language === "fi") {
+      return candidates.length === 1 ? "Leima saatu" : `${candidates.length} leimaa saatu`;
+    }
+
     return candidates.length === 1 ? "Leima earned" : `${candidates.length} leimas earned`;
+  }
+
+  if (language === "fi") {
+    return candidates.length === 1
+      ? "Palkinto avautui"
+      : `${candidates.length} palkintoa avautui`;
   }
 
   return candidates.length === 1 ? "Reward unlocked" : `${candidates.length} rewards unlocked`;
 };
 
-const createCelebrationBody = (candidates: StudentRewardCelebrationCandidate[]): string => {
+const createCelebrationBody = (
+  candidates: StudentRewardCelebrationCandidate[],
+  language: "fi" | "en"
+): string => {
   const [firstCandidate] = candidates;
 
   if (typeof firstCandidate === "undefined") {
-    return "A new leima was added to your event pass.";
+    return language === "fi"
+      ? "Uusi leima lisättiin tapahtumapassiisi."
+      : "A new leima was added to your event pass.";
   }
 
   if (firstCandidate.kind === "STAMP") {
-    return `A new leima was recorded in ${firstCandidate.eventName}.`;
+    return language === "fi"
+      ? `Uusi leima kirjattiin tapahtumassa ${firstCandidate.eventName}.`
+      : `A new leima was recorded in ${firstCandidate.eventName}.`;
   }
 
   if (candidates.length === 1) {
-    return `${firstCandidate.tierTitle} is ready in ${firstCandidate.eventName}.`;
+    return language === "fi"
+      ? `${firstCandidate.tierTitle} on nyt valmiina tapahtumassa ${firstCandidate.eventName}.`
+      : `${firstCandidate.tierTitle} is ready in ${firstCandidate.eventName}.`;
   }
 
-  return `${firstCandidate.tierTitle} and ${candidates.length - 1} more rewards are now ready.`;
+  return language === "fi"
+    ? `${firstCandidate.tierTitle} ja ${candidates.length - 1} muuta palkintoa ovat nyt valmiina.`
+    : `${firstCandidate.tierTitle} and ${candidates.length - 1} more rewards are now ready.`;
 };
 
 const createCelebrationStampLabel = (candidates: StudentRewardCelebrationCandidate[]): string => {
@@ -76,31 +101,47 @@ const createCelebrationStampLabel = (candidates: StudentRewardCelebrationCandida
   return firstCandidate.tierTitle.trim().slice(0, 16).toUpperCase();
 };
 
-const createTicketTitle = (candidate: StudentRewardCelebrationCandidate | null): string => {
+const createTicketTitle = (
+  candidate: StudentRewardCelebrationCandidate | null,
+  language: "fi" | "en"
+): string => {
   if (candidate === null) {
-    return "Leima added";
+    return language === "fi" ? "Leima lisätty" : "Leima added";
   }
 
   if (candidate.kind === "STAMP") {
-    return `${candidate.stampCount} total leimas`;
+    return language === "fi"
+      ? `${candidate.stampCount} leimaa yhteensä`
+      : `${candidate.stampCount} total leimas`;
   }
 
   return candidate.tierTitle;
 };
 
-const createTicketHint = (candidate: StudentRewardCelebrationCandidate | null): string => {
+const createTicketHint = (
+  candidate: StudentRewardCelebrationCandidate | null,
+  language: "fi" | "en"
+): string => {
   if (candidate === null) {
-    return "Your pass keeps the latest progress live.";
+    return language === "fi"
+      ? "Passisi pysyy ajan tasalla koko illan."
+      : "Your pass keeps the latest progress live.";
   }
 
   if (candidate.kind === "STAMP") {
-    return "Your event pass updated instantly.";
+    return language === "fi"
+      ? "Tapahtumapassisi päivittyi heti."
+      : "Your event pass updated instantly.";
   }
 
-  return "Show this at the venue when you claim it.";
+  return language === "fi"
+    ? "Näytä tämä tiskillä, kun lunastat palkinnon."
+    : "Show this at the venue when you claim it.";
 };
 
 export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren) => {
+  const { language, theme } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const [activeCandidates, setActiveCandidates] = useState<StudentRewardCelebrationCandidate[] | null>(
     null
   );
@@ -309,22 +350,37 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
 
                 <View style={styles.content}>
                   <Text style={styles.eyebrow}>
-                    {heroCandidate?.kind === "STAMP" ? "Leima earned" : "Reward unlocked"}
+                    {heroCandidate?.kind === "STAMP"
+                      ? language === "fi"
+                        ? "Leima saatu"
+                        : "Leima earned"
+                      : language === "fi"
+                        ? "Palkinto avautui"
+                        : "Reward unlocked"}
                   </Text>
-                  <Text style={styles.title}>{createCelebrationTitle(activeCandidates ?? [])}</Text>
-                  <Text style={styles.body}>{createCelebrationBody(activeCandidates ?? [])}</Text>
+                  <Text style={styles.title}>
+                    {createCelebrationTitle(activeCandidates ?? [], language)}
+                  </Text>
+                  <Text style={styles.body}>
+                    {createCelebrationBody(activeCandidates ?? [], language)}
+                  </Text>
 
                   <View style={styles.ticket}>
                     <View style={styles.ticketHeader}>
-                    <Text style={styles.ticketEvent}>
-                      {heroCandidate?.eventName ?? "OmaLeima night"}
-                    </Text>
+                      <Text style={styles.ticketEvent}>
+                        {heroCandidate?.eventName ??
+                          (language === "fi" ? "OmaLeima-ilta" : "OmaLeima night")}
+                      </Text>
                       <View style={styles.ticketIcon}>
-                        <AppIcon color={mobileTheme.colors.lime} name="calendar" size={16} />
+                        <AppIcon color={theme.colors.lime} name="calendar" size={16} />
                       </View>
                     </View>
-                    <Text style={styles.ticketReward}>{createTicketTitle(heroCandidate)}</Text>
-                    <Text style={styles.ticketHint}>{createTicketHint(heroCandidate)}</Text>
+                    <Text style={styles.ticketReward}>
+                      {createTicketTitle(heroCandidate, language)}
+                    </Text>
+                    <Text style={styles.ticketHint}>
+                      {createTicketHint(heroCandidate, language)}
+                    </Text>
                   </View>
 
                   <Animated.View
@@ -369,145 +425,146 @@ export const useStudentRewardCelebration = (): StudentRewardCelebrationContextVa
   return context;
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.72)",
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  backdropPressable: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    width: "100%",
-  },
-  body: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-    maxWidth: 280,
-  },
-  card: {
-    borderRadius: 24,
-    minHeight: 420,
-    overflow: "hidden",
-    padding: 24,
-    width: "100%",
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.54)",
-  },
-  cardWrap: {
-    maxWidth: 380,
-    width: "100%",
-  },
-  content: {
-    flex: 1,
-    gap: 14,
-    justifyContent: "flex-end",
-  },
-  eyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.4,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-    zIndex: 2,
-  },
-  heroImage: {
-    borderRadius: 24,
-  },
-  shimmer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(200, 255, 71, 0.12)",
-  },
-  stampSeal: {
-    alignItems: "center",
-    alignSelf: "flex-end",
-    backgroundColor: "rgba(200, 255, 71, 0.14)",
-    borderColor: "rgba(200, 255, 71, 0.28)",
-    borderRadius: 999,
-    borderStyle: "dashed",
-    borderWidth: 2,
-    bottom: 28,
-    height: 140,
-    justifyContent: "center",
-    paddingHorizontal: 18,
-    position: "absolute",
-    right: 18,
-    width: 140,
-  },
-  stampSealEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.caption,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  stampSealTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-    marginTop: 4,
-    textAlign: "center",
-  },
-  ticket: {
-    backgroundColor: "rgba(6, 8, 6, 0.88)",
-    borderColor: mobileTheme.colors.limeBorder,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 8,
-    marginTop: 6,
-    padding: 18,
-    zIndex: 2,
-  },
-  ticketEvent: {
-    color: mobileTheme.colors.textMuted,
-    flex: 1,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  ticketHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  ticketHint: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  ticketIcon: {
-    alignItems: "center",
-    backgroundColor: "rgba(200, 255, 71, 0.08)",
-    borderRadius: 999,
-    height: 28,
-    justifyContent: "center",
-    width: 28,
-  },
-  ticketReward: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    lineHeight: mobileTheme.typography.lineHeights.subtitle,
-    maxWidth: 220,
-  },
-  title: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: 36,
-    letterSpacing: -0.9,
-    lineHeight: 42,
-    maxWidth: 300,
-    zIndex: 2,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    backdrop: {
+      alignItems: "center",
+      backgroundColor: theme.mode === "light" ? "rgba(10, 16, 10, 0.5)" : "rgba(0, 0, 0, 0.72)",
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 20,
+    },
+    backdropPressable: {
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+      width: "100%",
+    },
+    body: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 280,
+    },
+    card: {
+      borderRadius: 24,
+      minHeight: 420,
+      overflow: "hidden",
+      padding: 24,
+      width: "100%",
+    },
+    cardOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "light" ? "rgba(9, 14, 9, 0.36)" : "rgba(0, 0, 0, 0.54)",
+    },
+    cardWrap: {
+      maxWidth: 380,
+      width: "100%",
+    },
+    content: {
+      flex: 1,
+      gap: 14,
+      justifyContent: "flex-end",
+    },
+    eyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+      zIndex: 2,
+    },
+    heroImage: {
+      borderRadius: 24,
+    },
+    shimmer: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.colors.limeSurface,
+    },
+    stampSeal: {
+      alignItems: "center",
+      alignSelf: "flex-end",
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderStyle: "dashed",
+      borderWidth: 2,
+      bottom: 28,
+      height: 140,
+      justifyContent: "center",
+      paddingHorizontal: 18,
+      position: "absolute",
+      right: 18,
+      width: 140,
+    },
+    stampSealEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+    },
+    stampSealTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      marginTop: 4,
+      textAlign: "center",
+    },
+    ticket: {
+      backgroundColor: theme.mode === "light" ? "rgba(245, 250, 243, 0.9)" : "rgba(6, 8, 6, 0.88)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 18,
+      borderWidth: 1,
+      gap: 8,
+      marginTop: 6,
+      padding: 18,
+      zIndex: 2,
+    },
+    ticketEvent: {
+      color: theme.colors.textMuted,
+      flex: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    ticketHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    ticketHint: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    ticketIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 28,
+      justifyContent: "center",
+      width: 28,
+    },
+    ticketReward: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+      maxWidth: 220,
+    },
+    title: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 36,
+      letterSpacing: -0.9,
+      lineHeight: 42,
+      maxWidth: 300,
+      zIndex: 2,
+    },
+  });
