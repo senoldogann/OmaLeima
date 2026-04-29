@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-04-29
+- **Branch:** `feature/owner-checklist-tr`
+- **Yapılan iş:** Launch runbook icine kullaniciya donuk kisa bir Turkce owner checklist eklendi. Bu bolum artik “su an yapmana gerek yok”, “uygulama biraz daha tamamlandiginda senden istenecekler”, “su an teknik olarak dogru siramiz” ve “kulup yoksa bugun problem mi” ayrimini net veriyor. `README.md` icine de bu Turkce bolume kisa yonlendirme eklendi. Boylesiyle launch notlari repo icinde kaldi ama ana gelistirme akisi da dagilmadi.
+- **Neden yapıldı:** Kullanici launch ve pilot tarafindaki insan-odakli aksiyonlari daha net gormek istiyordu, ama ayni anda bu konularin mevcut teknik akisla karismamasi gerekiyordu. Ayrica su anda gercek kulup olmamasi yuzunden bazi owner gorevlerinin ertelenebilecegini acikca yazmak lazimdi.
+- **Doğrulama:** `docs/LAUNCH_RUNBOOK.md` ve `README.md` uzerinde focused sanity pass yapildi. Turkce owner checklist basliklari ve README yonlendirmesi `rg -n "Senin icin kisa not|Su an yapmana gerek yok|Uygulama biraz daha tamamlandiginda senden istenecekler|Kulup yoksa bugun problem mi|owner-facing next steps in Turkish" README.md docs/LAUNCH_RUNBOOK.md` ile dogrulandi.
+- **Sıradaki önerilen adım:** En dogru sonraki teknik adim Android fiziksel cihaz smoke'u olmaya devam ediyor. Kullanici tarafinda ise bu yeni Turkce checklist simdilik yeterli; gercek kulup ve operator hesaplari uygulama biraz daha tamamlandiginda ele alinacak.
+- **Açık risk/blokaj:** Android fiziksel smoke hala gecmedi. Gercek kulup/operator setup'i bilincli olarak ertelendi. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-29
 - **Branch:** `feature/launch-readiness-pack`
 - **Yapılan iş:** Launch guidance daha operasyonel hale getirildi. `docs/LAUNCH_RUNBOOK.md` artık sadece event-day fallback notu değil; mevcut doğrulanmış state, owner-only dış sistem işleri, temporary smoke credential cleanup, private-pilot go/no-go gate, fiziksel cihaz doğrulama durumu ve pilot stop signals bölümlerini içeriyor. `README.md` içine de kısa bir `Current readiness` özeti eklendi; böylece repo girişinden şu an nelerin gerçekten doğrulandığı ve geniş public launch öncesi hangi başlıkların hâlâ beklediği hemen görülebiliyor.
 - **Neden yapıldı:** Teknik omurga ve fiziksel iPhone smoke artık yeterince ilerlediği için sıradaki risk kod değil, dağınık operasyon bilgisiydi. Kullanıcının “benim yapmam gerekenleri net söyle” isteğini repo içinde kalıcı hale getirmek ve private pilot ile public launch beklentilerini ayırmak gerekiyordu.

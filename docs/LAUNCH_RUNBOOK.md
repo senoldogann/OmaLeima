@@ -52,6 +52,44 @@ These are the next user-owned tasks outside the repo. Split them into “needed 
 4. Public Play Store submission
 5. Full visual polish pass across the whole mobile UI
 
+## Senin icin kisa not (TR)
+
+Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
+
+### Su an yapmana gerek yok
+
+- Gercek kulup bulmak veya kulup ile gorusmeye baslamak
+- Gercek organizer/scanner hesaplari acmak
+- Domain satin almak
+- App Store veya Play Store yayiniyla ugrasmak
+- Tum UI'i bastan tasarlamak
+
+### Uygulama biraz daha tamamlandiginda senden istenecekler
+
+1. Gorusecegin ilk kulubu secmek
+2. O kulup icin gercek organizer hesabini acmak
+3. Gercek scanner/staff hesaplarini acmak
+4. Gecici smoke hesaplarini kapatmak
+5. Ilk pilot etkinlik ve venue listesini netlemek
+6. Hosted secret ve sifreleri nihai degerlere cevirmek
+
+### Su an teknik olarak dogru siramiz
+
+1. Ana gelistirme akisina devam
+2. Android fiziksel cihaz smoke'u ilk uygun anda gecmek
+3. Launch ve operasyon checklist'ini net tutmak
+4. En sonda toplu UI polish ve public launch isi
+
+### Kulup yoksa bugun problem mi
+
+Hayir. Su an hic kulube sahip olmaman blokaj degil.
+
+Bu proje icin bugun kritik olan sey:
+
+- urunun teknik omurgasini bitirmek
+- private pilot oncesi neyin eksik oldugunu net tutmak
+- kulup gorusmelerini uygulama yeterince hazir oldugunda baslatmak
+
 ## Temporary fixture credentials
 
 The following accounts exist only to support hosted smoke and manual validation. They must not survive into a real pilot unchanged:

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/launch-readiness-pack`
-- **Scope:** Turn the current launch guidance into a practical owner-facing rollout pack: what is already verified, what still needs user-owned external setup, which seeded credentials must never survive to a real pilot, and what the public-pilot go/no-go gate actually is.
+- **Branch:** `feature/owner-checklist-tr`
+- **Scope:** Add a short Turkish owner checklist to the launch guidance so the user can clearly see which tasks matter now, which can wait until the app is more complete, and which pilot setup steps depend on having a real club later.
 
 ## Affected Files
 
@@ -14,33 +14,31 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `README.md`
 - `docs/LAUNCH_RUNBOOK.md`
-- `apps/mobile/README.md`
-- `docs/TESTING.md`
+- `README.md`
 
 ## Risks
 
-- The repo already has several launch-related notes spread across `README.md`, `docs/TESTING.md`, `docs/LAUNCH_RUNBOOK.md`, and the master plan. We should consolidate without duplicating or contradicting those files.
-- Some current hosted smoke credentials are intentionally weak fixtures. The runbook must clearly mark them as temporary and non-production.
-- We should separate “needed before a private hosted pilot” from “needed before public launch” so the user does not feel blocked by domain purchase or store release work too early.
+- The existing launch runbook is mostly in English. The new Turkish notes should help the user without forking the document into two competing versions.
+- The user explicitly said there is no real club yet. We should not phrase pilot-account setup as an immediate blocker for ongoing product development.
+- We should keep the main technical flow visible so the new notes do not accidentally turn the repo into a pure launch-prep branch.
 
 ## Dependencies
 
-- Existing hosted admin and mobile verification notes in `README.md`
-- Existing event-day operations in `docs/LAUNCH_RUNBOOK.md`
-- Existing architecture and production-readiness ideas in `LEIMA_APP_MASTER_PLAN.md`
+- Existing launch guidance in `docs/LAUNCH_RUNBOOK.md`
+- Existing readiness summary in `README.md`
+- Current hosted smoke state already verified on the physical iPhone
 
 ## Existing Logic Checked
 
 - The project already passed hosted mobile auth, push, QR rotation, manual scanner fallback, stamp creation, and reward-unlock push on a real iPhone.
-- `docs/LAUNCH_RUNBOOK.md` already has strong event-day fallback guidance but does not yet clearly call out owner-only action items and the seeded-account cleanup step.
-- `README.md` links to testing and launch docs but does not yet summarize the current readiness state or the remaining external tasks in one place.
+- The launch runbook already distinguishes private-pilot tasks from broader public-launch work.
+- The missing piece is a short, user-friendly Turkish section that says “not now” versus “later when there is a real club.”
 
 ## Review Outcome
 
-Ship a focused launch-readiness follow-up that:
+Ship a narrow documentation follow-up that:
 
-- clarifies what has already been verified versus what still needs the user to do outside the repo
-- turns the launch runbook into a practical pilot checklist instead of a generic notes dump
-- marks temporary fixture credentials and public-launch blockers clearly so the next decisions are less fuzzy
+- adds a concise Turkish owner checklist
+- explicitly says there is no need to create real club or scanner accounts yet
+- keeps the main engineering next step visible after the note is added
