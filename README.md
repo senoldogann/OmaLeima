@@ -25,6 +25,8 @@ Still pending before a broader public launch:
 - custom domain cutover
 - public store release steps
 
+For the short owner-facing next steps in Turkish, see the `Senin icin kisa not (TR)` section in [docs/LAUNCH_RUNBOOK.md](docs/LAUNCH_RUNBOOK.md).
+
 ## Testing
 
 The current local QA entry point is:
