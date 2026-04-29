@@ -60,27 +60,24 @@ export default function BusinessHistoryScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="History" title="Recent own scans">
-        <View style={styles.heroBand}>
-          <Text selectable style={styles.heroText}>
-            This view lists the latest scan outcomes performed by the signed-in staff account. It stays scoped to the operator, not every business employee.
-          </Text>
-        </View>
-        <View style={styles.actionRow}>
-          <Link href="/business/scanner" asChild>
-            <Pressable style={styles.primaryButton}>
-              <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
-              <Text style={styles.primaryButtonText}>Back to scanner</Text>
-            </Pressable>
-          </Link>
-          <Link href="/business/events" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
-              <Text style={styles.secondaryButtonText}>Manage events</Text>
-            </Pressable>
-          </Link>
-        </View>
-      </InfoCard>
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Scan history</Text>
+        <Text selectable style={styles.metaText}>Your latest scan outcomes.</Text>
+      </View>
+      <View style={styles.actionRow}>
+        <Link href="/business/scanner" asChild>
+          <Pressable style={styles.primaryButton}>
+            <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
+            <Text style={styles.primaryButtonText}>Scanner</Text>
+          </Pressable>
+        </Link>
+        <Link href="/business/events" asChild>
+          <Pressable style={styles.secondaryButton}>
+            <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
+            <Text style={styles.secondaryButtonText}>Events</Text>
+          </Pressable>
+        </Link>
+      </View>
 
       {historyQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening scan history">
@@ -164,19 +161,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
-  heroBand: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.cyanBorder,
-    borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
-    padding: 18,
-  },
-  heroText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 17,
-    fontWeight: "700",
-    lineHeight: 23,
-  },
   metaText: {
     color: mobileTheme.colors.textMuted,
     fontSize: 13,
@@ -221,6 +205,16 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
+  },
+  screenHeader: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
   },
   stack: {
     gap: 12,

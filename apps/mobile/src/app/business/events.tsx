@@ -4,10 +4,20 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { useJoinBusinessEventMutation, useLeaveBusinessEventMutation } from "@/features/business/business-events";
+import { StatusBadge } from "@/components/status-badge";
+import {
+  useJoinBusinessEventMutation,
+  useLeaveBusinessEventMutation,
+} from "@/features/business/business-events";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useSession } from "@/providers/session-provider";
+
+type FeedbackState = {
+  tone: "ready" | "warning";
+  title: string;
+  message: string;
+};
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
   weekday: "short",
@@ -61,47 +71,44 @@ export default function BusinessEventsScreen() {
     ? `${leaveMutation.variables.businessId}:${leaveMutation.variables.eventId}`
     : null;
 
-  const joinFeedback = useMemo(() => {
-    if (joinMutation.data === undefined) {
-      return null;
+  const feedback = useMemo<FeedbackState | null>(() => {
+    if (joinMutation.data !== undefined) {
+      return {
+        tone:
+          joinMutation.data.status === "SUCCESS" || joinMutation.data.status === "ALREADY_JOINED"
+            ? "ready"
+            : "warning",
+        title: joinMutation.data.status,
+        message:
+          joinResultMessages[joinMutation.data.status] ??
+          `Join returned ${joinMutation.data.status}.`,
+      };
     }
 
-    return {
-      status: joinMutation.data.status,
-      message: joinResultMessages[joinMutation.data.status] ?? `Join returned ${joinMutation.data.status}.`,
-    };
-  }, [joinMutation.data]);
-
-  const leaveFeedback = useMemo(() => {
-    if (leaveMutation.data === undefined) {
-      return null;
+    if (leaveMutation.data !== undefined) {
+      return {
+        tone: leaveMutation.data.status === "SUCCESS" ? "ready" : "warning",
+        title: leaveMutation.data.status,
+        message:
+          leaveResultMessages[leaveMutation.data.status] ??
+          `Leave returned ${leaveMutation.data.status}.`,
+      };
     }
 
-    return {
-      status: leaveMutation.data.status,
-      message: leaveResultMessages[leaveMutation.data.status] ?? `Leave returned ${leaveMutation.data.status}.`,
-    };
-  }, [leaveMutation.data]);
+    return null;
+  }, [joinMutation.data, leaveMutation.data]);
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Business" title="Event participation">
-        <View style={styles.heroCard}>
-          <View style={styles.heroGlow} />
-          <Text selectable style={styles.heroEyebrow}>Venue participation</Text>
-          <Text selectable style={styles.heroTitle}>
-            Move between live nights and upcoming joins without losing the event-day rhythm.
-          </Text>
-          <Text selectable style={styles.bodyText}>
-            This screen is the business-side control point for venue participation. Joinable public events stay grouped by business location, and live joined events can jump straight into the scanner.
-          </Text>
-        </View>
-      </InfoCard>
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Business events</Text>
+        <Text style={styles.metaText}>Join what is next, scan what is live, leave what has not started.</Text>
+      </View>
 
       {homeOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening business events">
           <Text selectable style={styles.bodyText}>
-            Loading joined events and public opportunities for every active business location on this account.
+            Loading joined events and public opportunities for this account.
           </Text>
         </InfoCard>
       ) : null}
@@ -109,49 +116,43 @@ export default function BusinessEventsScreen() {
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load business events">
           <Text selectable style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
-          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.primaryButton}>
+          <Pressable
+            onPress={() => void homeOverviewQuery.refetch()}
+            style={styles.primaryButton}
+          >
             <Text style={styles.primaryButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
-      {joinMutation.isError ? (
-        <InfoCard eyebrow="Join" title="Join request failed">
-          <Text selectable style={styles.bodyText}>{joinMutation.error.message}</Text>
+      {joinMutation.isError || leaveMutation.isError ? (
+        <InfoCard eyebrow="Error" title="Request failed">
+          <Text selectable style={styles.bodyText}>
+            {joinMutation.error?.message ?? leaveMutation.error?.message}
+          </Text>
         </InfoCard>
       ) : null}
 
-      {leaveMutation.isError ? (
-        <InfoCard eyebrow="Leave" title="Leave request failed">
-          <Text selectable style={styles.bodyText}>{leaveMutation.error.message}</Text>
-        </InfoCard>
-      ) : null}
-
-      {joinFeedback !== null ? (
-        <InfoCard eyebrow="Join" title={`Result: ${joinFeedback.status}`}>
-          <Text selectable style={styles.bodyText}>{joinFeedback.message}</Text>
-        </InfoCard>
-      ) : null}
-
-      {leaveFeedback !== null ? (
-        <InfoCard eyebrow="Leave" title={`Result: ${leaveFeedback.status}`}>
-          <Text selectable style={styles.bodyText}>{leaveFeedback.message}</Text>
+      {feedback ? (
+        <InfoCard eyebrow="Update" title={feedback.title}>
+          <View style={styles.feedbackRow}>
+            <StatusBadge label={feedback.tone} state={feedback.tone} />
+            <Text selectable style={styles.bodyText}>{feedback.message}</Text>
+          </View>
         </InfoCard>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Live" title="Joined events ready for scanning">
+        <InfoCard eyebrow="Live" title="Ready for scanning">
           {activeJoinedEvents.length === 0 ? (
             <Text selectable style={styles.bodyText}>
-              No joined event is active yet. Scanner opens once at least one joined event is live.
+              No joined event is active right now.
             </Text>
           ) : (
             <View style={styles.stack}>
               {activeJoinedEvents.map((event) => (
                 <View key={event.eventVenueId} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>
-                    {event.eventName}
-                  </Text>
+                  <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
                   <Text selectable style={styles.metaText}>
                     {event.businessName} · {event.city}
                   </Text>
@@ -163,19 +164,17 @@ export default function BusinessEventsScreen() {
                     <Link
                       href={{
                         pathname: "/business/scanner",
-                        params: {
-                          eventVenueId: event.eventVenueId,
-                        },
+                        params: { eventVenueId: event.eventVenueId },
                       }}
                       asChild
                     >
-                      <Pressable style={styles.primaryButton}>
+                      <Pressable style={[styles.primaryButton, styles.actionFlex]}>
                         <Text style={styles.primaryButtonText}>Open scanner</Text>
                       </Pressable>
                     </Link>
                     <Link href="/business/history" asChild>
-                      <Pressable style={styles.secondaryButton}>
-                        <Text style={styles.secondaryButtonText}>View history</Text>
+                      <Pressable style={[styles.secondaryButton, styles.actionFlex]}>
+                        <Text style={styles.secondaryButtonText}>History</Text>
                       </Pressable>
                     </Link>
                   </View>
@@ -189,58 +188,44 @@ export default function BusinessEventsScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <InfoCard eyebrow="Upcoming" title="Joined upcoming events">
           {upcomingJoinedEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No upcoming joined event is attached to this account yet.
-            </Text>
+            <Text selectable style={styles.bodyText}>No upcoming joined event yet.</Text>
           ) : (
             <View style={styles.stack}>
-              {upcomingJoinedEvents.map((event) => (
-                (() => {
-                  const leaveKey = `${event.businessId}:${event.eventId}`;
-                  const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
+              {upcomingJoinedEvents.map((event) => {
+                const leaveKey = `${event.businessId}:${event.eventId}`;
+                const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
 
-                  return (
-                    <View key={event.eventVenueId} style={styles.rowCard}>
-                      <Text selectable style={styles.cardTitle}>
-                        {event.eventName}
-                      </Text>
-                      <Text selectable style={styles.metaText}>
-                        {event.businessName} · Starts {formatDateTime(event.startAt)}
-                      </Text>
-                      <Text selectable style={styles.metaText}>
-                        Join deadline {formatDateTime(event.joinDeadlineAt)}
-                      </Text>
-                      <Text selectable style={styles.metaText}>
-                        Leave stays available only until the event start time.
-                      </Text>
-                      <View style={styles.actionRow}>
-                        <Link href="/business/history" asChild>
-                          <Pressable style={styles.secondaryButton}>
-                            <Text style={styles.secondaryButtonText}>View history</Text>
-                          </Pressable>
-                        </Link>
-                        <Pressable
-                          disabled={userId === null || isLeaving}
-                          onPress={() => {
-                            if (userId === null) {
-                              return;
-                            }
+                return (
+                  <View key={event.eventVenueId} style={styles.rowCard}>
+                    <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
+                    <Text selectable style={styles.metaText}>
+                      {event.businessName} · Starts {formatDateTime(event.startAt)}
+                    </Text>
+                    <Text selectable style={styles.metaText}>
+                      Join deadline {formatDateTime(event.joinDeadlineAt)}
+                    </Text>
+                    <Pressable
+                      disabled={userId === null || isLeaving}
+                      onPress={() => {
+                        if (userId === null) {
+                          return;
+                        }
 
-                            void leaveMutation.mutateAsync({
-                              eventId: event.eventId,
-                              businessId: event.businessId,
-                              staffUserId: userId,
-                            });
-                          }}
-                          style={[styles.dangerButton, isLeaving ? styles.disabledButton : null]}
-                        >
-                          <Text style={styles.dangerButtonText}>{isLeaving ? "Leaving..." : "Leave event"}</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  );
-                })()
-              ))}
+                        void leaveMutation.mutateAsync({
+                          eventId: event.eventId,
+                          businessId: event.businessId,
+                          staffUserId: userId,
+                        });
+                      }}
+                      style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        {isLeaving ? "Leaving..." : "Leave event"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
           )}
         </InfoCard>
@@ -260,9 +245,7 @@ export default function BusinessEventsScreen() {
 
                 return (
                   <View key={joinKey} style={styles.rowCard}>
-                    <Text selectable style={styles.cardTitle}>
-                      {event.eventName}
-                    </Text>
+                    <Text selectable style={styles.cardTitle}>{event.eventName}</Text>
                     <Text selectable style={styles.metaText}>
                       {event.businessName} · {event.city}
                     </Text>
@@ -284,7 +267,9 @@ export default function BusinessEventsScreen() {
                       }}
                       style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
                     >
-                      <Text style={styles.primaryButtonText}>{isPending ? "Joining..." : "Join event"}</Text>
+                      <Text style={styles.primaryButtonText}>
+                        {isPending ? "Joining..." : "Join event"}
+                      </Text>
                     </Pressable>
                   </View>
                 );
@@ -293,22 +278,20 @@ export default function BusinessEventsScreen() {
           )}
         </InfoCard>
       ) : null}
-
-      <InfoCard eyebrow="Next" title="Leave and history">
-        <Text selectable style={styles.bodyText}>
-          Upcoming joined events can now be left before start, and scan history lives in its own route for event-day follow-up.
-        </Text>
-        <Link href="/business/history" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Open scan history</Text>
-          </Pressable>
-        </Link>
-      </InfoCard>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  actionFlex: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
@@ -322,110 +305,60 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.7,
   },
-  heroCard: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.amberBorder,
-    borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
-    gap: 12,
-    overflow: "hidden",
-    padding: 18,
-    position: "relative",
-  },
-  heroEyebrow: {
-    color: mobileTheme.colors.amber,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.amberSurface,
-    borderRadius: 140,
-    height: 150,
-    opacity: 1,
-    position: "absolute",
-    right: -44,
-    top: -58,
-    width: 150,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 30,
+  feedbackRow: {
+    alignItems: "flex-start",
+    gap: 8,
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  dangerButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.dangerSurface,
-    borderColor: mobileTheme.colors.dangerBorder,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  dangerButtonText: {
-    color: mobileTheme.colors.danger,
-    fontSize: 14,
-    fontWeight: "700",
-  },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.cyan,
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     ...interactiveSurfaceShadowStyle,
   },
   primaryButtonText: {
-    color: mobileTheme.colors.screenBase,
+    color: "#08090E",
     fontSize: 14,
     fontWeight: "800",
+    letterSpacing: 0.3,
   },
   rowCard: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
+    borderRadius: mobileTheme.radius.inner,
     gap: 8,
-    padding: 16,
+    padding: 14,
     ...interactiveSurfaceShadowStyle,
   },
-  stack: {
-    gap: 12,
+  screenHeader: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
   },
   secondaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
     ...interactiveSurfaceShadowStyle,
   },
   secondaryButtonText: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  stack: {
+    gap: 10,
   },
 });

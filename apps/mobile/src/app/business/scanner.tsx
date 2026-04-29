@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
+import {
+  CameraView,
+  useCameraPermissions,
+  type BarcodeScanningResult,
+} from "expo-camera";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -26,7 +30,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
 
-// Tone config: STARK colors for each scan result tone
 const toneConfig: Record<
   ScannerAttemptResult["tone"],
   {
@@ -86,24 +89,23 @@ const scanResultTitles: Record<ScannerAttemptResult["status"], string> = {
 };
 
 const scanResultDetails: Record<ScannerAttemptResult["status"], string> = {
-  SUCCESS: "Scanner is locked after a successful read so staff can confirm the result before continuing.",
-  QR_ALREADY_USED_OR_REPLAYED: "This token should not be retried. Ask the student to refresh the QR in the app.",
+  SUCCESS: "Scanner locks after a successful read so staff can confirm the result before continuing.",
+  QR_ALREADY_USED_OR_REPLAYED: "Ask the student to refresh the QR.",
   ALREADY_STAMPED: "The student already received this venue stamp for the current event.",
-  EVENT_NOT_FOUND: "The event referenced by this QR is no longer available. Refresh the scanner context before trying again.",
+  EVENT_NOT_FOUND: "Refresh the scanner context before trying again.",
   INVALID_QR: "The payload did not match the expected student QR format.",
-  INVALID_QR_TYPE: "The code was readable, but it was not a student stamp QR for this scanner flow.",
+  INVALID_QR_TYPE: "The code was readable, but it was not a student stamp QR for this flow.",
   QR_EXPIRED: "Ask the student to reopen the active event screen and generate a fresh QR.",
-  VENUE_NOT_IN_EVENT: "The selected venue context does not match the event encoded in the student QR.",
+  VENUE_NOT_IN_EVENT: "The selected venue context does not match the event encoded in the QR.",
   EVENT_NOT_ACTIVE: "Scanning is available only while the selected joined event is live.",
   STUDENT_NOT_REGISTERED: "The student must be registered for the event before a stamp can be recorded.",
   VENUE_JOINED_TOO_LATE: "This venue joined after the event scan window had already opened.",
   BUSINESS_STAFF_NOT_ALLOWED: "This signed-in account does not have scanner permission for the selected business.",
-  NOT_BUSINESS_STAFF: "The current session is no longer attached to an active business staff record. Sign in again.",
-  BUSINESS_CONTEXT_REQUIRED: "Pick a valid joined business event context before scanning or refresh the scanner route.",
-  NETWORK_TIMEOUT: "No response arrived within 4 seconds. Retry or use manual fallback when the connection settles.",
+  NOT_BUSINESS_STAFF: "The current session is no longer attached to an active business staff record.",
+  BUSINESS_CONTEXT_REQUIRED: "Pick a valid joined event before scanning.",
+  NETWORK_TIMEOUT: "No response arrived within 4 seconds. Retry or use manual fallback.",
 };
 
-// Scan result appearance animation hook
 const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
   const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -151,7 +153,8 @@ export default function BusinessScannerScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
 
-  const { scale: resultScale, opacity: resultOpacity } = useScanResultAnimation(lastResult);
+  const { scale: resultScale, opacity: resultOpacity } =
+    useScanResultAnimation(lastResult);
 
   const activeJoinedEvents = useMemo(
     () => homeOverviewQuery.data?.joinedActiveEvents ?? [],
@@ -172,7 +175,10 @@ export default function BusinessScannerScreen() {
       return;
     }
 
-    if (selectedEventVenueId !== null && activeJoinedEvents.some((event) => event.eventVenueId === selectedEventVenueId)) {
+    if (
+      selectedEventVenueId !== null &&
+      activeJoinedEvents.some((event) => event.eventVenueId === selectedEventVenueId)
+    ) {
       return;
     }
 
@@ -180,7 +186,9 @@ export default function BusinessScannerScreen() {
   }, [activeJoinedEvents, params.eventVenueId, selectedEventVenueId]);
 
   const selectedEvent = useMemo(
-    () => activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ?? null,
+    () =>
+      activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ??
+      null,
     [activeJoinedEvents, selectedEventVenueId]
   );
 
@@ -220,7 +228,9 @@ export default function BusinessScannerScreen() {
         });
       }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Unknown scanner error.");
+      setSubmitError(
+        error instanceof Error ? error.message : "Unknown scanner error."
+      );
       setIsScannerLocked(false);
     } finally {
       setIsSubmitting(false);
@@ -237,16 +247,19 @@ export default function BusinessScannerScreen() {
 
   return (
     <AppScreen>
-      {/* Loading */}
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Scanner</Text>
+        <Text style={styles.metaText}>Pick the live event, scan once, confirm the result, continue.</Text>
+      </View>
+
       {homeOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="LOADING" title="Opening scanner">
+        <InfoCard eyebrow="Loading" title="Opening scanner">
           <Text style={styles.bodyText}>Loading active joined events before camera opens.</Text>
         </InfoCard>
       ) : null}
 
-      {/* Error */}
       {homeOverviewQuery.error ? (
-        <InfoCard eyebrow="ERROR" title="Could not load scanner context">
+        <InfoCard eyebrow="Error" title="Could not load scanner context">
           <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.ghostButton}>
             <Text style={styles.ghostButtonText}>Retry</Text>
@@ -254,113 +267,105 @@ export default function BusinessScannerScreen() {
         </InfoCard>
       ) : null}
 
-      {/* Event selector */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard
-          eyebrow="CONTEXT"
-          title={activeJoinedEvents.length === 0 ? "No active events" : "Select event"}
-          variant={activeJoinedEvents.length > 0 ? "scene" : "card"}
-        >
+        <InfoCard eyebrow="Scan" title={selectedEvent?.eventName ?? "No active events"}>
           {activeJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>
               No joined event is active right now. Join or wait for an upcoming event to become live.
             </Text>
           ) : (
-            <View style={styles.eventSelectorStack}>
-              {activeJoinedEvents.map((event) => {
-                const isSelected = selectedEventVenueId === event.eventVenueId;
+            <>
+              <View style={styles.eventSelectorStack}>
+                {activeJoinedEvents.map((event) => {
+                  const isSelected = selectedEventVenueId === event.eventVenueId;
 
-                return (
-                  <Pressable
-                    key={event.eventVenueId}
-                    onPress={() => setSelectedEventVenueId(event.eventVenueId)}
-                    style={[
-                      styles.eventSelectorCard,
-                      isSelected ? styles.eventSelectorCardSelected : null,
-                    ]}
-                  >
-                    <View style={styles.eventSelectorHeader}>
+                  return (
+                    <Pressable
+                      key={event.eventVenueId}
+                      onPress={() => setSelectedEventVenueId(event.eventVenueId)}
+                      style={[
+                        styles.eventSelectorCard,
+                        isSelected ? styles.eventSelectorCardSelected : null,
+                      ]}
+                    >
                       <Text style={styles.eventSelectorTitle}>{event.eventName}</Text>
-                      {isSelected ? (
-                        <View style={styles.selectedBadge}>
-                          <Text style={styles.selectedBadgeText}>SELECTED</Text>
+                      <Text style={styles.eventSelectorMeta}>
+                        {event.businessName} · {event.city}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {selectedEvent ? (
+                <Text style={styles.metaText}>
+                  Ends {formatDateTime(selectedEvent.endAt)}
+                  {selectedEvent.stampLabel ? ` · ${selectedEvent.stampLabel}` : ""}
+                </Text>
+              ) : null}
+
+              {selectedEvent ? (
+                permission === null ? (
+                  <Text style={styles.bodyText}>Camera permission state is loading.</Text>
+                ) : permission.granted ? (
+                  <View style={styles.cameraStack}>
+                    <View
+                      style={[
+                        styles.cameraOuter,
+                        isScannerLocked ? styles.cameraOuterLocked : null,
+                      ]}
+                    >
+                      {!isScannerLocked ? (
+                        <>
+                          <View style={[styles.scanBracket, styles.scanBracketTL]} />
+                          <View style={[styles.scanBracket, styles.scanBracketTR]} />
+                          <View style={[styles.scanBracket, styles.scanBracketBL]} />
+                          <View style={[styles.scanBracket, styles.scanBracketBR]} />
+                        </>
+                      ) : null}
+
+                      <CameraView
+                        active={!isScannerLocked}
+                        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                        onBarcodeScanned={
+                          isScannerLocked ? undefined : handleBarcodeScanned
+                        }
+                        style={styles.cameraView}
+                      />
+
+                      {isScannerLocked ? (
+                        <View style={styles.lockedOverlay}>
+                          <Text style={styles.lockedOverlayText}>
+                            {isSubmitting ? "PROCESSING" : "REVIEW"}
+                          </Text>
                         </View>
                       ) : null}
                     </View>
-                    <Text style={styles.eventSelectorMeta}>
-                      {event.businessName} · {event.city}
-                    </Text>
-                    <Text style={styles.eventSelectorMeta}>
-                      Ends {formatDateTime(event.endAt)}
-                      {event.stampLabel ? ` · ${event.stampLabel}` : ""}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </InfoCard>
-      ) : null}
 
-      {/* Live camera */}
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedEvent !== null ? (
-        <InfoCard eyebrow="CAMERA" title={isScannerLocked ? "Scanner locked" : "Aim and scan"}>
-          {permission === null ? (
-            <Text style={styles.bodyText}>Camera permission state is loading.</Text>
-          ) : permission.granted ? (
-            <View style={styles.cameraStack}>
-              <View style={[styles.cameraOuter, isScannerLocked ? styles.cameraOuterLocked : null]}>
-                {/* STARK scan brackets: thin cyan lines */}
-                {!isScannerLocked && (
-                  <>
-                    <View style={[styles.scanBracket, styles.scanBracketTL]} />
-                    <View style={[styles.scanBracket, styles.scanBracketTR]} />
-                    <View style={[styles.scanBracket, styles.scanBracketBL]} />
-                    <View style={[styles.scanBracket, styles.scanBracketBR]} />
-                  </>
-                )}
-
-                <CameraView
-                  active={!isScannerLocked}
-                  barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                  onBarcodeScanned={isScannerLocked ? undefined : handleBarcodeScanned}
-                  style={styles.cameraView}
-                />
-
-                {/* Locked overlay */}
-                {isScannerLocked ? (
-                  <View style={styles.lockedOverlay}>
-                    <Text style={styles.lockedOverlayText}>
-                      {isSubmitting ? "PROCESSING" : "REVIEW"}
+                    <Text style={styles.cameraHint}>
+                      {isScannerLocked ? "Review result below." : "Aim at QR. Locks after one read."}
                     </Text>
                   </View>
-                ) : null}
-              </View>
-
-              <Text style={styles.cameraHint}>
-                {isScannerLocked
-                  ? "Review result below."
-                  : "Aim at QR. Locks after one read."}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.cameraStack}>
-              <Text style={styles.bodyText}>Camera permission is not granted.</Text>
-              <Pressable onPress={() => void requestPermission()} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Grant camera access</Text>
-              </Pressable>
-            </View>
+                ) : (
+                  <View style={styles.cameraStack}>
+                    <Text style={styles.bodyText}>Camera permission is not granted.</Text>
+                    <Pressable
+                      onPress={() => void requestPermission()}
+                      style={styles.primaryButton}
+                    >
+                      <Text style={styles.primaryButtonText}>Grant camera access</Text>
+                    </Pressable>
+                  </View>
+                )
+              ) : null}
+            </>
           )}
         </InfoCard>
       ) : null}
 
-      {/* Scan result */}
       {lastResult !== null ? (
         <Animated.View style={{ transform: [{ scale: resultScale }], opacity: resultOpacity }}>
-          <InfoCard
-            eyebrow={toneConfig[lastResult.tone].eyebrow}
-            title={scanResultTitles[lastResult.status]}
-          >
+          <InfoCard eyebrow={toneConfig[lastResult.tone].eyebrow} title={scanResultTitles[lastResult.status]}>
             <View
               style={[
                 styles.resultHeroCard,
@@ -376,21 +381,29 @@ export default function BusinessScannerScreen() {
 
               {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
                 <View style={styles.stampCountBlock}>
-                  <Text style={[styles.stampCountNumber, { color: toneConfig[lastResult.tone].accentColor }]}>
+                  <Text
+                    style={[
+                      styles.stampCountNumber,
+                      { color: toneConfig[lastResult.tone].accentColor },
+                    ]}
+                  >
                     {lastResult.stampCount}
                   </Text>
                   <Text style={styles.stampCountLabel}>STAMPS</Text>
                 </View>
               ) : null}
 
-              <Text style={[styles.resultMessage, { color: toneConfig[lastResult.tone].accentColor }]}>
+              <Text
+                style={[
+                  styles.resultMessage,
+                  { color: toneConfig[lastResult.tone].accentColor },
+                ]}
+              >
                 {lastResult.message}
               </Text>
             </View>
 
             <Text style={styles.bodyText}>{scanResultDetails[lastResult.status]}</Text>
-            <Text style={styles.metaText}>CODE: {lastResult.status}</Text>
-
             <View style={styles.actionRow}>
               <Pressable onPress={resetScanner} style={[styles.primaryButton, styles.actionFlex]}>
                 <Text style={styles.primaryButtonText}>Scan again</Text>
@@ -405,17 +418,17 @@ export default function BusinessScannerScreen() {
         </Animated.View>
       ) : null}
 
-      {/* Submit error */}
       {submitError !== null ? (
-        <InfoCard eyebrow="ERROR" title="Request failed">
+        <InfoCard eyebrow="Error" title="Request failed">
           <Text style={styles.bodyText}>{submitError}</Text>
         </InfoCard>
       ) : null}
 
-      {/* Manual fallback */}
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedEvent !== null ? (
-        <InfoCard eyebrow="FALLBACK" title="Manual entry">
-          <Text style={styles.bodyText}>Paste a student token here.</Text>
+      {!homeOverviewQuery.isLoading &&
+      !homeOverviewQuery.error &&
+      selectedEvent !== null ? (
+        <InfoCard eyebrow="Fallback" title="Manual token scan">
+          <Text style={styles.bodyText}>Paste a student token here if camera scanning is not practical.</Text>
           <TextInput
             editable={!isSubmitting}
             multiline
@@ -429,11 +442,15 @@ export default function BusinessScannerScreen() {
             disabled={manualToken.trim().length === 0 || isSubmitting || isScannerLocked}
             onPress={() => void submitScanAsync(manualToken.trim())}
             style={[
-              styles.primaryButton,
-              manualToken.trim().length === 0 || isSubmitting || isScannerLocked ? styles.disabledButton : null,
+              styles.secondaryButton,
+              manualToken.trim().length === 0 || isSubmitting || isScannerLocked
+                ? styles.disabledButton
+                : null,
             ]}
           >
-            <Text style={styles.primaryButtonText}>{isSubmitting ? "Scanning…" : "Scan pasted token"}</Text>
+            <Text style={styles.secondaryButtonText}>
+              {isSubmitting ? "Scanning…" : "Scan pasted token"}
+            </Text>
           </Pressable>
         </InfoCard>
       ) : null}
@@ -446,120 +463,81 @@ const BRACKET_THICKNESS = 2;
 const BRACKET_COLOR = mobileTheme.colors.cyan;
 
 const styles = StyleSheet.create({
+  actionFlex: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
-  metaText: {
-    color: mobileTheme.colors.textDim,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.0,
+  cameraHint: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
   },
-
-  // --- Event selector ---
-  eventSelectorStack: {
-    gap: 8,
+  cameraOuter: {
+    aspectRatio: 3 / 4,
+    backgroundColor: mobileTheme.colors.screenBase,
+    borderRadius: mobileTheme.radius.inner,
+    overflow: "hidden",
+    position: "relative",
+  },
+  cameraOuterLocked: {
+    opacity: 0.9,
+  },
+  cameraStack: {
+    gap: 12,
+  },
+  cameraView: {
+    flex: 1,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   eventSelectorCard: {
     backgroundColor: mobileTheme.colors.surfaceL1,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.inner,
-    borderWidth: 1,
-    padding: 14,
     gap: 4,
+    padding: 14,
   },
   eventSelectorCardSelected: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.limeBorder,
   },
-  eventSelectorHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  eventSelectorMeta: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+  },
+  eventSelectorStack: {
+    gap: 8,
   },
   eventSelectorTitle: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
-  selectedBadge: {
-    backgroundColor: mobileTheme.colors.lime,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  ghostButton: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.button,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  selectedBadgeText: {
-    color: "#08090E",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.0,
+  ghostButtonText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
   },
-  eventSelectorMeta: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-  },
-
-  // --- Camera ---
-  cameraStack: {
-    gap: 12,
-  },
-  cameraOuter: {
-    aspectRatio: 3 / 4,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.inner,
-    borderWidth: 1,
-    overflow: "hidden",
-    position: "relative",
-    backgroundColor: mobileTheme.colors.screenBase,
-  },
-  cameraOuterLocked: {
-    borderColor: mobileTheme.colors.borderMuted,
-  },
-  cameraView: {
-    flex: 1,
-  },
-
-  scanBracket: {
-    position: "absolute",
-    width: BRACKET_SIZE,
-    height: BRACKET_SIZE,
-    zIndex: 10,
-  },
-  scanBracketTL: {
-    top: 16,
-    left: 16,
-    borderTopWidth: BRACKET_THICKNESS,
-    borderLeftWidth: BRACKET_THICKNESS,
-    borderColor: BRACKET_COLOR,
-  },
-  scanBracketTR: {
-    top: 16,
-    right: 16,
-    borderTopWidth: BRACKET_THICKNESS,
-    borderRightWidth: BRACKET_THICKNESS,
-    borderColor: BRACKET_COLOR,
-  },
-  scanBracketBL: {
-    bottom: 16,
-    left: 16,
-    borderBottomWidth: BRACKET_THICKNESS,
-    borderLeftWidth: BRACKET_THICKNESS,
-    borderColor: BRACKET_COLOR,
-  },
-  scanBracketBR: {
-    bottom: 16,
-    right: 16,
-    borderBottomWidth: BRACKET_THICKNESS,
-    borderRightWidth: BRACKET_THICKNESS,
-    borderColor: BRACKET_COLOR,
-  },
-
   lockedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8, 9, 14, 0.85)",
     alignItems: "center",
+    backgroundColor: "rgba(8, 9, 14, 0.85)",
     justifyContent: "center",
     zIndex: 5,
   },
@@ -567,60 +545,13 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 16,
     fontWeight: "800",
-    letterSpacing: 2.0,
+    letterSpacing: 2,
   },
-  cameraHint: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
+  metaText: {
+    color: mobileTheme.colors.textDim,
+    fontSize: 13,
+    lineHeight: 18,
   },
-
-  // --- Scan result card ---
-  resultHeroCard: {
-    borderRadius: mobileTheme.radius.inner,
-    borderWidth: 1,
-    gap: 10,
-    alignItems: "center",
-    padding: 24,
-  },
-  resultIcon: {
-    fontSize: 42,
-    fontWeight: "800",
-    lineHeight: 48,
-  },
-  stampCountBlock: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  stampCountNumber: {
-    fontSize: 48,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-  },
-  stampCountLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-  },
-  resultMessage: {
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  actionFlex: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // --- Buttons ---
   primaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.lime,
@@ -634,29 +565,99 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  ghostButton: {
-    alignSelf: "flex-start",
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.button,
+  resultHeroCard: {
+    alignItems: "center",
+    borderRadius: mobileTheme.radius.inner,
     borderWidth: 1,
+    gap: 10,
+    padding: 24,
+  },
+  resultIcon: {
+    fontSize: 42,
+    fontWeight: "800",
+    lineHeight: 48,
+  },
+  resultMessage: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  scanBracket: {
+    height: BRACKET_SIZE,
+    position: "absolute",
+    width: BRACKET_SIZE,
+    zIndex: 10,
+  },
+  scanBracketBL: {
+    borderBottomWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+    borderLeftWidth: BRACKET_THICKNESS,
+    bottom: 16,
+    left: 16,
+  },
+  scanBracketBR: {
+    borderBottomWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+    borderRightWidth: BRACKET_THICKNESS,
+    bottom: 16,
+    right: 16,
+  },
+  scanBracketTL: {
+    borderColor: BRACKET_COLOR,
+    borderLeftWidth: BRACKET_THICKNESS,
+    borderTopWidth: BRACKET_THICKNESS,
+    left: 16,
+    top: 16,
+  },
+  scanBracketTR: {
+    borderColor: BRACKET_COLOR,
+    borderRightWidth: BRACKET_THICKNESS,
+    borderTopWidth: BRACKET_THICKNESS,
+    right: 16,
+    top: 16,
+  },
+  screenHeader: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+  },
+  secondaryButton: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
-  ghostButtonText: {
+  secondaryButtonText: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "600",
   },
-  disabledButton: {
-    opacity: 0.5,
+  stampCountBlock: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
   },
-
-  // --- Misc ---
+  stampCountLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+  stampCountNumber: {
+    fontSize: 48,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "800",
+  },
   textArea: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.inner,
-    borderWidth: 1,
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     minHeight: 100,

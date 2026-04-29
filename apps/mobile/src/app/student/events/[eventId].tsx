@@ -7,7 +7,10 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
-import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
+import {
+  useJoinEventMutation,
+  useStudentEventDetailQuery,
+} from "@/features/events/student-event-detail";
 import { useStudentRewardInventoryRealtime } from "@/features/realtime/student-realtime";
 import { useActiveAppState } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
@@ -77,7 +80,7 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
     return {
       canJoin: false,
       label: "Already joined",
-      detail: "This student session is already registered and can move on to the QR flow when that screen lands.",
+      detail: "You are already in for this event.",
       state: "ready",
     };
   }
@@ -86,7 +89,7 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
     return {
       canJoin: false,
       label: "Registration blocked",
-      detail: "This profile is marked as restricted for this event.",
+      detail: "This profile is restricted for this event.",
       state: "error",
     };
   }
@@ -118,13 +121,15 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
     label: "Join event",
     detail:
       event.maxParticipants === null
-        ? "Registration is open. Capacity is unlimited for this event."
-        : `Registration is open. Capacity is capped at ${event.maxParticipants} participants and enforced when you join.`,
+        ? "Registration is open."
+        : `Registration is open. Capacity is capped at ${event.maxParticipants} participants.`,
     state: "ready",
   };
 };
 
-const getJoinResultPresentation = (result: JoinEventResult | undefined): { title: string; body: string; state: AppReadinessState } | null => {
+const getJoinResultPresentation = (
+  result: JoinEventResult | undefined
+): { title: string; body: string; state: AppReadinessState } | null => {
   if (typeof result === "undefined") {
     return null;
   }
@@ -133,13 +138,13 @@ const getJoinResultPresentation = (result: JoinEventResult | undefined): { title
     case "SUCCESS":
       return {
         title: "Joined successfully",
-        body: "The student is now registered for this event.",
+        body: "You are now registered for this event.",
         state: "ready",
       };
     case "ALREADY_REGISTERED":
       return {
         title: "Already registered",
-        body: "This session was already registered before the latest join attempt.",
+        body: "You were already registered before the latest join attempt.",
         state: "ready",
       };
     case "EVENT_FULL":
@@ -248,17 +253,17 @@ export default function StudentEventDetailScreen() {
   return (
     <AppScreen>
       <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>Back to events</Text>
+        <Text style={styles.backButtonText}>Back</Text>
       </Pressable>
 
       {detailQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening event detail">
-          <Text style={styles.bodyText}>Loading event overview, venues, rewards, and registration state.</Text>
+        <InfoCard eyebrow="Loading" title="Opening event">
+          <Text style={styles.bodyText}>Loading event, venue, and reward details.</Text>
         </InfoCard>
       ) : null}
 
       {detailQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load event detail">
+        <InfoCard eyebrow="Error" title="Could not load event">
           <Text style={styles.bodyText}>{detailQuery.error.message}</Text>
           <Pressable onPress={() => void detailQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Retry</Text>
@@ -271,54 +276,46 @@ export default function StudentEventDetailScreen() {
           <InfoCard eyebrow={event.city} title={event.name}>
             <View style={styles.heroCard}>
               <View style={styles.heroGlow} />
-              <View style={styles.heroTopRow}>
-                <Text style={styles.heroKicker}>{event.country}</Text>
-                <View style={styles.badges}>
-                  <StatusBadge label={event.status.toLowerCase()} state={event.status === "PUBLISHED" ? "ready" : "warning"} />
-                  {registrationBadge ? (
-                    <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-                  ) : null}
-                </View>
+              <View style={styles.badges}>
+                <StatusBadge
+                  label={event.status.toLowerCase()}
+                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
+                />
+                {registrationBadge ? (
+                  <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+                ) : null}
               </View>
 
               <Text style={styles.heroSummary}>
                 {event.description ?? "The organizer has not added a description for this event yet."}
               </Text>
 
-              <View style={styles.heroStatsRow}>
-                <View style={styles.heroStatCard}>
-                  <Text style={styles.heroStatLabel}>Starts</Text>
-                  <Text style={styles.heroStatValue}>{formatDateTime(event.startAt)}</Text>
+              <View style={styles.metaStrip}>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
                 </View>
-                <View style={styles.heroStatCard}>
-                  <Text style={styles.heroStatLabel}>Join deadline</Text>
-                  <Text style={styles.heroStatValue}>{formatDateTime(event.joinDeadlineAt)}</Text>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
                 </View>
-              </View>
-            </View>
-
-            <View style={styles.metaStrip}>
-              <View style={styles.metaPill}>
-                <Text style={styles.metaPillValue}>
-                  {event.maxParticipants === null ? "Open capacity" : `${event.maxParticipants} participant cap`}
-                </Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Text style={styles.metaPillValue}>Minimum {event.minimumStampsRequired} leima</Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Text style={styles.metaPillValue}>Ends {formatDateTime(event.endAt)}</Text>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>
+                    {event.maxParticipants === null
+                      ? "Open capacity"
+                      : `${event.maxParticipants} participant cap`}
+                  </Text>
+                </View>
               </View>
             </View>
           </InfoCard>
 
           <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
-            <View style={styles.joinCallout}>
-              <View style={styles.joinCopy}>
-                <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
+            <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
+            {joinPresentation ? (
+              <View style={styles.inlineStatusRow}>
+                <StatusBadge label={joinPresentation.state} state={joinPresentation.state} />
+                <Text style={styles.metaText}>{joinPresentation.body}</Text>
               </View>
-              {joinAvailability ? <StatusBadge label={joinAvailability.state} state={joinAvailability.state} /> : null}
-            </View>
+            ) : null}
             <Pressable
               disabled={!joinAvailability?.canJoin || joinMutation.isPending}
               onPress={() => void handleJoinPress()}
@@ -333,19 +330,8 @@ export default function StudentEventDetailScreen() {
             </Pressable>
           </InfoCard>
 
-          {joinPresentation ? (
-            <InfoCard eyebrow="Join result" title={joinPresentation.title}>
-              <View style={styles.badges}>
-                <StatusBadge label={joinPresentation.state} state={joinPresentation.state} />
-              </View>
-              <Text style={styles.bodyText}>{joinPresentation.body}</Text>
-            </InfoCard>
-          ) : null}
-
-          <InfoCard eyebrow="Venues" title="Joined venues">
-            {event.venues.length === 0 ? (
-              <Text style={styles.bodyText}>No joined venues are visible yet for this event.</Text>
-            ) : (
+          <InfoCard eyebrow="Night" title="Venues and rewards">
+            {event.venues.length > 0 ? (
               <View style={styles.listGroup}>
                 {event.venues.map((venue) => (
                   <View key={venue.id} style={styles.listRow}>
@@ -363,48 +349,48 @@ export default function StudentEventDetailScreen() {
                   </View>
                 ))}
               </View>
-            )}
-          </InfoCard>
-
-          <InfoCard eyebrow="Rewards" title="Reward tiers">
-            {event.rewardTiers.length === 0 ? (
-              <Text style={styles.bodyText}>No active reward tiers are published yet.</Text>
             ) : (
-              <View style={styles.listGroup}>
+              <Text style={styles.bodyText}>No joined venues are visible yet for this event.</Text>
+            )}
+
+            {event.rewardTiers.length > 0 ? (
+              <View style={styles.rewardGroup}>
                 {event.rewardTiers.map((rewardTier) => (
                   <View key={rewardTier.id} style={styles.listRow}>
                     <View style={styles.rewardHeader}>
-                      <View style={[styles.rewardRequirementBadge, { backgroundColor: getRewardChipColor(rewardTier) }]}>
-                        <Text style={styles.rewardRequirementText}>{rewardTier.requiredStampCount} leima</Text>
+                      <View
+                        style={[
+                          styles.rewardRequirementBadge,
+                          { backgroundColor: getRewardChipColor(rewardTier) },
+                        ]}
+                      >
+                        <Text style={styles.rewardRequirementText}>
+                          {rewardTier.requiredStampCount} leima
+                        </Text>
                       </View>
                       <Text style={styles.listTitle}>{rewardTier.title}</Text>
                     </View>
-                    <Text style={styles.metaLine}>{rewardTier.rewardType}</Text>
                     <Text style={styles.metaLine}>{getRewardInventoryCopy(rewardTier)}</Text>
                     {rewardTier.description ? <Text style={styles.metaLine}>{rewardTier.description}</Text> : null}
-                    {rewardTier.claimInstructions ? (
-                      <Text style={styles.metaLine}>{rewardTier.claimInstructions}</Text>
-                    ) : null}
+                    {rewardTier.claimInstructions ? <Text style={styles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
                   </View>
                 ))}
               </View>
-            )}
+            ) : null}
           </InfoCard>
 
-          <InfoCard eyebrow="Rules" title="Organizer rules">
-            {Object.entries(event.rules).length === 0 ? (
-              <Text style={styles.bodyText}>No structured rules are published for this event yet.</Text>
-            ) : (
-              <View style={styles.listGroup}>
+          {Object.entries(event.rules).length > 0 ? (
+            <InfoCard eyebrow="Rules" title="Before you go">
+              <View style={styles.rulesGroup}>
                 {Object.entries(event.rules).map(([key, value]) => (
-                  <View key={key} style={styles.listRow}>
+                  <View key={key} style={styles.ruleRow}>
                     <Text style={styles.listTitle}>{key}</Text>
                     <Text style={styles.metaLine}>{formatRuleValue(value)}</Text>
                   </View>
                 ))}
               </View>
-            )}
-          </InfoCard>
+            </InfoCard>
+          ) : null}
         </>
       ) : null}
     </AppScreen>
@@ -415,13 +401,10 @@ const styles = StyleSheet.create({
   backButton: {
     alignSelf: "flex-start",
     backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     marginBottom: -4,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    ...interactiveSurfaceShadowStyle,
   },
   backButtonText: {
     color: mobileTheme.colors.textSecondary,
@@ -443,9 +426,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.limeBorder,
     borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
     gap: 16,
     overflow: "hidden",
     padding: 18,
@@ -461,57 +442,14 @@ const styles = StyleSheet.create({
     top: -48,
     width: 144,
   },
-  heroKicker: {
-    color: mobileTheme.colors.lime,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
   heroSummary: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 16,
     fontWeight: "600",
     lineHeight: 24,
   },
-  heroTopRow: {
-    gap: 12,
-  },
-  heroStatsRow: {
-    gap: 10,
-  },
-  heroStatCard: {
-    backgroundColor: mobileTheme.colors.surfaceL3,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  heroStatLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.7,
-    textTransform: "uppercase",
-  },
-  heroStatValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 18,
-  },
-  joinCallout: {
+  inlineStatusRow: {
     alignItems: "flex-start",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
-  },
-  joinCopy: {
     gap: 8,
   },
   listGroup: {
@@ -519,9 +457,7 @@ const styles = StyleSheet.create({
   },
   listRow: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     gap: 8,
     padding: 16,
     ...interactiveSurfaceShadowStyle,
@@ -532,11 +468,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20,
   },
+  metaLine: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   metaPill: {
     backgroundColor: mobileTheme.colors.surfaceL3,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: 999,
-    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -550,14 +489,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
   },
-  metaLine: {
+  metaText: {
     color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.cyan,
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -567,6 +506,10 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.screenBase,
     fontSize: 14,
     fontWeight: "800",
+  },
+  rewardGroup: {
+    gap: 10,
+    marginTop: 10,
   },
   rewardHeader: {
     gap: 10,
@@ -582,6 +525,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
+  },
+  rulesGroup: {
+    gap: 10,
+  },
+  ruleRow: {
+    gap: 4,
   },
   secondaryButton: {
     alignSelf: "flex-start",
@@ -610,9 +559,7 @@ const styles = StyleSheet.create({
   venueOrderBubble: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL3,
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: 999,
-    borderWidth: 1,
     height: 34,
     justifyContent: "center",
     width: 34,

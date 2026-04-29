@@ -52,7 +52,6 @@ export default function StudentRewardsScreen() {
       {/* Claimable alert */}
       {claimableCount > 0 ? (
         <View style={styles.claimableAlert}>
-          <View style={styles.claimableAlertDot} />
           <Text style={styles.claimableAlertText}>
             {claimableCount} event{claimableCount === 1 ? "" : "s"} ready — go to venue to claim.
           </Text>
@@ -120,9 +119,7 @@ const styles = StyleSheet.create({
   statsBar: {
     flexDirection: "row",
     backgroundColor: mobileTheme.colors.surfaceL1,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     overflow: "hidden",
   },
   statItem: {
@@ -156,7 +153,7 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: mobileTheme.colors.borderDefault,
+    backgroundColor: mobileTheme.colors.borderMuted,
     marginVertical: 14,
   },
 
@@ -164,19 +161,10 @@ const styles = StyleSheet.create({
   claimableAlert: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     backgroundColor: mobileTheme.colors.limeSurface,
-    borderColor: mobileTheme.colors.limeBorder,
     borderRadius: mobileTheme.radius.chip,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
-  },
-  claimableAlertDot: {
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: 999,
-    height: 6,
-    width: 6,
   },
   claimableAlertText: {
     color: mobileTheme.colors.lime,

@@ -121,6 +121,7 @@ export default function StudentActiveEventScreen() {
     refreshAfterSeconds === null || refreshAfterSeconds === 0 ? 0 : countdownSeconds / refreshAfterSeconds;
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
   const borderRotation = useRotatingBorder(isQrLive);
+  const showProtectionNotice = protection.status === "ERROR";
 
   return (
     <AppScreen>
@@ -284,7 +285,7 @@ export default function StudentActiveEventScreen() {
             </Text>
           </View>
 
-          {protection.status !== "ACTIVE" ? (
+          {showProtectionNotice ? (
             <InfoCard eyebrow="Notice" motionIndex={6} title="Screen capture protection is limited here">
               <Text style={styles.bodyText}>{protection.detail}</Text>
             </InfoCard>

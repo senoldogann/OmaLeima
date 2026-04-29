@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { AppScreen } from "@/components/app-screen";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
@@ -15,7 +15,10 @@ import {
   useSetPrimaryDepartmentTagMutation,
   useStudentProfileOverviewQuery,
 } from "@/features/profile/student-profile";
-import type { DepartmentTagSuggestion, StudentProfileTag } from "@/features/profile/types";
+import type {
+  DepartmentTagSuggestion,
+  StudentProfileTag,
+} from "@/features/profile/types";
 import {
   useRegisterPushDeviceMutation,
   type PushDeviceRegistrationResult,
@@ -28,14 +31,16 @@ const createTagSummary = (count: number, remainingTagSlots: number): string => {
   }
 
   if (remainingTagSlots === 0) {
-    return `All 3 profile tag slots are in use.`;
+    return "All 3 profile tag slots are in use.";
   }
 
   return `${count} tag${count === 1 ? "" : "s"} selected, ${remainingTagSlots} slot${remainingTagSlots === 1 ? "" : "s"} left.`;
 };
 
 const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
-  const locationParts = [tag.universityName, tag.city].filter((part): part is string => part !== null && part.length > 0);
+  const locationParts = [tag.universityName, tag.city].filter(
+    (part): part is string => part !== null && part.length > 0
+  );
 
   if (locationParts.length === 0) {
     return tag.slug;
@@ -126,7 +131,9 @@ export default function StudentProfileScreen() {
     await refreshPushPermissionStateAsync();
   };
 
-  const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
+  const handleAttachSuggestedTagPress = async (
+    tag: DepartmentTagSuggestion
+  ): Promise<void> => {
     if (studentId === null) {
       return;
     }
@@ -151,7 +158,9 @@ export default function StudentProfileScreen() {
     setCustomTitle("");
   };
 
-  const handleSetPrimaryTagPress = async (tag: StudentProfileTag): Promise<void> => {
+  const handleSetPrimaryTagPress = async (
+    tag: StudentProfileTag
+  ): Promise<void> => {
     if (studentId === null || tag.isPrimary) {
       return;
     }
@@ -170,7 +179,9 @@ export default function StudentProfileScreen() {
     await removeTagMutation.mutateAsync({
       studentId,
       tag,
-      remainingTags: selectedTags.filter((selectedTag) => selectedTag.linkId !== tag.linkId),
+      remainingTags: selectedTags.filter(
+        (selectedTag) => selectedTag.linkId !== tag.linkId
+      ),
     });
   };
 
@@ -178,23 +189,15 @@ export default function StudentProfileScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="Profile">
-        <View style={styles.heroCard}>
-          <View style={styles.heroGlow} />
-          <Text selectable style={styles.heroEyebrow}>Identity and tags</Text>
-          <Text selectable style={styles.heroTitle}>
-            Keep your student identity clear before the next party night starts.
-          </Text>
-          <Text selectable style={styles.bodyText}>
-            Manage the study or department labels that describe this student profile. Official tags appear first, custom tags can still be created when the right label is missing, and one selected tag can stay primary for public display later.
-          </Text>
-        </View>
-      </InfoCard>
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Profile</Text>
+        <Text style={styles.metaText}>Keep your identity and notifications ready for the next event.</Text>
+      </View>
 
       {profileOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening profile">
           <Text selectable style={styles.bodyText}>
-            Loading profile identity, current department tags, and active tag suggestions.
+            Loading profile identity, active tags, and suggestions.
           </Text>
         </InfoCard>
       ) : null}
@@ -202,7 +205,10 @@ export default function StudentProfileScreen() {
       {profileOverviewQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load profile">
           <Text selectable style={styles.bodyText}>{profileOverviewQuery.error.message}</Text>
-          <Pressable onPress={() => void profileOverviewQuery.refetch()} style={styles.primaryButton}>
+          <Pressable
+            onPress={() => void profileOverviewQuery.refetch()}
+            style={styles.primaryButton}
+          >
             <Text style={styles.primaryButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
@@ -223,22 +229,20 @@ export default function StudentProfileScreen() {
           <View style={styles.badgeRow}>
             <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
             <StatusBadge label={profileOverview.status.toLowerCase()} state="ready" />
-            {primaryTag ? <StatusBadge label={`primary: ${primaryTag.title}`} state="loading" /> : null}
+            {primaryTag ? (
+              <StatusBadge label={`primary: ${primaryTag.title}`} state="pending" />
+            ) : null}
           </View>
-          <Text selectable style={styles.bodyText}>
-            {profileOverview.email}
+          <Text selectable style={styles.bodyText}>{profileOverview.email}</Text>
+          <Text selectable style={styles.metaText}>
+            {createTagSummary(selectedTags.length, remainingTagSlots)}
           </Text>
-          <Text selectable style={styles.metaText}>{createTagSummary(selectedTags.length, remainingTagSlots)}</Text>
         </InfoCard>
       ) : null}
 
       {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Tags" title="Selected department tags">
-          {selectedTags.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No tags selected yet. Pick an official suggestion first or create a custom tag if your study label is still missing.
-            </Text>
-          ) : (
+        <InfoCard eyebrow="Tags" title="Department tags">
+          {selectedTags.length > 0 ? (
             <View style={styles.stack}>
               {selectedTags.map((tag) => (
                 <ProfileTagCard
@@ -250,88 +254,66 @@ export default function StudentProfileScreen() {
                 />
               ))}
             </View>
+          ) : (
+            <Text selectable style={styles.bodyText}>
+              No tags selected yet. Pick a suggestion or create one.
+            </Text>
           )}
 
-          {latestTagMutationError ? (
-            <Text selectable style={styles.errorText}>
-              {latestTagMutationError}
-            </Text>
-          ) : null}
-        </InfoCard>
-      ) : null}
-
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Suggestions" title="Suggested department tags">
-          <Text selectable style={styles.bodyText}>
-            Official tags are shown first so students can reuse the community’s canonical labels before creating a new one.
-          </Text>
-
-          {suggestedTags.length === 0 ? (
-            <Text selectable style={styles.metaText}>
-              {selectedTags.length >= 3
-                ? "All available slots are already in use."
-                : "No extra active suggestions are available right now."}
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {suggestedTags.map((tag) => (
-                <View key={tag.id} style={styles.suggestionCard}>
-                  <View style={styles.suggestionHeader}>
-                    <View style={styles.suggestionCopy}>
-                      <Text selectable style={styles.suggestionTitle}>
-                        {tag.title}
-                      </Text>
-                      <Text selectable style={styles.metaText}>
-                        {createSuggestionMeta(tag)}
-                      </Text>
-                    </View>
-                    <StatusBadge label={tag.isOfficial ? "official" : "custom"} state={tag.isOfficial ? "loading" : "pending"} />
-                  </View>
+          {suggestedTags.length > 0 ? (
+            <View style={styles.suggestionGroup}>
+              <Text style={styles.sectionLabel}>Suggestions</Text>
+              <View style={styles.suggestionList}>
+                {suggestedTags.map((tag) => (
                   <Pressable
+                    key={tag.id}
                     disabled={isTagMutationPending || remainingTagSlots === 0}
                     onPress={() => void handleAttachSuggestedTagPress(tag)}
                     style={[
-                      styles.secondaryButton,
-                      isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
+                      styles.suggestionChip,
+                      isTagMutationPending || remainingTagSlots === 0
+                        ? styles.disabledButton
+                        : null,
                     ]}
                   >
-                    <Text style={styles.secondaryButtonText}>
-                      {remainingTagSlots === 0 ? "Tag limit reached" : "Add tag"}
-                    </Text>
+                    <Text style={styles.suggestionTitle}>{tag.title}</Text>
+                    <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
                   </Pressable>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          )}
-        </InfoCard>
-      ) : null}
+          ) : null}
 
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Custom" title="Create custom tag">
-          <Text selectable style={styles.bodyText}>
-            Use this only when the right label does not already exist above. Matching active tags are reused automatically when possible.
-          </Text>
-          <TextInput
-            autoCapitalize="words"
-            editable={!isTagMutationPending && remainingTagSlots > 0}
-            onChangeText={setCustomTitle}
-            placeholder="Example: Tieto- ja viestintatekniikka"
-            placeholderTextColor="#64748B"
-            style={styles.input}
-            value={customTitle}
-          />
-          <Pressable
-            disabled={isTagMutationPending || remainingTagSlots === 0 || customTitle.trim().length === 0}
-            onPress={() => void handleCreateCustomTagPress()}
-            style={[
-              styles.primaryButton,
-              isTagMutationPending || remainingTagSlots === 0 || customTitle.trim().length === 0 ? styles.disabledButton : null,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {remainingTagSlots === 0 ? "Tag limit reached" : "Create and add custom tag"}
-            </Text>
-          </Pressable>
+          {remainingTagSlots > 0 ? (
+            <View style={styles.createGroup}>
+              <Text style={styles.sectionLabel}>Need a custom one?</Text>
+              <TextInput
+                autoCapitalize="words"
+                editable={!isTagMutationPending}
+                onChangeText={setCustomTitle}
+                placeholder="Example: Tieto- ja viestintatekniikka"
+                placeholderTextColor="#64748B"
+                style={styles.input}
+                value={customTitle}
+              />
+              <Pressable
+                disabled={isTagMutationPending || customTitle.trim().length === 0}
+                onPress={() => void handleCreateCustomTagPress()}
+                style={[
+                  styles.secondaryButton,
+                  isTagMutationPending || customTitle.trim().length === 0
+                    ? styles.disabledButton
+                    : null,
+                ]}
+              >
+                <Text style={styles.secondaryButtonText}>Create custom tag</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {latestTagMutationError ? (
+            <Text selectable style={styles.errorText}>{latestTagMutationError}</Text>
+          ) : null}
         </InfoCard>
       ) : null}
 
@@ -343,24 +325,30 @@ export default function StudentProfileScreen() {
           {createPushPreferenceSummary(diagnostics.permissionState, pushState)}
         </Text>
         {pushState !== null ? (
-          <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
+          <Text
+            selectable
+            style={pushState.state === "error" ? styles.errorText : styles.metaText}
+          >
             {pushState.detail}
           </Text>
         ) : null}
         <Pressable
-          style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
+          style={[
+            styles.primaryButton,
+            registerPushMutation.isPending ? styles.disabledButton : null,
+          ]}
           onPress={handleRegisterPushPress}
           disabled={registerPushMutation.isPending}
         >
           <Text style={styles.primaryButtonText}>
-            {registerPushMutation.isPending ? "Enabling notifications..." : "Enable notifications on this device"}
+            {registerPushMutation.isPending
+              ? "Enabling notifications..."
+              : "Enable notifications"}
           </Text>
         </Pressable>
       </InfoCard>
 
-      <InfoCard eyebrow="Account" title="Sign out">
-        <SignOutButton />
-      </InfoCard>
+      <SignOutButton />
     </AppScreen>
   );
 }
@@ -376,6 +364,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  createGroup: {
+    gap: 10,
+  },
   disabledButton: {
     opacity: 0.6,
   },
@@ -384,44 +375,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  heroCard: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.pinkBorder,
-    borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
-    gap: 12,
-    overflow: "hidden",
-    padding: 18,
-    position: "relative",
-  },
-  heroEyebrow: {
-    color: mobileTheme.colors.pink,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.pinkSurface,
-    borderRadius: 140,
-    height: 148,
-    opacity: 1,
-    position: "absolute",
-    right: -44,
-    top: -52,
-    width: 148,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 30,
-  },
   input: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     paddingHorizontal: 14,
@@ -434,7 +390,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.cyan,
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -445,12 +401,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  screenHeader: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+  },
+  sectionLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
   secondaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     ...interactiveSurfaceShadowStyle,
@@ -463,24 +434,18 @@ const styles = StyleSheet.create({
   stack: {
     gap: 12,
   },
-  suggestionCard: {
+  suggestionChip: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
+    gap: 4,
+    padding: 14,
     ...interactiveSurfaceShadowStyle,
   },
-  suggestionCopy: {
-    flex: 1,
-    gap: 4,
+  suggestionGroup: {
+    gap: 10,
   },
-  suggestionHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
+  suggestionList: {
+    gap: 8,
   },
   suggestionTitle: {
     color: mobileTheme.colors.textPrimary,
@@ -489,9 +454,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     flex: 1,
     gap: 6,
     paddingHorizontal: 16,

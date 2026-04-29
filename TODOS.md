@@ -27,13 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (STARK Simplification Pass)
+## Current Todos (All-Role Simplification Pass)
 
-- [x] Review the remaining visual noise after the diagnostics cleanup.
-- [x] Reduce shared border intensity in the mobile foundation.
-- [x] Add reusable SVG icons for obvious auth and action controls.
-- [x] Simplify login mode selection and auth buttons with the new icon treatment.
-- [x] Remove leftover explanatory chrome around sign-out and similar simple actions.
-- [x] Apply the cleaner button treatment to selected business and student CTA surfaces.
+- [x] Review the busiest student and business routes again.
+- [x] Reduce the number of top-level cards on `student/profile` and `student/leaderboard`.
+- [x] Simplify `student/events/[eventId]`, `student/rewards`, and `student/active-event` without losing key actions.
+- [x] Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
 - [x] Run mobile lint, typecheck, and export validation.
 - [x] Update `PROGRESS.md` with the simplification handoff note.

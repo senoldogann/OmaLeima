@@ -82,45 +82,93 @@ export default function StudentLeaderboardScreen() {
   const currentUser = leaderboardQuery.data?.currentUser ?? null;
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const leaderboardVersion = leaderboardQuery.data?.version ?? null;
-  const freshness = getFreshnessBadge(leaderboardQuery.data?.refreshedAt ?? null);
+  const freshness = getFreshnessBadge(leaderboardRefreshedAt);
+
+  const overviewState = overviewQuery.error
+    ? "error"
+    : overviewQuery.isLoading
+      ? "loading"
+      : events.length === 0
+        ? "empty"
+        : "ready";
+  const rankingState =
+    selectedEvent === null
+      ? "idle"
+      : leaderboardQuery.error
+        ? "error"
+        : leaderboardQuery.isLoading
+          ? "loading"
+          : top10.length === 0
+            ? "empty"
+            : "ready";
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="Leaderboard">
-        <Text selectable style={styles.bodyText}>
-          Compare your progress against the rest of the event. This screen shows the selected event’s Top 10 plus your own position even when you are lower in the ranking.
-        </Text>
-      </InfoCard>
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Leaderboard</Text>
+        <Text style={styles.metaText}>Track the event top 10 and your current rank.</Text>
+      </View>
 
-      {overviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening leaderboard">
-          <Text selectable style={styles.bodyText}>
-            Loading registered events and finding the most relevant leaderboard scope for this student.
-          </Text>
-        </InfoCard>
-      ) : null}
-
-      {overviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load leaderboard events">
-          <Text selectable style={styles.bodyText}>{overviewQuery.error.message}</Text>
-          <Pressable onPress={() => void overviewQuery.refetch()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
-          </Pressable>
-        </InfoCard>
-      ) : null}
-
-      {!overviewQuery.isLoading && !overviewQuery.error && events.length === 0 ? (
-        <InfoCard eyebrow="Standby" title="No leaderboard event ready">
-          <Text selectable style={styles.bodyText}>
-            {registeredEventCount === 0
-              ? "Join an event first. Once you are registered for a public event, its leaderboard will appear here."
-              : "You still have registrations, but none of those events currently expose a public leaderboard view."}
-          </Text>
+      {overviewState !== "ready" ? (
+        <InfoCard
+          eyebrow={overviewState === "error" ? "Error" : overviewState === "loading" ? "Loading" : "Standby"}
+          title={
+            overviewState === "error"
+              ? "Could not open leaderboard"
+              : overviewState === "loading"
+                ? "Opening leaderboard"
+                : "No leaderboard event ready"
+          }
+        >
+          {overviewState === "error" ? (
+            <Text selectable style={styles.bodyText}>{overviewQuery.error?.message}</Text>
+          ) : overviewState === "loading" ? (
+            <Text selectable style={styles.bodyText}>
+              Loading registered events and choosing the most relevant scope.
+            </Text>
+          ) : (
+            <Text selectable style={styles.bodyText}>
+              {registeredEventCount === 0
+                ? "Join an event first. Once you are registered for a public event, its leaderboard appears here."
+                : "You still have registrations, but none of those events expose a public leaderboard right now."}
+            </Text>
+          )}
+          {overviewState === "error" ? (
+            <Pressable onPress={() => void overviewQuery.refetch()} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Retry</Text>
+            </Pressable>
+          ) : null}
         </InfoCard>
       ) : null}
 
       {events.length > 0 ? (
-        <InfoCard eyebrow="Scope" title="Selected event">
+        <InfoCard eyebrow="Event" title={selectedEvent?.name ?? "Select event"}>
+          {selectedEvent ? (
+            <View style={styles.selectedEventSummary}>
+              <View style={styles.badges}>
+                <StatusBadge
+                  label={selectedEvent.timelineState.toLowerCase()}
+                  state={
+                    selectedEvent.timelineState === "ACTIVE"
+                      ? "ready"
+                      : selectedEvent.timelineState === "UPCOMING"
+                        ? "pending"
+                        : "warning"
+                  }
+                />
+                <StatusBadge label={freshness.label} state={freshness.state} />
+              </View>
+              <Text selectable style={styles.bodyText}>
+                {selectedEvent.city} · Starts {formatDateTime(selectedEvent.startAt)}
+              </Text>
+              <Text selectable style={styles.metaText}>
+                {leaderboardRefreshedAt === null
+                  ? "Leaderboard has not refreshed yet."
+                  : `Last refreshed ${formatDateTime(leaderboardRefreshedAt)}${leaderboardVersion === null ? "" : ` · v${leaderboardVersion}`}`}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.eventSelector}>
             {events.map((event) => (
               <Pressable
@@ -136,48 +184,36 @@ export default function StudentLeaderboardScreen() {
               </Pressable>
             ))}
           </View>
+        </InfoCard>
+      ) : null}
 
-          {selectedEvent ? (
-            <View style={styles.selectedEventSummary}>
-              <View style={styles.badges}>
-                <StatusBadge label={selectedEvent.timelineState.toLowerCase()} state={selectedEvent.timelineState === "ACTIVE" ? "ready" : selectedEvent.timelineState === "UPCOMING" ? "pending" : "warning"} />
-                <StatusBadge label={freshness.label} state={freshness.state} />
-              </View>
-              <Text selectable style={styles.bodyText}>
-                {selectedEvent.city} · Starts {formatDateTime(selectedEvent.startAt)}
-              </Text>
-              <Text selectable style={styles.metaText}>
-                {leaderboardRefreshedAt === null
-                  ? "Leaderboard has not been refreshed yet for this event."
-                  : `Last refreshed ${formatDateTime(leaderboardRefreshedAt)}${leaderboardVersion === null ? "" : ` · v${leaderboardVersion}`}`}
-              </Text>
-            </View>
+      {rankingState === "loading" || rankingState === "error" || rankingState === "empty" ? (
+        <InfoCard
+          eyebrow={rankingState === "error" ? "Error" : rankingState === "loading" ? "Loading" : "Standby"}
+          title={
+            rankingState === "error"
+              ? "Could not load ranking"
+              : rankingState === "loading"
+                ? "Updating event ranking"
+                : "No leaderboard entries yet"
+          }
+        >
+          {rankingState === "error" ? (
+            <Text selectable style={styles.bodyText}>{leaderboardQuery.error?.message}</Text>
+          ) : rankingState === "loading" ? (
+            <Text selectable style={styles.bodyText}>
+              Loading Top 10 and your current position for {selectedEvent?.name}.
+            </Text>
+          ) : (
+            <Text selectable style={styles.bodyText}>
+              The event exists, but no valid stamp scores have been aggregated yet.
+            </Text>
+          )}
+          {rankingState === "error" ? (
+            <Pressable onPress={() => void leaderboardQuery.refetch()} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Retry</Text>
+            </Pressable>
           ) : null}
-        </InfoCard>
-      ) : null}
-
-      {selectedEvent !== null && leaderboardQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Updating event ranking">
-          <Text selectable style={styles.bodyText}>
-            Loading Top 10 and current-user rank for {selectedEvent.name}.
-          </Text>
-        </InfoCard>
-      ) : null}
-
-      {selectedEvent !== null && leaderboardQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load event ranking">
-          <Text selectable style={styles.bodyText}>{leaderboardQuery.error.message}</Text>
-          <Pressable onPress={() => void leaderboardQuery.refetch()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
-          </Pressable>
-        </InfoCard>
-      ) : null}
-
-      {selectedEvent !== null && !leaderboardQuery.isLoading && !leaderboardQuery.error && top10.length === 0 ? (
-        <InfoCard eyebrow="Standby" title="No leaderboard entries yet">
-          <Text selectable style={styles.bodyText}>
-            The event exists, but no valid stamp scores have been aggregated yet. Once the first scans are refreshed into the leaderboard, rankings will appear here.
-          </Text>
         </InfoCard>
       ) : null}
 
@@ -192,18 +228,19 @@ export default function StudentLeaderboardScreen() {
               />
             ))}
           </View>
-        </InfoCard>
-      ) : null}
 
-      {currentUser ? (
-        <InfoCard eyebrow="You" title="Your current position">
-          <LeaderboardEntryCard entry={currentUser} isCurrentUser />
-        </InfoCard>
-      ) : selectedEvent !== null && top10.length > 0 && !leaderboardQuery.isLoading && !leaderboardQuery.error ? (
-        <InfoCard eyebrow="You" title="Your current position">
-          <Text selectable style={styles.bodyText}>
-            You are registered for this event, but you do not have a ranked score yet. Your row will appear after the first valid leima is refreshed into the leaderboard.
-          </Text>
+          {currentUser !== null && !top10.some((entry) => entry.studentId === currentUser.studentId) ? (
+            <View style={styles.currentUserSection}>
+              <Text style={styles.currentUserLabel}>Your position</Text>
+              <LeaderboardEntryCard entry={currentUser} isCurrentUser />
+            </View>
+          ) : null}
+
+          {currentUser === null && rankingState === "ready" ? (
+            <Text selectable style={styles.metaText}>
+              Your row appears after the first valid leima is refreshed into the leaderboard.
+            </Text>
+          ) : null}
         </InfoCard>
       ) : null}
     </AppScreen>
@@ -221,11 +258,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  currentUserLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  currentUserSection: {
+    gap: 10,
+    marginTop: 12,
+  },
   eventChip: {
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     gap: 4,
     minWidth: 120,
     paddingHorizontal: 12,
@@ -257,6 +303,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  screenHeader: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  screenTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+  },
   secondaryButton: {
     alignSelf: "flex-start",
     backgroundColor: mobileTheme.colors.surfaceL2,
@@ -273,7 +329,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   selectedEventChip: {
-    borderColor: mobileTheme.colors.limeBorder,
     backgroundColor: mobileTheme.colors.limeSurface,
   },
   selectedEventSummary: {
