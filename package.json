@@ -5,6 +5,7 @@
     "qa:mobile-hosted-business-scan-readiness": "node tests/run-mobile-hosted-business-scan-readiness.mjs",
     "qa:mobile-native-simulator-smoke": "node tests/run-mobile-native-simulator-smoke.mjs",
     "qa:mobile-native-push-readiness": "node tests/run-mobile-native-push-readiness.mjs",
+    "qa:mobile-store-release-readiness": "node tests/run-mobile-store-release-readiness.mjs",
     "qa:pilot-secret-hygiene": "node tests/run-pilot-secret-hygiene.mjs",
     "qa:reward-unlocked-push-readiness": "node tests/run-reward-unlocked-push-readiness.mjs",
     "qa:mobile-reward-notification-readiness": "node tests/run-mobile-reward-notification-readiness.mjs",

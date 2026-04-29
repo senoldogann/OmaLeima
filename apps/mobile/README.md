@@ -24,6 +24,7 @@ npm run audit:native-simulator-smoke
 npm run audit:native-push-device-readiness
 npm run audit:realtime-readiness
 npm run audit:reward-notification-bridge
+npm run audit:store-release-readiness
 ```
 
 ## Current scope
@@ -86,6 +87,18 @@ Use this command to confirm the hosted same-device scanner smoke wiring:
 ```bash
 npm run audit:hosted-business-scan-readiness
 ```
+
+Use this command to confirm the current store/public-launch repo wiring:
+
+```bash
+npm run audit:store-release-readiness
+```
+
+## Store/public launch note
+
+- The repo now has a dedicated store/public-launch readiness audit for Expo config, build assets, native policy fields, and explicit EAS build environments.
+- This gate does not prove App Store Connect or Google Play Console state by itself.
+- Store listing metadata, screenshots, privacy/support URLs, and final submission credentials remain owner-owned work for the broader public launch phase.
 
 ## OAuth setup notes
 

@@ -5,37 +5,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/pilot-secret-hygiene-audit`
-- **Goal:** Add a repo-owned secret and password hygiene gate around the current pilot operator credential file and related GitHub secret names.
+- **Branch:** `feature/store-release-readiness`
+- **Goal:** Add a repo-owned readiness gate for Expo store/public-launch preparation without pretending to automate store-console work.
 
 ## Architectural Decisions
 
-- Extract the Desktop credential-file parser into a shared helper so multiple hosted pilot scripts can reuse the same source of truth.
-- Add one focused hygiene audit under `apps/admin/scripts`.
-- Keep the audit local and read-only: inspect file permissions, parse credentials, and inspect GitHub secret names only.
-- Avoid printing passwords in success or failure output.
+- Add one local audit under `apps/mobile/scripts` that checks repo-owned store prerequisites only.
+- Keep the audit static and read-only: inspect `app.config.ts`, `eas.json`, and current package wiring instead of touching Expo or store consoles.
+- Make EAS build environments explicit in `eas.json` so build intent is stable across development, preview, and production.
+- Document owner-owned App Store Connect and Google Play tasks separately in launch docs.
 
 ## Alternatives Considered
 
-- Leaving secret hygiene as a human memory task:
-  - rejected because a stale Desktop file or permissive file mode is exactly the sort of thing a repeatable audit should catch
-- Reading GitHub secret values through a custom side channel:
-  - rejected because we do not need another secret path and GitHub intentionally does not expose secret values
-- Auto-fixing file permissions from the audit:
-  - rejected because this slice should tell the owner what changed, not silently mutate the file system
+- Trying to automate App Store Connect or Google Play setup from the repo:
+  - rejected because those steps are owner/account specific and not safely reproducible from this workstation
+- Leaving store readiness as a docs-only item:
+  - rejected because the repo can still prove whether the Expo app config and EAS config are shaped correctly
+- Hardcoding placeholder submit identifiers into `eas.json`:
+  - rejected because false placeholders create confusion and are easy to forget later
 
 ## Edge Cases
 
-- The Desktop credential file may be missing, moved, or manually edited; parsing and validation should fail loudly.
-- The credential file may still be syntactically valid while containing weak or duplicate passwords; the audit should catch that.
-- GitHub CLI may be unauthenticated; the audit should fail clearly instead of pretending secret presence was checked.
+- The mobile app may be launch-ready for a private pilot while still missing broader public-launch store inputs; the audit should say that clearly.
+- Expo config may have the right features but still miss stable build environment mapping; the audit should catch that.
+- App-store metadata items like screenshots, privacy URLs, and listing copy are intentionally not in repo and must remain explicit external tasks.
 
 ## Validation Plan
 
 - Update the working docs.
-- Add the shared credential parser plus the new hygiene audit and root wrapper.
-- Run `npm --prefix apps/admin run lint`.
-- Run `npm --prefix apps/admin run typecheck`.
-- Run the real hygiene audit against the current Desktop credential file.
-- Keep the existing hosted final dry-run command green after the helper extraction.
-- Update launch docs and handoff notes with the new command and owner guidance.
+- Add the store/public-launch readiness audit and root wrapper.
+- Make `eas.json` build environments explicit if they are not already.
+- Run `npm --prefix apps/mobile run lint`.
+- Run `npm --prefix apps/mobile run typecheck`.
+- Run the new audit and its root QA wrapper.
+- Update launch docs and handoff notes with the new gate and owner checklist.

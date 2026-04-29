@@ -56,6 +56,7 @@ What is **not** yet fully verified:
 3. Final custom domain cutover
 4. Public store-release steps
 5. Final hosted secret rotation and stronger operator credentials everywhere
+6. Expo store/public-launch readiness gate stays green
 
 ### Later
 
@@ -85,6 +86,21 @@ These are the next user-owned tasks outside the repo. Split them into “needed 
 4. Public Play Store submission
 5. Full visual polish pass across the whole mobile UI
 
+## Store/public launch owner checklist
+
+These are not required for the current private pilot path. They matter when we start the broader public launch track.
+
+1. Create the real App Store Connect app record for `fi.omaleima.mobile`.
+2. Create the real Google Play Console app record for `fi.omaleima.mobile`.
+3. Prepare store listing copy, screenshots, app icon marketing assets, privacy-policy URL, and support URL.
+4. Decide the first submission path:
+   - iOS through TestFlight first
+   - Android through an internal track first
+5. Configure the final Apple and Google submission credentials outside the repo.
+6. Run the repo gate before any submission work:
+   - `npm run qa:mobile-store-release-readiness`
+7. Only after that, move into EAS build + submit execution.
+
 ## Senin icin kisa not (TR)
 
 Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
@@ -105,6 +121,7 @@ Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
 4. Gercek scanner/staff hesaplarini acmak
 5. Ilk pilot etkinlik ve venue listesini netlemek
 6. Hosted secret ve sifreleri nihai degerlere cevirmek
+7. Public launch yaklastiginda App Store Connect ve Google Play Console kayitlarini acmak
 
 ### Su an teknik olarak dogru siramiz
 
@@ -113,6 +130,14 @@ Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
 3. Android student Google login ve Android remote push'i ancak Android development build veya fiziksel cihaz yolu oldugunda kapatmak
 4. Launch ve operasyon checklist'ini net tutmak
 5. En sonda toplu UI polish ve public launch isi
+
+### Store/public launch notu
+
+Store hazirligi icin repo icinde artik ayri bir gate var:
+
+- `npm run qa:mobile-store-release-readiness`
+
+Bu gate sadece bizim repo tarafindan dogrulanabilecek kisimlari kontrol eder. App Store Connect veya Google Play Console icindeki gerçek listing, screenshot, privacy policy, support URL ve submission credential adimlari daha sonra owner isi olarak yapilacak.
 
 ### Android telefon yoksa ne olacak
 

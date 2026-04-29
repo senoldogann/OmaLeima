@@ -37,6 +37,7 @@ Needed before a broader public launch:
 - custom domain cutover
 - public store release steps
 - Android student Google sign-in proof on a real Android development build
+- Expo store/public-launch readiness gate stays green
 
 Later:
 
@@ -112,6 +113,13 @@ Hosted final dry-run gate using the Desktop operator credential file:
 ```bash
 npm run qa:private-pilot-final-dry-run
 npm --prefix apps/admin run run:pilot-final-dry-run
+```
+
+Mobile store/public-launch readiness gate:
+
+```bash
+npm run qa:mobile-store-release-readiness
+npm --prefix apps/mobile run audit:store-release-readiness
 ```
 
 Supabase auth cutover readiness for the hosted preview-mode versus custom-domain-mode switch:
