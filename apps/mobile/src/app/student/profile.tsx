@@ -94,6 +94,7 @@ export default function StudentProfileScreen() {
 
   const profileOverview = profileOverviewQuery.data ?? null;
   const selectedTags = profileOverview?.selectedTags ?? [];
+  const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
   const suggestedTags = profileOverview?.suggestedTags ?? [];
   const remainingTagSlots = profileOverview?.remainingTagSlots ?? 3;
   const isTagMutationPending =
@@ -213,7 +214,7 @@ export default function StudentProfileScreen() {
               </Text>
               <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
               <Text selectable style={styles.roleLine}>
-                {profileOverview.primaryRole.toLowerCase()} student
+                {primaryTag?.title ?? `${profileOverview.primaryRole.toLowerCase()} profile`}
               </Text>
             </View>
           </View>

@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Reduce visual clutter on profile, make the rewards hero feel more intentional, and shorten the QR screen after the code block without touching validated stamp logic.
+- **Scope:** Finish the current student polish slice by fixing the event discovery hero fill, removing duplicate profile role wording, and making event detail back navigation safe.
 
 ## Affected Files
 
@@ -14,6 +14,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/app/student/events/[eventId].tsx`
 - `apps/mobile/src/app/student/rewards.tsx`
 - `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/app/student/active-event.tsx`
@@ -22,30 +24,28 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- Profile can easily become another card stack if we keep account, tags, and notifications equally heavy.
-- The rewards header should feel rich without repeating the same counts already shown inside cards.
-- The QR screen currently reuses a full rewards card below the code, which makes the page too long and duplicates information.
-- Any simplification should preserve the current tag-management flow and not hide required actions behind unclear affordances.
+- The discovery hero currently sits inside an outer card, so image padding reads like broken empty space.
+- Profile role copy can easily repeat itself once tags and role labels both surface in the hero.
+- A blind `router.back()` call can throw a development warning when the detail screen is opened directly.
 
 ## Dependencies
 
 - Existing STARK redesign branch state in `feature/full-ui-redesign-foundation`
-- Existing reward cover imagery and fallback helper
+- Existing discovery hero imagery helper
 - Current profile tag modal flow
-- Current QR context and reward overview queries
+- Current event detail route structure
 
 ## Existing Logic Checked
 
-- Rewards already have image-backed cards, so the remaining issue is the weak section header and redundant count density.
-- Profile now has a tag modal, but the main identity area is still too badge-heavy and uses initials instead of a proper avatar mark.
-- The QR screen still renders a full `RewardProgressCard` below the code, which is overkill for the event-day flow.
+- Discovery already has the right image source, so the remaining issue is layout chrome around it.
+- Profile now has the right avatar direction, but role copy still duplicates the student identity.
+- Event detail uses direct push navigation, so `back()` needs a safe fallback route.
 
 ## Review Outcome
 
-Do a focused refinement pass:
+Do a small stabilization pass:
 
-- remove the visible `primary` wording from profile and lighten the main account / tags surfaces
-- replace initials with a proper icon avatar treatment
-- strengthen the rewards hero instead of stacking more counts
-- replace the long QR-aftercare section with a compact progress summary
+- make discovery hero fill its own full area without outer black padding
+- replace the duplicate profile role wording with the active tag when available
+- make event detail back navigation fall back to `/student/events`
 - re-run mobile validation and keep logic unchanged

@@ -253,9 +253,18 @@ export default function StudentEventDetailScreen() {
     });
   };
 
+  const handleBackPress = (): void => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/student/events");
+  };
+
   return (
     <AppScreen>
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
+      <Pressable onPress={handleBackPress} style={styles.backButton}>
         <Text style={styles.backButtonText}>Back</Text>
       </Pressable>
 
