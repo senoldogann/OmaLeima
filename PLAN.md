@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Keep the STARK theme, but reduce page density across every mobile role. Fewer top-level cards, shorter copy, clearer actions, and less visible framing.
+- **Goal:** Keep the STARK theme, but reduce page density across every mobile role and collapse the palette into black, lime, and white. Fewer top-level cards, shorter copy, clearer actions, and less visible framing.
 
 ## Architectural Decisions
 
@@ -14,6 +14,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Treat each page as a small flow: one entry point, one active state, one fallback.
 - Prefer fewer top-level sections over many medium cards with repeated headings.
 - Keep lime as the main action accent and use the other colors only as supporting state cues.
+- Remove decorative background linework and let the black base carry the app.
 - Stay in presentation/layout territory and avoid touching validated business logic.
 
 ## Alternatives Considered
@@ -32,6 +33,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Profile suggestions and custom-tag creation still need to stay understandable after they share space.
 - Scanner fallback input must remain available even if we reduce its visual weight.
 - Rewards and profile cannot lose their scanability while we simplify their summary blocks.
+- Pulling too many states into the same lime accent can reduce semantic clarity, so status treatment still needs readable contrast.
 
 ## Validation Plan
 
@@ -40,6 +42,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
 - Remove redundant cards, reduce explanatory copy, and keep only meaningful actions.
 - Refine the rewards summary, account summary, and tag cards so they read as product UI rather than settings panels.
+- Remove the striped background treatment, darken the tab bar, and remap accent usage toward black/lime/white.
 - Verify mobile with:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

@@ -10,11 +10,9 @@ export const GlassTabBarBackground = () => (
 const styles = StyleSheet.create({
   surface: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
+    backgroundColor: mobileTheme.colors.screenBase,
+    borderColor: "transparent",
     borderRadius: mobileTheme.radius.tabBar,
-    borderWidth: 1,
-    borderTopColor: mobileTheme.colors.limeBorder,
-    borderTopWidth: 1,
+    borderWidth: 0,
   },
 });

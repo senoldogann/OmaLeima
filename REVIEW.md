@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Re-check every mobile role surface and remove unnecessary chrome. Keep only the cards and text blocks that help students or staff make a decision, while preserving the current STARK visual direction.
+- **Scope:** Re-check every mobile role surface and remove unnecessary chrome. Keep only the cards and text blocks that help students or staff make a decision, while preserving the current STARK visual direction and narrowing the palette to black, lime, and white.
 
 ## Affected Files
 
@@ -55,6 +55,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - The remaining issue is page density, not missing functionality.
 - The highest-noise routes are `student/profile`, `student/leaderboard`, `student/events/[eventId]`, `business/events`, and `business/scanner`.
 - Rewards and active-event are closer to the target, but rewards summary and profile/tag surfaces can still be lighter and more elegant.
+- The remaining visual noise is now mostly in the background treatment and accent spread, not in missing structure.
 
 ## Review Outcome
 
@@ -65,3 +66,4 @@ Keep the current STARK direction, but simplify each role page:
 - keep one dominant action per section
 - let spacing do more work than borders
 - keep rewards/account/tag surfaces readable without making them look like admin tooling
+- remove decorative linework and keep the whole app inside a black + lime + white palette

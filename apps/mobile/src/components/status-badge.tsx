@@ -19,13 +19,13 @@ const getBadgeStyle = (state: AppReadinessState): BadgeStyle => {
     case "ready":
       return { bg: mobileTheme.colors.successSurface, text: mobileTheme.colors.success, dot: mobileTheme.colors.success };
     case "loading":
-      return { bg: mobileTheme.colors.cyanSurface, text: mobileTheme.colors.cyan, dot: mobileTheme.colors.cyan };
+      return { bg: mobileTheme.colors.surfaceL3, text: mobileTheme.colors.textSecondary, dot: mobileTheme.colors.textSecondary };
     case "pending":
-      return { bg: mobileTheme.colors.amberSurface, text: mobileTheme.colors.amber, dot: mobileTheme.colors.amber };
+      return { bg: mobileTheme.colors.surfaceL3, text: mobileTheme.colors.textMuted, dot: mobileTheme.colors.textMuted };
     case "warning":
-      return { bg: mobileTheme.colors.pinkSurface, text: mobileTheme.colors.pink, dot: mobileTheme.colors.pink };
+      return { bg: mobileTheme.colors.surfaceL3, text: mobileTheme.colors.textSecondary, dot: mobileTheme.colors.textSecondary };
     case "error":
-      return { bg: mobileTheme.colors.dangerSurface, text: mobileTheme.colors.danger, dot: mobileTheme.colors.danger };
+      return { bg: mobileTheme.colors.surfaceL3, text: mobileTheme.colors.textPrimary, dot: mobileTheme.colors.textPrimary };
   }
 };
 
@@ -44,11 +44,11 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: "center",
     alignSelf: "flex-start",
-    borderRadius: 4,
+    borderRadius: 999,
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   dot: {
     borderRadius: 999,

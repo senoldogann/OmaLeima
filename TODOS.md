@@ -34,5 +34,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Simplify `student/events/[eventId]`, `student/rewards`, and `student/active-event` without losing key actions.
 - [x] Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
 - [x] Refine `student/rewards`, account summary, and profile tag visuals one more step.
+- [x] Collapse the shared mobile palette into black, lime, and white.
+- [x] Remove decorative background linework and make the tab bar fully black.
 - [x] Run mobile lint, typecheck, and export validation.
 - [x] Update `PROGRESS.md` with the simplification handoff note.
