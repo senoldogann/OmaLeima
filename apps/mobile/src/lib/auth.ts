@@ -1,8 +1,11 @@
 import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 
 import { supabase } from "@/lib/supabase";
+
+const nativeGoogleRedirectUri = "omaleima://auth/callback";
 
 if (typeof window !== "undefined") {
   void WebBrowser.maybeCompleteAuthSession();
@@ -10,12 +13,61 @@ if (typeof window !== "undefined") {
 
 export const createGoogleRedirectUri = (): string =>
   makeRedirectUri({
+    native: nativeGoogleRedirectUri,
     scheme: "omaleima",
     path: "auth/callback",
   });
 
 const openWebOAuthAsync = (url: string): void => {
   window.location.assign(url);
+};
+
+const readCallbackParam = (url: string, key: string): string | null => {
+  const { params } = QueryParams.getQueryParams(url);
+  const value = params[key];
+
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+
+  return value;
+};
+
+const completeNativeOAuthCallbackAsync = async (callbackUrl: string): Promise<void> => {
+  const callbackError = readCallbackParam(callbackUrl, "error");
+  const callbackErrorDescription = readCallbackParam(callbackUrl, "error_description");
+
+  if (callbackError !== null) {
+    throw new Error(callbackErrorDescription ?? callbackError);
+  }
+
+  const accessToken = readCallbackParam(callbackUrl, "access_token");
+  const refreshToken = readCallbackParam(callbackUrl, "refresh_token");
+
+  if (accessToken !== null && refreshToken !== null) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error !== null) {
+      throw new Error(error.message);
+    }
+
+    return;
+  }
+
+  const code = readCallbackParam(callbackUrl, "code");
+
+  if (code === null) {
+    throw new Error("OAuth callback returned without a session payload or authorization code.");
+  }
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error !== null) {
+    throw new Error(error.message);
+  }
 };
 
 export const signInWithGoogleAsync = async (): Promise<void> => {
@@ -55,4 +107,10 @@ export const signInWithGoogleAsync = async (): Promise<void> => {
   if (result.type === "dismiss") {
     throw new Error("Google sign-in was dismissed before completion.");
   }
+
+  if (result.type !== "success") {
+    throw new Error(`Google sign-in returned an unsupported auth result: ${result.type}`);
+  }
+
+  await completeNativeOAuthCallbackAsync(result.url);
 };

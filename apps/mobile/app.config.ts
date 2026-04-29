@@ -1,6 +1,9 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? process.env.EAS_PROJECT_ID;
+const easProjectId =
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+  process.env.EAS_PROJECT_ID ??
+  "7d5a41df-c149-4472-bfb4-136809cacd5f";
 
 const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
   name: "OmaLeima",
@@ -14,6 +17,9 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     bundleIdentifier: "fi.omaleima.mobile",
     icon: "./assets/expo.icon",
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
     package: "fi.omaleima.mobile",

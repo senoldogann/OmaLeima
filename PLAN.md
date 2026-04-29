@@ -5,35 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/native-simulator-smoke-pass`
-- **Goal:** Finish the last honest pre-device layer: simulator/emulator smoke readiness, concise operator guidance, and a minimal remaining physical-device checklist.
+- **Branch:** `bug/native-google-auth-redirect`
+- **Goal:** Fix physical-device Google sign-in in the Expo development build by aligning native OAuth redirect generation with the app scheme instead of a localhost callback.
 
 ## Architectural Decisions
 
-- Keep simulator/emulator work separate from real remote push claims. The output should say what is validated locally and what still needs a physical device.
-- Reuse the existing profile diagnostics surface and readiness gates instead of inventing another debug route.
-- Add one focused audit/wrapper for native simulator smoke if the current gates do not yet describe that state clearly enough.
-- Prefer concise runbook guidance over more product UI; this slice is mostly about operational clarity and repeatability.
+- Keep the fix inside `apps/mobile/src/lib/auth.ts` so the already-installed development build can retest Google login without another native rebuild.
+- Use Expo AuthSession’s explicit native redirect option for iOS and Android native contexts while keeping the existing path-based redirect for web.
+- Leave the callback exchange route unchanged; once Safari returns to `omaleima://auth/callback`, the existing Expo Router callback screen should keep working.
+- Fold in the pending EAS `projectId` fallback and iOS non-exempt-encryption plist field so the next build attempt stays clean.
 
 ## Alternatives Considered
 
-- Pretending simulator/emulator can fully replace the last physical push step:
-  - rejected because Expo’s current guidance still requires a real device for honest remote push confirmation
-- Shipping a large end-to-end automation harness for every local machine:
-  - rejected because simulator/emulator availability is environment-specific and brittle as a default repo gate
-- Doing nothing and only answering in chat:
-  - rejected because the user explicitly asked us to handle as much as possible inside the repo first
+- Rebuilding the app immediately and hoping the current redirect changes itself:
+  - rejected because the screenshot shows a logic bug in the generated redirect URL, not a missing native capability
+- Moving the fix into a new native plugin or separate callback route:
+  - rejected because the current scheme and callback screen are already enough if the redirect URI is correct
+- Patching only docs:
+  - rejected because the blocker is live on the user’s device right now
 
 ## Edge Cases
 
-- A developer may have only Android tools or only iOS tools available. The guidance should degrade cleanly by platform.
-- A simulator or emulator may not be booted when we run local checks. Repo gates must stay read-only and environment-agnostic.
-- The final manual checklist must stay short enough that the user can actually follow it without wading through Expo docs again.
-- Existing readiness audits must continue to pass unchanged.
+- Web login must continue to use a browser URL callback and not switch to the native scheme.
+- Native redirect generation should remain stable in both development builds and future standalone builds.
+- The login screen’s displayed redirect URI should visibly confirm the fix once Metro reloads the app.
+- The app config changes should not force a new native build before the user can retest this particular login bug.
 
 ## Validation Plan
 
-- Use relevant Expo / iOS / Android plugin capabilities when available to inspect the local native-smoke path.
-- Run `apps/mobile` lint, typecheck, export, and any new simulator-smoke audit.
-- Re-run the current native push, reward notification, and realtime audits so the new guidance layer does not regress existing readiness.
-- Get a reviewer pass if the repo change goes beyond docs-only clarification.
+- Run `expo config --json` to verify both the EAS project id and `ITSAppUsesNonExemptEncryption` are present in the resolved config.
+- Run mobile `typecheck` and the existing native push readiness audit.
+- Ask the user to reload the dev client and confirm the login screen now shows `omaleima://auth/callback` instead of a localhost redirect.

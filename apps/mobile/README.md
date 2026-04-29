@@ -83,6 +83,7 @@ npm run audit:native-simulator-smoke
 - Enable Google as an Auth provider in Supabase.
 - Add your mobile redirect URL and local web callback URL to Supabase redirect allow-lists.
 - Keep the Expo scheme aligned with `app.config.ts`.
+- Native development-build Google OAuth now expects `omaleima://auth/callback` explicitly; if the login card ever shows a localhost redirect again, the native redirect helper regressed.
 
 ## Native push smoke note
 
@@ -90,6 +91,7 @@ npm run audit:native-simulator-smoke
 - The current profile route is the manual smoke surface for that step.
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
 - The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
+- The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response. The remaining diagnostics warning is only the runtime label, which currently classifies this dev-client path as `bare`.
 
 ## Codex action note
 

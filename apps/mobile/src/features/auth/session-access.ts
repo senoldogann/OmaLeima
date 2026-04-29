@@ -36,12 +36,12 @@ type UseSessionAccessQueryParams = {
 
 export const sessionAccessQueryKey = (userId: string) => ["session-access", userId] as const;
 
-const fetchProfileAsync = async (userId: string): Promise<ProfileRow> => {
+const fetchProfileAsync = async (userId: string): Promise<ProfileRow | null> => {
   const { data, error } = await supabase
     .from("profiles")
     .select("id,primary_role,status")
     .eq("id", userId)
-    .single<ProfileRow>();
+    .maybeSingle<ProfileRow>();
 
   if (error !== null) {
     throw new Error(`Failed to load session profile ${userId}: ${error.message}`);
@@ -89,6 +89,11 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
     fetchProfileAsync(userId),
     fetchBusinessMembershipsAsync(userId),
   ]);
+
+  if (profile === null) {
+    throw new Error(`No session profile exists yet for ${userId}.`);
+  }
+
   const activeBusinesses = await fetchActiveBusinessesAsync(
     businessMemberships.map((membership) => membership.business_id)
   );

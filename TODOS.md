@@ -4,13 +4,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/native-simulator-smoke-pass` branch.
-- [x] Update `REVIEW.md` for the simulator and emulator smoke scope.
-- [x] Update `PLAN.md` for the pre-device verification slice.
+- [x] Create `bug/native-google-auth-redirect` branch.
+- [x] Update `REVIEW.md` for the native OAuth redirect bug.
+- [x] Update `PLAN.md` for the auth redirect hotfix.
 - [x] Update `TODOS.md` with small implementation steps.
-- [x] Discover and use the relevant Expo / iOS / Android plugin capabilities available in this environment.
-- [x] Add the smallest repo-owned simulator/emulator readiness audit and root QA wrapper if needed.
-- [x] Tighten docs and runbook so the remaining physical-device step becomes short and explicit.
+- [x] Fix the native Google redirect helper to use the explicit app scheme.
+- [x] Keep the existing web callback behavior unchanged.
+- [x] Fold in the pending EAS project id and iOS encryption config cleanup.
 - [x] Run focused validation.
-- [x] Get a reviewer pass if code or audit logic changes.
-- [x] Update `PROGRESS.md` and finish the branch handoff package.
+- [x] Update `apps/mobile/README.md` and `PROGRESS.md` with the device-sign-in fix and handoff note.
+- [x] Finish the branch package after the user-side retest succeeded.
