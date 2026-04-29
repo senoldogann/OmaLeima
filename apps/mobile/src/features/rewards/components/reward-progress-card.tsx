@@ -127,21 +127,26 @@ const getEventSummaryCopy = (event: StudentRewardEventProgress): string => {
 
 export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => (
   <InfoCard eyebrow={event.city} title={event.name}>
-    <View style={styles.badges}>
-      <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
-      {event.claimableTierCount > 0 ? <StatusBadge label="claimable" state="ready" /> : null}
-      {event.claimedTierCount > 0 ? <StatusBadge label="claimed" state="ready" /> : null}
-      {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
-    </View>
+    <View style={styles.heroCard}>
+      <View style={styles.heroGlow} />
+      <View style={styles.badges}>
+        <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
+        {event.claimableTierCount > 0 ? <StatusBadge label="claimable" state="ready" /> : null}
+        {event.claimedTierCount > 0 ? <StatusBadge label="claimed" state="ready" /> : null}
+        {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
+      </View>
 
-    <Text style={styles.bodyText}>{getEventSummaryCopy(event)}</Text>
+      <Text style={styles.progressCaption}>Collected leimat</Text>
+      <View style={styles.progressHeadlineRow}>
+        <Text style={styles.progressHeadline}>{event.stampCount}</Text>
+        <Text style={styles.progressGoal}>/ {event.minimumStampsRequired}</Text>
+      </View>
+      <Text style={styles.bodyText}>{getEventSummaryCopy(event)}</Text>
+    </View>
 
     <View style={styles.metaGroup}>
       <Text style={styles.metaLine}>Starts {formatDateTime(event.startAt)}</Text>
       <Text style={styles.metaLine}>Ends {formatDateTime(event.endAt)}</Text>
-      <Text style={styles.metaLine}>
-        Progress target: {event.stampCount} / {event.minimumStampsRequired} leima
-      </Text>
     </View>
 
     <View style={styles.progressTrack}>
@@ -192,16 +197,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintWarm,
+    borderRadius: 90,
+    height: 132,
+    opacity: 0.45,
+    position: "absolute",
+    right: -32,
+    top: -36,
+    width: 132,
+  },
   metaGroup: {
     gap: 4,
   },
   metaLine: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
+  progressCaption: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  progressHeadlineRow: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    gap: 8,
+  },
+  progressHeadline: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 48,
+    fontWeight: "800",
+    lineHeight: 50,
+  },
+  progressGoal: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 28,
+    paddingBottom: 4,
+  },
   progressTrack: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: mobileTheme.colors.progressTrack,
     borderRadius: 999,
     height: 10,
     overflow: "hidden",
@@ -214,12 +264,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tierCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 20,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 22,
     borderWidth: 1,
     gap: 8,
-    padding: 14,
+    padding: 16,
     ...interactiveSurfaceShadowStyle,
   },
   tierHeader: {
@@ -244,7 +294,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   secondaryText: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },

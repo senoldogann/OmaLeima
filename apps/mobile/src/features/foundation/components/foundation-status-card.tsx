@@ -37,20 +37,20 @@ export const FoundationStatusCard = ({
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 18,
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 22,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   copy: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
   label: {
     color: mobileTheme.colors.textPrimary,
@@ -58,8 +58,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   value: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
   },
 });

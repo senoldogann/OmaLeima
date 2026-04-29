@@ -30,7 +30,7 @@ export default function StudentEventsScreen() {
     <AppScreen>
       <InfoCard eyebrow="Student" motionIndex={0} title="Event discovery">
         <Text style={styles.bodyText}>
-          Browse live appro nights, check what is opening next, and jump into the event detail before the first scan even starts.
+          Browse tonight&apos;s route, see what is about to open next, and jump into the event detail before the first scan even starts.
         </Text>
       </InfoCard>
 
@@ -132,7 +132,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
+    lineHeight: 28,
   },
 });

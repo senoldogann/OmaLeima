@@ -62,9 +62,18 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
       style={({ pressed }) => [styles.pressable, pressed ? styles.pressablePressed : null]}
     >
       <InfoCard eyebrow={event.city} motionIndex={motionIndex} title={event.name}>
-        <View style={styles.badges}>
-          <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-          <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+        <View style={styles.heroBand}>
+          <View style={styles.heroGlow} />
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroKicker}>{event.country}</Text>
+            <Text style={styles.heroTimeline}>
+              {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+            </Text>
+          </View>
+          <View style={styles.badges}>
+            <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+            <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+          </View>
         </View>
 
         <Text style={styles.description}>
@@ -72,9 +81,6 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
         </Text>
 
         <View style={styles.metaGroup}>
-          <Text style={styles.metaLine}>
-            {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
-          </Text>
           <Text style={styles.metaLine}>{formatDeadline(event)}</Text>
           <Text style={styles.metaLine}>{formatCapacity(event)}</Text>
           <Text style={styles.metaLine}>Minimum leimat required: {event.minimumStampsRequired}</Text>
@@ -82,7 +88,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
         <View style={styles.actionRow}>
           <Text style={styles.actionText}>Open event</Text>
-          <Text style={styles.actionMeta}>Tap to see venues, rewards, and join rules.</Text>
+          <Text style={styles.actionMeta}>Venues, reward path, and join rules live here.</Text>
         </View>
       </InfoCard>
     </Pressable>
@@ -113,11 +119,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  heroBand: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 14,
+    overflow: "hidden",
+    padding: 16,
+    position: "relative",
+  },
+  heroCopy: {
+    gap: 6,
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    borderRadius: 72,
+    height: 92,
+    opacity: 0.65,
+    position: "absolute",
+    right: -14,
+    top: -18,
+    width: 92,
+  },
+  heroKicker: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroTimeline: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
   metaGroup: {
     gap: 7,
   },
   metaLine: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },

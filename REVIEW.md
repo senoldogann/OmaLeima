@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/store-readiness-hardening`
-- **Scope:** Harden the new mobile store/public-launch gate so it also proves remote EAS env presence, verifies iOS/store assets on disk, and removes contradictory testing guidance.
+- **Branch:** `feature/full-ui-redesign-foundation`
+- **Scope:** Start the full UI redesign with a foundation-first mobile slice that establishes a stronger shared visual language, then applies it to the most visible student surfaces without changing the validated product flows.
 
 ## Affected Files
 
@@ -14,37 +14,44 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `README.md`
-- `docs/LAUNCH_RUNBOOK.md`
-- `docs/TESTING.md`
-- `apps/mobile/README.md`
-- `apps/mobile/package.json`
-- `apps/mobile/scripts/audit-store-release-readiness.mjs`
+- `apps/mobile/src/features/foundation/theme.ts`
+- `apps/mobile/src/features/foundation/components/glass-panel.tsx`
+- `apps/mobile/src/features/foundation/components/foundation-status-card.tsx`
+- `apps/mobile/src/components/app-screen.tsx`
+- `apps/mobile/src/components/info-card.tsx`
+- `apps/mobile/src/components/status-badge.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/mobile/src/features/profile/components/profile-tag-card.tsx`
 
 ## Risks
 
-- The current gate can look green while the first remote EAS build still lacks required env names unless we check Expo-hosted env state directly.
-- Sensitive Expo env values must not be printed; only env-name presence should be audited.
-- Store-asset checks should verify both config references and file existence, otherwise missing iOS icon assets can slip through.
+- A visual redesign can accidentally weaken readability in dark, crowded event conditions if we over-index on glass and glow.
+- Shared foundation changes affect many screens at once, so spacing, contrast, and status semantics must remain consistent.
+- The QR screen is already physically validated; redesign work must not break its refresh cadence, token visibility, or scanner helper copy.
+- Profile and rewards surfaces still mix older tokens with the newer glass system, so partial updates can make the app feel less coherent before it feels better.
 
 ## Dependencies
 
-- Expo CLI auth for `eas env:list`
-- Current EAS project `@senoldogan33/omaleima-mobile`
-- Current mobile app config and EAS config
-- Existing launch docs and testing notes
+- Existing mobile glass foundation from the previous UI pass
+- Expo Glass Effect fallback behavior across iOS, Android, and web
+- Current student flows that already passed physical-device and hosted smoke validation
+- User inspiration file: `/Users/dogan/Desktop/platform_design_prompts.md`
 
 ## Existing Logic Checked
 
-- The previous store-release gate only checked local static config and docs.
-- The reviewer correctly found that `preview` and `production` EAS env names were not being proven.
-- The same review found that `ios.icon` and actual asset existence were not part of the current build-assets gate.
-- `docs/TESTING.md` currently mixes Android readiness bullets into the “this gate does not prove” section.
+- `mobileTheme`, `GlassPanel`, `AppScreen`, `InfoCard`, and `StatusBadge` already provide a good structural base, but they still read as conservative and system-like rather than distinctly OmaLeima.
+- The student QR, events, rewards, and profile surfaces are functionally sound, yet visually inconsistent: some screens use the new glass language while others still use older slate cards and generic copy blocks.
+- Reward progress currently has no richer "earned leima" stamp strip or venue-memory cue, but the current data shape does not yet expose venue logos or per-stamp visuals. The first redesign slice should therefore improve the surface language now and leave deeper data-backed celebratory details for a later pass if needed.
+- The user wants the redesign to reflect students, parties, and simplicity without becoming noisy or generic. The shared visual system needs stronger rhythm, richer highlights, and more character while keeping one-thumb usability and scan readability intact.
 
 ## Review Outcome
 
-Ship a tight hardening follow-up that:
+Ship the redesign as a controlled foundation slice that:
 
-- adds remote EAS environment-name presence checks
-- verifies all referenced store assets exist on disk, including the iOS icon asset
-- cleans the testing doc wording so the gate’s proof surface is trustworthy
+- strengthens the shared color, spacing, and surface language first
+- upgrades reusable cards, badges, and background composition before touching every screen
+- applies the new language to the most visible student flows: event discovery, QR hero, reward progress, and profile tags
+- keeps all validated QR, scanner, and push behavior unchanged while the product feel becomes more expressive

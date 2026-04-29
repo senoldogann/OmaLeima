@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { StatusBadge } from "@/components/status-badge";
+import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import type { StudentProfileTag } from "@/features/profile/types";
 
 type ProfileTagCardProps = {
@@ -70,16 +71,17 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 12,
-    padding: 14,
+    gap: 14,
+    padding: 16,
+    ...interactiveSurfaceShadowStyle,
   },
   copy: {
     flex: 1,
-    gap: 4,
+    gap: 6,
   },
   disabledButton: {
     opacity: 0.6,
@@ -91,37 +93,40 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   meta: {
-    color: "#94A3B8",
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
   removeButton: {
     alignItems: "center",
-    backgroundColor: "#431407",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: mobileTheme.colors.dangerSurface,
+    borderColor: "rgba(255, 159, 138, 0.28)",
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   removeButtonText: {
-    color: "#FDBA74",
+    color: mobileTheme.colors.accentCoral,
     fontSize: 13,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.actionNeutral,
+    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   secondaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   title: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 16,
     fontWeight: "700",
   },

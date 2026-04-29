@@ -6,10 +6,13 @@ import { mobileTheme } from "@/features/foundation/theme";
 
 export const AppScreen = ({ children }: PropsWithChildren) => (
   <SafeAreaView style={styles.safeArea}>
-    <View pointerEvents="none" style={styles.backgroundLayer}>
+    <View style={styles.backgroundLayer}>
+      <View style={styles.topHalo} />
+      <View style={styles.rightHalo} />
       <View style={[styles.ambientPanel, styles.topPanel]} />
       <View style={[styles.ambientPanel, styles.middlePanel]} />
       <View style={[styles.ambientPanel, styles.bottomPanel]} />
+      <View style={[styles.ambientPanel, styles.footerPanel]} />
       <View style={styles.glowLine} />
     </View>
     <ScrollView contentContainerStyle={styles.content} style={styles.scrollView}>
@@ -26,43 +29,72 @@ const styles = StyleSheet.create({
   backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
+    pointerEvents: "none",
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    gap: 18,
+    gap: mobileTheme.spacing.sectionGap,
     paddingHorizontal: mobileTheme.spacing.screenHorizontal,
     paddingTop: mobileTheme.spacing.screenVertical,
     paddingBottom: 144,
   },
+  topHalo: {
+    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    borderRadius: 200,
+    height: 280,
+    left: -96,
+    opacity: 0.6,
+    position: "absolute",
+    top: -96,
+    width: 280,
+  },
+  rightHalo: {
+    backgroundColor: mobileTheme.colors.chromeTintWarm,
+    borderRadius: 180,
+    height: 220,
+    opacity: 0.38,
+    position: "absolute",
+    right: -82,
+    top: 120,
+    width: 220,
+  },
   ambientPanel: {
     position: "absolute",
-    borderRadius: 32,
+    borderRadius: 40,
   },
   topPanel: {
     backgroundColor: mobileTheme.colors.chromeTint,
-    height: 188,
-    left: -36,
-    right: 88,
-    top: 28,
-    transform: [{ rotate: "-8deg" }],
+    height: 184,
+    left: -44,
+    right: 74,
+    top: 46,
+    transform: [{ rotate: "-9deg" }],
   },
   middlePanel: {
-    backgroundColor: mobileTheme.colors.chromeTintWarm,
-    height: 152,
-    right: -24,
-    top: 248,
-    width: 236,
-    transform: [{ rotate: "12deg" }],
+    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    height: 156,
+    right: -16,
+    top: 242,
+    width: 244,
+    transform: [{ rotate: "11deg" }],
   },
   bottomPanel: {
     backgroundColor: mobileTheme.colors.chromeTintRose,
-    bottom: 132,
-    height: 164,
-    left: 16,
-    width: 208,
+    bottom: 152,
+    height: 168,
+    left: 10,
+    width: 214,
     transform: [{ rotate: "-14deg" }],
+  },
+  footerPanel: {
+    backgroundColor: mobileTheme.colors.chromeTintWarm,
+    bottom: -26,
+    height: 176,
+    right: 24,
+    width: 232,
+    transform: [{ rotate: "16deg" }],
   },
   glowLine: {
     backgroundColor: "rgba(255, 255, 255, 0.06)",

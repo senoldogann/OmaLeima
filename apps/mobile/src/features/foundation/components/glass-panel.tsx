@@ -61,6 +61,8 @@ export const GlassPanel = ({ children, style, contentStyle, motionIndex }: Glass
         style={[styles.panel, style]}
         tintColor={mobileTheme.colors.chromeTint}
       >
+        <View style={styles.specularHighlight} />
+        <View style={styles.ambientGlow} />
         <View style={[styles.content, contentStyle]}>{children}</View>
       </GlassView>
     </Animated.View>
@@ -79,10 +81,31 @@ const styles = StyleSheet.create({
     backgroundColor: mobileTheme.colors.cardBackground,
     overflow: "hidden",
   },
+  specularHighlight: {
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    pointerEvents: "none",
+    position: "absolute",
+    right: 18,
+    top: 0,
+  },
+  ambientGlow: {
+    backgroundColor: mobileTheme.colors.cardHighlight,
+    borderRadius: mobileTheme.radius.card,
+    height: 120,
+    opacity: 0.65,
+    pointerEvents: "none",
+    position: "absolute",
+    right: -12,
+    top: -24,
+    width: 140,
+  },
   content: {
     borderRadius: mobileTheme.radius.card,
-    padding: 18,
-    gap: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    padding: mobileTheme.spacing.cardPadding,
+    gap: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.025)",
   },
 });

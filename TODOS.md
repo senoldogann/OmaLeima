@@ -4,11 +4,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/store-readiness-hardening` branch.
-- [x] Update `REVIEW.md` for the hardening slice.
+- [x] Create `feature/full-ui-redesign-foundation` branch.
+- [x] Update `REVIEW.md` for the redesign foundation slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Harden the mobile store/public-launch audit for remote EAS env names and asset existence.
-- [x] Clean the contradictory Android wording in `docs/TESTING.md`.
-- [x] Run focused validation for the hardened store-readiness gate.
-- [x] Update docs with the stronger gate scope and EAS auth expectation.
-- [x] Update `PROGRESS.md` with the hardening handoff note.
+- [x] Redesign the shared mobile theme and foundation components.
+- [x] Apply the new visual language to the key student surfaces.
+- [x] Run static mobile validation for the redesign slice.
+- [ ] Run logged-in runtime visual smoke for the redesigned student surfaces.
+- [x] Update `PROGRESS.md` with the redesign handoff note and next visual wave.

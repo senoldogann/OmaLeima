@@ -22,27 +22,34 @@ export const InfoCard = ({ children, title, eyebrow, motionIndex }: InfoCardProp
 
 const styles = StyleSheet.create({
   cardContent: {
-    gap: 14,
+    gap: 16,
   },
   header: {
-    gap: 8,
+    gap: 10,
   },
   eyebrow: {
     alignSelf: "flex-start",
     color: mobileTheme.colors.accentBlue,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.8,
+    letterSpacing: 0.9,
     paddingBottom: 2,
+    backgroundColor: "rgba(144, 215, 255, 0.12)",
+    borderColor: "rgba(144, 215, 255, 0.24)",
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     textTransform: "uppercase",
   },
   title: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 21,
+    fontSize: 24,
     fontWeight: "700",
-    lineHeight: 26,
+    lineHeight: 30,
   },
   body: {
-    gap: 12,
+    gap: 14,
   },
 });

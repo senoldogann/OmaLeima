@@ -199,13 +199,24 @@ export default function StudentActiveEventScreen() {
       {selectedEvent?.viewState === "ACTIVE" ? (
         <>
           <InfoCard eyebrow={selectedEvent.city} motionIndex={4} title={selectedEvent.name}>
-            <View style={styles.badges}>
-              <StatusBadge label="active now" state="ready" />
-              <StatusBadge label={qrTokenQuery.error ? "refresh error" : "live token"} state={qrTokenQuery.error ? "error" : "ready"} />
-            </View>
+            <View style={styles.heroCard}>
+              <View style={styles.heroGlow} />
+              <View style={styles.badges}>
+                <StatusBadge label="active now" state="ready" />
+                <StatusBadge
+                  label={qrTokenQuery.error ? "refresh error" : "live token"}
+                  state={qrTokenQuery.error ? "error" : "ready"}
+                />
+              </View>
 
-            <Text style={styles.metaLine}>Student: {qrContextQuery.data?.studentDisplayName ?? session?.user.email ?? "Unknown student"}</Text>
-            <Text style={styles.metaLine}>Event ends {formatDateTime(selectedEvent.endAt)}</Text>
+              <View style={styles.metaGroup}>
+                <Text style={styles.heroMetaLabel}>Student</Text>
+                <Text style={styles.heroMetaValue}>
+                  {qrContextQuery.data?.studentDisplayName ?? session?.user.email ?? "Unknown student"}
+                </Text>
+                <Text style={styles.metaLine}>Event ends {formatDateTime(selectedEvent.endAt)}</Text>
+              </View>
+            </View>
 
             <View style={styles.qrShell}>
               {qrTokenQuery.isLoading || qrSvgQuery.isLoading ? (
@@ -219,7 +230,8 @@ export default function StudentActiveEventScreen() {
               ) : null}
             </View>
 
-            <View style={styles.metaGroup}>
+            <View style={styles.refreshCard}>
+              <Text style={styles.refreshLabel}>Leima window</Text>
               <Text style={styles.metaLine}>
                 {refreshAfterSeconds === null
                   ? "Waiting for the first QR token."
@@ -233,7 +245,9 @@ export default function StudentActiveEventScreen() {
                   ]}
                 />
               </View>
-              <Text style={styles.metaLine}>QR refreshes automatically while this screen stays foregrounded.</Text>
+              <Text style={styles.metaLine}>
+                QR refreshes automatically while this screen stays foregrounded.
+              </Text>
             </View>
 
             {qrTokenQuery.error ? (
@@ -317,11 +331,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  heroCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 12,
+    overflow: "hidden",
+    padding: 18,
+    position: "relative",
+  },
+  heroGlow: {
+    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    borderRadius: 120,
+    height: 142,
+    opacity: 0.5,
+    position: "absolute",
+    right: -36,
+    top: -28,
+    width: 142,
+  },
+  heroMetaLabel: {
+    color: mobileTheme.colors.accentGold,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroMetaValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
   metaGroup: {
     gap: 8,
   },
   metaLine: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSoft,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -341,7 +388,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   progressTrack: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: mobileTheme.colors.progressTrack,
     borderRadius: 999,
     height: 8,
     overflow: "hidden",
@@ -354,13 +401,28 @@ const styles = StyleSheet.create({
   qrShell: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.qrCanvas,
-    borderColor: "rgba(255, 255, 255, 0.28)",
+    borderColor: "rgba(255, 255, 255, 0.24)",
     borderRadius: mobileTheme.radius.qr,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 312,
-    padding: 18,
+    padding: 20,
     ...interactiveSurfaceShadowStyle,
+  },
+  refreshCard: {
+    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
+    borderColor: mobileTheme.colors.cardBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 10,
+    padding: 16,
+  },
+  refreshLabel: {
+    color: mobileTheme.colors.accentBlue,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   refreshProgressFill: {
     backgroundColor: mobileTheme.colors.actionBlue,
