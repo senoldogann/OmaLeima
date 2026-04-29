@@ -99,6 +99,7 @@ npm run audit:hosted-business-scan-readiness
 - Expo Go is still useful for routing and auth checks, but real remote push verification needs a development build on a physical device.
 - The current profile route is the manual smoke surface for that step.
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
+- On Android specifically, the emulator is the current fallback when no phone is available: use it for auth, event, QR, and scanner-flow coverage, but do not count it as remote-push proof.
 - The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
 - The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response.
 - The runtime label now classifies the current physical-device dev client as a development build instead of `bare`.

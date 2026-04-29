@@ -20,7 +20,7 @@ Current verified state:
 
 Still pending before a broader public launch:
 
-- Android physical-device smoke
+- Android remote-push physical-device smoke
 - final operator credential rotation
 - custom domain cutover
 - public store release steps

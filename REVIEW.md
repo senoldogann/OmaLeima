@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/owner-checklist-tr`
-- **Scope:** Add a short Turkish owner checklist to the launch guidance so the user can clearly see which tasks matter now, which can wait until the app is more complete, and which pilot setup steps depend on having a real club later.
+- **Branch:** `feature/android-emulator-smoke-fallback`
+- **Scope:** Formalize Android emulator fallback as the current non-blocking path: what it can verify today, what it cannot prove, and how that changes the real next step without derailing the main product flow.
 
 ## Affected Files
 
@@ -16,29 +16,31 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PROGRESS.md`
 - `docs/LAUNCH_RUNBOOK.md`
 - `README.md`
+- `docs/TESTING.md`
+- `apps/mobile/README.md`
 
 ## Risks
 
-- The existing launch runbook is mostly in English. The new Turkish notes should help the user without forking the document into two competing versions.
-- The user explicitly said there is no real club yet. We should not phrase pilot-account setup as an immediate blocker for ongoing product development.
-- We should keep the main technical flow visible so the new notes do not accidentally turn the repo into a pure launch-prep branch.
+- We must not overclaim Android readiness when Expo's official guidance still treats remote push as a real-device-only path.
+- The user has no Android phone right now, so the docs need a useful fallback path instead of just repeating an impossible requirement.
+- The main product roadmap should still point to the next engineering step after this clarification.
 
 ## Dependencies
 
-- Existing launch guidance in `docs/LAUNCH_RUNBOOK.md`
-- Existing readiness summary in `README.md`
-- Current hosted smoke state already verified on the physical iPhone
+- Existing native simulator audit and mobile README notes
+- Current launch guidance in `docs/LAUNCH_RUNBOOK.md`
+- Expo's current official documentation for push notifications and development builds
 
 ## Existing Logic Checked
 
 - The project already passed hosted mobile auth, push, QR rotation, manual scanner fallback, stamp creation, and reward-unlock push on a real iPhone.
-- The launch runbook already distinguishes private-pilot tasks from broader public-launch work.
-- The missing piece is a short, user-friendly Turkish section that says “not now” versus “later when there is a real club.”
+- The repo already has a `native-simulator-smoke` wiring audit, but the launch docs still frame Android mainly as a physical-device gap.
+- `adb` is not even present on the current machine, which reinforces that emulator fallback should stay documentation- and workflow-oriented, not pretend we already ran a full Android device gate.
 
 ## Review Outcome
 
-Ship a narrow documentation follow-up that:
+Ship a documentation follow-up that:
 
-- adds a concise Turkish owner checklist
-- explicitly says there is no need to create real club or scanner accounts yet
-- keeps the main engineering next step visible after the note is added
+- explicitly says Android emulator is useful now for app flow smoke
+- explicitly says Android remote push is still an open real-device-only risk
+- keeps the next technical step honest: emulator coverage now, borrowed Android hardware later only if Android launch scope requires it

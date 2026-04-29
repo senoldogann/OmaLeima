@@ -213,6 +213,46 @@ Expected success output today:
 
 If a future slice changes which screens own Realtime freshness or replaces invalidation with direct cache patching, this audit should be updated in the same change.
 
+## Android emulator fallback
+
+When no physical Android phone is available, use the Android emulator as a partial smoke path instead of blocking the whole roadmap.
+
+What the emulator can still validate:
+
+- development-build launch
+- Google sign-in flow
+- session restore and route guards
+- event list and event join flow
+- active-event and QR screen rendering
+- business login and scanner screen UI
+- manual token scan flow against the hosted backend
+
+What the emulator does **not** prove:
+
+- real Expo remote push delivery on Android
+- notification tap/open behavior through the real Android push service
+- final Android release-mode push behavior
+
+Official Expo guidance is still that push notifications are not supported on Android emulators and iOS simulators, and a real device is required for that part of the path.
+
+Recommended fallback order:
+
+1. run the existing repo wiring gate:
+
+```bash
+npm run qa:mobile-native-simulator-smoke
+```
+
+2. start the mobile app with Android support:
+
+```bash
+cd apps/mobile
+npx expo start --android
+```
+
+3. use the emulator to verify login, event, QR, and scanner flows
+4. keep Android remote push as an explicit open risk until a real Android phone is available
+
 ## Mobile reward notification bridge
 
 For the local foreground reward notification bridge:
