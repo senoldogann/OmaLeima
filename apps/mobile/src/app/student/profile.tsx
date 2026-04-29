@@ -23,6 +23,12 @@ import {
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState, PushNotificationCapture } from "@/types/app";
 
+const diagnosticsRefreshFormatter = new Intl.DateTimeFormat("en-FI", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
 const mapPushResultState = (state: PushDeviceRegistrationResult["state"]): AppReadinessState => {
   switch (state) {
     case "registered":
@@ -187,6 +193,14 @@ const createNotificationCaptureStatusDetail = (
   return `${detail} · Local notification activity does not prove remote APNs or FCM delivery yet.`;
 };
 
+const createDiagnosticsRefreshDetail = (value: string | null): string => {
+  if (value === null) {
+    return "No manual diagnostics refresh has been recorded in this app session yet.";
+  }
+
+  return `Last refreshed at ${diagnosticsRefreshFormatter.format(new Date(value))}.`;
+};
+
 export default function StudentProfileScreen() {
   const { bootstrapError, session } = useSession();
   const {
@@ -197,6 +211,8 @@ export default function StudentProfileScreen() {
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
+  const [isRefreshingPushDiagnostics, setIsRefreshingPushDiagnostics] = useState<boolean>(false);
+  const [lastPushDiagnosticsRefreshAt, setLastPushDiagnosticsRefreshAt] = useState<string | null>(null);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -240,10 +256,18 @@ export default function StudentProfileScreen() {
     });
     setPushState(result);
     await refreshPushPermissionStateAsync();
+    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
   };
 
   const handleRefreshPushDiagnosticsPress = async (): Promise<void> => {
-    await refreshPushPermissionStateAsync();
+    setIsRefreshingPushDiagnostics(true);
+
+    try {
+      await refreshPushPermissionStateAsync();
+      setLastPushDiagnosticsRefreshAt(new Date().toISOString());
+    } finally {
+      setIsRefreshingPushDiagnostics(false);
+    }
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -525,6 +549,11 @@ export default function StudentProfileScreen() {
             state: diagnostics.projectId === null ? "error" : "ready",
           },
           {
+            label: "Last diagnostics refresh",
+            value: createDiagnosticsRefreshDetail(lastPushDiagnosticsRefreshAt),
+            state: lastPushDiagnosticsRefreshAt === null ? "pending" : "ready",
+          },
+          {
             label: "Permission snapshot",
             value: createPushPermissionDetail(diagnostics.permissionState),
             state: mapPushPermissionState(diagnostics.permissionState),
@@ -556,8 +585,14 @@ export default function StudentProfileScreen() {
           Local foreground reward notifications can still appear here, but only rows marked from a remote source prove APNs or FCM-backed delivery.
         </Text>
         <View style={styles.actionRow}>
-          <Pressable onPress={() => void handleRefreshPushDiagnosticsPress()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Refresh push diagnostics</Text>
+          <Pressable
+            disabled={isRefreshingPushDiagnostics}
+            onPress={() => void handleRefreshPushDiagnosticsPress()}
+            style={[styles.secondaryButton, isRefreshingPushDiagnostics ? styles.disabledButton : null]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {isRefreshingPushDiagnostics ? "Refreshing..." : "Refresh push diagnostics"}
+            </Text>
           </Pressable>
           {hasCapturedPushActivity ? (
             <Pressable onPress={clearCapturedPushActivity} style={styles.secondaryButton}>

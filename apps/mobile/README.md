@@ -53,6 +53,7 @@ The first dedicated mobile Realtime slice is now shipped:
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
 - local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
 - the profile route now exposes native push diagnostics for runtime mode, permission state, last received notification, and last notification response during physical-device smoke
+- the same profile route now records the last manual diagnostics refresh timestamp so the refresh button has visible feedback even when permission state does not change
 - local foreground notifications can still appear in that diagnostics surface, but only entries marked from a remote source prove APNs or FCM-backed delivery
 - the active student event screen now exposes a development-only hosted scanner smoke token so one physical iPhone can still exercise the real hosted `scan-qr` path through the business manual fallback
 
@@ -99,7 +100,8 @@ npm run audit:hosted-business-scan-readiness
 - The current profile route is the manual smoke surface for that step.
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
 - The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
-- The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response. The remaining diagnostics warning is only the runtime label, which currently classifies this dev-client path as `bare`.
+- The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response.
+- The runtime label now classifies the current physical-device dev client as a development build instead of `bare`.
 
 ## Hosted same-device scanner smoke
 

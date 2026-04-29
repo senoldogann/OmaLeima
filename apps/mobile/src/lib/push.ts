@@ -30,6 +30,18 @@ const ensureAndroidNotificationChannelAsync = async (): Promise<void> => {
   });
 };
 
+const hasExpoMetroHostUri = (): boolean => {
+  const hostUri = Constants.expoConfig?.hostUri;
+
+  return typeof hostUri === "string" && hostUri.length > 0;
+};
+
+const isExpoGoRuntime = (): boolean =>
+  Constants.expoGoConfig !== null || Constants.appOwnership === "expo";
+
+const hasDevelopmentBuildSignals = (): boolean =>
+  __DEV__ && Device.isDevice && hasExpoMetroHostUri() && readPushProjectId() !== null && !isExpoGoRuntime();
+
 export const readPushProjectId = (): string | null => {
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
@@ -73,10 +85,14 @@ export const readPushRuntimeMode = (): PushRuntimeMode => {
   }
 
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
-    if (Constants.expoGoConfig !== null || Constants.appOwnership === "expo") {
+    if (isExpoGoRuntime()) {
       return "expo-go";
     }
 
+    return "development-build";
+  }
+
+  if (Constants.executionEnvironment === ExecutionEnvironment.Bare && hasDevelopmentBuildSignals()) {
     return "development-build";
   }
 

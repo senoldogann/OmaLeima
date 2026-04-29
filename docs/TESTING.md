@@ -263,8 +263,10 @@ The audit is intentionally read-only. It verifies the current mobile repository 
 - `expo-dev-client` is installed in `apps/mobile/package.json`
 - the root layout imports `expo-dev-client`
 - provider-owned notification diagnostics are wired through `apps/mobile/src/providers/app-providers.tsx`
+- the runtime label recognizes the current physical-device dev client as a development build instead of falling back to `bare`
 - the diagnostics module captures the last received notification and the last notification response
 - the student profile route exposes the manual smoke surface for runtime mode, permission state, and captured push activity
+- the same profile route records `Last diagnostics refresh` so manual refresh now has visible UI feedback
 - docs still describe the physical-device requirement honestly
 
 Expected success output today:

@@ -67,10 +67,13 @@ const main = async () => {
     profileSource.includes("diagnostics.lastNotification") &&
     profileSource.includes("diagnostics.lastNotificationResponse") &&
     profileSource.includes("refreshPushPermissionStateAsync") &&
+    profileSource.includes("lastPushDiagnosticsRefreshAt") &&
+    profileSource.includes("Last diagnostics refresh") &&
     profileSource.includes("clearCapturedPushActivity") &&
     profileSource.includes("Local notification activity does not prove remote APNs or FCM delivery yet.") &&
     profileSource.includes("Native push device smoke") &&
     profileSource.includes("Refresh push diagnostics") &&
+    profileSource.includes("Refreshing...") &&
     profileSource.includes("Clear captured push activity");
 
   const normalizedReadmeSource = readmeSource.toLowerCase();
@@ -79,9 +82,11 @@ const main = async () => {
   const docsAligned =
     normalizedReadmeSource.includes("expo-dev-client") &&
     normalizedReadmeSource.includes("native push diagnostics") &&
+    normalizedReadmeSource.includes("runtime label now classifies the current physical-device dev client as a development build") &&
     normalizedReadmeSource.includes("remote source prove apns or fcm-backed delivery") &&
     normalizedTestingDocSource.includes("mobile native push device readiness") &&
     normalizedTestingDocSource.includes("physical-device requirement") &&
+    normalizedTestingDocSource.includes("last diagnostics refresh") &&
     normalizedTestingDocSource.includes("show a remote source") &&
     normalizedMasterPlanSource.includes("native push diagnostics surface is shipped");
 

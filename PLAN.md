@@ -5,34 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/hosted-business-scan-smoke-readiness`
-- **Goal:** Let one physical iPhone run the hosted student-to-scanner smoke path end to end without extra hardware, while keeping the helper surfaces development-only.
+- **Branch:** `feature/mobile-diagnostics-cleanup`
+- **Goal:** Remove the last misleading mobile diagnostics states by identifying the current dev-client runtime correctly and making the push diagnostics refresh visibly react on the student profile route.
 
 ## Architectural Decisions
 
-- Keep the helper in JavaScript and behind `__DEV__` so the already-installed development build can pick it up from Metro without another iOS build.
-- Reuse the existing student QR query result instead of adding a second fetch or a new backend endpoint.
-- Reuse the existing manual scanner fallback path instead of adding a second scanner transport or a debug-only API route.
-- Add a repository-owned audit plus docs so the hosted same-device smoke path does not live only in chat history.
+- Keep the fix in JavaScript and inside the existing diagnostics path so the already-installed development build can pick it up from Metro without another iOS build.
+- Tighten runtime classification in `readPushRuntimeMode()` using Expo runtime evidence we already have locally: physical-device state, Metro-hosted config, and the EAS project id.
+- Add visible refresh state in the profile route instead of silently refreshing in the background.
+- Extend the current native push readiness audit rather than creating a second overlapping diagnostics audit.
 
 ## Alternatives Considered
 
-- Building a separate debug route just for hosted scanner smoke:
-  - rejected because the active-event screen already owns the live token and the scanner screen already owns the manual fallback
-- Exposing the raw QR token in all builds:
-  - rejected because production users should never see the JWT payload directly
-- Solving the same-device smoke only with docs:
-  - rejected because the user still needs a practical way to move the current token from the student flow into the scanner flow on one phone
+- Leaving the runtime label as `bare`:
+  - rejected because the user already proved a real Expo dev client on a physical iPhone, so the diagnostics would stay misleading
+- Adding a brand new diagnostics provider field for every tap:
+  - rejected because the profile screen can own the short-lived UI feedback locally
+- Ignoring the refresh button complaint and only changing docs:
+  - rejected because the current UX makes a working button feel broken
 
 ## Edge Cases
 
-- The helper should appear only while a live QR token exists for an active event.
-- The helper must stay hidden in exported or production builds.
-- The scanner hint should not claim that manual paste replaces the real camera scan path; it only exercises the same backend contract.
-- The hosted scanner account copy should align with the real hosted fixture account and stop calling it a local seed.
+- Expo Go must still stay a warning state even if it is on a physical device.
+- Web preview must stay `pending` and never be promoted to a native-ready runtime.
+- A manual refresh should not erase the captured notification rows.
+- The audit should fail if the runtime copy or refresh feedback drifts out of sync with the shipped UI.
 
 ## Validation Plan
 
 - Run mobile `lint`, `typecheck`, and `export:web`.
-- Run a new focused audit for the hosted business scan smoke wiring.
-- Keep the new copy aligned in `apps/mobile/README.md`, `docs/TESTING.md`, and the handoff docs.
+- Run the existing native push device readiness audit after updating it for the new runtime and refresh signals.
+- Update `apps/mobile/README.md`, `docs/TESTING.md`, and the handoff docs with the diagnostics cleanup result.
