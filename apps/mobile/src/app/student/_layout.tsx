@@ -110,7 +110,6 @@ export default function StudentTabsLayout() {
           backgroundColor: "transparent",
           borderTopWidth: 0,
           bottom: 16,
-          elevation: 0,
           height: 78,
           left: 16,
           paddingBottom: 8,

@@ -15,5 +15,9 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Restyle student event detail, rewards, and profile around the new foundation.
 - [x] Restyle business home, events, and scanner around the same foundation.
 - [x] Run static mobile validation for the second redesign wave.
-- [ ] Run runtime visual smoke for the redesigned student and business surfaces when the second wave lands.
 - [x] Update `PROGRESS.md` with the second-wave redesign handoff note and next visual wave.
+- [x] Update the working docs for the runtime-proof slice.
+- [x] Run signed-in runtime visual smoke for redesigned business surfaces on local web.
+- [x] Fix any runtime-only layout or interaction regression found during the smoke.
+- [x] Narrow the remaining student runtime proof gap honestly in docs and handoff.
+- [x] Update `PROGRESS.md` with the runtime-proof handoff note and next visual wave.

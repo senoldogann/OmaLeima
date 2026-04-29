@@ -1,4 +1,4 @@
-import { Platform, type ViewStyle } from "react-native";
+import type { ViewStyle } from "react-native";
 
 export const mobileTheme = {
   colors: {
@@ -51,52 +51,10 @@ export const mobileTheme = {
   },
 } as const;
 
-export const surfaceShadowStyle: ViewStyle = Platform.select<ViewStyle>({
-  ios: {
-    shadowColor: "#020617",
-    shadowOpacity: 0.34,
-    shadowRadius: 28,
-    shadowOffset: {
-      width: 0,
-      height: 18,
-    },
-  },
-  android: {
-    elevation: 14,
-    shadowColor: "#020617",
-  },
-  default: {
-    shadowColor: "#020617",
-    shadowOpacity: 0.24,
-    shadowRadius: 22,
-    shadowOffset: {
-      width: 0,
-      height: 14,
-    },
-  },
-});
+export const surfaceShadowStyle: ViewStyle = {
+  boxShadow: "0px 18px 28px rgba(2, 6, 23, 0.34)",
+};
 
-export const interactiveSurfaceShadowStyle: ViewStyle = Platform.select<ViewStyle>({
-  ios: {
-    shadowColor: "#061321",
-    shadowOpacity: 0.26,
-    shadowRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-  },
-  android: {
-    elevation: 9,
-    shadowColor: "#061321",
-  },
-  default: {
-    shadowColor: "#061321",
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-  },
-});
+export const interactiveSurfaceShadowStyle: ViewStyle = {
+  boxShadow: "0px 12px 20px rgba(6, 19, 33, 0.26)",
+};

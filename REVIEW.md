@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Continue the full UI redesign with a second mobile wave that carries the new visual language into the remaining high-traffic student and business surfaces without changing the validated product flows.
+- **Scope:** Continue the full UI redesign by proving the new mobile surfaces in runtime, starting with the redesigned business routes on local web so the visual system is tested in a real signed-in flow before the next wave.
 
 ## Affected Files
 
@@ -31,6 +31,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/features/events/components/event-card.tsx`
 - `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
 - `apps/mobile/src/features/profile/components/profile-tag-card.tsx`
+- `docs/TESTING.md`
 
 ## Risks
 
@@ -40,6 +41,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - Profile, rewards, and business surfaces still mix older tokens with the newer glass system, so partial updates can make the app feel less coherent before it feels better.
 - The business scanner is already part of a physically validated hosted flow. Visual changes must not weaken scan clarity, active event selection, or result legibility during dark event conditions.
 - The event detail screen is information-dense and easy to over-style. If hierarchy gets too decorative, join state, reward state, and schedule details become harder to scan.
+- A static web export can stay green while a signed-in runtime route still overflows, clips, or collapses on real viewport sizes. We need at least one logged-in runtime proof before calling the redesign stable.
 
 ## Dependencies
 
@@ -53,14 +55,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `mobileTheme`, `GlassPanel`, `AppScreen`, `InfoCard`, and `StatusBadge` already provide a good structural base, but they still read as conservative and system-like rather than distinctly OmaLeima.
 - The student QR and event list now speak the new visual language, but event detail, rewards, and profile still feel split between the redesign and the older slate-card pass.
 - Business home, events, and scanner still rely heavily on hardcoded dark-blue cards and generic action buttons, so the operator side does not yet feel like the same product family as the student side.
+- Business email/password auth already gives us a reliable local runtime entry point, so it is the fastest way to prove the redesign in motion before we tackle student Google-linked proof or admin web redesign.
 - Reward progress currently has no richer "earned leima" stamp strip or venue-memory cue, but the current data shape does not yet expose venue logos or per-stamp visuals. The first redesign slice should therefore improve the surface language now and leave deeper data-backed celebratory details for a later pass if needed.
 - The user wants the redesign to reflect students, parties, and simplicity without becoming noisy or generic. The shared visual system needs stronger rhythm, richer highlights, and more character while keeping one-thumb usability and scan readability intact.
 
 ## Review Outcome
 
-Ship the redesign as a controlled second wave that:
+Ship the redesign as a controlled runtime-proof slice that:
 
 - reuses the shared foundation instead of creating a second competing component style
-- brings event detail, rewards, and profile into the same richer student language
-- upgrades business home, events, and scanner so staff routes also feel deliberate and premium
-- keeps all validated auth, QR, scanner, and push behavior unchanged while the product feel becomes more expressive
+- verifies business home, events, and scanner in a real signed-in route flow
+- keeps student runtime proof honest instead of over-claiming it before Google-linked local smoke exists
+- fixes any runtime-only layout regression that the signed-in browser smoke reveals
