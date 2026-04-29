@@ -38,6 +38,7 @@ Needed before a broader public launch:
 - public store release steps
 - Android student Google sign-in proof on a real Android development build
 - Expo store/public-launch readiness gate stays green
+- Expo remote EAS environment names stay present for `development`, `preview`, and `production`
 
 Later:
 

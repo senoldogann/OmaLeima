@@ -281,6 +281,7 @@ This gate checks repo-owned broader-launch prerequisites only:
 - native policy fields like camera permission text and `ITSAppUsesNonExemptEncryption`
 - Expo notifications and EAS project wiring
 - explicit EAS build environments for development, preview, and production
+- required remote Expo EAS environment-variable names for development, preview, and production
 - owner-facing store/public-launch checklist documentation
 
 This gate does **not** prove App Store Connect or Google Play Console state. It also does **not** prove:
@@ -289,9 +290,6 @@ This gate does **not** prove App Store Connect or Google Play Console state. It 
 - privacy-policy or support URLs configured in store consoles
 - Apple or Google account setup
 - EAS Submit credentials or app IDs stored outside the repo
-- Android emulator business email/password flow: passed
-- Android emulator student Google login in Expo Go: not treated as a reliable proof
-- Android remote push: still requires a real Android device
 
 ## Pilot operator hygiene readiness
 

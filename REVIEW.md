@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/store-release-readiness`
-- **Scope:** Add a repo-owned store/public-launch readiness gate for the Expo mobile app and document the remaining owner steps.
+- **Branch:** `feature/store-readiness-hardening`
+- **Scope:** Harden the new mobile store/public-launch gate so it also proves remote EAS env presence, verifies iOS/store assets on disk, and removes contradictory testing guidance.
 
 ## Affected Files
 
@@ -18,36 +18,33 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `docs/LAUNCH_RUNBOOK.md`
 - `docs/TESTING.md`
 - `apps/mobile/README.md`
-- `apps/mobile/app.config.ts`
-- `apps/mobile/eas.json`
 - `apps/mobile/package.json`
 - `apps/mobile/scripts/audit-store-release-readiness.mjs`
-- `tests/run-mobile-store-release-readiness.mjs`
 
 ## Risks
 
-- Store submission details change over time, so only repo-owned checks should be automated; account-only items must stay explicit in docs.
-- A false-green store gate would be misleading if it pretended to prove App Store Connect or Play Console state.
-- EAS build and submit config should stay minimal; we should not hardcode sensitive or owner-specific store identifiers into the repo.
+- The current gate can look green while the first remote EAS build still lacks required env names unless we check Expo-hosted env state directly.
+- Sensitive Expo env values must not be printed; only env-name presence should be audited.
+- Store-asset checks should verify both config references and file existence, otherwise missing iOS icon assets can slip through.
 
 ## Dependencies
 
-- Current Expo app config in `apps/mobile/app.config.ts`
-- Current EAS config in `apps/mobile/eas.json`
-- Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
-- Official Expo documentation for EAS Build, EAS Submit, app versions, and permissions
+- Expo CLI auth for `eas env:list`
+- Current EAS project `@senoldogan33/omaleima-mobile`
+- Current mobile app config and EAS config
+- Existing launch docs and testing notes
 
 ## Existing Logic Checked
 
-- The project already has working iOS dev-build proof, Android emulator fallback, and pilot operator hygiene gates.
-- The remaining broader-launch gap is not product logic; it is whether the mobile app repo is shaped correctly for store builds and later submissions.
-- `apps/mobile/app.config.ts` already contains bundle/package identifiers, icons, notifications, camera permission text, and EAS project wiring.
-- `apps/mobile/eas.json` currently has build profiles but does not yet expose an explicit repo-owned store-readiness gate.
+- The previous store-release gate only checked local static config and docs.
+- The reviewer correctly found that `preview` and `production` EAS env names were not being proven.
+- The same review found that `ios.icon` and actual asset existence were not part of the current build-assets gate.
+- `docs/TESTING.md` currently mixes Android readiness bullets into the “this gate does not prove” section.
 
 ## Review Outcome
 
-Ship a narrow store-readiness follow-up that:
+Ship a tight hardening follow-up that:
 
-- adds one local audit for Expo config and EAS build/release wiring
-- keeps store-account and listing work clearly documented as owner-owned tasks
-- avoids hardcoding App Store Connect or Google Play account identifiers into the repo
+- adds remote EAS environment-name presence checks
+- verifies all referenced store assets exist on disk, including the iOS icon asset
+- cleans the testing doc wording so the gate’s proof surface is trustworthy
