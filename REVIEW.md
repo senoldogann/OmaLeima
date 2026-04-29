@@ -54,7 +54,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - The main diagnostics surfaces are already removed from end-user flows.
 - The remaining issue is page density, not missing functionality.
 - The highest-noise routes are `student/profile`, `student/leaderboard`, `student/events/[eventId]`, `business/events`, and `business/scanner`.
-- Rewards and active-event are closer to the target, but they still need smaller chrome reductions.
+- Rewards and active-event are closer to the target, but rewards summary and profile/tag surfaces can still be lighter and more elegant.
 
 ## Review Outcome
 
@@ -64,3 +64,4 @@ Keep the current STARK direction, but simplify each role page:
 - move short helper text inline instead of giving it a full container
 - keep one dominant action per section
 - let spacing do more work than borders
+- keep rewards/account/tag surfaces readable without making them look like admin tooling

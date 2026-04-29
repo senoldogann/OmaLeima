@@ -33,5 +33,6 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Reduce the number of top-level cards on `student/profile` and `student/leaderboard`.
 - [x] Simplify `student/events/[eventId]`, `student/rewards`, and `student/active-event` without losing key actions.
 - [x] Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
+- [x] Refine `student/rewards`, account summary, and profile tag visuals one more step.
 - [x] Run mobile lint, typecheck, and export validation.
 - [x] Update `PROGRESS.md` with the simplification handoff note.

@@ -46,7 +46,7 @@ export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileT
         onPress={() => onSetPrimary(tag)}
         style={[styles.secondaryButton, isBusy || tag.isPrimary ? styles.disabledButton : null]}
       >
-        <Text style={styles.secondaryButtonText}>{tag.isPrimary ? "Primary tag" : "Set as primary"}</Text>
+        <Text style={styles.secondaryButtonText}>{tag.isPrimary ? "Primary" : "Make primary"}</Text>
       </Pressable>
       <Pressable
         disabled={isBusy}
@@ -67,16 +67,14 @@ const styles = StyleSheet.create({
   badges: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    padding: 16,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.card,
+    gap: 12,
+    padding: 14,
     ...interactiveSurfaceShadowStyle,
   },
   copy: {
@@ -94,31 +92,27 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: mobileTheme.colors.textSoft,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
   },
   removeButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.dangerSurface,
-    borderColor: "rgba(255, 159, 138, 0.28)",
+    backgroundColor: mobileTheme.colors.surfaceL3,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 10,
   },
   removeButtonText: {
-    color: mobileTheme.colors.accentCoral,
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 10,
   },
   secondaryButtonText: {
     color: mobileTheme.colors.textPrimary,

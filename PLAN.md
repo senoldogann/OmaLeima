@@ -31,6 +31,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Event detail cannot lose registration clarity while we merge sections.
 - Profile suggestions and custom-tag creation still need to stay understandable after they share space.
 - Scanner fallback input must remain available even if we reduce its visual weight.
+- Rewards and profile cannot lose their scanability while we simplify their summary blocks.
 
 ## Validation Plan
 
@@ -38,6 +39,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Simplify `student/profile`, `student/leaderboard`, `student/rewards`, `student/active-event`, and `student/events/[eventId]`.
 - Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
 - Remove redundant cards, reduce explanatory copy, and keep only meaningful actions.
+- Refine the rewards summary, account summary, and tag cards so they read as product UI rather than settings panels.
 - Verify mobile with:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

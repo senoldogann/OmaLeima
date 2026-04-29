@@ -216,27 +216,27 @@ export default function StudentProfileScreen() {
 
       {profileOverview ? (
         <InfoCard eyebrow="Account" title={profileOverview.displayName ?? "Student profile"}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text selectable style={styles.summaryValue}>{selectedTags.length}</Text>
-              <Text selectable style={styles.summaryLabel}>active tags</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text selectable style={styles.summaryValue}>{remainingTagSlots}</Text>
-              <Text selectable style={styles.summaryLabel}>slots left</Text>
-            </View>
-          </View>
+          <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
           <View style={styles.badgeRow}>
             <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
-            <StatusBadge label={profileOverview.status.toLowerCase()} state="ready" />
             {primaryTag ? (
               <StatusBadge label={`primary: ${primaryTag.title}`} state="pending" />
             ) : null}
           </View>
-          <Text selectable style={styles.bodyText}>{profileOverview.email}</Text>
-          <Text selectable style={styles.metaText}>
-            {createTagSummary(selectedTags.length, remainingTagSlots)}
-          </Text>
+          <View style={styles.accountMetaRow}>
+            <View style={styles.accountMetaPill}>
+              <Text selectable style={styles.accountMetaValue}>{selectedTags.length}</Text>
+              <Text selectable style={styles.accountMetaLabel}>tags</Text>
+            </View>
+            <View style={styles.accountMetaPill}>
+              <Text selectable style={styles.accountMetaValue}>{remainingTagSlots}</Text>
+              <Text selectable style={styles.accountMetaLabel}>left</Text>
+            </View>
+            <View style={styles.accountMetaPill}>
+              <Text selectable style={styles.accountMetaValue}>{profileOverview.status.toLowerCase()}</Text>
+              <Text selectable style={styles.accountMetaLabel}>status</Text>
+            </View>
+          </View>
         </InfoCard>
       ) : null}
 
@@ -259,6 +259,10 @@ export default function StudentProfileScreen() {
               No tags selected yet. Pick a suggestion or create one.
             </Text>
           )}
+
+          <Text selectable style={styles.metaText}>
+            {createTagSummary(selectedTags.length, remainingTagSlots)}
+          </Text>
 
           {suggestedTags.length > 0 ? (
             <View style={styles.suggestionGroup}>
@@ -354,6 +358,35 @@ export default function StudentProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  accountEmail: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  accountMetaLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  accountMetaPill: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.chip,
+    gap: 2,
+    minWidth: 74,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  accountMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  accountMetaValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "800",
+  },
   badgeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -451,30 +484,5 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
-  },
-  summaryCard: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
-    flex: 1,
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  summaryLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  summaryValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 28,
-    fontVariant: ["tabular-nums"],
-    fontWeight: "800",
   },
 });

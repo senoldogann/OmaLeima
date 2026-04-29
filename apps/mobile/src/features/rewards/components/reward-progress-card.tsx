@@ -149,18 +149,9 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       {/* Summary */}
       <Text style={styles.summaryText}>{getEventSummaryCopy(event)}</Text>
 
-      {/* Dates */}
-      <View style={styles.dateRow}>
-        <View style={styles.dateItem}>
-          <Text style={styles.dateLabel}>START</Text>
-          <Text style={styles.dateValue}>{formatDateTime(event.startAt)}</Text>
-        </View>
-        <View style={styles.dateSep} />
-        <View style={styles.dateItem}>
-          <Text style={styles.dateLabel}>END</Text>
-          <Text style={styles.dateValue}>{formatDateTime(event.endAt)}</Text>
-        </View>
-      </View>
+      <Text style={styles.dateLine}>
+        {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+      </Text>
 
       {/* Memory tokens */}
       {event.stampCount > 0 ? (
@@ -309,36 +300,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 
-  // --- Dates ---
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  dateItem: {
-    flex: 1,
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dateSep: {
-    width: 1,
-    backgroundColor: mobileTheme.colors.borderDefault,
-  },
-  dateLabel: {
+  dateLine: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  dateValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
+    lineHeight: 18,
   },
 
   // --- Memory tokens ---
@@ -385,9 +351,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tierRow: {
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     gap: 8,
     padding: 14,
     backgroundColor: mobileTheme.colors.surfaceL2,

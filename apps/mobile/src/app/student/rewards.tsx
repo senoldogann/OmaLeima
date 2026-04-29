@@ -27,29 +27,30 @@ export default function StudentRewardsScreen() {
 
   return (
     <AppScreen>
-      {/* Stats bar */}
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{totalStamps}</Text>
-          <Text style={styles.statLabel}>LEIMAT</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{registeredEventCount}</Text>
-          <Text style={styles.statLabel}>EVENTS</Text>
-        </View>
-        {claimableCount > 0 ? (
-          <>
-            <View style={styles.statDivider} />
-            <View style={[styles.statItem, styles.statItemLime]}>
-              <Text style={[styles.statValue, styles.statValueLime]}>{claimableCount}</Text>
-              <Text style={[styles.statLabel, styles.statLabelLime]}>CLAIMABLE</Text>
-            </View>
-          </>
-        ) : null}
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Rewards</Text>
+        <Text style={styles.metaText}>Track what you have earned and what is ready to claim.</Text>
       </View>
 
-      {/* Claimable alert */}
+      <View style={styles.summaryHero}>
+        <View style={styles.summaryLead}>
+          <Text style={styles.summaryNumber}>{totalStamps}</Text>
+          <Text style={styles.summaryLabel}>leimat collected</Text>
+        </View>
+        <View style={styles.summaryPills}>
+          <View style={styles.summaryPill}>
+            <Text style={styles.summaryPillValue}>{registeredEventCount}</Text>
+            <Text style={styles.summaryPillLabel}>events</Text>
+          </View>
+          {claimableCount > 0 ? (
+            <View style={[styles.summaryPill, styles.summaryPillLime]}>
+              <Text style={[styles.summaryPillValue, styles.summaryPillValueLime]}>{claimableCount}</Text>
+              <Text style={[styles.summaryPillLabel, styles.summaryPillLabelLime]}>claimable</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
       {claimableCount > 0 ? (
         <View style={styles.claimableAlert}>
           <Text style={styles.claimableAlertText}>
@@ -114,50 +115,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-
-  // --- Stats bar ---
-  statsBar: {
-    flexDirection: "row",
-    backgroundColor: mobileTheme.colors.surfaceL1,
-    borderRadius: mobileTheme.radius.card,
-    overflow: "hidden",
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 18,
-    gap: 4,
-  },
-  statItemLime: {
-    backgroundColor: mobileTheme.colors.limeSurface,
-  },
-  statValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 32,
-    fontWeight: "800",
-    letterSpacing: -1,
-    fontVariant: ["tabular-nums"],
-    lineHeight: 34,
-  },
-  statValueLime: {
-    color: mobileTheme.colors.lime,
-  },
-  statLabel: {
-    color: mobileTheme.colors.textDim,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-  },
-  statLabelLime: {
-    color: mobileTheme.colors.limeDim,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: mobileTheme.colors.borderMuted,
-    marginVertical: 14,
-  },
-
-  // --- Claimable alert ---
   claimableAlert: {
     flexDirection: "row",
     alignItems: "center",
@@ -172,8 +129,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-
-  // --- Buttons ---
+  ghostButton: {
+    alignSelf: "flex-start",
+    borderRadius: mobileTheme.radius.button,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  ghostButtonText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  metaText: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   primaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.lime,
@@ -189,16 +161,68 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  ghostButton: {
-    alignSelf: "flex-start",
-    borderRadius: mobileTheme.radius.button,
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+  screenHeader: {
+    gap: 6,
+    marginBottom: 2,
   },
-  ghostButtonText: {
+  screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: -0.8,
+  },
+  summaryHero: {
+    gap: 14,
+    paddingVertical: 8,
+  },
+  summaryLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 13,
     fontWeight: "600",
+  },
+  summaryLead: {
+    gap: 2,
+  },
+  summaryNumber: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 56,
+    fontWeight: "800",
+    letterSpacing: -1.8,
+    fontVariant: ["tabular-nums"],
+    lineHeight: 58,
+  },
+  summaryPill: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.chip,
+    gap: 2,
+    minWidth: 92,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  summaryPillLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  summaryPillLabelLime: {
+    color: mobileTheme.colors.limeDim,
+  },
+  summaryPills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  summaryPillLime: {
+    backgroundColor: mobileTheme.colors.limeSurface,
+  },
+  summaryPillValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 20,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  summaryPillValueLime: {
+    color: mobileTheme.colors.lime,
   },
 });
