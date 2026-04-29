@@ -4,7 +4,8 @@ import { StyleSheet, View } from "react-native";
 
 import { Image as ExpoImage } from "expo-image";
 
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 type CoverImageSurfaceProps = PropsWithChildren<{
   imageStyle?: StyleProp<ImageStyle>;
@@ -17,29 +18,34 @@ export const CoverImageSurface = ({
   imageStyle,
   source,
   style,
-}: CoverImageSurfaceProps) => (
-  <View style={style}>
-    {source ? (
-      <ExpoImage
-        cachePolicy="memory-disk"
-        contentFit="cover"
-        source={source}
-        style={[styles.image, imageStyle]}
-        transition={180}
-      />
-    ) : (
-      <View style={styles.fallback} />
-    )}
-    {children}
-  </View>
-);
+}: CoverImageSurfaceProps) => {
+  const styles = useThemeStyles(createStyles);
 
-const styles = StyleSheet.create({
-  fallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: mobileTheme.colors.surfaceL2,
-  },
-  image: {
-    ...StyleSheet.absoluteFillObject,
-  },
-});
+  return (
+    <View style={style}>
+      {source ? (
+        <ExpoImage
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          source={source}
+          style={[styles.image, imageStyle]}
+          transition={180}
+        />
+      ) : (
+        <View style={styles.fallback} />
+      )}
+      {children}
+    </View>
+  );
+};
+
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    fallback: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.colors.surfaceL2,
+    },
+    image: {
+      ...StyleSheet.absoluteFillObject,
+    },
+  });

@@ -5,9 +5,13 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 export default function BusinessLayout() {
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -17,9 +21,9 @@ export default function BusinessLayout() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Business" title="Checking session">
+        <InfoCard eyebrow={copy.common.business} title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            Restoring the Supabase session before opening the business area.
+            {copy.business.accessChecking}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -33,9 +37,9 @@ export default function BusinessLayout() {
   if (accessQuery.isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Business" title="Resolving access">
+        <InfoCard eyebrow={copy.common.business} title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            Confirming that this account has active business staff access.
+            {copy.business.accessResolving}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -46,9 +50,9 @@ export default function BusinessLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Business access check failed"
+          title={copy.business.accessResolving}
           detail={accessQuery.error.message}
-          retryLabel="Retry access check"
+          retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />
       </AppScreen>
@@ -63,8 +67,8 @@ export default function BusinessLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Business access not available"
-          detail="This authenticated account does not currently have an active business membership tied to a readable active business."
+          title={copy.business.accessMissing}
+          detail={copy.business.accessMissing}
           retryLabel={null}
           onRetry={null}
         />
@@ -82,10 +86,11 @@ export default function BusinessLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

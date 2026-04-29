@@ -4,7 +4,8 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import type { StudentEventSummary } from "@/features/events/types";
 
 type EventCardProps = {
@@ -13,53 +14,66 @@ type EventCardProps = {
   motionIndex?: number;
 };
 
-const timeFormatter = new Intl.DateTimeFormat("en-FI", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const formatDateTime = (value: string): string => timeFormatter.format(new Date(value));
-
-const getTimelineBadge = (event: StudentEventSummary): { label: string; state: "ready" | "pending" } => {
+const getTimelineBadge = (
+  event: StudentEventSummary,
+  language: "fi" | "en"
+): { label: string; state: "ready" | "pending" } => {
   if (event.timelineState === "ACTIVE") {
-    return { label: "live now", state: "ready" };
+    return { label: language === "fi" ? "käynnissä" : "live now", state: "ready" };
   }
 
-  return { label: "upcoming", state: "pending" };
+  return { label: language === "fi" ? "tulossa" : "upcoming", state: "pending" };
 };
 
 const getRegistrationBadge = (
-  event: StudentEventSummary
+  event: StudentEventSummary,
+  language: "fi" | "en"
 ): { label: string; state: "ready" | "warning" | "pending" } => {
   if (event.registrationState === "REGISTERED") {
-    return { label: "registered", state: "ready" };
+    return { label: language === "fi" ? "liitytty" : "registered", state: "ready" };
   }
 
   if (event.registrationState === "CANCELLED") {
-    return { label: "cancelled", state: "warning" };
+    return { label: language === "fi" ? "peruttu" : "cancelled", state: "warning" };
   }
 
   if (event.registrationState === "BANNED") {
-    return { label: "restricted", state: "warning" };
+    return { label: language === "fi" ? "estetty" : "restricted", state: "warning" };
   }
 
-  return { label: "not joined", state: "pending" };
+  return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
-const formatSupportLine = (event: StudentEventSummary): string => {
+const formatSupportLine = (
+  event: StudentEventSummary,
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat
+): string => {
+  const joinDeadlineLabel = language === "fi" ? "ilmoittautuminen" : "join before";
+  const capLabel = language === "fi" ? "henkeä" : "cap";
+
   if (event.maxParticipants === null) {
-    return `Join before ${formatDateTime(event.joinDeadlineAt)}`;
+    return `${joinDeadlineLabel} ${formatter.format(new Date(event.joinDeadlineAt))}`;
   }
 
-  return `${event.maxParticipants} cap • join before ${formatDateTime(event.joinDeadlineAt)}`;
+  return `${event.maxParticipants} ${capLabel} • ${joinDeadlineLabel} ${formatter.format(new Date(event.joinDeadlineAt))}`;
 };
 
 export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
-  const timelineBadge = getTimelineBadge(event);
-  const registrationBadge = getRegistrationBadge(event);
+  const { language, localeTag } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+  const timeFormatter = createDateTimeFormatter(localeTag);
+  const timelineBadge = getTimelineBadge(event, language);
+  const registrationBadge = getRegistrationBadge(event, language);
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
   return (
@@ -78,38 +92,46 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
             <View style={styles.heroCopy}>
               <Text style={styles.heroKicker}>{event.country}</Text>
-              <Text style={styles.heroTimeline}>{formatDateTime(event.startAt)}</Text>
+              <Text style={styles.heroTimeline}>{timeFormatter.format(new Date(event.startAt))}</Text>
             </View>
           </View>
         </CoverImageSurface>
 
         <Text style={styles.description}>
-          {event.description ?? "Event description will be added by the organizer."}
+          {event.description ??
+            (language === "fi"
+              ? "Järjestäjä lisää tapahtuman kuvauksen myöhemmin."
+              : "Event description will be added by the organizer.")}
         </Text>
 
         <View style={styles.metaGroup}>
           <Text style={styles.metaLine}>{event.city}</Text>
-          <Text style={styles.metaLine}>{formatSupportLine(event)}</Text>
+          <Text style={styles.metaLine}>{formatSupportLine(event, language, timeFormatter)}</Text>
           {event.minimumStampsRequired > 0 ? (
             <Text style={styles.metaLine}>
-              {event.minimumStampsRequired} leima needed before rewards unlock
+              {language === "fi"
+                ? `${event.minimumStampsRequired} leimaa ennen palkintoja`
+                : `${event.minimumStampsRequired} leima needed before rewards unlock`}
             </Text>
           ) : null}
         </View>
 
         <View style={styles.actionRow}>
-          <Text style={styles.actionText}>Open event</Text>
-          <Text style={styles.actionMeta}>Route, venues, and reward path.</Text>
+          <Text style={styles.actionText}>{language === "fi" ? "Avaa tapahtuma" : "Open event"}</Text>
+          <Text style={styles.actionMeta}>
+            {language === "fi" ? "Reitti, pisteet ja palkintopolku." : "Route, venues, and reward path."}
+          </Text>
         </View>
       </InfoCard>
     </Pressable>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
   actionMeta: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.regular,
+    color: theme.colors.textMuted,
+    fontFamily: theme.typography.families.regular,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -117,8 +139,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionText: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
+    color: theme.colors.lime,
+    fontFamily: theme.typography.families.bold,
     fontSize: 13,
     letterSpacing: 0.4,
   },
@@ -128,13 +150,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   description: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.regular,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.typography.families.regular,
     fontSize: 14,
     lineHeight: 20,
   },
   heroBand: {
-    borderRadius: mobileTheme.radius.scene,
+    borderRadius: theme.radius.scene,
     minHeight: 188,
     overflow: "hidden",
     position: "relative",
@@ -148,11 +170,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   heroImage: {
-    borderRadius: mobileTheme.radius.scene,
+    borderRadius: theme.radius.scene,
   },
   heroKicker: {
     color: "rgba(245, 247, 241, 0.72)",
-    fontFamily: mobileTheme.typography.families.semibold,
+    fontFamily: theme.typography.families.semibold,
     fontSize: 11,
     letterSpacing: 1.1,
     textTransform: "uppercase",
@@ -162,8 +184,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.52)",
   },
   heroTimeline: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
+    color: theme.colors.textPrimary,
+    fontFamily: theme.typography.families.bold,
     fontSize: 16,
     lineHeight: 22,
   },
@@ -171,13 +193,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   metaLine: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.regular,
+    color: theme.colors.textMuted,
+    fontFamily: theme.typography.families.regular,
     fontSize: 13,
     lineHeight: 18,
   },
   pressable: {
-    borderRadius: mobileTheme.radius.card,
+    borderRadius: theme.radius.card,
   },
   pressablePressed: {
     transform: [{ translateY: 1.5 }, { scale: 0.992 }],

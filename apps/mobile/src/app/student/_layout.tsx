@@ -8,7 +8,8 @@ import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { GlassTabBarBackground } from "@/features/foundation/components/glass-tab-bar-background";
-import { mobileTheme } from "@/features/foundation/theme";
+import { type MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 const getTabIconName = (routeName: string) => {
@@ -27,6 +28,9 @@ const getTabIconName = (routeName: string) => {
 };
 
 export default function StudentTabsLayout() {
+  const theme = useAppTheme();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -36,9 +40,9 @@ export default function StudentTabsLayout() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Student" title="Checking session">
+        <InfoCard eyebrow={copy.common.student} title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            Confirming that the student area has an authenticated session.
+            {copy.student.accessChecking}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -52,9 +56,9 @@ export default function StudentTabsLayout() {
   if (accessQuery.isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Student" title="Resolving access">
+        <InfoCard eyebrow={copy.common.student} title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            Checking whether this account should stay in the student area.
+            {copy.student.accessResolving}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -65,9 +69,9 @@ export default function StudentTabsLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Student access check failed"
+          title={copy.student.accessResolving}
           detail={accessQuery.error.message}
-          retryLabel="Retry access check"
+          retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />
       </AppScreen>
@@ -82,8 +86,8 @@ export default function StudentTabsLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Student access not available"
-          detail="This authenticated account is not currently allowed inside the student mobile area."
+          title={copy.student.accessMissing}
+          detail={copy.student.accessMissing}
           retryLabel={null}
           onRetry={null}
         />
@@ -95,19 +99,19 @@ export default function StudentTabsLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: mobileTheme.colors.textPrimary,
-        tabBarInactiveTintColor: mobileTheme.colors.textMuted,
+        tabBarActiveTintColor: theme.colors.textPrimary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontFamily: mobileTheme.typography.families.semibold,
-          fontSize: mobileTheme.typography.sizes.eyebrow,
+          fontFamily: theme.typography.families.semibold,
+          fontSize: theme.typography.sizes.eyebrow,
           marginBottom: 2,
         },
         tabBarItemStyle: {
           paddingTop: 8,
         },
         tabBarStyle: {
-          backgroundColor: mobileTheme.colors.screenBase,
+          backgroundColor: theme.colors.screenBase,
           borderTopWidth: 0,
           bottom: 16,
           height: 78,
@@ -138,23 +142,24 @@ export default function StudentTabsLayout() {
           />
         ),
         sceneStyle: {
-          backgroundColor: mobileTheme.colors.screenBase,
+          backgroundColor: theme.colors.screenBase,
         },
       })}
     >
-      <Tabs.Screen name="events" options={{ title: "Events" }} />
-      <Tabs.Screen name="active-event" options={{ title: "My QR" }} />
-      <Tabs.Screen name="leaderboard" options={{ title: "Leaderboard" }} />
-      <Tabs.Screen name="rewards" options={{ title: "Rewards" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="events" options={{ title: copy.common.events }} />
+      <Tabs.Screen name="active-event" options={{ title: copy.common.myQr }} />
+      <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
+      <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
+      <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
     </Tabs>
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

@@ -9,9 +9,10 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
-import { mobileTheme } from "@/features/foundation/theme";
-import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
+import type { MobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
+import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
 
@@ -20,6 +21,9 @@ export default function StudentRewardsScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const { triggerRewardCelebration } = useStudentRewardCelebration();
+  const { copy, language } = useUiPreferences();
+  const theme = useAppTheme();
+  const styles = useThemeStyles(createStyles);
   const studentId = session?.user.id ?? null;
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
     studentId: studentId ?? "",
@@ -36,12 +40,17 @@ export default function StudentRewardsScreen() {
     featuredEvent?.coverImageUrl ?? null,
     featuredEvent?.id ?? "rewards-hero"
   );
+
   const summaryLabel =
     claimableCount > 0
-      ? `${claimableCount} event${claimableCount === 1 ? "" : "s"} ready for claim.`
+      ? language === "fi"
+        ? `${claimableCount} tapahtumaa valmiina noutoon.`
+        : `${claimableCount} event${claimableCount === 1 ? "" : "s"} ready for claim.`
       : registeredEventCount === 0
-        ? "Leimat appear here after your first joined event."
-        : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
+        ? copy.student.noRewardProgress
+        : language === "fi"
+          ? `${registeredEventCount} tapahtumaa seurannassa.`
+          : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
 
   const handlePreviewCelebration = (): void => {
     const previewEvent = featuredEvent ?? null;
@@ -65,12 +74,14 @@ export default function StudentRewardsScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenEyebrow}>Rewards</Text>
-        <Text style={styles.screenTitle}>Rewards</Text>
-        <Text style={styles.metaText}>Track collected leimas and see what is ready for claim.</Text>
+        <Text style={styles.screenEyebrow}>{copy.student.rewardTrail}</Text>
+        <Text style={styles.screenTitle}>{copy.common.rewards}</Text>
+        <Text style={styles.metaText}>{copy.student.rewardsMeta}</Text>
         {__DEV__ ? (
           <Pressable onPress={handlePreviewCelebration} style={styles.previewButton}>
-            <Text style={styles.previewButtonText}>Preview leima</Text>
+            <Text style={styles.previewButtonText}>
+              {language === "fi" ? "Esikatsele leima" : "Preview leima"}
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -78,57 +89,63 @@ export default function StudentRewardsScreen() {
       <CoverImageSurface imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
         <View style={styles.summaryHeroOverlay} />
         <View style={styles.summaryLead}>
-          <Text style={styles.summaryEyebrow}>Reward trail</Text>
+          <Text style={styles.summaryEyebrow}>{copy.student.rewardTrail}</Text>
           <Text style={styles.summaryTitle}>
-            {featuredEvent?.name ?? "Your next unlock starts here"}
+            {featuredEvent?.name ?? (language === "fi" ? "Seuraava avaus alkaa tästä" : "Your next unlock starts here")}
           </Text>
           <Text style={styles.summaryLabel}>{summaryLabel}</Text>
         </View>
 
         <View style={styles.summaryCountWrap}>
           <Text style={styles.summaryNumber}>{totalStamps}</Text>
-          <Text style={styles.summaryCountLabel}>leimat</Text>
+          <Text style={styles.summaryCountLabel}>{language === "fi" ? "leimaa" : "leimat"}</Text>
         </View>
       </CoverImageSurface>
 
       {claimableCount > 0 ? (
         <View style={styles.claimableAlert}>
           <Text style={styles.claimableAlertText}>
-            {claimableCount} event{claimableCount === 1 ? "" : "s"} ready — go to venue to claim.
+            {language === "fi"
+              ? `${claimableCount} tapahtumaa valmiina — lunasta paikan päällä.`
+              : `${claimableCount} event${claimableCount === 1 ? "" : "s"} ready — go to venue to claim.`}
           </Text>
         </View>
       ) : null}
 
       {rewardOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening rewards">
-          <Text style={styles.bodyText}>Loading leima counts and tier status.</Text>
+        <InfoCard eyebrow={copy.common.loading} title={language === "fi" ? "Avataan palkintoja" : "Opening rewards"}>
+          <Text style={styles.bodyText}>
+            {language === "fi"
+              ? "Ladataan leimat ja palkintotasot."
+              : "Loading leima counts and tier status."}
+          </Text>
         </InfoCard>
       ) : null}
 
       {rewardOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load rewards">
+        <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Palkintoja ei voitu ladata" : "Could not load rewards"}>
           <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
           <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>Retry</Text>
+            <Text style={styles.ghostButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {!rewardOverviewQuery.isLoading && !rewardOverviewQuery.error && events.length === 0 ? (
-        <InfoCard eyebrow="Standby" title="No reward progress yet">
+        <InfoCard eyebrow={copy.common.standby} title={language === "fi" ? "Ei palkintopolkuja vielä" : "No reward progress yet"}>
           {registeredEventCount === 0 ? (
             <>
-              <Text style={styles.bodyText}>
-                Join an event first. Once registered, stamp progress and reward tiers appear here.
-              </Text>
+              <Text style={styles.bodyText}>{copy.student.noRewardProgress}</Text>
               <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
-                <AppIcon color={mobileTheme.colors.screenBase} name="calendar" size={18} />
-                <Text style={styles.primaryButtonText}>Browse events</Text>
+                <AppIcon color={theme.colors.screenBase} name="calendar" size={18} />
+                <Text style={styles.primaryButtonText}>{copy.student.browseEvents}</Text>
               </Pressable>
             </>
           ) : (
             <Text style={styles.bodyText}>
-              Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers.
+              {language === "fi"
+                ? "Olet jo ilmoittautunut, mutta palkintotasoja ei näy vielä. Tarkista myöhemmin uudelleen."
+                : "Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers."}
             </Text>
           )}
         </InfoCard>
@@ -138,12 +155,14 @@ export default function StudentRewardsScreen() {
         <View style={styles.railSection}>
           <View style={styles.railHeader}>
             <View style={styles.railHeaderCopy}>
-              <Text style={styles.railTitle}>Event rewards</Text>
-              <Text style={styles.railMeta}>Slides automatically when idle.</Text>
+              <Text style={styles.railTitle}>{language === "fi" ? "Tapahtumapalkinnot" : "Event rewards"}</Text>
+              <Text style={styles.railMeta}>
+                {language === "fi" ? "Liukuu automaattisesti, jos et selaa." : "Slides automatically when idle."}
+              </Text>
             </View>
             <View style={styles.railHint}>
               <Text style={styles.railHintText}>Auto</Text>
-              <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={16} />
+              <AppIcon color={theme.colors.lime} name="chevron-right" size={16} />
             </View>
           </View>
 
@@ -171,201 +190,189 @@ export default function StudentRewardsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  claimableAlert: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.limeSurface,
-    borderRadius: 999,
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  claimableAlertText: {
-    color: mobileTheme.colors.lime,
-    flex: 1,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-  },
-  ghostButton: {
-    alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  ghostButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-  },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-    maxWidth: 320,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: 999,
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-  },
-  previewButton: {
-    alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.limeBorder,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  previewButtonText: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-  },
-  primaryButtonText: {
-    color: "#08090E",
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    letterSpacing: 0.3,
-  },
-  railCardWrap: {
-    marginRight: 14,
-  },
-  railContent: {
-    paddingRight: 6,
-  },
-  railHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  railHeaderCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  railHint: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
-  railHintText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-  },
-  railMeta: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-  },
-  railSection: {
-    gap: 12,
-  },
-  railTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  screenEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.2,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-  },
-  screenHeader: {
-    gap: 8,
-    marginBottom: 6,
-  },
-  screenTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.titleLarge,
-    letterSpacing: -0.9,
-    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
-  },
-  summaryCountLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  summaryCountWrap: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(0, 0, 0, 0.46)",
-    borderRadius: 16,
-    gap: 2,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    zIndex: 1,
-  },
-  summaryEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.2,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-  },
-  summaryHero: {
-    borderRadius: mobileTheme.radius.scene,
-    justifyContent: "space-between",
-    minHeight: 228,
-    overflow: "hidden",
-    padding: 20,
-    position: "relative",
-  },
-  summaryHeroImage: {
-    borderRadius: mobileTheme.radius.scene,
-  },
-  summaryHeroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.58)",
-  },
-  summaryLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  summaryLead: {
-    gap: 8,
-    maxWidth: 250,
-    zIndex: 1,
-  },
-  summaryNumber: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: 68,
-    letterSpacing: -2.6,
-    lineHeight: 68,
-    fontVariant: ["tabular-nums"],
-  },
-  summaryTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.title,
-    letterSpacing: -0.6,
-    lineHeight: mobileTheme.typography.lineHeights.title,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    claimableAlert: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+    },
+    claimableAlertText: {
+      color: theme.colors.lime,
+      flex: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    ghostButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+    },
+    ghostButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 320,
+    },
+    previewButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    previewButtonText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    primaryButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 22,
+      paddingVertical: 14,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      letterSpacing: 0.3,
+    },
+    railCardWrap: {
+      marginRight: 14,
+    },
+    railContent: {
+      paddingRight: 6,
+    },
+    railHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    railHeaderCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    railHint: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+    },
+    railHintText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    railMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    railSection: {
+      gap: 12,
+    },
+    railTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    screenEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    screenHeader: {
+      gap: 6,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    summaryCountLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    summaryCountWrap: {
+      alignItems: "flex-end",
+      gap: 2,
+    },
+    summaryEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    summaryHero: {
+      minHeight: 232,
+      overflow: "hidden",
+      position: "relative",
+    },
+    summaryHeroImage: {
+      borderRadius: theme.radius.scene,
+    },
+    summaryHeroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.56)" : "rgba(10, 12, 10, 0.3)",
+    },
+    summaryLabel: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 260,
+    },
+    summaryLead: {
+      gap: 8,
+    },
+    summaryNumber: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 52,
+      lineHeight: 56,
+    },
+    summaryTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+      maxWidth: 260,
+    },
+  });

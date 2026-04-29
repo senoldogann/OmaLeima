@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { StatusBadge } from "@/components/status-badge";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import type { StudentProfileTag } from "@/features/profile/types";
 
 type ProfileTagCardProps = {
@@ -11,7 +13,8 @@ type ProfileTagCardProps = {
   onRemove: (tag: StudentProfileTag) => void;
 };
 
-const createSourceLabel = (tag: StudentProfileTag): string => (tag.isOfficial ? "official" : "custom");
+const createSourceLabel = (tag: StudentProfileTag, language: "fi" | "en"): string =>
+  tag.isOfficial ? (language === "fi" ? "virallinen" : "official") : language === "fi" ? "oma" : "custom";
 
 const createMetaLabel = (tag: StudentProfileTag): string => {
   const locationParts = [tag.universityName, tag.city].filter((part): part is string => part !== null && part.length > 0);
@@ -23,8 +26,12 @@ const createMetaLabel = (tag: StudentProfileTag): string => {
   return `${locationParts.join(" · ")} · ${tag.slug}`;
 };
 
-export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileTagCardProps) => (
-  <View style={styles.card}>
+export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileTagCardProps) => {
+  const { language } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+
+  return (
+    <View style={styles.card}>
     <View style={styles.header}>
       <View style={styles.copy}>
         <Text selectable style={styles.title}>
@@ -35,8 +42,8 @@ export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileT
         </Text>
       </View>
       <View style={styles.badges}>
-        {tag.isPrimary ? <StatusBadge label="active" state="ready" /> : null}
-        <StatusBadge label={createSourceLabel(tag)} state={tag.isOfficial ? "loading" : "pending"} />
+        {tag.isPrimary ? <StatusBadge label={language === "fi" ? "aktiivinen" : "active"} state="ready" /> : null}
+        <StatusBadge label={createSourceLabel(tag, language)} state={tag.isOfficial ? "loading" : "pending"} />
       </View>
     </View>
 
@@ -46,20 +53,30 @@ export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileT
         onPress={() => onSetPrimary(tag)}
         style={[styles.secondaryButton, isBusy || tag.isPrimary ? styles.disabledButton : null]}
       >
-        <Text style={styles.secondaryButtonText}>{tag.isPrimary ? "Active" : "Set active"}</Text>
+        <Text style={styles.secondaryButtonText}>
+          {tag.isPrimary
+            ? language === "fi"
+              ? "Aktiivinen"
+              : "Active"
+            : language === "fi"
+              ? "Aseta aktiiviseksi"
+              : "Set active"}
+        </Text>
       </Pressable>
       <Pressable
         disabled={isBusy}
         onPress={() => onRemove(tag)}
         style={[styles.removeButton, isBusy ? styles.disabledButton : null]}
       >
-        <Text style={styles.removeButtonText}>Remove</Text>
+        <Text style={styles.removeButtonText}>{language === "fi" ? "Poista" : "Remove"}</Text>
       </Pressable>
     </View>
   </View>
-);
+  );
+};
 
-const styles = StyleSheet.create({
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
   actions: {
     flexDirection: "row",
     gap: 10,
@@ -71,8 +88,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceL2,
+    borderRadius: theme.radius.card,
     gap: 12,
     padding: 14,
     ...interactiveSurfaceShadowStyle,
@@ -91,36 +108,36 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   meta: {
-    color: mobileTheme.colors.textSoft,
+    color: theme.colors.textSoft,
     fontSize: 12,
     lineHeight: 17,
   },
   removeButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL3,
-    borderRadius: mobileTheme.radius.button,
+    backgroundColor: theme.colors.surfaceL3,
+    borderRadius: theme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   removeButtonText: {
-    color: mobileTheme.colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontWeight: "700",
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderRadius: mobileTheme.radius.button,
+    backgroundColor: theme.colors.actionNeutral,
+    borderRadius: theme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
   },
   title: {
-    color: mobileTheme.colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: "700",
   },

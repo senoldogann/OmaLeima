@@ -27,14 +27,15 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Student Celebration + Business Cleanup)
+## Current Todos (Light Mode + Finnish/English Mobile)
 
-- [x] Review the current business scanner delight mismatch and the reward bridge hooks.
-- [x] Move the main celebration logic to the student side and connect it to new leima gains.
-- [x] Keep a dev-only student preview entry point for quick visual tuning.
-- [x] Remove the fake celebratory stamp treatment from the business scanner result.
-- [x] Simplify business home, events, history, and scanner copy/hierarchy for staff use.
-- [x] Fix real-device keyboard overlap on the business sign-in flow.
-- [x] Improve event cover loading with a cached image surface and route-level prefetch.
+- [x] Review the current mobile routes and shared components for hardcoded dark-theme tokens and English-only copy.
+- [x] Add persisted mobile UI preferences for theme mode and language.
+- [x] Convert shared mobile foundation pieces to runtime theme-aware styles.
+- [x] Translate the auth flow and loading/access cards to Finnish-first bilingual copy.
+- [x] Translate student routes and related shared cards/components.
+- [ ] Translate business routes and related shared cards/components.
+- [x] Add a dedicated event description section to event detail.
+- [ ] Sweep the current mobile routes for missed strings and layout regressions.
 - [x] Run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the new handoff note.

@@ -11,8 +11,9 @@ import {
   prefetchEventCoverUrls,
 } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 type DiscoverySlide = {
@@ -27,6 +28,9 @@ export default function StudentEventsScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
+  const { copy, language } = useUiPreferences();
+  const theme = useAppTheme();
+  const styles = useThemeStyles(createStyles);
   const studentId = session?.user.id ?? null;
   const eventsQuery = useStudentEventsQuery({
     studentId: studentId ?? "",
@@ -41,37 +45,41 @@ export default function StudentEventsScreen() {
     () => eventsQuery.data?.upcomingEvents ?? [],
     [eventsQuery.data?.upcomingEvents]
   );
-  const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
-  const heroWidth = windowWidth;
   const coverImageUrls = useMemo(
     () => [...activeEvents, ...upcomingEvents].map((event) => event.coverImageUrl),
     [activeEvents, upcomingEvents]
   );
+  const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
+  const heroWidth = windowWidth;
+
   const discoverySlides = useMemo<readonly DiscoverySlide[]>(
     () => [
       {
-        copy: "Pick the next student night, save your route, and arrive with the QR already waiting.",
-        eyebrow: "Student nights",
-        key: "discovery-neon",
-        meta: `${activeEvents.length} live now`,
-        title: "Event discovery",
+        copy: copy.student.discoverySlides[0].body,
+        eyebrow: copy.student.discoveryEyebrow,
+        key: copy.student.discoverySlides[0].key,
+        meta: language === "fi" ? `${activeEvents.length} käynnissä` : `${activeEvents.length} live now`,
+        title: copy.student.discoverySlides[0].title,
       },
       {
-        copy: "Follow the city rhythm, jump between venues, and collect the night one leima at a time.",
-        eyebrow: "Route energy",
-        key: "discovery-route",
-        meta: `${upcomingEvents.length} coming up`,
-        title: "Plan the next round",
+        copy: copy.student.discoverySlides[1].body,
+        eyebrow: copy.student.discoveryEyebrow,
+        key: copy.student.discoverySlides[1].key,
+        meta: language === "fi" ? `${upcomingEvents.length} tulossa` : `${upcomingEvents.length} coming up`,
+        title: copy.student.discoverySlides[1].title,
       },
       {
-        copy: "Join early, keep the QR ready, and turn every venue stop into a visible streak.",
-        eyebrow: "Before the first scan",
-        key: "discovery-streak",
-        meta: `${activeEvents.length + upcomingEvents.length} nights visible`,
-        title: "Catch the next unlock",
+        copy: copy.student.discoverySlides[2].body,
+        eyebrow: copy.student.discoveryEyebrow,
+        key: copy.student.discoverySlides[2].key,
+        meta:
+          language === "fi"
+            ? `${activeEvents.length + upcomingEvents.length} iltaa näkyvissä`
+            : `${activeEvents.length + upcomingEvents.length} nights visible`,
+        title: copy.student.discoverySlides[2].title,
       },
     ],
-    [activeEvents.length, upcomingEvents.length]
+    [activeEvents.length, copy.student.discoveryEyebrow, copy.student.discoverySlides, language, upcomingEvents.length]
   );
 
   const openEventDetail = (eventId: string): void => {
@@ -113,8 +121,8 @@ export default function StudentEventsScreen() {
                 <Text style={styles.heroMetaText}>{slide.meta}</Text>
                 <View style={styles.heroMetaDot} />
                 <View style={styles.heroMetaHint}>
-                  <Text style={styles.heroMetaText}>Auto</Text>
-                  <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={14} />
+                  <Text style={styles.heroMetaText}>{language === "fi" ? "Auto" : "Auto"}</Text>
+                  <AppIcon color={theme.colors.lime} name="chevron-right" size={14} />
                 </View>
               </View>
             </View>
@@ -123,30 +131,41 @@ export default function StudentEventsScreen() {
         showsIndicators={false}
       />
 
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{copy.student.eventsTitle}</Text>
+        <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
+      </View>
+
       {eventsQuery.error ? (
         <View style={styles.messageCard}>
-          <Text style={styles.messageEyebrow}>Error</Text>
-          <Text style={styles.messageTitle}>Could not load events</Text>
+          <Text style={styles.messageEyebrow}>{copy.common.error}</Text>
+          <Text style={styles.messageTitle}>
+            {language === "fi" ? "Tapahtumia ei voitu ladata" : "Could not load events"}
+          </Text>
           <Text style={styles.bodyText}>{eventsQuery.error.message}</Text>
           <Pressable onPress={() => void eventsQuery.refetch()} style={styles.retryButton}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </View>
       ) : null}
 
       {!eventsQuery.isLoading && !eventsQuery.error && !hasEvents ? (
         <View style={styles.messageCard}>
-          <Text style={styles.messageEyebrow}>Empty</Text>
-          <Text style={styles.messageTitle}>No active or upcoming events</Text>
+          <Text style={styles.messageEyebrow}>{copy.common.standby}</Text>
+          <Text style={styles.messageTitle}>
+            {language === "fi" ? "Ei aktiivisia tai tulevia tapahtumia" : "No active or upcoming events"}
+          </Text>
           <Text style={styles.bodyText}>
-            Nothing is visible for this student yet. When organizers publish the next appro, it will appear here.
+            {language === "fi"
+              ? "Kun järjestäjät julkaisevat seuraavan tapahtuman, se ilmestyy tänne."
+              : "When organizers publish the next event, it will appear here."}
           </Text>
         </View>
       ) : null}
 
       {activeEvents.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Live now</Text>
+          <Text style={styles.sectionTitle}>{language === "fi" ? "Käynnissä nyt" : "Live now"}</Text>
           {activeEvents.map((event, index) => (
             <EventCard
               event={event}
@@ -160,7 +179,7 @@ export default function StudentEventsScreen() {
 
       {upcomingEvents.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Coming up</Text>
+          <Text style={styles.sectionTitle}>{language === "fi" ? "Tulossa" : "Coming up"}</Text>
           {upcomingEvents.map((event, index) => (
             <EventCard
               event={event}
@@ -175,130 +194,143 @@ export default function StudentEventsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  heroBand: {
-    minHeight: 248,
-    position: "relative",
-    width: "100%",
-    ...interactiveSurfaceShadowStyle,
-  },
-  heroCopy: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-    maxWidth: 270,
-  },
-  heroCopyBlock: {
-    gap: 8,
-  },
-  heroContent: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: 22,
-  },
-  heroEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.2,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-  },
-  heroImage: {
-    borderRadius: 0,
-  },
-  heroMetaHint: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
-  heroMetaDot: {
-    backgroundColor: mobileTheme.colors.limeBorder,
-    borderRadius: 999,
-    height: 4,
-    width: 4,
-  },
-  heroMetaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  heroMetaText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.58)",
-  },
-  heroRail: {
-    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
-    marginTop: -mobileTheme.spacing.screenVertical,
-  },
-  heroRailContent: {
-    paddingRight: 0,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.title,
-    letterSpacing: -0.5,
-    lineHeight: mobileTheme.typography.lineHeights.title,
-  },
-  messageCard: {
-    backgroundColor: mobileTheme.colors.surfaceL1,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    gap: 12,
-    padding: 18,
-    ...interactiveSurfaceShadowStyle,
-  },
-  messageEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.2,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-  },
-  messageTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    lineHeight: mobileTheme.typography.lineHeights.subtitle,
-  },
-  retryButton: {
-    alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.cyan,
-    borderColor: mobileTheme.colors.cyanBorder,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  retryButtonText: {
-    color: mobileTheme.colors.screenBase,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  section: {
-    gap: 14,
-  },
-  sectionTitle: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    header: {
+      gap: 6,
+    },
+    headerMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 320,
+    },
+    headerTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    heroBand: {
+      minHeight: 248,
+      position: "relative",
+      width: "100%",
+      ...interactiveSurfaceShadowStyle,
+    },
+    heroCopy: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 270,
+    },
+    heroCopyBlock: {
+      gap: 8,
+    },
+    heroContent: {
+      flex: 1,
+      justifyContent: "space-between",
+      padding: 22,
+    },
+    heroEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    heroImage: {
+      borderRadius: 0,
+    },
+    heroMetaDot: {
+      backgroundColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      height: 4,
+      width: 4,
+    },
+    heroMetaHint: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+    },
+    heroMetaRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    heroMetaText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    heroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(10, 12, 10, 0.34)",
+    },
+    heroRail: {
+      marginHorizontal: -theme.spacing.screenHorizontal,
+      marginTop: -theme.spacing.screenVertical,
+    },
+    heroRailContent: {
+      paddingRight: 0,
+    },
+    heroTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      letterSpacing: -0.5,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    messageCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 10,
+      padding: 18,
+    },
+    messageEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    messageTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    retryButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    retryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    section: {
+      gap: theme.spacing.sectionGap,
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+  });

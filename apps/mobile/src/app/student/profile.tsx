@@ -5,7 +5,8 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
 import {
   useAttachDepartmentTagMutation,
@@ -19,16 +20,28 @@ import { useRegisterPushDeviceMutation, type PushDeviceRegistrationResult } from
 import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import { useSession } from "@/providers/session-provider";
 
-const createTagSummary = (count: number, remainingTagSlots: number): string => {
+const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
+  if (language === "fi") {
+    if (count === 0) {
+      return "Valitse tähän omat tagisi.";
+    }
+
+    if (remainingTagSlots === 0) {
+      return "Kaikki kolme tagipaikkaa ovat käytössä.";
+    }
+
+    return `${count} tagia valittu, ${remainingTagSlots} paikkaa jäljellä.`;
+  }
+
   if (count === 0) {
     return "No department tags selected yet.";
   }
 
   if (remainingTagSlots === 0) {
-    return "All 3 profile tag slots are in use.";
+    return "All three tag slots are in use.";
   }
 
-  return `${count} tag${count === 1 ? "" : "s"} selected, ${remainingTagSlots} slot${remainingTagSlots === 1 ? "" : "s"} left.`;
+  return `${count} tags selected, ${remainingTagSlots} slots left.`;
 };
 
 const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
@@ -46,10 +59,31 @@ const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
 const createMutationError = (errors: (string | null)[]): string | null =>
   errors.find((error): error is string => error !== null) ?? null;
 
-const createPushPermissionDetail = (
-  state: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
+const createPushPreferenceSummary = (
+  language: "fi" | "en",
+  permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable",
+  pushState: PushDeviceRegistrationResult | null
 ): string => {
-  switch (state) {
+  if (pushState?.state === "registered") {
+    return language === "fi" ? "Ilmoitukset ovat käytössä tällä laitteella." : "Notifications are active on this device.";
+  }
+
+  if (language === "fi") {
+    switch (permissionState) {
+      case "granted":
+        return "Ilmoituslupa on myönnetty.";
+      case "provisional":
+        return "Ilmoituslupa on iOS-laitteessa väliaikaisesti myönnetty.";
+      case "denied":
+        return "Ilmoituslupa on estetty tällä laitteella.";
+      case "undetermined":
+        return "Ilmoituslupaa ei ole vielä myönnetty tässä istunnossa.";
+      case "unavailable":
+        return "Ilmoitukset eivät ole käytettävissä tässä ympäristössä.";
+    }
+  }
+
+  switch (permissionState) {
     case "granted":
       return "Notification permission is granted.";
     case "provisional":
@@ -63,18 +97,10 @@ const createPushPermissionDetail = (
   }
 };
 
-const createPushPreferenceSummary = (
-  permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable",
-  pushState: PushDeviceRegistrationResult | null
-): string => {
-  if (pushState?.state === "registered") {
-    return "Notifications are active on this device.";
-  }
-
-  return createPushPermissionDetail(permissionState);
-};
-
 export default function StudentProfileScreen() {
+  const theme = useAppTheme();
+  const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
@@ -178,23 +204,25 @@ export default function StudentProfileScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Profile</Text>
-        <Text style={styles.metaText}>Keep your account ready for the next event.</Text>
+        <Text style={styles.screenTitle}>{copy.common.profile}</Text>
+        <Text style={styles.metaText}>{copy.student.profileMeta}</Text>
       </View>
 
       {profileOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening profile">
+        <InfoCard eyebrow={copy.common.loading} title={copy.common.profile}>
           <Text selectable style={styles.bodyText}>
-            Loading profile identity, active tags, and suggestions.
+            {language === "fi"
+              ? "Ladataan profiili, tagit ja ehdotukset."
+              : "Loading profile identity, tags, and suggestions."}
           </Text>
         </InfoCard>
       ) : null}
 
       {profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load profile">
+        <InfoCard eyebrow={copy.common.error} title={copy.common.profile}>
           <Text selectable style={styles.bodyText}>{profileOverviewQuery.error.message}</Text>
           <Pressable onPress={() => void profileOverviewQuery.refetch()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+            <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
@@ -204,37 +232,36 @@ export default function StudentProfileScreen() {
           <View style={styles.profileHero}>
             <View style={styles.avatarShell}>
               <View style={styles.avatarCore}>
-                <AppIcon color={mobileTheme.colors.screenBase} name="user" size={34} />
+                <AppIcon color={theme.colors.screenBase} name="user" size={34} />
               </View>
             </View>
 
             <View style={styles.profileCopy}>
               <Text selectable style={styles.profileName}>
-                {profileOverview.displayName ?? "Student profile"}
+                {profileOverview.displayName ?? (language === "fi" ? "Opiskelijaprofiili" : "Student profile")}
               </Text>
               <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
               <Text selectable style={styles.roleLine}>
-                {primaryTag?.title ?? `${profileOverview.primaryRole.toLowerCase()} profile`}
+                {primaryTag?.title ?? (language === "fi" ? "Opiskelija" : "Student")}
               </Text>
             </View>
           </View>
-
         </View>
       ) : null}
 
       {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
         <View style={styles.tagsEntrySection}>
           <View style={styles.tagsEntryCopy}>
-            <Text selectable style={styles.tagsEntryTitle}>Department tags</Text>
+            <Text selectable style={styles.tagsEntryTitle}>{copy.student.departmentTags}</Text>
             <Text selectable style={styles.metaText}>
-              {createTagSummary(selectedTags.length, remainingTagSlots)}
+              {createTagSummary(language, selectedTags.length, remainingTagSlots)}
             </Text>
           </View>
 
           <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.secondaryButton}>
             <View style={styles.secondaryButtonRow}>
-              <Text style={styles.secondaryButtonText}>Manage</Text>
-              <AppIcon color={mobileTheme.colors.textPrimary} name="chevron-right" size={16} />
+              <Text style={styles.secondaryButtonText}>{copy.common.manage}</Text>
+              <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
             </View>
           </Pressable>
         </View>
@@ -242,12 +269,54 @@ export default function StudentProfileScreen() {
 
       {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
-      <InfoCard eyebrow="Push" title="Notifications">
-        <Text selectable style={styles.bodyText}>
-          Turn on notifications here so reward unlocks and event-day updates can reach this device.
-        </Text>
+      <InfoCard eyebrow={copy.preferences.appearanceTitle} title={copy.common.theme}>
+        <Text selectable style={styles.bodyText}>{copy.preferences.appearanceBody}</Text>
+        <View style={styles.preferenceRow}>
+          <Pressable
+            onPress={() => void setThemeMode("dark")}
+            style={[styles.preferenceChip, themeMode === "dark" ? styles.preferenceChipActive : null]}
+          >
+            <Text style={[styles.preferenceChipText, themeMode === "dark" ? styles.preferenceChipTextActive : null]}>
+              {copy.common.darkMode}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void setThemeMode("light")}
+            style={[styles.preferenceChip, themeMode === "light" ? styles.preferenceChipActive : null]}
+          >
+            <Text style={[styles.preferenceChipText, themeMode === "light" ? styles.preferenceChipTextActive : null]}>
+              {copy.common.lightMode}
+            </Text>
+          </Pressable>
+        </View>
+      </InfoCard>
+
+      <InfoCard eyebrow={copy.preferences.languageTitle} title={copy.common.language}>
+        <Text selectable style={styles.bodyText}>{copy.preferences.languageBody}</Text>
+        <View style={styles.preferenceRow}>
+          <Pressable
+            onPress={() => void setLanguage("fi")}
+            style={[styles.preferenceChip, language === "fi" ? styles.preferenceChipActive : null]}
+          >
+            <Text style={[styles.preferenceChipText, language === "fi" ? styles.preferenceChipTextActive : null]}>
+              {copy.common.finnish}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void setLanguage("en")}
+            style={[styles.preferenceChip, language === "en" ? styles.preferenceChipActive : null]}
+          >
+            <Text style={[styles.preferenceChipText, language === "en" ? styles.preferenceChipTextActive : null]}>
+              {copy.common.english}
+            </Text>
+          </Pressable>
+        </View>
+      </InfoCard>
+
+      <InfoCard eyebrow={copy.common.notifications} title={copy.common.notifications}>
+        <Text selectable style={styles.bodyText}>{copy.student.notificationsMeta}</Text>
         <Text selectable style={styles.metaText}>
-          {createPushPreferenceSummary(diagnostics.permissionState, pushState)}
+          {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
         </Text>
         {pushState !== null ? (
           <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
@@ -260,7 +329,13 @@ export default function StudentProfileScreen() {
           style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
         >
           <Text style={styles.primaryButtonText}>
-            {registerPushMutation.isPending ? "Enabling notifications..." : "Enable notifications"}
+            {registerPushMutation.isPending
+              ? language === "fi"
+                ? "Otetaan ilmoitukset käyttöön..."
+                : "Enabling notifications..."
+              : language === "fi"
+                ? "Ota ilmoitukset käyttöön"
+                : "Enable notifications"}
           </Text>
         </Pressable>
       </InfoCard>
@@ -277,11 +352,13 @@ export default function StudentProfileScreen() {
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>Profile tags</Text>
-                <Text style={styles.modalTitle}>Manage department tags</Text>
+                <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
+                <Text style={styles.modalTitle}>
+                  {language === "fi" ? "Hallitse tageja" : "Manage tags"}
+                </Text>
               </View>
               <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalCloseButton}>
-                <Text style={styles.modalCloseText}>Done</Text>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
               </Pressable>
             </View>
 
@@ -300,13 +377,13 @@ export default function StudentProfileScreen() {
                 </View>
               ) : (
                 <Text selectable style={styles.bodyText}>
-                  No tags selected yet. Pick a suggestion or create one.
+                  {language === "fi" ? "Tagit näkyvät täällä, kun valitset ensimmäisen." : "Tags appear here after your first selection."}
                 </Text>
               )}
 
               {suggestedTags.length > 0 ? (
                 <View style={styles.suggestionGroup}>
-                  <Text style={styles.sectionLabel}>Suggestions</Text>
+                  <Text style={styles.sectionLabel}>{language === "fi" ? "Ehdotukset" : "Suggestions"}</Text>
                   <View style={styles.suggestionList}>
                     {suggestedTags.map((tag) => (
                       <Pressable
@@ -328,13 +405,13 @@ export default function StudentProfileScreen() {
 
               {remainingTagSlots > 0 ? (
                 <View style={styles.createGroup}>
-                  <Text style={styles.sectionLabel}>Need a custom one?</Text>
+                  <Text style={styles.sectionLabel}>{language === "fi" ? "Luo oma tagi" : "Create a custom tag"}</Text>
                   <TextInput
                     autoCapitalize="words"
                     editable={!isTagMutationPending}
                     onChangeText={setCustomTitle}
-                    placeholder="Example: Tieto- ja viestintatekniikka"
-                    placeholderTextColor="#64748B"
+                    placeholder={language === "fi" ? "Esim. Tieto- ja viestintätekniikka" : "Example: Information technology"}
+                    placeholderTextColor={theme.colors.textDim}
                     style={styles.input}
                     value={customTitle}
                   />
@@ -346,7 +423,7 @@ export default function StudentProfileScreen() {
                       isTagMutationPending || customTitle.trim().length === 0 ? styles.disabledButton : null,
                     ]}
                   >
-                    <Text style={styles.secondaryButtonText}>Create custom tag</Text>
+                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Luo tagi" : "Create tag"}</Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -358,232 +435,258 @@ export default function StudentProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  accountEmail: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  avatarCore: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: 999,
-    height: 72,
-    justifyContent: "center",
-    width: 72,
-  },
-  avatarShell: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 88,
-    justifyContent: "center",
-    width: 88,
-  },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  createGroup: {
-    gap: 10,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  errorText: {
-    color: "#FCA5A5",
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  input: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.button,
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.body,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.regular,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  modalBackdrop: {
-    backgroundColor: "rgba(0, 0, 0, 0.66)",
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalCloseButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL3,
-    borderRadius: 999,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  modalCloseText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-  },
-  modalEyebrow: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  modalHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  modalHeaderCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  modalScrollContent: {
-    gap: 16,
-    paddingBottom: 20,
-  },
-  modalSheet: {
-    backgroundColor: mobileTheme.colors.surfaceL1,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    gap: 16,
-    maxHeight: "82%",
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-  },
-  modalTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    lineHeight: mobileTheme.typography.lineHeights.subtitle,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  primaryButtonText: {
-    color: mobileTheme.colors.screenBase,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-  },
-  profileCopy: {
-    flex: 1,
-    gap: 6,
-  },
-  profileHero: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 14,
-  },
-  profileName: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    lineHeight: mobileTheme.typography.lineHeights.subtitle,
-  },
-  profileStage: {
-    gap: 14,
-    paddingBottom: 4,
-  },
-  roleLine: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.caption,
-    letterSpacing: 0.8,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  screenHeader: {
-    gap: 6,
-    marginBottom: 4,
-  },
-  screenTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.titleLarge,
-    letterSpacing: -0.8,
-    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
-  },
-  sectionLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  secondaryButtonRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-  },
-  stack: {
-    gap: 12,
-  },
-  suggestionChip: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
-    gap: 4,
-    padding: 14,
-    ...interactiveSurfaceShadowStyle,
-  },
-  suggestionGroup: {
-    gap: 10,
-  },
-  suggestionList: {
-    gap: 8,
-  },
-  suggestionTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  tagsEntryCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  tagsEntrySection: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 14,
-    justifyContent: "space-between",
-  },
-  tagsEntryTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    lineHeight: mobileTheme.typography.lineHeights.subtitle,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    accountEmail: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    avatarCore: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 72,
+      justifyContent: "center",
+      width: 72,
+    },
+    avatarShell: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 88,
+      justifyContent: "center",
+      width: 88,
+    },
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    createGroup: {
+      gap: 10,
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+    errorText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    input: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    modalBackdrop: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    modalCloseButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderRadius: 999,
+      justifyContent: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    modalCloseText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    modalEyebrow: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    modalHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    modalHeaderCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    modalScrollContent: {
+      gap: 16,
+      paddingBottom: 20,
+    },
+    modalSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      gap: 16,
+      maxHeight: "82%",
+      paddingBottom: 28,
+      paddingHorizontal: 20,
+      paddingTop: 18,
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    preferenceChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    preferenceChipActive: {
+      backgroundColor: theme.colors.lime,
+      borderColor: theme.colors.limeBorder,
+    },
+    preferenceChipText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    preferenceChipTextActive: {
+      color: theme.colors.screenBase,
+    },
+    preferenceRow: {
+      flexDirection: "row",
+      gap: 10,
+      flexWrap: "wrap",
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    profileCopy: {
+      flex: 1,
+      gap: 6,
+    },
+    profileHero: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 14,
+    },
+    profileName: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    profileStage: {
+      gap: 14,
+      paddingBottom: 4,
+    },
+    roleLine: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      letterSpacing: 0.8,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    screenHeader: {
+      gap: 6,
+      marginBottom: 4,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    sectionLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    secondaryButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    secondaryButtonRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    stack: {
+      gap: 12,
+    },
+    suggestionChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      gap: 4,
+      padding: 14,
+      ...interactiveSurfaceShadowStyle,
+    },
+    suggestionGroup: {
+      gap: 10,
+    },
+    suggestionList: {
+      gap: 8,
+    },
+    suggestionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    tagsEntryCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    tagsEntrySection: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 14,
+      justifyContent: "space-between",
+    },
+    tagsEntryTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+  });

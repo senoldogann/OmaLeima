@@ -8,10 +8,11 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Text, TextInput, useColorScheme, type StyleProp, type TextStyle } from "react-native";
+import { Text, TextInput, type StyleProp, type TextStyle } from "react-native";
 
+import { type MobileTheme } from "@/features/foundation/theme";
+import { useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { AppProviders } from "@/providers/app-providers";
-import { mobileTheme } from "@/features/foundation/theme";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -27,7 +28,7 @@ type TextInputComponentWithDefaults = typeof TextInput & {
   };
 };
 
-const applyTypographyDefaults = (): void => {
+const applyTypographyDefaults = (theme: MobileTheme): void => {
   const textComponent = Text as TextComponentWithDefaults;
   const inputComponent = TextInput as TextInputComponentWithDefaults;
 
@@ -36,8 +37,8 @@ const applyTypographyDefaults = (): void => {
     style: [
       textComponent.defaultProps?.style,
       {
-        color: mobileTheme.colors.textPrimary,
-        fontFamily: mobileTheme.typography.families.regular,
+        color: theme.colors.textPrimary,
+        fontFamily: theme.typography.families.regular,
       },
     ],
   };
@@ -47,15 +48,34 @@ const applyTypographyDefaults = (): void => {
     style: [
       inputComponent.defaultProps?.style,
       {
-        color: mobileTheme.colors.textPrimary,
-        fontFamily: mobileTheme.typography.families.regular,
+        color: theme.colors.textPrimary,
+        fontFamily: theme.typography.families.regular,
       },
     ],
   };
 };
 
+const ThemedRootContent = () => {
+  const { theme } = useUiPreferences();
+
+  useEffect(() => {
+    applyTypographyDefaults(theme);
+  }, [theme]);
+
+  return (
+    <ThemeProvider value={theme.mode === "dark" ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="student" />
+        <Stack.Screen name="business" />
+      </Stack>
+      <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
+    </ThemeProvider>
+  );
+};
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular: require("@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf"),
     Poppins_500Medium: require("@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf"),
@@ -68,8 +88,6 @@ export default function RootLayout() {
     if (!fontsLoaded) {
       return;
     }
-
-    applyTypographyDefaults();
     void SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
@@ -80,17 +98,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <AppProviders>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="auth" />
-              <Stack.Screen name="student" />
-              <Stack.Screen name="business" />
-            </Stack>
-            <StatusBar style="light" />
-          </AppProviders>
-        </ThemeProvider>
+        <AppProviders>
+          <ThemedRootContent />
+        </AppProviders>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -9,11 +9,13 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import {
   useJoinEventMutation,
   useStudentEventDetailQuery,
 } from "@/features/events/student-event-detail";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useStudentRewardInventoryRealtime } from "@/features/realtime/student-realtime";
 import { useActiveAppState } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
@@ -37,15 +39,14 @@ type JoinAvailability = {
   state: AppReadinessState;
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
+const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const formatRuleValue = (value: EventRuleValue): string => {
   if (
@@ -61,29 +62,35 @@ const formatRuleValue = (value: EventRuleValue): string => {
 };
 
 const getRegistrationBadge = (
-  registrationState: EventRegistrationState
+  registrationState: EventRegistrationState,
+  language: "fi" | "en"
 ): { label: string; state: AppReadinessState } => {
   if (registrationState === "REGISTERED") {
-    return { label: "registered", state: "ready" };
+    return { label: language === "fi" ? "liitytty" : "registered", state: "ready" };
   }
 
   if (registrationState === "CANCELLED") {
-    return { label: "cancelled", state: "warning" };
+    return { label: language === "fi" ? "peruttu" : "cancelled", state: "warning" };
   }
 
   if (registrationState === "BANNED") {
-    return { label: "restricted", state: "error" };
+    return { label: language === "fi" ? "estetty" : "restricted", state: "error" };
   }
 
-  return { label: "not joined", state: "pending" };
+  return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
-const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
+const getJoinAvailability = (
+  event: StudentEventDetail,
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat
+): JoinAvailability => {
   if (event.registrationState === "REGISTERED") {
     return {
       canJoin: false,
-      label: "Already joined",
-      detail: "You are already in for this event.",
+      label: language === "fi" ? "Liitytty" : "Already joined",
+      detail:
+        language === "fi" ? "Olet jo mukana tässä tapahtumassa." : "You are already in for this event.",
       state: "ready",
     };
   }
@@ -91,8 +98,11 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
   if (event.registrationState === "BANNED") {
     return {
       canJoin: false,
-      label: "Registration blocked",
-      detail: "This profile is restricted for this event.",
+      label: language === "fi" ? "Ilmoittautuminen estetty" : "Registration blocked",
+      detail:
+        language === "fi"
+          ? "Tällä profiililla ei voi liittyä tähän tapahtumaan."
+          : "This profile is restricted for this event.",
       state: "error",
     };
   }
@@ -100,8 +110,11 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
   if (event.status !== "PUBLISHED") {
     return {
       canJoin: false,
-      label: "Registration closed",
-      detail: "This event is no longer in a pre-start join state.",
+      label: language === "fi" ? "Ilmoittautuminen suljettu" : "Registration closed",
+      detail:
+        language === "fi"
+          ? "Tapahtuma ei ole enää liittymisvaiheessa."
+          : "This event is no longer in a pre-start join state.",
       state: "warning",
     };
   }
@@ -113,25 +126,33 @@ const getJoinAvailability = (event: StudentEventDetail): JoinAvailability => {
   if (now >= joinDeadlineTime || now >= startTime) {
     return {
       canJoin: false,
-      label: "Join window closed",
-      detail: `Join deadline passed at ${formatDateTime(event.joinDeadlineAt)}.`,
+      label: language === "fi" ? "Liittymisaika päättynyt" : "Join window closed",
+      detail:
+        language === "fi"
+          ? `Ilmoittautuminen päättyi ${formatter.format(new Date(event.joinDeadlineAt))}.`
+          : `Join deadline passed at ${formatter.format(new Date(event.joinDeadlineAt))}.`,
       state: "warning",
     };
   }
 
   return {
     canJoin: true,
-    label: "Join event",
+    label: language === "fi" ? "Liity tapahtumaan" : "Join event",
     detail:
       event.maxParticipants === null
-        ? "Registration is open."
-        : `Registration is open. Capacity is capped at ${event.maxParticipants} participants.`,
+        ? language === "fi"
+          ? "Ilmoittautuminen on avoinna."
+          : "Registration is open."
+        : language === "fi"
+          ? `Ilmoittautuminen on avoinna. Kapasiteetti ${event.maxParticipants} osallistujaa.`
+          : `Registration is open. Capacity is capped at ${event.maxParticipants} participants.`,
     state: "ready",
   };
 };
 
 const getJoinResultPresentation = (
-  result: JoinEventResult | undefined
+  result: JoinEventResult | undefined,
+  language: "fi" | "en"
 ): { title: string; body: string; state: AppReadinessState } | null => {
   if (typeof result === "undefined") {
     return null;
@@ -140,67 +161,82 @@ const getJoinResultPresentation = (
   switch (result.status) {
     case "SUCCESS":
       return {
-        title: "Joined successfully",
-        body: "You are now registered for this event.",
+        title: language === "fi" ? "Liittyminen onnistui" : "Joined successfully",
+        body:
+          language === "fi"
+            ? "Olet nyt mukana tässä tapahtumassa."
+            : "You are now registered for this event.",
         state: "ready",
       };
     case "ALREADY_REGISTERED":
       return {
-        title: "Already registered",
-        body: "You were already registered before the latest join attempt.",
+        title: language === "fi" ? "Jo ilmoittautunut" : "Already registered",
+        body:
+          language === "fi"
+            ? "Olit jo mukana ennen viimeisintä yritystä."
+            : "You were already registered before the latest join attempt.",
         state: "ready",
       };
     case "EVENT_FULL":
       return {
-        title: "Event is full",
-        body: `The event has reached capacity${typeof result.maxParticipants === "number" ? ` (${result.maxParticipants})` : ""}.`,
+        title: language === "fi" ? "Tapahtuma täynnä" : "Event is full",
+        body:
+          language === "fi"
+            ? "Tapahtuma on saavuttanut kapasiteettinsa."
+            : "The event has reached capacity.",
         state: "warning",
       };
     case "EVENT_REGISTRATION_CLOSED":
       return {
-        title: "Registration closed",
-        body: "The join deadline or event start time has already passed.",
+        title: language === "fi" ? "Ilmoittautuminen suljettu" : "Registration closed",
+        body:
+          language === "fi"
+            ? "Liittymisaika tai tapahtuman aloitus on jo mennyt."
+            : "The join deadline or event start time has already passed.",
         state: "warning",
       };
     case "STUDENT_BANNED":
       return {
-        title: "Registration blocked",
-        body: "This student profile is restricted for this event.",
+        title: language === "fi" ? "Liittyminen estetty" : "Registration blocked",
+        body:
+          language === "fi"
+            ? "Tämä opiskelijaprofiili on estetty tältä tapahtumalta."
+            : "This student profile is restricted for this event.",
         state: "error",
       };
     default:
       return {
-        title: "Join failed",
-        body: `Registration RPC returned ${result.status}.`,
+        title: language === "fi" ? "Liittyminen epäonnistui" : "Join failed",
+        body: language === "fi" ? `Palautuskoodi ${result.status}.` : `Registration RPC returned ${result.status}.`,
         state: "error",
       };
   }
 };
 
-const getRewardInventoryCopy = (rewardTier: RewardTierSummary): string => {
+const getRewardInventoryCopy = (rewardTier: RewardTierSummary, language: "fi" | "en"): string => {
   if (rewardTier.inventoryTotal === null) {
-    return "Unlimited reward stock";
+    return language === "fi" ? "Rajoittamaton määrä" : "Unlimited reward stock";
   }
 
   const remaining = rewardTier.inventoryTotal - rewardTier.inventoryClaimed;
 
   if (remaining <= 0) {
-    return "Out of stock";
+    return language === "fi" ? "Loppunut" : "Out of stock";
   }
 
-  return `${remaining} reward(s) left`;
+  return language === "fi" ? `${remaining} palkintoa jäljellä` : `${remaining} reward(s) left`;
 };
 
-const getRewardChipColor = (rewardTier: RewardTierSummary): string => {
+const getRewardChipColor = (rewardTier: RewardTierSummary, theme: MobileTheme): string => {
   if (rewardTier.inventoryTotal === null) {
-    return mobileTheme.colors.chromeTintIndigo;
+    return theme.colors.chromeTintIndigo;
   }
 
   if (rewardTier.inventoryClaimed >= rewardTier.inventoryTotal) {
-    return mobileTheme.colors.dangerSurface;
+    return theme.colors.dangerSurface;
   }
 
-  return mobileTheme.colors.chromeTintWarm;
+  return theme.colors.chromeTintWarm;
 };
 
 export default function StudentEventDetailScreen() {
@@ -209,6 +245,9 @@ export default function StudentEventDetailScreen() {
   const isAppActive = useActiveAppState();
   const params = useLocalSearchParams<EventDetailRouteParams>();
   const { session } = useSession();
+  const { copy, language, localeTag } = useUiPreferences();
+  const theme = useAppTheme();
+  const themeStyles = useThemeStyles(createStyles);
   const eventId = typeof params.eventId === "string" ? params.eventId : null;
   const studentId = session?.user.id ?? null;
   const detailQuery = useStudentEventDetailQuery({
@@ -217,6 +256,7 @@ export default function StudentEventDetailScreen() {
     isEnabled: eventId !== null && studentId !== null,
   });
   const trackedEventIds = useMemo(() => (eventId === null ? [] : [eventId]), [eventId]);
+  const formatter = useMemo(() => createDateTimeFormatter(localeTag), [localeTag]);
 
   useStudentRewardInventoryRealtime({
     trackedEventIds,
@@ -234,17 +274,21 @@ export default function StudentEventDetailScreen() {
   if (eventId === null) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Route" title="Event detail is missing an id">
-          <Text style={styles.bodyText}>The event id was not present in the route parameters.</Text>
+        <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Tapahtuman tunnus puuttuu" : "Event detail is missing an id"}>
+          <Text style={themeStyles.bodyText}>
+            {language === "fi"
+              ? "Tämän tapahtuman tunnusta ei löytynyt reitistä."
+              : "The event id was not present in the route parameters."}
+          </Text>
         </InfoCard>
       </AppScreen>
     );
   }
 
   const event = detailQuery.data ?? null;
-  const registrationBadge = event ? getRegistrationBadge(event.registrationState) : null;
-  const joinAvailability = event ? getJoinAvailability(event) : null;
-  const joinPresentation = getJoinResultPresentation(joinMutation.data);
+  const registrationBadge = event ? getRegistrationBadge(event.registrationState, language) : null;
+  const joinAvailability = event ? getJoinAvailability(event, language, formatter) : null;
+  const joinPresentation = getJoinResultPresentation(joinMutation.data, language);
   const coverSource =
     event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
@@ -270,41 +314,46 @@ export default function StudentEventDetailScreen() {
 
   return (
     <AppScreen>
-      <Pressable onPress={handleBackPress} style={styles.backButton}>
-        <View style={styles.backButtonRow}>
-          <AppIcon color={mobileTheme.colors.textPrimary} name="chevron-left" size={16} />
-          <Text style={styles.backButtonText}>Back</Text>
+      <Pressable onPress={handleBackPress} style={themeStyles.backButton}>
+        <View style={themeStyles.backButtonRow}>
+          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
+          <Text style={themeStyles.backButtonText}>{copy.common.back}</Text>
         </View>
       </Pressable>
 
       {detailQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening event">
-          <Text style={styles.bodyText}>Loading event, venue, and reward details.</Text>
+        <InfoCard eyebrow={copy.common.loading} title={language === "fi" ? "Avataan tapahtumaa" : "Opening event"}>
+          <Text style={themeStyles.bodyText}>
+            {language === "fi"
+              ? "Ladataan tapahtuman tiedot, pisteet ja palkinnot."
+              : "Loading event, venue, and reward details."}
+          </Text>
         </InfoCard>
       ) : null}
 
       {detailQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load event">
-          <Text style={styles.bodyText}>{detailQuery.error.message}</Text>
-          <Pressable onPress={() => void detailQuery.refetch()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
+        <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Tapahtumaa ei voitu ladata" : "Could not load event"}>
+          <Text style={themeStyles.bodyText}>{detailQuery.error.message}</Text>
+          <Pressable onPress={() => void detailQuery.refetch()} style={themeStyles.secondaryButton}>
+            <Text style={themeStyles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {event ? (
         <>
-          <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
-            <View style={styles.heroOverlay} />
-            <View style={styles.heroContent}>
-              <View style={styles.heroHeading}>
-                <Text style={styles.heroEyebrow}>{event.city}</Text>
-                <Text style={styles.heroTitle}>{event.name}</Text>
+          <CoverImageSurface imageStyle={themeStyles.heroImage} source={coverSource} style={themeStyles.heroCard}>
+            <View style={themeStyles.heroOverlay} />
+            <View style={themeStyles.heroContent}>
+              <View style={themeStyles.heroHeading}>
+                <Text style={themeStyles.heroEyebrow}>{copy.common.eventDetails}</Text>
+                <Text style={themeStyles.heroTitle}>{event.name}</Text>
+                <Text style={themeStyles.heroSummary}>{event.city}</Text>
               </View>
 
-              <View style={styles.badges}>
+              <View style={themeStyles.badges}>
                 <StatusBadge
-                  label={event.status.toLowerCase()}
+                  label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
                   state={event.status === "PUBLISHED" ? "ready" : "warning"}
                 />
                 {registrationBadge ? (
@@ -312,93 +361,102 @@ export default function StudentEventDetailScreen() {
                 ) : null}
               </View>
 
-              <Text style={styles.heroSummary}>
-                {event.description ?? "The organizer has not added a description for this event yet."}
-              </Text>
-
-              <View style={styles.metaStrip}>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
+              <View style={themeStyles.metaStrip}>
+                <View style={themeStyles.metaPill}>
+                  <Text style={themeStyles.metaPillValue}>
+                    {language === "fi" ? "Alkaa" : "Starts"} {formatter.format(new Date(event.startAt))}
+                  </Text>
                 </View>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
-                </View>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>
-                    {event.maxParticipants === null
-                      ? "Open capacity"
-                      : `${event.maxParticipants} participant cap`}
+                <View style={themeStyles.metaPill}>
+                  <Text style={themeStyles.metaPillValue}>
+                    {language === "fi" ? "Ilmoittautuminen" : "Join before"} {formatter.format(new Date(event.joinDeadlineAt))}
                   </Text>
                 </View>
               </View>
             </View>
           </CoverImageSurface>
 
-          <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
-            <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
+          <InfoCard eyebrow={copy.student.eventDescription} title={copy.common.eventDetails}>
+            <Text style={themeStyles.bodyText}>
+              {event.description ?? copy.student.eventDescriptionFallback}
+            </Text>
+          </InfoCard>
+
+          <InfoCard eyebrow={language === "fi" ? "Ilmoittautuminen" : "Registration"} title={joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}>
+            <Text style={themeStyles.bodyText}>{joinAvailability?.detail ?? ""}</Text>
             {joinPresentation ? (
-              <View style={styles.inlineStatusRow}>
+              <View style={themeStyles.inlineStatusRow}>
                 <StatusBadge label={joinPresentation.state} state={joinPresentation.state} />
-                <Text style={styles.metaText}>{joinPresentation.body}</Text>
+                <Text style={themeStyles.metaText}>{joinPresentation.body}</Text>
               </View>
             ) : null}
             <Pressable
               disabled={!joinAvailability?.canJoin || joinMutation.isPending}
               onPress={() => void handleJoinPress()}
               style={[
-                styles.primaryButton,
-                (!joinAvailability?.canJoin || joinMutation.isPending) ? styles.disabledButton : null,
+                themeStyles.primaryButton,
+                !joinAvailability?.canJoin || joinMutation.isPending ? themeStyles.disabledButton : null,
               ]}
             >
-              <Text style={styles.primaryButtonText}>
-                {joinMutation.isPending ? "Joining..." : joinAvailability?.label ?? "Join event"}
+              <Text style={themeStyles.primaryButtonText}>
+                {joinMutation.isPending
+                  ? language === "fi"
+                    ? "Liitytään..."
+                    : "Joining..."
+                  : joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}
               </Text>
             </Pressable>
           </InfoCard>
 
-          <InfoCard eyebrow="Night" title="Venues and rewards">
+          <InfoCard eyebrow={language === "fi" ? "Pisteet" : "Venues"} title={language === "fi" ? "Pisteet ja palkinnot" : "Venues and rewards"}>
             {event.venues.length > 0 ? (
-              <View style={styles.listGroup}>
+              <View style={themeStyles.listGroup}>
                 {event.venues.map((venue) => (
-                  <View key={venue.id} style={styles.listRow}>
-                    <View style={styles.venueHeader}>
-                      <View style={styles.venueOrderBubble}>
-                        <Text style={styles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
+                  <View key={venue.id} style={themeStyles.listRow}>
+                    <View style={themeStyles.venueHeader}>
+                      <View style={themeStyles.venueOrderBubble}>
+                        <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
                       </View>
-                      <View style={styles.venueCopy}>
-                        <Text style={styles.listTitle}>{venue.name}</Text>
-                        <Text style={styles.metaLine}>{venue.city}</Text>
+                      <View style={themeStyles.venueCopy}>
+                        <Text style={themeStyles.listTitle}>{venue.name}</Text>
+                        <Text style={themeStyles.metaLine}>{venue.city}</Text>
                       </View>
                     </View>
-                    {venue.stampLabel ? <Text style={styles.metaLine}>Stamp label: {venue.stampLabel}</Text> : null}
-                    {venue.customInstructions ? <Text style={styles.metaLine}>{venue.customInstructions}</Text> : null}
+                    {venue.stampLabel ? (
+                      <Text style={themeStyles.metaLine}>
+                        {language === "fi" ? "Leima" : "Stamp label"}: {venue.stampLabel}
+                      </Text>
+                    ) : null}
+                    {venue.customInstructions ? <Text style={themeStyles.metaLine}>{venue.customInstructions}</Text> : null}
                   </View>
                 ))}
               </View>
             ) : (
-              <Text style={styles.bodyText}>No joined venues are visible yet for this event.</Text>
+              <Text style={themeStyles.bodyText}>
+                {language === "fi" ? "Pisteitä ei ole vielä näkyvissä." : "No joined venues are visible yet for this event."}
+              </Text>
             )}
 
             {event.rewardTiers.length > 0 ? (
-              <View style={styles.rewardGroup}>
+              <View style={themeStyles.rewardGroup}>
                 {event.rewardTiers.map((rewardTier) => (
-                  <View key={rewardTier.id} style={styles.listRow}>
-                    <View style={styles.rewardHeader}>
+                  <View key={rewardTier.id} style={themeStyles.listRow}>
+                    <View style={themeStyles.rewardHeader}>
                       <View
                         style={[
-                          styles.rewardRequirementBadge,
-                          { backgroundColor: getRewardChipColor(rewardTier) },
+                          themeStyles.rewardRequirementBadge,
+                          { backgroundColor: getRewardChipColor(rewardTier, theme) },
                         ]}
                       >
-                        <Text style={styles.rewardRequirementText}>
-                          {rewardTier.requiredStampCount} leima
+                        <Text style={themeStyles.rewardRequirementText}>
+                          {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
                         </Text>
                       </View>
-                      <Text style={styles.listTitle}>{rewardTier.title}</Text>
+                      <Text style={themeStyles.listTitle}>{rewardTier.title}</Text>
                     </View>
-                    <Text style={styles.metaLine}>{getRewardInventoryCopy(rewardTier)}</Text>
-                    {rewardTier.description ? <Text style={styles.metaLine}>{rewardTier.description}</Text> : null}
-                    {rewardTier.claimInstructions ? <Text style={styles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
+                    <Text style={themeStyles.metaLine}>{getRewardInventoryCopy(rewardTier, language)}</Text>
+                    {rewardTier.description ? <Text style={themeStyles.metaLine}>{rewardTier.description}</Text> : null}
+                    {rewardTier.claimInstructions ? <Text style={themeStyles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
                   </View>
                 ))}
               </View>
@@ -406,12 +464,12 @@ export default function StudentEventDetailScreen() {
           </InfoCard>
 
           {Object.entries(event.rules).length > 0 ? (
-            <InfoCard eyebrow="Rules" title="Before you go">
-              <View style={styles.rulesGroup}>
+            <InfoCard eyebrow={language === "fi" ? "Säännöt" : "Rules"} title={language === "fi" ? "Muista nämä" : "Before you go"}>
+              <View style={themeStyles.rulesGroup}>
                 {Object.entries(event.rules).map(([key, value]) => (
-                  <View key={key} style={styles.ruleRow}>
-                    <Text style={styles.listTitle}>{key}</Text>
-                    <Text style={styles.metaLine}>{formatRuleValue(value)}</Text>
+                  <View key={key} style={themeStyles.ruleRow}>
+                    <Text style={themeStyles.listTitle}>{key}</Text>
+                    <Text style={themeStyles.metaLine}>{formatRuleValue(value)}</Text>
                   </View>
                 ))}
               </View>
@@ -423,207 +481,213 @@ export default function StudentEventDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  backButton: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(8, 9, 14, 0.84)",
-    borderRadius: mobileTheme.radius.button,
-    left: mobileTheme.spacing.screenHorizontal,
-    position: "absolute",
-    top: mobileTheme.spacing.screenVertical,
-    zIndex: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    ...interactiveSurfaceShadowStyle,
-  },
-  backButtonRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  backButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: 13,
-    lineHeight: 16,
-  },
-  badges: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  heroCard: {
-    minHeight: 264,
-    overflow: "hidden",
-    position: "relative",
-    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
-    marginTop: -mobileTheme.spacing.screenVertical,
-  },
-  heroContent: {
-    flex: 1,
-    gap: 18,
-    justifyContent: "space-between",
-    padding: 18,
-    paddingTop: 72,
-  },
-  heroEyebrow: {
-    color: mobileTheme.colors.lime,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    letterSpacing: 1.2,
-    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
-    textTransform: "uppercase",
-  },
-  heroHeading: {
-    gap: 6,
-  },
-  heroImage: {
-    borderRadius: 0,
+const createStyles = (theme: MobileTheme) => {
+  const styles = StyleSheet.create({
+    backButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.mode === "dark" ? "rgba(8, 9, 14, 0.84)" : "rgba(255, 255, 255, 0.88)",
+      borderRadius: theme.radius.button,
+      left: theme.spacing.screenHorizontal,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      position: "absolute",
+      top: theme.spacing.screenVertical,
+      zIndex: 20,
+      ...interactiveSurfaceShadowStyle,
     },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.title,
-    lineHeight: mobileTheme.typography.lineHeights.title,
-    letterSpacing: -0.5,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.58)",
-  },
-  heroSummary: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  inlineStatusRow: {
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  listGroup: {
-    gap: 10,
-  },
-  listRow: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
-    gap: 8,
-    padding: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  listTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 20,
-  },
-  metaLine: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  metaPill: {
-    backgroundColor: "rgba(0, 0, 0, 0.42)",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  metaPillValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: 13,
-  },
-  metaStrip: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  metaText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  primaryButtonText: {
-    color: mobileTheme.colors.screenBase,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  rewardGroup: {
-    gap: 10,
-    marginTop: 10,
-  },
-  rewardHeader: {
-    gap: 10,
-  },
-  rewardRequirementBadge: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  rewardRequirementText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  rulesGroup: {
-    gap: 10,
-  },
-  ruleRow: {
-    gap: 4,
-  },
-  secondaryButton: {
-    alignSelf: "flex-start",
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  venueCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  venueHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-  },
-  venueOrderBubble: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL3,
-    borderRadius: 999,
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  venueOrderText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-});
+    backButtonRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    backButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: 13,
+      lineHeight: 16,
+    },
+    badges: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+    heroCard: {
+      marginHorizontal: -theme.spacing.screenHorizontal,
+      marginTop: -theme.spacing.screenVertical,
+      minHeight: 264,
+      overflow: "hidden",
+      position: "relative",
+    },
+    heroContent: {
+      flex: 1,
+      gap: 18,
+      justifyContent: "space-between",
+      padding: 18,
+      paddingTop: 72,
+    },
+    heroEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    heroHeading: {
+      gap: 6,
+    },
+    heroImage: {
+      borderRadius: 0,
+    },
+    heroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(10, 12, 10, 0.34)",
+    },
+    heroSummary: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    heroTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      letterSpacing: -0.5,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    inlineStatusRow: {
+      gap: 8,
+    },
+    listGroup: {
+      gap: 10,
+    },
+    listRow: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      gap: 8,
+      padding: 16,
+      ...interactiveSurfaceShadowStyle,
+    },
+    listTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    metaLine: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    metaPill: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.42)" : "rgba(255, 255, 255, 0.82)",
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    metaPillValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    metaStrip: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    rewardGroup: {
+      gap: 10,
+      marginTop: 10,
+    },
+    rewardHeader: {
+      gap: 10,
+    },
+    rewardRequirementBadge: {
+      alignSelf: "flex-start",
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    rewardRequirementText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      textTransform: "uppercase",
+    },
+    rulesGroup: {
+      gap: 10,
+    },
+    ruleRow: {
+      gap: 4,
+    },
+    secondaryButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    venueCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    venueHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+    },
+    venueOrderBubble: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderRadius: 999,
+      height: 34,
+      justifyContent: "center",
+      width: 34,
+    },
+    venueOrderText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+    },
+  });
+
+  return styles;
+};

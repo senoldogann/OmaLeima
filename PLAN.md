@@ -6,47 +6,46 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Move the delight moment to the student side when a leima is actually earned, remove the wrong business-side stamp theater, make the business surfaces feel cleaner for staff, and polish real-device keyboard and image loading behavior.
+- **Goal:** Ship a real light mode, Finnish-first bilingual mobile copy, and a proper event detail description section without breaking the existing student/business flows.
 
 ## Architectural Decisions
 
-- Reuse the existing student reward overview bridge to detect new stamp gains and fire a global celebration overlay from the app root.
-- Keep the student celebration provider global so any screen can show the moment, but expose only small dev-only preview hooks on student routes.
-- Treat the business scanner as an operational tool: fast selection, obvious camera state, clean result card, and no celebratory overlay on the staff side.
-- Keep the current business data flow intact; only simplify copy, hierarchy, and density on home, events, history, and scanner.
-- Push keyboard handling down into the shared app shell so form routes improve without maintaining one-off wrappers per screen.
-- Replace the main photo bands with a cached Expo image surface and prefetch remote covers from the student routes that lead the visual experience.
+- Add a persisted mobile UI preference provider above the current app tree and let it own:
+  - theme mode (`dark` / `light`)
+  - language (`fi` / `en`)
+- Keep Finnish as the default when the device locale starts with `fi`; otherwise fall back to English.
+- Move the shared foundation from a single exported dark token object to dual dark/light theme objects plus a current-theme hook.
+- Convert route and shared component styles to runtime theme-aware factories instead of relying on module-static dark tokens.
+- Keep translations local to the mobile app with a strict typed dictionary instead of adding a heavyweight i18n framework for this slice.
+- Promote event descriptions into their own content section under the hero so long organizer copy remains readable.
 
 ## Alternatives Considered
 
-- Keep the existing stamp animation on the business scanner and simply restyle it:
-  - rejected because the user explicitly wants the delight shown to students, not staff
-- Trigger the celebration only on reward unlock:
-  - rejected because that fires too late and misses the more common “I got a leima” moment
-- Build a dedicated student celebration route:
-  - rejected because a modal overlay is less disruptive and can sit on top of the current active screen
-- Add a separate keyboard-aware screen component only for login:
-  - rejected because the keyboard issue will likely recur on future forms; the shared shell is the better fix
-- Leave RN `ImageBackground` in place and only tweak overlays:
-  - rejected because the late-load issue is mostly about caching/transition behavior, not color treatment
+- Add only a system-color-scheme switch and skip persisted preferences:
+  - rejected because the user explicitly asked for a real open/dark theme addition across the app, not a hidden OS-only behavior
+- Keep the current static `mobileTheme` and try to patch just route backgrounds:
+  - rejected because shared cards, badges, tabs, and auth controls would remain visually inconsistent in light mode
+- Add a third-party i18n library immediately:
+  - rejected because the app only needs two languages right now and we need tight control over Finnish wording
+- Keep event description as hero summary text:
+  - rejected because detailed events need a dedicated readable block
 
 ## Edge Cases
 
-- A stamp can arrive while the student is on rewards, QR, or another student screen; the overlay must be global.
-- Multiple realtime refreshes for the same stamp should not create repeated celebrations.
-- If several rewards unlock at once, the reward notification and the stamp celebration should not crash each other.
-- Business result cards still need to preserve scan count and status clarity after the celebratory visuals are removed.
-- Keyboard avoidance must not push non-form screens into awkward empty spacing.
-- Cached cover surfaces must still respect full-bleed layouts and radius-free hero areas.
+- The first render should not flash dark English UI and then jump to light Finnish once preferences load.
+- Shared formatters (dates, counts, tab titles, status strings) must respect the current language.
+- Business and student layouts both have access/loading/error states that need translation too, not just the “happy path” screens.
+- Some copy comes from helper functions inside feature components (`reward-progress-card`, `leaderboard-entry-card`, tag cards); those must not stay English-only.
+- The event detail description section must still read well when `description` is missing.
 
 ## Validation Plan
 
 - Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this slice.
-- Add a global student celebration provider and connect it to realtime stamp gain detection.
-- Leave small dev-only student preview entry points for fast tuning.
-- Simplify business scanner, home, events, and history around operator-first use.
-- Improve real-device form behavior by making the shared app shell keyboard-aware and tightening business sign-in submit flow.
-- Move main photo bands to a cached cover surface and prefetch remote covers from rewards, events, event detail, active-event, and celebration paths.
+- Add UI preference + i18n infrastructure above the existing mobile app tree.
+- Convert shared mobile foundation pieces to runtime theme-aware styles.
+- Translate student, business, auth, and shared mobile surfaces into Finnish/English.
+- Add explicit description content on event detail.
+- Manually sweep the current mobile routes for missed hardcoded strings or dark-only assumptions.
 - Verify mobile with:
   - `rtk npm --prefix /Users/dogan/Desktop/OmaLeima/apps/mobile run lint`
   - `rtk npm --prefix /Users/dogan/Desktop/OmaLeima/apps/mobile run typecheck`

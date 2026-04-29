@@ -1,16 +1,22 @@
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { fetchSessionAccessAsync } from "@/features/auth/session-access";
+import {
+  interactiveSurfaceShadowStyle,
+  type MobileTheme,
+} from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
+  const theme = useAppTheme();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const passwordInputRef = useRef<TextInput | null>(null);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -47,7 +53,7 @@ export const BusinessPasswordSignIn = () => {
       if (access.area !== "business" || access.homeHref === null) {
         await supabase.auth.signOut();
         setIsLoading(false);
-        setErrorMessage("This account does not have active business staff access.");
+        setErrorMessage(copy.business.accessMissing);
         return;
       }
 
@@ -65,7 +71,7 @@ export const BusinessPasswordSignIn = () => {
   return (
     <View style={styles.container}>
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Business email</Text>
+        <Text style={styles.label}>{copy.auth.businessEmail}</Text>
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
@@ -73,8 +79,8 @@ export const BusinessPasswordSignIn = () => {
           keyboardType="email-address"
           onChangeText={setEmail}
           onSubmitEditing={() => passwordInputRef.current?.focus()}
-          placeholder="scanner@example.com"
-          placeholderTextColor="#64748B"
+          placeholder={copy.auth.businessEmailPlaceholder}
+          placeholderTextColor={theme.colors.textDim}
           returnKeyType="next"
           style={styles.input}
           submitBehavior="submit"
@@ -83,7 +89,7 @@ export const BusinessPasswordSignIn = () => {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>{copy.auth.businessPassword}</Text>
         <TextInput
           editable={!isLoading}
           onChangeText={setPassword}
@@ -92,8 +98,8 @@ export const BusinessPasswordSignIn = () => {
               void handlePress();
             }
           }}
-          placeholder="Use the current hosted scanner password"
-          placeholderTextColor="#64748B"
+          placeholder={copy.auth.businessPasswordPlaceholder}
+          placeholderTextColor={theme.colors.textDim}
           ref={passwordInputRef}
           returnKeyType="done"
           secureTextEntry
@@ -108,19 +114,19 @@ export const BusinessPasswordSignIn = () => {
         onPress={handlePress}
         style={({ pressed }) => [
           styles.button,
-          isLoading ? styles.disabledButton : null,
+          !canSubmit ? styles.disabledButton : null,
           pressed ? styles.buttonPressed : null,
         ]}
       >
-        {isLoading ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
-        {isLoading ? null : <AppIcon color={mobileTheme.colors.screenBase} name="business" size={18} />}
-        <Text style={styles.buttonText}>{isLoading ? "Signing in..." : "Sign in with email"}</Text>
+        {isLoading ? <ActivityIndicator color={theme.colors.screenBase} size="small" /> : null}
+        {isLoading ? null : <AppIcon color={theme.colors.screenBase} name="business" size={18} />}
+        <Text style={styles.buttonText}>{isLoading ? copy.auth.businessSigningIn : copy.auth.businessButton}</Text>
       </Pressable>
 
       {isLoading ? (
         <AuthLoadingPanel
-          message="Checking business access and opening the scanner tools."
-          title="Signing in"
+          message={copy.auth.businessCheckingAccess}
+          title={copy.auth.businessSigningIn}
         />
       ) : null}
 
@@ -129,52 +135,53 @@ export const BusinessPasswordSignIn = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "center",
-    minHeight: 46,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  buttonPressed: {
-    transform: [{ translateY: 1 }, { scale: 0.992 }],
-  },
-  buttonText: {
-    color: mobileTheme.colors.screenBase,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  container: {
-    gap: 12,
-  },
-  disabledButton: {
-    opacity: 0.8,
-  },
-  errorText: {
-    color: "#FFC5C1",
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  fieldGroup: {
-    gap: 7,
-  },
-  input: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: 16,
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  label: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    button: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "center",
+      minHeight: 46,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    buttonPressed: {
+      transform: [{ translateY: 1 }, { scale: 0.992 }],
+    },
+    buttonText: {
+      color: theme.colors.screenBase,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    container: {
+      gap: 12,
+    },
+    disabledButton: {
+      opacity: 0.8,
+    },
+    errorText: {
+      color: theme.colors.danger,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    fieldGroup: {
+      gap: 7,
+    },
+    input: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 16,
+      color: theme.colors.textPrimary,
+      fontSize: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    label: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+  });

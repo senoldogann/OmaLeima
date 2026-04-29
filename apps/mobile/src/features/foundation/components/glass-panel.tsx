@@ -1,7 +1,8 @@
 import { useEffect, useRef, type PropsWithChildren } from "react";
 import { Animated, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { mobileTheme, surfaceShadowStyle } from "@/features/foundation/theme";
+import { surfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme } from "@/features/preferences/ui-preferences-provider";
 
 /**
  * StarkCard — replaces GlassPanel.
@@ -34,38 +35,38 @@ type VariantConfig = {
   shadow: ViewStyle;
 };
 
-const variantConfig: Record<GlassPanelVariant, VariantConfig> = {
+const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, VariantConfig> => ({
   scene: {
-    bg: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderSubtle,
+    bg: theme.colors.surfaceL2,
+    borderColor: theme.colors.borderSubtle,
     borderWidth: 0,
-    radius: mobileTheme.radius.scene,
-    topAccentColor: mobileTheme.colors.lime,
-    contentPadding: mobileTheme.spacing.scenePadding,
+    radius: theme.radius.scene,
+    topAccentColor: theme.colors.lime,
+    contentPadding: theme.spacing.scenePadding,
     contentGap: 16,
     shadow: surfaceShadowStyle,
   },
   card: {
-    bg: mobileTheme.colors.surfaceL1,
-    borderColor: mobileTheme.colors.borderDefault,
+    bg: theme.colors.surfaceL1,
+    borderColor: theme.colors.borderDefault,
     borderWidth: 0,
-    radius: mobileTheme.radius.card,
+    radius: theme.radius.card,
     topAccentColor: null,
-    contentPadding: mobileTheme.spacing.cardPadding,
+    contentPadding: theme.spacing.cardPadding,
     contentGap: 14,
     shadow: surfaceShadowStyle,
   },
   subtle: {
-    bg: mobileTheme.colors.screenBase,
-    borderColor: mobileTheme.colors.borderSubtle,
+    bg: theme.colors.screenBase,
+    borderColor: theme.colors.borderSubtle,
     borderWidth: 0,
-    radius: mobileTheme.radius.inner,
+    radius: theme.radius.inner,
     topAccentColor: null,
     contentPadding: 16,
     contentGap: 12,
     shadow: {},
   },
-};
+});
 
 export const GlassPanel = ({
   children,
@@ -74,10 +75,11 @@ export const GlassPanel = ({
   motionIndex,
   variant = "card",
 }: GlassPanelProps) => {
+  const theme = useAppTheme();
   const translateY = useRef(new Animated.Value(12)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
-  const cfg = variantConfig[variant];
+  const cfg = createVariantConfig(theme)[variant];
 
   useEffect(() => {
     const delayMs = typeof motionIndex === "number" ? Math.min(motionIndex * 40, 240) : 0;

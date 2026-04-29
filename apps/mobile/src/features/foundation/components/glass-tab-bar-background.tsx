@@ -1,18 +1,22 @@
 import { StyleSheet, View } from "react-native";
 
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 // Tab bar background: flat, solid, no glass effects.
-export const GlassTabBarBackground = () => (
-  <View style={styles.surface} />
-);
+export const GlassTabBarBackground = () => {
+  const styles = useThemeStyles(createStyles);
 
-const styles = StyleSheet.create({
-  surface: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: mobileTheme.colors.screenBase,
-    borderColor: "transparent",
-    borderRadius: mobileTheme.radius.tabBar,
-    borderWidth: 0,
-  },
-});
+  return <View style={styles.surface} />;
+};
+
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    surface: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.colors.screenBase,
+      borderColor: "transparent",
+      borderRadius: theme.radius.tabBar,
+      borderWidth: 0,
+    },
+  });

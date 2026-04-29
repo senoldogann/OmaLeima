@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { StudentRewardCelebrationProvider } from "@/features/notifications/student-reward-celebration";
 import { StudentRewardNotificationBridge } from "@/features/notifications/student-reward-notifications";
+import { UiPreferencesProvider } from "@/features/preferences/ui-preferences-provider";
 import { NativePushDiagnosticsProvider } from "@/features/push/native-push-diagnostics";
 import { createQueryClient } from "@/lib/query-client";
 import { SessionProvider } from "@/providers/session-provider";
@@ -14,14 +15,16 @@ export const AppProviders = ({ children }: PropsWithChildren) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>
-        <NativePushDiagnosticsProvider>
-          <StudentRewardCelebrationProvider>
-            <StudentRewardNotificationBridge />
-            {children}
-          </StudentRewardCelebrationProvider>
-        </NativePushDiagnosticsProvider>
-      </SessionProvider>
+      <UiPreferencesProvider>
+        <SessionProvider>
+          <NativePushDiagnosticsProvider>
+            <StudentRewardCelebrationProvider>
+              <StudentRewardNotificationBridge />
+              {children}
+            </StudentRewardCelebrationProvider>
+          </NativePushDiagnosticsProvider>
+        </SessionProvider>
+      </UiPreferencesProvider>
     </QueryClientProvider>
   );
 };

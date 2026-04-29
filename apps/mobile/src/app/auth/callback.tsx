@@ -4,6 +4,8 @@ import { StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
@@ -15,6 +17,8 @@ type CallbackState = {
 
 export default function AuthCallbackScreen() {
   const router = useRouter();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const params = useLocalSearchParams<{
     code?: string | string[];
     error?: string | string[];
@@ -23,7 +27,7 @@ export default function AuthCallbackScreen() {
   const { isAuthenticated } = useSession();
   const [callbackState, setCallbackState] = useState<CallbackState>({
     status: "loading",
-    detail: "Waiting for the Supabase OAuth callback.",
+    detail: copy.auth.callbackWaiting,
   });
 
   useEffect(() => {
@@ -50,7 +54,7 @@ export default function AuthCallbackScreen() {
     if (typeof code !== "string" || code.length === 0) {
       setCallbackState({
         status: "warning",
-        detail: "OAuth callback returned without an authorization code.",
+        detail: copy.auth.callbackMissingCode,
       });
       return;
     }
@@ -74,7 +78,7 @@ export default function AuthCallbackScreen() {
 
       setCallbackState({
         status: "ready",
-        detail: "OAuth sign-in completed. Redirecting to the correct mobile area.",
+        detail: copy.auth.callbackRedirecting,
       });
       router.replace("/");
     };
@@ -84,11 +88,18 @@ export default function AuthCallbackScreen() {
     return () => {
       isActive = false;
     };
-  }, [params.code, params.error, params.error_description, router]);
+  }, [
+    copy.auth.callbackMissingCode,
+    copy.auth.callbackRedirecting,
+    params.code,
+    params.error,
+    params.error_description,
+    router,
+  ]);
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Auth" title={createCallbackTitle(callbackState.status)}>
+      <InfoCard eyebrow={copy.auth.accessEyebrow} title={createCallbackTitle(callbackState.status, copy)}>
         <Text selectable style={styles.bodyText}>
           {callbackState.detail}
         </Text>
@@ -97,24 +108,25 @@ export default function AuthCallbackScreen() {
   );
 }
 
-const createCallbackTitle = (status: AppReadinessState): string => {
+const createCallbackTitle = (status: AppReadinessState, copy: ReturnType<typeof useUiPreferences>["copy"]): string => {
   switch (status) {
     case "error":
-      return "Sign-in could not finish";
+      return copy.auth.callbackErrorTitle;
     case "warning":
-      return "Sign-in needs attention";
+      return copy.auth.callbackWarningTitle;
     case "ready":
-      return "Sign-in complete";
+      return copy.auth.callbackReadyTitle;
     case "loading":
     case "pending":
-      return "Completing sign-in";
+      return copy.auth.callbackLoadingTitle;
   }
 };
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

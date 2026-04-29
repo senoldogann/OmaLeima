@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 
 import type { LeaderboardEntry } from "@/features/leaderboard/types";
 
@@ -9,7 +10,9 @@ type LeaderboardEntryCardProps = {
   isCurrentUser: boolean;
 };
 
-const getDisplayName = (entry: LeaderboardEntry): string => entry.displayName ?? `Student ${entry.rank}`;
+const getDisplayName = (entry: LeaderboardEntry, language: "fi" | "en"): string =>
+  entry.displayName ?? (language === "fi" ? `Opiskelija ${entry.rank}` : `Student ${entry.rank}`);
+
 const getInitials = (value: string | null, rank: number): string => {
   const source = value?.trim() ?? `Student ${rank}`;
   const parts = source.split(/\s+/).filter(Boolean);
@@ -25,134 +28,140 @@ const getInitials = (value: string | null, rank: number): string => {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 };
 
-export const LeaderboardEntryCard = ({ entry, isCurrentUser }: LeaderboardEntryCardProps) => (
-  <View style={[styles.card, isCurrentUser ? styles.currentUserCard : null]}>
-    <View style={styles.leftGroup}>
-      <View style={[styles.rankBubble, isCurrentUser ? styles.currentUserRankBubble : null]}>
-        <Text selectable style={styles.rankText}>
-          #{entry.rank}
-        </Text>
+export const LeaderboardEntryCard = ({ entry, isCurrentUser }: LeaderboardEntryCardProps) => {
+  const { language } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+
+  return (
+    <View style={[styles.card, isCurrentUser ? styles.currentUserCard : null]}>
+      <View style={styles.leftGroup}>
+        <View style={[styles.rankBubble, isCurrentUser ? styles.currentUserRankBubble : null]}>
+          <Text selectable style={styles.rankText}>
+            #{entry.rank}
+          </Text>
+        </View>
+
+        <View style={[styles.avatarBubble, isCurrentUser ? styles.avatarBubbleCurrent : null]}>
+          <Text selectable style={styles.avatarText}>
+            {getInitials(entry.displayName, entry.rank)}
+          </Text>
+        </View>
+
+        <View style={styles.copyGroup}>
+          <Text selectable style={[styles.nameText, isCurrentUser ? styles.currentUserNameText : null]}>
+            {getDisplayName(entry, language)}
+          </Text>
+        </View>
       </View>
 
-      <View style={[styles.avatarBubble, isCurrentUser ? styles.avatarBubbleCurrent : null]}>
-        <Text selectable style={styles.avatarText}>
-          {getInitials(entry.displayName, entry.rank)}
+      <View style={styles.scoreGroup}>
+        <Text selectable style={[styles.scoreText, isCurrentUser ? styles.currentUserScoreText : null]}>
+          {entry.stampCount}
         </Text>
-      </View>
-
-      <View style={styles.copyGroup}>
-        <Text selectable style={[styles.nameText, isCurrentUser ? styles.currentUserNameText : null]}>
-          {getDisplayName(entry)}
+        <Text selectable style={[styles.scoreLabel, isCurrentUser ? styles.currentUserScoreLabel : null]}>
+          {language === "fi" ? "leimaa" : "leima"}
         </Text>
       </View>
     </View>
+  );
+};
 
-    <View style={styles.scoreGroup}>
-      <Text selectable style={[styles.scoreText, isCurrentUser ? styles.currentUserScoreText : null]}>
-        {entry.stampCount}
-      </Text>
-      <Text selectable style={[styles.scoreLabel, isCurrentUser ? styles.currentUserScoreLabel : null]}>
-        leima
-      </Text>
-    </View>
-  </View>
-);
-
-const styles = StyleSheet.create({
-  card: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
-    borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  avatarBubble: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL4,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  avatarBubbleCurrent: {
-    backgroundColor: mobileTheme.colors.limeSurface,
-    borderColor: mobileTheme.colors.limeBorder,
-  },
-  avatarText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  copyGroup: {
-    flex: 1,
-    gap: 4,
-  },
-  currentUserCard: {
-    backgroundColor: mobileTheme.colors.lime,
-    borderColor: mobileTheme.colors.limeBorder,
-  },
-  currentUserNameText: {
-    color: mobileTheme.colors.screenBase,
-  },
-  currentUserRankBubble: {
-    backgroundColor: "rgba(8, 9, 14, 0.16)",
-  },
-  currentUserScoreLabel: {
-    color: "rgba(8, 9, 14, 0.74)",
-  },
-  currentUserScoreText: {
-    color: mobileTheme.colors.screenBase,
-  },
-  leftGroup: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 12,
-  },
-  nameText: {
-    color: mobileTheme.colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  rankBubble: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL4,
-    borderRadius: 999,
-    justifyContent: "center",
-    minWidth: 44,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-  },
-  rankText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    fontVariant: ["tabular-nums"],
-  },
-  scoreGroup: {
-    alignItems: "flex-end",
-    minWidth: 58,
-  },
-  scoreLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
-  },
-  scoreText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    fontVariant: ["tabular-nums"],
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    avatarBubble: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL4,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    avatarBubbleCurrent: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    avatarText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    card: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+    },
+    copyGroup: {
+      flex: 1,
+      gap: 4,
+    },
+    currentUserCard: {
+      backgroundColor: theme.colors.lime,
+      borderColor: theme.colors.limeBorder,
+    },
+    currentUserNameText: {
+      color: theme.colors.screenBase,
+    },
+    currentUserRankBubble: {
+      backgroundColor: "rgba(8, 9, 14, 0.16)",
+    },
+    currentUserScoreLabel: {
+      color: "rgba(8, 9, 14, 0.74)",
+    },
+    currentUserScoreText: {
+      color: theme.colors.screenBase,
+    },
+    leftGroup: {
+      alignItems: "center",
+      flex: 1,
+      flexDirection: "row",
+      gap: 12,
+    },
+    nameText: {
+      color: theme.colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    rankBubble: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL4,
+      borderRadius: 999,
+      justifyContent: "center",
+      minWidth: 44,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+    },
+    rankText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      fontVariant: ["tabular-nums"],
+    },
+    scoreGroup: {
+      alignItems: "flex-end",
+      minWidth: 58,
+    },
+    scoreLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    scoreText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      fontVariant: ["tabular-nums"],
+    },
+  });

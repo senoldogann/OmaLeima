@@ -8,14 +8,18 @@ import { InfoCard } from "@/components/info-card";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
 import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
-import { mobileTheme } from "@/features/foundation/theme";
 import { LoginHero } from "@/features/auth/components/login-hero";
-import { useSession } from "@/providers/session-provider";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useSession } from "@/providers/session-provider";
 
 type LoginMode = "student" | "business";
 
 export default function LoginScreen() {
+  const theme = useAppTheme();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -33,8 +37,8 @@ export default function LoginScreen() {
       <AppScreen>
         <LoginHero />
         <AuthLoadingPanel
-          message="Checking your session and opening the right area."
-          title="Opening OmaLeima"
+          message={copy.auth.openingMessage}
+          title={copy.auth.opening}
         />
       </AppScreen>
     );
@@ -45,9 +49,9 @@ export default function LoginScreen() {
       <LoginHero />
 
       <InfoCard
-        eyebrow="Continue"
+        eyebrow={copy.auth.continueEyebrow}
         motionIndex={1}
-        title={mode === "student" ? "Student sign-in" : "Business sign-in"}
+        title={mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
       >
         <View style={styles.modeSelector}>
           <Pressable
@@ -58,13 +62,9 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <AppIcon
-              color={mode === "student" ? mobileTheme.colors.screenBase : mobileTheme.colors.textPrimary}
-              name="google"
-              size={18}
-            />
+            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="google" size={18} />
             <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
-              Student
+              {copy.common.student}
             </Text>
           </Pressable>
           <Pressable
@@ -75,21 +75,15 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <AppIcon
-              color={mode === "business" ? mobileTheme.colors.screenBase : mobileTheme.colors.textPrimary}
-              name="business"
-              size={18}
-            />
+            <AppIcon color={mode === "business" ? theme.colors.screenBase : theme.colors.textPrimary} name="business" size={18} />
             <Text style={[styles.modeButtonText, mode === "business" ? styles.modeButtonTextActive : null]}>
-              Business
+              {copy.common.business}
             </Text>
           </Pressable>
         </View>
 
         <Text style={styles.helperText}>
-          {mode === "student"
-            ? "Use Google to open your student view."
-            : "Use staff credentials to open scanner tools."}
+          {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
         </Text>
         {mode === "student" ? <GoogleSignInButton /> : <BusinessPasswordSignIn />}
       </InfoCard>
@@ -97,41 +91,42 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  helperText: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  modeButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.card,
-    flex: 1,
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-  },
-  modeButtonActive: {
-    backgroundColor: mobileTheme.colors.lime,
-  },
-  modeButtonPressed: {
-    transform: [{ translateY: 1 }, { scale: 0.992 }],
-  },
-  modeButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
-  },
-  modeButtonTextActive: {
-    color: mobileTheme.colors.screenBase,
-  },
-  modeSelector: {
-    flexDirection: "row",
-    gap: 10,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    helperText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    modeButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+    },
+    modeButtonActive: {
+      backgroundColor: theme.colors.lime,
+    },
+    modeButtonPressed: {
+      transform: [{ translateY: 1 }, { scale: 0.992 }],
+    },
+    modeButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    modeButtonTextActive: {
+      color: theme.colors.screenBase,
+    },
+    modeSelector: {
+      flexDirection: "row",
+      gap: 10,
+    },
+  });
