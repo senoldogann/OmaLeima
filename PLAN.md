@@ -5,34 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `bug/native-google-auth-redirect`
-- **Goal:** Fix physical-device Google sign-in in the Expo development build by aligning native OAuth redirect generation with the app scheme instead of a localhost callback.
+- **Branch:** `feature/hosted-business-scan-smoke-readiness`
+- **Goal:** Let one physical iPhone run the hosted student-to-scanner smoke path end to end without extra hardware, while keeping the helper surfaces development-only.
 
 ## Architectural Decisions
 
-- Keep the fix inside `apps/mobile/src/lib/auth.ts` so the already-installed development build can retest Google login without another native rebuild.
-- Use Expo AuthSession’s explicit native redirect option for iOS and Android native contexts while keeping the existing path-based redirect for web.
-- Leave the callback exchange route unchanged; once Safari returns to `omaleima://auth/callback`, the existing Expo Router callback screen should keep working.
-- Fold in the pending EAS `projectId` fallback and iOS non-exempt-encryption plist field so the next build attempt stays clean.
+- Keep the helper in JavaScript and behind `__DEV__` so the already-installed development build can pick it up from Metro without another iOS build.
+- Reuse the existing student QR query result instead of adding a second fetch or a new backend endpoint.
+- Reuse the existing manual scanner fallback path instead of adding a second scanner transport or a debug-only API route.
+- Add a repository-owned audit plus docs so the hosted same-device smoke path does not live only in chat history.
 
 ## Alternatives Considered
 
-- Rebuilding the app immediately and hoping the current redirect changes itself:
-  - rejected because the screenshot shows a logic bug in the generated redirect URL, not a missing native capability
-- Moving the fix into a new native plugin or separate callback route:
-  - rejected because the current scheme and callback screen are already enough if the redirect URI is correct
-- Patching only docs:
-  - rejected because the blocker is live on the user’s device right now
+- Building a separate debug route just for hosted scanner smoke:
+  - rejected because the active-event screen already owns the live token and the scanner screen already owns the manual fallback
+- Exposing the raw QR token in all builds:
+  - rejected because production users should never see the JWT payload directly
+- Solving the same-device smoke only with docs:
+  - rejected because the user still needs a practical way to move the current token from the student flow into the scanner flow on one phone
 
 ## Edge Cases
 
-- Web login must continue to use a browser URL callback and not switch to the native scheme.
-- Native redirect generation should remain stable in both development builds and future standalone builds.
-- The login screen’s displayed redirect URI should visibly confirm the fix once Metro reloads the app.
-- The app config changes should not force a new native build before the user can retest this particular login bug.
+- The helper should appear only while a live QR token exists for an active event.
+- The helper must stay hidden in exported or production builds.
+- The scanner hint should not claim that manual paste replaces the real camera scan path; it only exercises the same backend contract.
+- The hosted scanner account copy should align with the real hosted fixture account and stop calling it a local seed.
 
 ## Validation Plan
 
-- Run `expo config --json` to verify both the EAS project id and `ITSAppUsesNonExemptEncryption` are present in the resolved config.
-- Run mobile `typecheck` and the existing native push readiness audit.
-- Ask the user to reload the dev client and confirm the login screen now shows `omaleima://auth/callback` instead of a localhost redirect.
+- Run mobile `lint`, `typecheck`, and `export:web`.
+- Run a new focused audit for the hosted business scan smoke wiring.
+- Keep the new copy aligned in `apps/mobile/README.md`, `docs/TESTING.md`, and the handoff docs.

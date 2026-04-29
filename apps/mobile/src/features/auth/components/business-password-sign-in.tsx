@@ -100,9 +100,11 @@ export const BusinessPasswordSignIn = () => {
         <Text style={styles.buttonText}>{isLoading ? "Signing in..." : "Sign in with email"}</Text>
       </Pressable>
 
-      <Text style={styles.helperText}>
-        Local seed account: `scanner@omaleima.test / password123`
-      </Text>
+      {__DEV__ ? (
+        <Text style={styles.helperText}>
+          Hosted smoke account: `scanner@omaleima.test / password123`
+        </Text>
+      ) : null}
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>

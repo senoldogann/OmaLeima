@@ -281,6 +281,11 @@ export default function BusinessScannerScreen() {
           <Text selectable style={styles.bodyText}>
             Web preview and event-day fallback can still hit the real `scan-qr` path by pasting a student token here.
           </Text>
+          {__DEV__ ? (
+            <Text selectable style={styles.metaText}>
+              Same-device hosted smoke: sign in as a student first, copy the active token from My QR, then sign back in here with `scanner@omaleima.test / password123` and paste it below.
+            </Text>
+          ) : null}
           <TextInput
             editable={!isSubmitting}
             multiline

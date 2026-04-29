@@ -19,6 +19,7 @@ npx expo start
 npm run lint
 npm run typecheck
 npm run export:web
+npm run audit:hosted-business-scan-readiness
 npm run audit:native-simulator-smoke
 npm run audit:native-push-device-readiness
 npm run audit:realtime-readiness
@@ -53,6 +54,7 @@ The first dedicated mobile Realtime slice is now shipped:
 - local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
 - the profile route now exposes native push diagnostics for runtime mode, permission state, last received notification, and last notification response during physical-device smoke
 - local foreground notifications can still appear in that diagnostics surface, but only entries marked from a remote source prove APNs or FCM-backed delivery
+- the active student event screen now exposes a development-only hosted scanner smoke token so one physical iPhone can still exercise the real hosted `scan-qr` path through the business manual fallback
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 
@@ -78,6 +80,12 @@ Use this command to confirm the current simulator and emulator wiring state:
 npm run audit:native-simulator-smoke
 ```
 
+Use this command to confirm the hosted same-device scanner smoke wiring:
+
+```bash
+npm run audit:hosted-business-scan-readiness
+```
+
 ## OAuth setup notes
 
 - Enable Google as an Auth provider in Supabase.
@@ -92,6 +100,18 @@ npm run audit:native-simulator-smoke
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
 - The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
 - The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response. The remaining diagnostics warning is only the runtime label, which currently classifies this dev-client path as `bare`.
+
+## Hosted same-device scanner smoke
+
+- The hosted smoke fixture now includes `scanner@omaleima.test / password123`, an active event, a joined venue, and a student registration.
+- In development builds only, the active student event screen exposes a `Hosted scanner smoke token` card while a live QR token exists.
+- The intended one-phone flow is:
+  1. sign in as the student and open `My QR`
+  2. copy the development-only token from that card
+  3. sign out and switch into the business scanner account
+  4. open `Business > Scanner`
+  5. paste the token into the manual fallback box
+- This still calls the real hosted `scan-qr` backend and is the current fallback path for physical-device smoke when only one iPhone is available.
 
 ## Codex action note
 

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `bug/native-google-auth-redirect`
-- **Scope:** Fix the native Google OAuth redirect used by the Expo development build so physical-device sign-in stops opening an unreachable localhost callback.
+- **Branch:** `feature/hosted-business-scan-smoke-readiness`
+- **Scope:** Make the hosted business scanner smoke practical on a single physical iPhone by exposing the active student QR token in a development-only surface and documenting the hosted scanner fallback path.
 
 ## Affected Files
 
@@ -14,33 +14,38 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/app.config.ts`
-- `apps/mobile/src/lib/auth.ts`
+- `apps/mobile/package.json`
+- `package.json`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
+- `apps/mobile/scripts/audit-hosted-business-scan-readiness.mjs`
+- `tests/run-mobile-hosted-business-scan-readiness.mjs`
 - `apps/mobile/README.md`
+- `docs/TESTING.md`
 
 ## Risks
 
-- The current native redirect helper may still generate a dev-server localhost callback inside the iOS development build, which breaks Google OAuth on a physical device.
-- We should not change the web callback behavior while fixing native auth. Web and hosted login still need the existing callback path behavior.
-- The user already installed a development build, so the redirect fix should stay in JavaScript where possible and avoid forcing another iOS build for this specific sign-in retest.
+- The active student QR token is sensitive and should not be exposed in normal product UI. Any new surface must stay development-only.
+- We should not change the server-owned QR rotation or scanner transport logic while making the hosted smoke easier to run.
+- The same-device smoke path needs to stay honest about what it does: manual token paste still exercises the real `scan-qr` backend, but it is a smoke helper rather than the final event-day camera path.
 
 ## Dependencies
 
-- Existing mobile Google OAuth flow in `apps/mobile/src/lib/auth.ts` and callback handling in `apps/mobile/src/app/auth/callback.tsx`
-- Expo AuthSession redirect behavior for development builds
-- Supabase mobile deep-link redirect guidance for Expo React Native
+- Existing student QR token rotation in `apps/mobile/src/app/student/active-event.tsx` and `apps/mobile/src/features/qr/student-qr.ts`
+- Existing business scanner manual fallback in `apps/mobile/src/app/business/scanner.tsx`
+- Hosted smoke fixture accounts and active event already prepared in the linked Supabase project
 
 ## Existing Logic Checked
 
-- Native redirect URI is generated in `apps/mobile/src/lib/auth.ts` with `makeRedirectUri`
-- OAuth callback exchange still happens in `apps/mobile/src/app/auth/callback.tsx`
-- Login screen already surfaces the computed redirect URI, which makes this bug visible without extra debug UI
+- The student QR screen already has access to the raw JWT token through `qrTokenQuery.data.qrPayload.token`
+- The business scanner already supports manual token paste against the real hosted `scan-qr` path
+- The business password form still labels `scanner@omaleima.test / password123` as a local seed account even though it is now part of the hosted smoke path
 
 ## Review Outcome
 
-Ship a small auth hotfix that:
+Ship a small mobile QA follow-up that:
 
-- forces the native mobile OAuth redirect to the explicit app scheme `omaleima://auth/callback`
-- keeps web callback behavior unchanged
-- preserves the existing callback route and session exchange path
-- records the new device-side Google sign-in blocker and resolution in the handoff docs
+- adds a development-only QR diagnostics card for the active student event so the same device can copy or manually transcribe the current QR token
+- adds a matching scanner-side note that explains the single-device hosted smoke path without changing production scanning behavior
+- adds a focused repository audit plus docs so the same hosted smoke path stays repeatable after future mobile changes
