@@ -6,40 +6,43 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Refine the live QR scene and rewards browsing so the active-event and rewards screens feel cleaner, less vertically stacked, and more deliberate without disturbing validated QR or reward logic.
+- **Goal:** Repair student event detail navigation and turn event discovery plus leaderboard into cleaner, more characterful surfaces without changing their validated data flows.
 
 ## Architectural Decisions
 
 - Keep the current STARK direction and avoid another theme fork.
-- Treat the QR scene as a product surface, not a loading widget: use a static frame and restrained live cues instead of continuous rotation.
-- Fix the clipped reward count in the shared reward card rather than patching only the active-event screen.
-- Use a horizontal rewards rail so one event can be read at a time without forcing a long vertical scroll.
+- Use explicit Expo Router pathname navigation for event detail so links behave the same on web and native.
+- Event discovery should privilege one strong cover, one time/location line, and one action path per card.
+- Leaderboard should split into two layers:
+  - a compact selected-event / freshness header
+  - a podium-like top-three showcase plus a cleaner standings list
 - Stay in presentation/layout territory and avoid touching validated business logic.
 
 ## Alternatives Considered
 
-- Keep the rotating QR border and only slow it down:
-  - rejected because the issue is not just speed; the treatment itself looks cheap
-- Keep rewards vertical and only shorten each card:
-  - rejected because the user explicitly called out too much stacked content
-- Create a separate mini reward component only for active-event:
-  - rejected for now because the clipped number is a shared card problem and should be fixed at the source
+- Keep relative routing and only massage the event list UI:
+  - rejected because the user already hit a real broken page; the navigation path itself has to be corrected
+- Make leaderboard more decorative with heavy 3D or animated flourishes:
+  - rejected because readability and ranking clarity matter more than spectacle
+- Replace the standings list entirely with only a podium:
+  - rejected because ranks 4-10 and current-user context still matter
 
 ## Edge Cases
 
-- A horizontal rail must still degrade gracefully when only one event exists.
-- Long event names and many tier rows cannot overflow a narrower card width.
-- The active QR scene should still show a clear loading/error state after the rotating affordance is removed.
-- Typography changes cannot introduce new clipping on Android while fixing iPhone.
+- Event detail navigation must still work when ids contain hyphens or when opened from web.
+- Leaderboard must degrade gracefully when only one or two entries exist.
+- If current user is outside top three, the personal rank still needs to remain visible and not feel lost.
+- Event cards cannot become so minimal that registration context disappears.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the QR/rewards polish slice.
-- Replace the rotating QR ring with a static frame and cleaner live strip.
-- Adjust the shared reward hero typography so `0 leimat` is rendered cleanly.
-- Convert rewards event cards into a horizontal rail with constrained card width.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the event-discovery / leaderboard slice.
+- Fix event discovery navigation with explicit pathname routing.
+- Tighten `EventCard` metadata and the discovery hero.
+- Redesign leaderboard around a podium + standings split.
 - Verify mobile with:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run export:web`
+- Use the local browser to sanity-check at least one updated route after the code pass.
 - Update `PROGRESS.md` with the new handoff note and the next remaining design gaps.

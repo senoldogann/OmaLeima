@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Fix the clipped reward count under the live QR screen, replace the weak rotating QR border treatment with a calmer premium frame, and move the rewards event list away from a long vertical stack into a horizontal rail.
+- **Scope:** Fix the student event-detail navigation break, tighten the event discovery surface, and redesign the leaderboard so it feels like an actual standings view instead of a plain list.
 
 ## Affected Files
 
@@ -14,37 +14,39 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `apps/mobile/src/app/student/events/[eventId].tsx`
+- `apps/mobile/src/app/student/leaderboard.tsx`
+- `apps/mobile/src/features/leaderboard/components/leaderboard-entry-card.tsx`
 
 ## Risks
 
-- The live QR screen already works on device, so this pass must stay presentation-only and avoid touching token refresh logic.
-- The clipped `0` on iPhone likely comes from line-height and hero composition, so typography changes need to stay proportional across rewards and active-event.
-- A horizontal rewards rail can improve scanability, but the cards cannot become too narrow for tier copy and event detail navigation.
-- Removing the rotating QR border should still leave enough visual affordance that the QR feels live and time-bound.
+- The event list currently links into detail pages, so the route fix must be explicit and robust across web and native.
+- Leaderboard already has realtime-backed data; the redesign must stay presentation-only and not disturb selection or refresh behavior.
+- Podium-style top-three layouts can become gimmicky fast, so the composition has to stay readable on narrow mobile widths.
+- Event discovery is a high-traffic screen, so any redesign must reduce clutter rather than add decorative noise.
 
 ## Dependencies
 
 - Existing STARK redesign branch state in `feature/full-ui-redesign-foundation`
-- Active QR route logic in `apps/mobile/src/features/qr/student-qr.ts`
-- Shared rewards data contract in `apps/mobile/src/features/rewards/student-rewards.ts`
-- Existing showcase events already seeded in hosted preview
+- Student event routing through Expo Router
+- Leaderboard query and realtime logic in `apps/mobile/src/features/leaderboard/student-leaderboard.ts`
+- Existing hosted showcase events already seeded in preview
 
 ## Existing Logic Checked
 
-- `student/active-event` currently renders the selected event reward progress below the QR block, so any typography bug in `RewardProgressCard` is visible there immediately.
-- The current QR scene uses a rotating border indicator that feels busy and cheap relative to the rest of the theme.
-- `student/rewards` still renders each event card in a long vertical stack even after the previous simplification pass.
-- `RewardProgressCard` already contains enough condensed copy that a horizontal rail is practical if width is constrained carefully.
+- `student/events/index` currently pushes `./${eventId}` which is fragile and likely the reason the detail page fails to resolve.
+- `EventCard` still repeats several low-value metadata lines and can be tightened without hiding core event facts.
+- `student/leaderboard` already has the right data shape for a podium treatment: top10, current user, selected event, refresh metadata.
+- `LeaderboardEntryCard` still carries old blue/slate styling and feels disconnected from the newer black/lime system.
 
 ## Review Outcome
 
-Do a focused visual polish pass:
+Do a focused event-and-standings pass:
 
-- remove the rotating QR border and replace it with a calmer static scan-frame treatment
-- fix the clipped reward hero number so `0 leimat` reads cleanly on device
-- convert rewards from a long vertical list into a horizontal event rail
-- keep the hosted showcase data and QR visibility path untouched
-- re-run mobile validation and then reassess remaining screen-density gaps
+- replace fragile relative event-detail routing with an explicit route push
+- trim event discovery so each card carries only the information that matters
+- redesign leaderboard around a podium / standings feel with stronger hierarchy
+- keep the underlying event and realtime logic untouched
+- re-run mobile validation and then reassess the next remaining design gaps

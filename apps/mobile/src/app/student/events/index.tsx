@@ -1,4 +1,4 @@
-import { useRouter, type RelativePathString } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
@@ -22,27 +22,23 @@ export default function StudentEventsScreen() {
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
 
   const openEventDetail = (eventId: string): void => {
-    router.push(`./${eventId}` as RelativePathString);
+    router.push({
+      pathname: "/student/events/[eventId]",
+      params: { eventId },
+    });
   };
 
   return (
     <AppScreen>
       <InfoCard eyebrow="Student" motionIndex={0} title="Event discovery">
         <View style={styles.heroBand}>
-          <View style={styles.heroAccent} />
           <Text style={styles.heroCopy}>
-            Browse tonight&apos;s route, spot what is live right now, and jump into the event detail before the first scan even starts.
+            Pick the next student night, check the route, and open the event before the first scan starts.
           </Text>
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{activeEvents.length}</Text>
-              <Text style={styles.heroStatLabel}>LIVE</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{upcomingEvents.length}</Text>
-              <Text style={styles.heroStatLabel}>NEXT</Text>
-            </View>
+          <View style={styles.heroMetaRow}>
+            <Text style={styles.heroMetaText}>{activeEvents.length} live now</Text>
+            <View style={styles.heroMetaDot} />
+            <Text style={styles.heroMetaText}>{upcomingEvents.length} coming up</Text>
           </View>
         </View>
       </InfoCard>
@@ -101,53 +97,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  heroAccent: {
-    alignSelf: "stretch",
-    backgroundColor: mobileTheme.colors.lime,
-    height: 2,
-    marginBottom: 2,
-  },
   heroBand: {
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderColor: mobileTheme.colors.limeBorder,
     borderRadius: mobileTheme.radius.scene,
     borderWidth: 1,
-    gap: 16,
-    overflow: "hidden",
+    gap: 12,
     padding: 18,
   },
   heroCopy: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "700",
-    lineHeight: 24,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
+    lineHeight: mobileTheme.typography.lineHeights.subtitle,
   },
-  heroDivider: {
-    alignSelf: "stretch",
-    backgroundColor: mobileTheme.colors.borderDefault,
-    width: 1,
+  heroMetaDot: {
+    backgroundColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    height: 4,
+    width: 4,
   },
-  heroStat: {
-    flex: 1,
-    gap: 4,
-  },
-  heroStatLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  heroStats: {
-    alignItems: "stretch",
+  heroMetaRow: {
+    alignItems: "center",
     flexDirection: "row",
-    gap: 14,
+    gap: 8,
   },
-  heroStatValue: {
-    color: mobileTheme.colors.lime,
-    fontSize: 28,
-    fontVariant: ["tabular-nums"],
-    fontWeight: "800",
-    lineHeight: 30,
+  heroMetaText: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   retryButton: {
     alignSelf: "flex-start",

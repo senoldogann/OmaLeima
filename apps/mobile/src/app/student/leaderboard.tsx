@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 
@@ -32,6 +32,27 @@ const getFreshnessBadge = (refreshedAt: string | null): { label: string; state: 
   refreshedAt === null
     ? { label: "refresh pending", state: "pending" }
     : { label: "refreshed", state: "ready" };
+
+const getPodiumHeight = (rank: number): number => {
+  if (rank === 1) return 166;
+  if (rank === 2) return 134;
+  return 118;
+};
+
+const getPodiumInitials = (value: string | null, rank: number): string => {
+  const source = value?.trim() ?? `Student ${rank}`;
+  const parts = source.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return `${rank}`;
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+};
 
 export default function StudentLeaderboardScreen() {
   const isFocused = useIsFocused();
@@ -80,6 +101,8 @@ export default function StudentLeaderboardScreen() {
 
   const top10 = leaderboardQuery.data?.top10 ?? [];
   const currentUser = leaderboardQuery.data?.currentUser ?? null;
+  const podiumEntries = top10.slice(0, 3);
+  const standingsEntries = top10.slice(3);
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const leaderboardVersion = leaderboardQuery.data?.version ?? null;
   const freshness = getFreshnessBadge(leaderboardRefreshedAt);
@@ -158,9 +181,19 @@ export default function StudentLeaderboardScreen() {
                 />
                 <StatusBadge label={freshness.label} state={freshness.state} />
               </View>
-              <Text selectable style={styles.bodyText}>
-                {selectedEvent.city} · Starts {formatDateTime(selectedEvent.startAt)}
-              </Text>
+              <View style={styles.summaryBand}>
+                <View style={styles.summaryMetric}>
+                  <Text selectable style={styles.summaryMetricValue}>{selectedEvent.city}</Text>
+                  <Text selectable style={styles.summaryMetricLabel}>city</Text>
+                </View>
+                <View style={styles.summaryDivider} />
+                <View style={styles.summaryMetric}>
+                  <Text selectable numberOfLines={1} style={styles.summaryMetricValue}>
+                    {formatDateTime(selectedEvent.startAt)}
+                  </Text>
+                  <Text selectable style={styles.summaryMetricLabel}>starts</Text>
+                </View>
+              </View>
               <Text selectable style={styles.metaText}>
                 {leaderboardRefreshedAt === null
                   ? "Leaderboard has not refreshed yet."
@@ -169,7 +202,11 @@ export default function StudentLeaderboardScreen() {
             </View>
           ) : null}
 
-          <View style={styles.eventSelector}>
+          <ScrollView
+            contentContainerStyle={styles.eventSelector}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          >
             {events.map((event) => (
               <Pressable
                 key={event.id}
@@ -183,7 +220,7 @@ export default function StudentLeaderboardScreen() {
                 <Text style={styles.eventChipMeta}>{event.timelineState.toLowerCase()}</Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
         </InfoCard>
       ) : null}
 
@@ -218,16 +255,67 @@ export default function StudentLeaderboardScreen() {
       ) : null}
 
       {top10.length > 0 ? (
-        <InfoCard eyebrow="Top 10" title="Event ranking">
-          <View style={styles.listGroup}>
-            {top10.map((entry) => (
-              <LeaderboardEntryCard
-                key={`${entry.studentId}-${entry.rank}`}
-                entry={entry}
-                isCurrentUser={entry.studentId === studentId}
-              />
-            ))}
-          </View>
+        <InfoCard eyebrow="Top 10" title="Standings">
+          {podiumEntries.length > 0 ? (
+            <View style={styles.podiumSection}>
+              <Text style={styles.sectionKicker}>Top three</Text>
+              <View style={styles.podiumRow}>
+                {podiumEntries
+                  .slice()
+                  .sort((left, right) => {
+                    const visualOrder: Record<number, number> = { 2: 0, 1: 1, 3: 2 };
+                    return (visualOrder[left.rank] ?? left.rank) - (visualOrder[right.rank] ?? right.rank);
+                  })
+                  .map((entry) => (
+                    <View
+                      key={`podium-${entry.studentId}-${entry.rank}`}
+                      style={[
+                        styles.podiumCard,
+                        {
+                          height: getPodiumHeight(entry.rank),
+                        },
+                        entry.rank === 1 ? styles.podiumCardFirst : null,
+                        entry.studentId === studentId ? styles.podiumCardCurrent : null,
+                      ]}
+                    >
+                      <View style={styles.podiumRankBubble}>
+                        <Text style={styles.podiumRankText}>#{entry.rank}</Text>
+                      </View>
+                      <View style={styles.podiumAvatar}>
+                        <Text style={styles.podiumAvatarText}>
+                          {getPodiumInitials(entry.displayName, entry.rank)}
+                        </Text>
+                      </View>
+                      <Text numberOfLines={1} style={styles.podiumName}>
+                        {entry.displayName ?? `Student ${entry.rank}`}
+                      </Text>
+                      <Text style={styles.podiumScore}>{entry.stampCount}</Text>
+                      <Text style={styles.podiumScoreLabel}>leima</Text>
+                      {entry.studentId === studentId ? <StatusBadge label="you" state="ready" /> : null}
+                    </View>
+                  ))}
+              </View>
+            </View>
+          ) : null}
+
+          {standingsEntries.length > 0 ? (
+            <View style={styles.listGroup}>
+              <Text style={styles.sectionKicker}>Standings</Text>
+              {standingsEntries.map((entry) => (
+                <LeaderboardEntryCard
+                  key={`${entry.studentId}-${entry.rank}`}
+                  entry={entry}
+                  isCurrentUser={entry.studentId === studentId}
+                />
+              ))}
+            </View>
+          ) : null}
+
+          {podiumEntries.length > 0 && standingsEntries.length === 0 ? (
+            <Text selectable style={styles.metaText}>
+              More entries appear here once the event gets more valid leima scans.
+            </Text>
+          ) : null}
 
           {currentUser !== null && !top10.some((entry) => entry.studentId === currentUser.studentId) ? (
             <View style={styles.currentUserSection}>
@@ -255,13 +343,14 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   currentUserLabel: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
@@ -272,46 +361,128 @@ const styles = StyleSheet.create({
   eventChip: {
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.card,
-    gap: 4,
-    minWidth: 120,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 6,
+    marginRight: 8,
+    minWidth: 148,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     ...interactiveSurfaceShadowStyle,
   },
   eventChipMeta: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   eventChipTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
   },
   eventSelector: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    paddingRight: 4,
   },
   listGroup: {
     gap: 10,
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  podiumAvatar: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL4,
+    borderRadius: 999,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
+  },
+  podiumAvatarText: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  podiumCard: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.scene,
+    flex: 1,
+    gap: 8,
+    justifyContent: "flex-end",
+    maxWidth: 122,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    ...interactiveSurfaceShadowStyle,
+  },
+  podiumCardCurrent: {
+    backgroundColor: mobileTheme.colors.limeSurface,
+  },
+  podiumCardFirst: {
+    backgroundColor: mobileTheme.colors.surfaceL3,
+  },
+  podiumName: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+    textAlign: "center",
+  },
+  podiumRankBubble: {
+    backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  podiumRankText: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+  },
+  podiumRow: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    gap: 10,
+  },
+  podiumScore: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
+    fontVariant: ["tabular-nums"],
+    lineHeight: mobileTheme.typography.lineHeights.title,
+  },
+  podiumScoreLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+  },
+  podiumSection: {
+    gap: 12,
   },
   screenHeader: {
-    gap: 6,
+    gap: 8,
     marginBottom: 4,
   },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.titleLarge,
+    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
     letterSpacing: -0.8,
+  },
+  sectionKicker: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   secondaryButton: {
     alignSelf: "flex-start",
@@ -325,13 +496,43 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
   selectedEventChip: {
     backgroundColor: mobileTheme.colors.limeSurface,
   },
   selectedEventSummary: {
-    gap: 8,
+    gap: 10,
+  },
+  summaryBand: {
+    alignItems: "stretch",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.card,
+    flexDirection: "row",
+    gap: 12,
+    padding: 14,
+  },
+  summaryDivider: {
+    alignSelf: "stretch",
+    backgroundColor: mobileTheme.colors.borderDefault,
+    width: 1,
+  },
+  summaryMetric: {
+    flex: 1,
+    gap: 4,
+  },
+  summaryMetricLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  summaryMetricValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
 });

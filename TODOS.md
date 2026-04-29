@@ -27,11 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (QR + Rewards Polish Pass)
+## Current Todos (Event Discovery + Leaderboard Pass)
 
-- [x] Review the current active-event QR scene and rewards density again.
-- [x] Replace the rotating QR indicator with a calmer frame treatment.
-- [x] Fix the clipped `0 leimat` reward hero number.
-- [x] Convert rewards event cards into a horizontal rail.
+- [x] Review the current event discovery route and leaderboard hierarchy again.
+- [x] Fix student event detail navigation.
+- [x] Tighten event discovery hero and card density.
+- [x] Redesign leaderboard into a stronger standings view.
 - [x] Run mobile lint, typecheck, and export validation.
+- [x] Sanity-check at least one updated local route in the browser.
 - [x] Update `PROGRESS.md` with the new handoff note.

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { StatusBadge } from "@/components/status-badge";
+import { mobileTheme } from "@/features/foundation/theme";
 
 import type { LeaderboardEntry } from "@/features/leaderboard/types";
 
@@ -57,25 +58,23 @@ export const LeaderboardEntryCard = ({ entry, isCurrentUser }: LeaderboardEntryC
 const styles = StyleSheet.create({
   card: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: mobileTheme.radius.card,
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
   },
   copyGroup: {
     flex: 1,
     gap: 4,
   },
   currentUserCard: {
-    borderColor: "#1D4ED8",
-    backgroundColor: "#0B1220",
+    backgroundColor: mobileTheme.colors.limeSurface,
   },
   currentUserRankBubble: {
-    backgroundColor: "#1D4ED8",
+    backgroundColor: mobileTheme.colors.lime,
   },
   leftGroup: {
     alignItems: "center",
@@ -84,9 +83,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   metaText: {
-    color: "#94A3B8",
-    fontSize: 12,
-    lineHeight: 17,
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
   nameRow: {
     alignItems: "center",
@@ -95,39 +95,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   nameText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     flexShrink: 1,
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
   },
   rankBubble: {
     alignItems: "center",
-    backgroundColor: "#1E293B",
+    backgroundColor: mobileTheme.colors.surfaceL4,
     borderRadius: 999,
     justifyContent: "center",
     minWidth: 44,
     paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   rankText: {
-    color: "#F8FAFC",
-    fontSize: 13,
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
     fontVariant: ["tabular-nums"],
-    fontWeight: "700",
   },
   scoreGroup: {
     alignItems: "flex-end",
     minWidth: 52,
   },
   scoreLabel: {
-    color: "#94A3B8",
-    fontSize: 12,
-    lineHeight: 16,
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
   scoreText: {
-    color: "#F8FAFC",
-    fontSize: 18,
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
     fontVariant: ["tabular-nums"],
-    fontWeight: "800",
   },
 });

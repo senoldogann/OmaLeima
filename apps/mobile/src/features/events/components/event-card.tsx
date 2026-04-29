@@ -48,10 +48,13 @@ const getRegistrationBadge = (
   return { label: "not joined", state: "pending" };
 };
 
-const formatCapacity = (event: StudentEventSummary): string =>
-  event.maxParticipants === null ? "Open capacity" : `${event.maxParticipants} participant cap`;
+const formatSupportLine = (event: StudentEventSummary): string => {
+  if (event.maxParticipants === null) {
+    return `Join before ${formatDateTime(event.joinDeadlineAt)}`;
+  }
 
-const formatDeadline = (event: StudentEventSummary): string => `Join deadline ${formatDateTime(event.joinDeadlineAt)}`;
+  return `${event.maxParticipants} cap • join before ${formatDateTime(event.joinDeadlineAt)}`;
+};
 
 export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
   const timelineBadge = getTimelineBadge(event);
@@ -74,9 +77,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
             <View style={styles.heroCopy}>
               <Text style={styles.heroKicker}>{event.country}</Text>
-              <Text style={styles.heroTimeline}>
-                {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
-              </Text>
+              <Text style={styles.heroTimeline}>{formatDateTime(event.startAt)}</Text>
             </View>
           </View>
         </ImageBackground>
@@ -86,14 +87,18 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
         </Text>
 
         <View style={styles.metaGroup}>
-          <Text style={styles.metaLine}>{formatDeadline(event)}</Text>
-          <Text style={styles.metaLine}>{formatCapacity(event)}</Text>
-          <Text style={styles.metaLine}>Minimum leimat required: {event.minimumStampsRequired}</Text>
+          <Text style={styles.metaLine}>{event.city}</Text>
+          <Text style={styles.metaLine}>{formatSupportLine(event)}</Text>
+          {event.minimumStampsRequired > 0 ? (
+            <Text style={styles.metaLine}>
+              {event.minimumStampsRequired} leima needed before rewards unlock
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.actionRow}>
           <Text style={styles.actionText}>Open event</Text>
-          <Text style={styles.actionMeta}>Venues, reward path, and join rules live here.</Text>
+          <Text style={styles.actionMeta}>Route, venues, and reward path.</Text>
         </View>
       </InfoCard>
     </Pressable>
