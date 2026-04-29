@@ -4,11 +4,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/private-pilot-final-dry-run` branch.
-- [x] Update `REVIEW.md` for the final dry-run slice.
+- [x] Create `feature/pilot-secret-hygiene-audit` branch.
+- [x] Update `REVIEW.md` for the secret-hygiene slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Add a hosted final dry-run script that reads the Desktop operator credential file.
-- [x] Add a root wrapper for the new dry-run command.
-- [x] Run focused validation, including the real hosted dry-run and the hosted hygiene audit.
-- [x] Update owner-facing docs with the new command and what it does not prove.
+- [x] Extract the shared Desktop credential parser/helper.
+- [x] Add the local pilot secret-hygiene audit and root wrapper.
+- [x] Run focused validation, including the real hygiene audit and the existing final dry-run.
+- [x] Update owner-facing docs with the new command and what it checks.
 - [x] Update `PROGRESS.md` with the new handoff note.
