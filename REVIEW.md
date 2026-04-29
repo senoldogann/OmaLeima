@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Bring real event imagery into the mobile redesign. Use downloaded nightlife / social cover photos inside student event cards and event detail hero surfaces, keep the black-lime-white STARK palette, and preserve the current business logic.
+- **Scope:** Trim repeated numbers from the rewards flow, seed temporary hosted showcase events so the student QR route becomes visible again, and do one more pass on the current mobile preview gaps before continuing the redesign.
 
 ## Affected Files
 
@@ -15,42 +15,39 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `TODOS.md`
 - `PROGRESS.md`
 - `docs/CANVA_ASSET_HANDOFF.md`
-- `apps/mobile/src/features/events/types.ts`
-- `apps/mobile/src/features/events/student-events.ts`
-- `apps/mobile/src/features/events/event-visuals.ts`
-- `apps/mobile/src/features/events/components/event-card.tsx`
-- `apps/mobile/src/app/student/events/index.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
+- `apps/mobile/src/app/student/rewards.tsx`
+- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/admin/package.json`
+- `apps/admin/scripts/bootstrap-showcase-events.ts`
 
 ## Risks
 
-- The downloaded cover assets are local JPG files, but the failed Canva exports were HTML payloads saved with `.jpg` suffixes. Those bad files must not stay in the app bundle.
-- Event cards currently have no `coverImageUrl` in the summary query, so adding image presentation requires a small data-shape update.
-- Remote `cover_image_url` may be null or broken, so event visuals need a deterministic local fallback.
-- Image-backed hero sections can hurt text contrast if overlays are too weak, especially on web export.
-- This pass touches signed-in event discovery surfaces, so static validation must run again.
+- Rewards currently repeats numeric information at three levels: page summary, event hero, and tier rows. Over-trimming could hide useful progress context.
+- Hosted showcase seeding must not disturb existing pilot operator accounts or core fixtures.
+- An active showcase event has to be public, joined, and currently within its live window or the student QR screen will still stay empty.
+- These showcase events are temporary, so the bootstrap path should be deterministic and easy to delete later.
 
 ## Dependencies
 
 - Existing STARK redesign branch state in `feature/full-ui-redesign-foundation`
-- Local event-cover assets downloaded into `apps/mobile/assets/event-covers/`
-- Existing event detail query already exposes `cover_image_url`
-- Canva poster drafts already generated and kept as external links for marketing / in-app copy surfaces
+- Existing hosted project access through Supabase CLI and the shared admin helpers
+- Pilot organizer/scanner setup already prepared in previous slices
+- Student QR route logic in `apps/mobile/src/features/qr/student-qr.ts`
 
 ## Existing Logic Checked
 
-- `StudentEventDetail` already includes `coverImageUrl`, but `StudentEventSummary` does not.
-- `event-card.tsx` still uses a synthetic hero block (`heroBand`, `heroGlow`) instead of a real image cover.
-- `student/events/[eventId].tsx` still uses a text-only hero with a decorative glow.
-- The best low-risk change is to use local fallback covers plus the existing remote `cover_image_url` field when available.
+- `student/rewards` currently shows total stamps, event count, claimable count, per-event stamp ratio, and per-tier inventory/threshold numbers at once.
+- `RewardProgressCard` can carry the same state with fewer raw counts if the summary and tier copy do more work.
+- `student/active-event` only needs one active public registered event to show a live QR path.
+- Hosted helper code already exists for project ref and service-role access, so a small showcase seeding script can reuse that path safely.
 
 ## Review Outcome
 
-Keep the STARK palette and typography, but shift event discovery onto real cover art:
+Do a practical preview pass:
 
-- add `coverImageUrl` to summary data
-- create one deterministic event-cover helper
-- use remote cover URLs when present
-- fall back to local nightlife / social imagery when remote covers are missing
-- keep strong dark overlays so text stays readable
-- record the Canva poster outputs separately instead of forcing broken exports into the app bundle
+- simplify rewards so numbers appear once where they matter
+- seed a few temporary hosted showcase events with one live event for QR preview
+- register active student accounts into those showcase events
+- leave the bootstrap path deterministic so cleanup later is easy
+- re-run validation and then reassess the remaining design gaps from a real visible QR/event state

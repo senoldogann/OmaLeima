@@ -77,6 +77,26 @@ const getInventoryCopy = (tier: StudentRewardTierProgress): string => {
   return `${tier.remainingInventory} rewards left`;
 };
 
+const getEventHeroCopy = (event: StudentRewardEventProgress): string => {
+  if (event.claimableTierCount > 0) {
+    return `${event.claimableTierCount} reward${event.claimableTierCount === 1 ? "" : "s"} ready for claim.`;
+  }
+
+  if (event.tiers.some((tier) => tier.state === "MORE_NEEDED")) {
+    const nearestLockedTier = event.tiers.find((tier) => tier.state === "MORE_NEEDED") ?? null;
+
+    if (nearestLockedTier !== null) {
+      return `${nearestLockedTier.missingStampCount} leima left to the next unlock.`;
+    }
+  }
+
+  if (event.claimedTierCount > 0) {
+    return `${event.claimedTierCount} reward${event.claimedTierCount === 1 ? "" : "s"} already claimed.`;
+  }
+
+  return "Collect leimas to open the reward path.";
+};
+
 const getEventSummaryCopy = (event: StudentRewardEventProgress): string => {
   if (event.tiers.length === 0) return "No reward tiers published yet.";
   if (event.claimableTierCount > 0) {
@@ -123,7 +143,6 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       <View style={styles.stampHero}>
         <Text style={styles.stampNumber}>{event.stampCount}</Text>
         <View style={styles.stampMeta}>
-          <Text style={styles.stampDivider}>/ {event.minimumStampsRequired}</Text>
           <Text style={styles.stampUnit}>leimat</Text>
           {hasClaimable ? (
             <View style={styles.claimableBadge}>
@@ -145,6 +164,8 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
           ]}
         />
       </View>
+
+      <Text style={styles.heroCopy}>{getEventHeroCopy(event)}</Text>
 
       {/* Summary */}
       <Text style={styles.summaryText}>{getEventSummaryCopy(event)}</Text>
@@ -207,10 +228,12 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
                   <StatusBadge label={getTierBadgeLabel(tier.state)} state={getTierBadgeState(tier.state)} />
                 </View>
                 <Text style={styles.tierMeta}>
-                  {tier.requiredStampCount} leimat · {tier.rewardType.toLowerCase()}
+                  {tier.rewardType.toLowerCase()}
                 </Text>
                 <Text style={styles.tierCopy}>{getTierCopy(tier)}</Text>
-                <Text style={styles.tierInventory}>{getInventoryCopy(tier)}</Text>
+                {tier.inventoryTotal !== null ? (
+                  <Text style={styles.tierInventory}>{getInventoryCopy(tier)}</Text>
+                ) : null}
                 {tier.description ? <Text style={styles.tierCopy}>{tier.description}</Text> : null}
                 {tier.claimInstructions ? <Text style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
               </View>
@@ -251,14 +274,8 @@ const styles = StyleSheet.create({
   },
   stampMeta: {
     gap: 4,
-    paddingBottom: 10,
+    paddingBottom: 12,
     alignItems: "flex-start",
-  },
-  stampDivider: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.semibold,
-    fontSize: mobileTheme.typography.sizes.subtitle,
-    fontVariant: ["tabular-nums"],
   },
   stampUnit: {
     color: mobileTheme.colors.textDim,
@@ -266,6 +283,12 @@ const styles = StyleSheet.create({
     fontSize: mobileTheme.typography.sizes.caption,
     letterSpacing: 0.6,
     textTransform: "uppercase",
+  },
+  heroCopy: {
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   claimableBadge: {
     backgroundColor: mobileTheme.colors.lime,

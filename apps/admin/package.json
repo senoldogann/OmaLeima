@@ -9,6 +9,7 @@
     "audit:hosted-setup": "tsx scripts/audit-hosted-setup.ts",
     "audit:pilot-operator-hygiene": "tsx scripts/audit-pilot-operator-hygiene.ts",
     "audit:pilot-secret-hygiene": "tsx scripts/audit-pilot-secret-hygiene.ts",
+    "bootstrap:showcase-events": "tsx scripts/bootstrap-showcase-events.ts",
     "bootstrap:pilot-operator-accounts": "tsx scripts/bootstrap-pilot-operator-accounts.ts",
     "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",

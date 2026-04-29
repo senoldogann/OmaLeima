@@ -24,6 +24,10 @@ export default function StudentRewardsScreen() {
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
   const claimableCount = events.filter((e) => e.claimableTierCount > 0).length;
   const totalStamps = events.reduce((acc, e) => acc + e.stampCount, 0);
+  const summaryLabel =
+    registeredEventCount === 0
+      ? "Leimat appear here after your first joined event."
+      : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
 
   return (
     <AppScreen>
@@ -36,14 +40,7 @@ export default function StudentRewardsScreen() {
       <View style={styles.summaryHero}>
         <View style={styles.summaryLead}>
           <Text style={styles.summaryNumber}>{totalStamps}</Text>
-          <Text style={styles.summaryLabel}>leimat collected</Text>
-        </View>
-        <View style={styles.summaryMetaRow}>
-          <Text style={styles.summaryMetaText}>{registeredEventCount} event{registeredEventCount === 1 ? "" : "s"}</Text>
-          <View style={styles.summaryMetaDivider} />
-          <Text style={[styles.summaryMetaText, claimableCount > 0 ? styles.summaryMetaTextAccent : null]}>
-            {claimableCount} claimable
-          </Text>
+          <Text style={styles.summaryLabel}>{summaryLabel}</Text>
         </View>
       </View>
 
@@ -201,26 +198,5 @@ const styles = StyleSheet.create({
     letterSpacing: -2.2,
     fontVariant: ["tabular-nums"],
     lineHeight: mobileTheme.typography.lineHeights.number,
-  },
-  summaryMetaDivider: {
-    backgroundColor: mobileTheme.colors.borderStrong,
-    borderRadius: 999,
-    height: 4,
-    width: 4,
-  },
-  summaryMetaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  summaryMetaText: {
-    color: mobileTheme.colors.textSecondary,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.bodySmall,
-    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-  summaryMetaTextAccent: {
-    color: mobileTheme.colors.lime,
   },
 });

@@ -27,14 +27,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Event Imagery Pass)
+## Current Todos (Rewards + Showcase Preview Pass)
 
-- [x] Review the current student event card and event detail surfaces.
-- [x] Remove the broken Canva-export placeholder files from the local asset folders.
-- [x] Add a typed event-cover helper with deterministic local fallback assets.
-- [x] Extend the student event summary query with `cover_image_url`.
-- [x] Render real cover imagery in `event-card.tsx`.
-- [x] Render real cover imagery in `student/events/[eventId].tsx`.
-- [x] Add a short Canva / imagery handoff doc with poster links and cover-photo sources.
+- [x] Review the current rewards, QR, and event preview surfaces again.
+- [x] Remove repeated numbers from `student/rewards` summary and event cards.
+- [x] Add a hosted showcase event bootstrap script.
+- [x] Seed a few temporary showcase events and register active student profiles.
+- [x] Confirm the QR route can become visible from seeded hosted data.
 - [x] Run mobile lint, typecheck, and export validation.
-- [x] Update `PROGRESS.md` with the event-imagery handoff note.
+- [x] Run admin lint, typecheck, and showcase bootstrap validation.
+- [x] Update `PROGRESS.md` with the preview-pass handoff note.
