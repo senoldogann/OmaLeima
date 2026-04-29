@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { EventCard } from "@/features/events/components/event-card";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useSession } from "@/providers/session-provider";
@@ -20,6 +21,7 @@ export default function StudentEventsScreen() {
   const activeEvents = eventsQuery.data?.activeEvents ?? [];
   const upcomingEvents = eventsQuery.data?.upcomingEvents ?? [];
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
+  const heroCoverSource = getEventCoverSource(null, "event-discovery-hero");
 
   const openEventDetail = (eventId: string): void => {
     router.push({
@@ -31,16 +33,19 @@ export default function StudentEventsScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="Student" motionIndex={0} title="Event discovery">
-        <View style={styles.heroBand}>
-          <Text style={styles.heroCopy}>
-            Pick the next student night, check the route, and open the event before the first scan starts.
-          </Text>
-          <View style={styles.heroMetaRow}>
-            <Text style={styles.heroMetaText}>{activeEvents.length} live now</Text>
-            <View style={styles.heroMetaDot} />
-            <Text style={styles.heroMetaText}>{upcomingEvents.length} coming up</Text>
+        <ImageBackground imageStyle={styles.heroImage} source={heroCoverSource} style={styles.heroBand}>
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Text style={styles.heroCopy}>
+              Pick the next student night, check the route, and open the event before the first scan starts.
+            </Text>
+            <View style={styles.heroMetaRow}>
+              <Text style={styles.heroMetaText}>{activeEvents.length} live now</Text>
+              <View style={styles.heroMetaDot} />
+              <Text style={styles.heroMetaText}>{upcomingEvents.length} coming up</Text>
+            </View>
           </View>
-        </View>
+        </ImageBackground>
       </InfoCard>
 
       {eventsQuery.error ? (
@@ -98,18 +103,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   heroBand: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.limeBorder,
     borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
-    gap: 12,
-    padding: 18,
+    minHeight: 172,
+    overflow: "hidden",
+    position: "relative",
   },
   heroCopy: {
     color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.semibold,
     fontSize: mobileTheme.typography.sizes.subtitle,
     lineHeight: mobileTheme.typography.lineHeights.subtitle,
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 18,
+  },
+  heroImage: {
+    borderRadius: mobileTheme.radius.scene,
   },
   heroMetaDot: {
     backgroundColor: mobileTheme.colors.limeBorder,
@@ -123,10 +134,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   heroMetaText: {
-    color: mobileTheme.colors.textMuted,
+    color: mobileTheme.colors.textSecondary,
     fontFamily: mobileTheme.typography.families.medium,
     fontSize: mobileTheme.typography.sizes.bodySmall,
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.58)",
   },
   retryButton: {
     alignSelf: "flex-start",

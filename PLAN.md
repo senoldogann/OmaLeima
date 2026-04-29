@@ -6,43 +6,41 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Repair student event detail navigation and turn event discovery plus leaderboard into cleaner, more characterful surfaces without changing their validated data flows.
+- **Goal:** Strengthen visual identity on rewards, discovery, and profile while keeping the current stamp/reward logic intact and explicitly clarifying what the current backend rules really are.
 
 ## Architectural Decisions
 
 - Keep the current STARK direction and avoid another theme fork.
-- Use explicit Expo Router pathname navigation for event detail so links behave the same on web and native.
-- Event discovery should privilege one strong cover, one time/location line, and one action path per card.
-- Leaderboard should split into two layers:
-  - a compact selected-event / freshness header
-  - a podium-like top-three showcase plus a cleaner standings list
-- Stay in presentation/layout territory and avoid touching validated business logic.
+- Rewards should reuse the same event-image language as discovery and detail rather than inventing a separate art direction.
+- The horizontal rewards rail needs a subtle but explicit swipe cue so it does not read like a clipped vertical list.
+- Profile should expose a clean identity card on the main screen and move tag management into a modal sheet.
+- Stay in presentation/layout territory and avoid touching validated stamp business logic in this pass.
 
 ## Alternatives Considered
 
-- Keep relative routing and only massage the event list UI:
-  - rejected because the user already hit a real broken page; the navigation path itself has to be corrected
-- Make leaderboard more decorative with heavy 3D or animated flourishes:
-  - rejected because readability and ranking clarity matter more than spectacle
-- Replace the standings list entirely with only a podium:
-  - rejected because ranks 4-10 and current-user context still matter
+- Keep rewards cards text-only and only add a swipe label:
+  - rejected because the user explicitly wants more visual identity on the reward-event rail
+- Keep profile tags inline and just collapse them:
+  - rejected because the current issue is clutter; a dedicated modal is the clearer interaction
+- Change stamp quota logic immediately:
+  - rejected because the user asked a product-rule question, but the safe first step is to confirm and explain the current implementation before a schema/RPC change
 
 ## Edge Cases
 
-- Event detail navigation must still work when ids contain hyphens or when opened from web.
-- Leaderboard must degrade gracefully when only one or two entries exist.
-- If current user is outside top three, the personal rank still needs to remain visible and not feel lost.
-- Event cards cannot become so minimal that registration context disappears.
+- Rewards still need to look good when only one event exists in the rail.
+- Remote cover images can be absent, so fallback art has to remain deterministic.
+- The profile modal cannot trap the user in a disabled state if tag mutations fail.
+- The current stamp schema may not match the desired future product rule; that mismatch should be surfaced clearly, not papered over.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the event-discovery / leaderboard slice.
-- Fix event discovery navigation with explicit pathname routing.
-- Tighten `EventCard` metadata and the discovery hero.
-- Redesign leaderboard around a podium + standings split.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the rewards / discovery / profile slice.
+- Carry `coverImageUrl` into rewards and add an image-backed hero to reward cards.
+- Add a stronger swipe cue to the rewards rail.
+- Add an image-backed discovery hero.
+- Rework profile into avatar + identity + tag modal flow.
 - Verify mobile with:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run export:web`
-- Use the local browser to sanity-check at least one updated route after the code pass.
-- Update `PROGRESS.md` with the new handoff note and the next remaining design gaps.
+- Update `PROGRESS.md` with the visual pass and the clarified current stamp-rule note.

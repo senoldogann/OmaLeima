@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
+import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { AppScreen } from "@/components/app-screen";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
-import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import {
   useAttachDepartmentTagMutation,
   useCreateCustomDepartmentTagMutation,
@@ -15,14 +15,9 @@ import {
   useSetPrimaryDepartmentTagMutation,
   useStudentProfileOverviewQuery,
 } from "@/features/profile/student-profile";
-import type {
-  DepartmentTagSuggestion,
-  StudentProfileTag,
-} from "@/features/profile/types";
-import {
-  useRegisterPushDeviceMutation,
-  type PushDeviceRegistrationResult,
-} from "@/features/push/device-registration";
+import type { DepartmentTagSuggestion, StudentProfileTag } from "@/features/profile/types";
+import { useRegisterPushDeviceMutation, type PushDeviceRegistrationResult } from "@/features/push/device-registration";
+import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import { useSession } from "@/providers/session-provider";
 
 const createTagSummary = (count: number, remainingTagSlots: number): string => {
@@ -80,12 +75,28 @@ const createPushPreferenceSummary = (
   return createPushPermissionDetail(permissionState);
 };
 
+const createProfileInitials = (displayName: string | null, email: string): string => {
+  const source = (displayName ?? email).trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return "ST";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+};
+
 export default function StudentProfileScreen() {
   const { session } = useSession();
   const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
+  const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -131,9 +142,7 @@ export default function StudentProfileScreen() {
     await refreshPushPermissionStateAsync();
   };
 
-  const handleAttachSuggestedTagPress = async (
-    tag: DepartmentTagSuggestion
-  ): Promise<void> => {
+  const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
     if (studentId === null) {
       return;
     }
@@ -158,9 +167,7 @@ export default function StudentProfileScreen() {
     setCustomTitle("");
   };
 
-  const handleSetPrimaryTagPress = async (
-    tag: StudentProfileTag
-  ): Promise<void> => {
+  const handleSetPrimaryTagPress = async (tag: StudentProfileTag): Promise<void> => {
     if (studentId === null || tag.isPrimary) {
       return;
     }
@@ -179,13 +186,13 @@ export default function StudentProfileScreen() {
     await removeTagMutation.mutateAsync({
       studentId,
       tag,
-      remainingTags: selectedTags.filter(
-        (selectedTag) => selectedTag.linkId !== tag.linkId
-      ),
+      remainingTags: selectedTags.filter((selectedTag) => selectedTag.linkId !== tag.linkId),
     });
   };
 
   const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
+  const profileInitials =
+    profileOverview === null ? "ST" : createProfileInitials(profileOverview.displayName, profileOverview.email);
 
   return (
     <AppScreen>
@@ -205,24 +212,33 @@ export default function StudentProfileScreen() {
       {profileOverviewQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load profile">
           <Text selectable style={styles.bodyText}>{profileOverviewQuery.error.message}</Text>
-          <Pressable
-            onPress={() => void profileOverviewQuery.refetch()}
-            style={styles.primaryButton}
-          >
+          <Pressable onPress={() => void profileOverviewQuery.refetch()} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {profileOverview ? (
-        <InfoCard eyebrow="Account" title={profileOverview.displayName ?? "Student profile"}>
-          <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
-          <View style={styles.badgeRow}>
-            <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
-            {primaryTag ? (
-              <StatusBadge label={`primary: ${primaryTag.title}`} state="pending" />
-            ) : null}
+        <InfoCard eyebrow="Account" title="Student identity">
+          <View style={styles.profileHero}>
+            <View style={styles.avatarShell}>
+              <View style={styles.avatarCore}>
+                <Text selectable style={styles.avatarText}>{profileInitials}</Text>
+              </View>
+            </View>
+
+            <View style={styles.profileCopy}>
+              <Text selectable style={styles.profileName}>
+                {profileOverview.displayName ?? "Student profile"}
+              </Text>
+              <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
+              <View style={styles.badgeRow}>
+                <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
+                {primaryTag ? <StatusBadge label={`primary: ${primaryTag.title}`} state="pending" /> : null}
+              </View>
+            </View>
           </View>
+
           <View style={styles.accountMetaRow}>
             <View style={styles.accountMetaPill}>
               <Text selectable style={styles.accountMetaValue}>{selectedTags.length}</Text>
@@ -242,82 +258,18 @@ export default function StudentProfileScreen() {
 
       {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
         <InfoCard eyebrow="Tags" title="Department tags">
-          {selectedTags.length > 0 ? (
-            <View style={styles.stack}>
-              {selectedTags.map((tag) => (
-                <ProfileTagCard
-                  key={tag.linkId}
-                  tag={tag}
-                  isBusy={isTagMutationPending}
-                  onSetPrimary={handleSetPrimaryTagPress}
-                  onRemove={handleRemoveTagPress}
-                />
-              ))}
-            </View>
-          ) : (
-            <Text selectable style={styles.bodyText}>
-              No tags selected yet. Pick a suggestion or create one.
-            </Text>
-          )}
-
           <Text selectable style={styles.metaText}>
             {createTagSummary(selectedTags.length, remainingTagSlots)}
           </Text>
 
-          {suggestedTags.length > 0 ? (
-            <View style={styles.suggestionGroup}>
-              <Text style={styles.sectionLabel}>Suggestions</Text>
-              <View style={styles.suggestionList}>
-                {suggestedTags.map((tag) => (
-                  <Pressable
-                    key={tag.id}
-                    disabled={isTagMutationPending || remainingTagSlots === 0}
-                    onPress={() => void handleAttachSuggestedTagPress(tag)}
-                    style={[
-                      styles.suggestionChip,
-                      isTagMutationPending || remainingTagSlots === 0
-                        ? styles.disabledButton
-                        : null,
-                    ]}
-                  >
-                    <Text style={styles.suggestionTitle}>{tag.title}</Text>
-                    <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : null}
+          {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
-          {remainingTagSlots > 0 ? (
-            <View style={styles.createGroup}>
-              <Text style={styles.sectionLabel}>Need a custom one?</Text>
-              <TextInput
-                autoCapitalize="words"
-                editable={!isTagMutationPending}
-                onChangeText={setCustomTitle}
-                placeholder="Example: Tieto- ja viestintatekniikka"
-                placeholderTextColor="#64748B"
-                style={styles.input}
-                value={customTitle}
-              />
-              <Pressable
-                disabled={isTagMutationPending || customTitle.trim().length === 0}
-                onPress={() => void handleCreateCustomTagPress()}
-                style={[
-                  styles.secondaryButton,
-                  isTagMutationPending || customTitle.trim().length === 0
-                    ? styles.disabledButton
-                    : null,
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>Create custom tag</Text>
-              </Pressable>
+          <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.secondaryButton}>
+            <View style={styles.secondaryButtonRow}>
+              <Text style={styles.secondaryButtonText}>Manage tags</Text>
+              <AppIcon color={mobileTheme.colors.textPrimary} name="chevron-right" size={16} />
             </View>
-          ) : null}
-
-          {latestTagMutationError ? (
-            <Text selectable style={styles.errorText}>{latestTagMutationError}</Text>
-          ) : null}
+          </Pressable>
         </InfoCard>
       ) : null}
 
@@ -329,44 +281,125 @@ export default function StudentProfileScreen() {
           {createPushPreferenceSummary(diagnostics.permissionState, pushState)}
         </Text>
         {pushState !== null ? (
-          <Text
-            selectable
-            style={pushState.state === "error" ? styles.errorText : styles.metaText}
-          >
+          <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
             {pushState.detail}
           </Text>
         ) : null}
         <Pressable
-          style={[
-            styles.primaryButton,
-            registerPushMutation.isPending ? styles.disabledButton : null,
-          ]}
-          onPress={handleRegisterPushPress}
           disabled={registerPushMutation.isPending}
+          onPress={handleRegisterPushPress}
+          style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
         >
           <Text style={styles.primaryButtonText}>
-            {registerPushMutation.isPending
-              ? "Enabling notifications..."
-              : "Enable notifications"}
+            {registerPushMutation.isPending ? "Enabling notifications..." : "Enable notifications"}
           </Text>
         </Pressable>
       </InfoCard>
 
       <SignOutButton />
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsTagModalVisible(false)}
+        transparent
+        visible={isTagModalVisible}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>Profile tags</Text>
+                <Text style={styles.modalTitle}>Manage department tags</Text>
+              </View>
+              <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>Done</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              {selectedTags.length > 0 ? (
+                <View style={styles.stack}>
+                  {selectedTags.map((tag) => (
+                    <ProfileTagCard
+                      key={tag.linkId}
+                      isBusy={isTagMutationPending}
+                      onRemove={handleRemoveTagPress}
+                      onSetPrimary={handleSetPrimaryTagPress}
+                      tag={tag}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Text selectable style={styles.bodyText}>
+                  No tags selected yet. Pick a suggestion or create one.
+                </Text>
+              )}
+
+              {suggestedTags.length > 0 ? (
+                <View style={styles.suggestionGroup}>
+                  <Text style={styles.sectionLabel}>Suggestions</Text>
+                  <View style={styles.suggestionList}>
+                    {suggestedTags.map((tag) => (
+                      <Pressable
+                        key={tag.id}
+                        disabled={isTagMutationPending || remainingTagSlots === 0}
+                        onPress={() => void handleAttachSuggestedTagPress(tag)}
+                        style={[
+                          styles.suggestionChip,
+                          isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
+                        ]}
+                      >
+                        <Text style={styles.suggestionTitle}>{tag.title}</Text>
+                        <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {remainingTagSlots > 0 ? (
+                <View style={styles.createGroup}>
+                  <Text style={styles.sectionLabel}>Need a custom one?</Text>
+                  <TextInput
+                    autoCapitalize="words"
+                    editable={!isTagMutationPending}
+                    onChangeText={setCustomTitle}
+                    placeholder="Example: Tieto- ja viestintatekniikka"
+                    placeholderTextColor="#64748B"
+                    style={styles.input}
+                    value={customTitle}
+                  />
+                  <Pressable
+                    disabled={isTagMutationPending || customTitle.trim().length === 0}
+                    onPress={() => void handleCreateCustomTagPress()}
+                    style={[
+                      styles.secondaryButton,
+                      isTagMutationPending || customTitle.trim().length === 0 ? styles.disabledButton : null,
+                    ]}
+                  >
+                    <Text style={styles.secondaryButtonText}>Create custom tag</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   accountEmail: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "600",
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   accountMetaLabel: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     textTransform: "uppercase",
   },
   accountMetaPill: {
@@ -384,8 +417,33 @@ const styles = StyleSheet.create({
   },
   accountMetaValue: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  avatarCore: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.lime,
+    borderRadius: 999,
+    height: 72,
+    justifyContent: "center",
+    width: 72,
+  },
+  avatarShell: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 88,
+    justifyContent: "center",
+    width: 88,
+  },
+  avatarText: {
+    color: mobileTheme.colors.screenBase,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: 26,
+    lineHeight: 28,
   },
   badgeRow: {
     flexDirection: "row",
@@ -394,8 +452,9 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   createGroup: {
     gap: 10,
@@ -405,21 +464,79 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: "#FCA5A5",
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   input: {
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.button,
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.body,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  modalBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.66)",
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalCloseButton: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.surfaceL3,
+    borderRadius: 999,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  modalCloseText: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+  },
+  modalEyebrow: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+  },
+  modalHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  modalHeaderCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  modalScrollContent: {
+    gap: 16,
+    paddingBottom: 20,
+  },
+  modalSheet: {
+    backgroundColor: mobileTheme.colors.surfaceL1,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: 16,
+    maxHeight: "82%",
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+  },
+  modalTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
+    lineHeight: mobileTheme.typography.lineHeights.subtitle,
   },
   primaryButton: {
     alignItems: "center",
@@ -431,8 +548,23 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: mobileTheme.colors.screenBase,
-    fontSize: 14,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+  },
+  profileCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  profileHero: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+  },
+  profileName: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
+    lineHeight: mobileTheme.typography.lineHeights.subtitle,
   },
   screenHeader: {
     gap: 6,
@@ -440,29 +572,36 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.titleLarge,
     letterSpacing: -0.8,
+    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
   },
   sectionLabel: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   secondaryButton: {
     alignItems: "center",
+    alignSelf: "flex-start",
     backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.button,
     paddingHorizontal: 14,
     paddingVertical: 12,
     ...interactiveSurfaceShadowStyle,
   },
+  secondaryButtonRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
   secondaryButtonText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
   stack: {
     gap: 12,
@@ -482,7 +621,8 @@ const styles = StyleSheet.create({
   },
   suggestionTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
 });

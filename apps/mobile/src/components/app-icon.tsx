@@ -7,7 +7,8 @@ type AppIconName =
   | "bell"
   | "scan"
   | "history"
-  | "calendar";
+  | "calendar"
+  | "chevron-right";
 
 type AppIconProps = {
   name: AppIconName;
@@ -122,6 +123,19 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           <Circle cx="9" cy="13" fill={color} r="1" />
           <Circle cx="12" cy="13" fill={color} opacity={0.66} r="1" />
           <Circle cx="15" cy="13" fill={color} opacity={0.42} r="1" />
+        </Svg>
+      );
+    case "chevron-right":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="m9 6 6 6-6 6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
         </Svg>
       );
   }

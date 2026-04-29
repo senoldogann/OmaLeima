@@ -96,10 +96,16 @@ export default function StudentRewardsScreen() {
       {events.length > 0 ? (
         <View style={styles.railSection}>
           <View style={styles.railHeader}>
-            <Text style={styles.railTitle}>Event rewards</Text>
-            <Text style={styles.railMeta}>
-              {events.length} event{events.length === 1 ? "" : "s"}
-            </Text>
+            <View style={styles.railHeaderCopy}>
+              <Text style={styles.railTitle}>Event rewards</Text>
+              <Text style={styles.railMeta}>
+                {events.length} event{events.length === 1 ? "" : "s"}
+              </Text>
+            </View>
+            <View style={styles.railHint}>
+              <Text style={styles.railHintText}>Swipe</Text>
+              <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={16} />
+            </View>
           </View>
 
           <ScrollView
@@ -191,6 +197,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
+  },
+  railHeaderCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  railHint: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
+  railHintText: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
   railMeta: {
     color: mobileTheme.colors.textMuted,

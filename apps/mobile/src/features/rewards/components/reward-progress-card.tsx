@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import type { AppReadinessState } from "@/types/app";
 
@@ -124,6 +125,7 @@ const getMemoryItems = (count: number): MemoryItem[] => {
 
 export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => {
   const hasClaimable = event.claimableTierCount > 0;
+  const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
   return (
     <InfoCard
@@ -131,13 +133,23 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       title={event.name}
       variant={hasClaimable ? "scene" : "card"}
     >
+      <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
+        <View style={styles.heroOverlay} />
+        <View style={styles.heroContent}>
+          <View style={styles.badges}>
+            <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
+            {hasClaimable ? <StatusBadge label="claimable" state="ready" /> : null}
+            {event.claimedTierCount > 0 ? <StatusBadge label="claimed" state="ready" /> : null}
+            {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
+          </View>
+          <Text style={styles.heroDate}>
+            {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+          </Text>
+        </View>
+      </ImageBackground>
+
       {/* Badges */}
-      <View style={styles.badges}>
-        <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
-        {event.claimableTierCount > 0 ? <StatusBadge label="claimable" state="ready" /> : null}
-        {event.claimedTierCount > 0 ? <StatusBadge label="claimed" state="ready" /> : null}
-        {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
-      </View>
+      
 
       {/* Stamp count — big number hero */}
       <View style={styles.stampHero}>
@@ -256,6 +268,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
+  },
+  heroBand: {
+    borderRadius: mobileTheme.radius.scene,
+    minHeight: 148,
+    overflow: "hidden",
+    position: "relative",
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  heroDate: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  heroImage: {
+    borderRadius: mobileTheme.radius.scene,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.54)",
   },
 
   // --- Stamp hero ---
