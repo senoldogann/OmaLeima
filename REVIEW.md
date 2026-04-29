@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Add a temporary stamp-animation preview trigger, push leaderboard closer to a true podium/standings scene, and sanity-check whether profile needs a separate history surface.
+- **Scope:** Fix the new mobile business render regression, simplify login into an onboarding-first entry flow, improve sign-in loading feedback, and harden the hosted admin login route so anonymous visitors do not get a blank server error page.
 
 ## Affected Files
 
@@ -15,39 +15,43 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `TODOS.md`
 - `PROGRESS.md`
 - `apps/mobile/src/features/foundation/components/auto-advancing-rail.tsx`
-- `apps/mobile/src/features/events/event-visuals.ts`
-- `apps/mobile/src/app/student/events/index.tsx`
-- `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/app/student/leaderboard.tsx`
+- `apps/mobile/src/app/auth/login.tsx`
+- `apps/mobile/src/features/auth/components/login-hero.tsx`
+- `apps/mobile/src/features/auth/components/google-sign-in-button.tsx`
+- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
 - `apps/mobile/src/app/business/scanner.tsx`
-- `apps/mobile/src/features/leaderboard/components/leaderboard-entry-card.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/history.tsx`
+- `apps/mobile/src/app/business/events.tsx`
+- `apps/admin/src/app/login/page.tsx`
+- `apps/admin/src/features/auth/access.ts`
 
 ## Risks
 
-- The preview trigger must stay clearly temporary and must not contaminate the real scanner flow or backend state.
-- Leaderboard can easily become more decorative but less legible if podium/list hierarchy is overworked.
-- Adding a profile history entry prematurely could duplicate rewards/events rather than clarify the product.
+- `Link asChild` plus style arrays can crash Expo Router again if we only patch one screen and leave the same pattern elsewhere.
+- The login simplification can accidentally hide the difference between student and business auth flows if the mode switch becomes too abstract.
+- A first-run onboarding pass must stay lightweight and not become a second wall of text after the user explicitly asked for less copy.
+- Hosted admin login should not silently mask auth problems; it needs to stay debuggable even if we make the anonymous path more resilient.
 
 ## Dependencies
 
 - Existing STARK redesign branch state in `feature/full-ui-redesign-foundation`
-- Existing discovery hero imagery helper
-- Current profile tag modal flow
-- Current event detail route structure
+- Existing sign-in flows in `signInWithGoogleAsync`, password auth, and `fetchSessionAccessAsync`
+- Existing `AutoAdvancingRail` helper for simple onboarding motion
+- Current hosted Supabase admin auth routing in the Next.js app
 
 ## Existing Logic Checked
 
-- Scanner already uses `Animated` and a locked review state, so a dev-only preview can reuse the same result surface without touching RPC behavior.
-- Leaderboard already has the right data split (`top10`, `currentUser`), so the pass should stay presentational.
-- Profile already has events and rewards surfaces elsewhere, so a separate history route is optional rather than structurally required right now.
+- The scanner crash is consistent with `expo-router` rejecting style arrays passed through `Link asChild` children, and multiple business screens still use that pattern.
+- Mobile login already has working Google and password flows; the requested change is mostly presentation, onboarding, and loading behavior.
+- The hosted admin login page currently resolves access server-side before rendering, which can hard-fail the whole page even for anonymous visitors.
 
 ## Review Outcome
 
-Do a focused follow-up pass:
+Do a focused hardening + onboarding pass:
 
-- add a temporary dev-only stamp preview trigger
-- tighten leaderboard toward a cleaner podium/list composition
-- keep history as a product decision note instead of adding a redundant route right now
-- re-run mobile validation and keep backend logic unchanged
+- remove the `Link asChild` regression path from the business surfaces
+- simplify the login page and replace extra explanation with compact onboarding slides
+- add stronger loading feedback during sign-in and access resolution
+- make hosted admin login render safely for anonymous visitors while preserving redirects for signed-in users
+- re-run mobile and admin validation after the fixes

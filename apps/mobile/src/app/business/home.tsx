@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -98,12 +98,13 @@ export default function BusinessHomeScreen() {
                   <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
                   <Text style={styles.primaryButtonText}>Open scanner</Text>
                 </Pressable>
-                <Link href="/business/history" asChild>
-                  <Pressable style={[styles.ghostButton, styles.actionFlex]}>
-                    <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
-                    <Text style={styles.ghostButtonText}>Scan history</Text>
-                  </Pressable>
-                </Link>
+                <Pressable
+                  onPress={() => router.push("/business/history")}
+                  style={[styles.ghostButton, styles.actionFlex]}
+                >
+                  <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
+                  <Text style={styles.ghostButtonText}>Scan history</Text>
+                </Pressable>
               </View>
             </>
           ) : (
@@ -112,18 +113,20 @@ export default function BusinessHomeScreen() {
                 There are no active events for your business right now. You cannot use the scanner until an event starts.
               </Text>
               <View style={styles.actionRow}>
-                <Link href="/business/events" asChild>
-                  <Pressable style={[styles.primaryButton, styles.actionFlex]}>
-                    <AppIcon color={mobileTheme.colors.screenBase} name="calendar" size={18} />
-                    <Text style={styles.primaryButtonText}>Manage events</Text>
-                  </Pressable>
-                </Link>
-                <Link href="/business/history" asChild>
-                  <Pressable style={[styles.ghostButton, styles.actionFlex]}>
-                    <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
-                    <Text style={styles.ghostButtonText}>Scan history</Text>
-                  </Pressable>
-                </Link>
+                <Pressable
+                  onPress={() => router.push("/business/events")}
+                  style={[styles.primaryButton, styles.actionFlex]}
+                >
+                  <AppIcon color={mobileTheme.colors.screenBase} name="calendar" size={18} />
+                  <Text style={styles.primaryButtonText}>Manage events</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push("/business/history")}
+                  style={[styles.ghostButton, styles.actionFlex]}
+                >
+                  <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
+                  <Text style={styles.ghostButtonText}>Scan history</Text>
+                </Pressable>
               </View>
             </>
           )}
@@ -159,11 +162,9 @@ export default function BusinessHomeScreen() {
             })}
           </View>
 
-          <Link href="/business/events" asChild>
-            <Pressable style={styles.ghostButton}>
-              <Text style={styles.ghostButtonText}>View all events</Text>
-            </Pressable>
-          </Link>
+          <Pressable onPress={() => router.push("/business/events")} style={styles.ghostButton}>
+            <Text style={styles.ghostButtonText}>View all events</Text>
+          </Pressable>
         </InfoCard>
       ) : null}
 

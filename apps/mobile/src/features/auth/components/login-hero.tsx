@@ -1,85 +1,170 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useMemo } from "react";
+import {
+  ImageBackground,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
-import { SymbolView } from "expo-symbols";
-
+import { AppIcon } from "@/components/app-icon";
+import { getFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
+import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import { mobileTheme } from "@/features/foundation/theme";
 
-export const LoginHero = () => (
-  <View style={styles.container}>
-    <Text style={styles.kicker}>OmaLeima</Text>
-    <Text style={styles.title}>Digital leima nights with a livelier, safer event flow.</Text>
-    <Text style={styles.subtitle}>
-      Students jump in with Google, venues scan live QR codes, and organizers keep the whole appro night readable without paper cards.
-    </Text>
-    <View style={styles.pillRow}>
-      <View style={styles.pill}>
-        <SymbolView
-          name={{ android: "event", ios: "sparkles.rectangle.stack.fill", web: "event" }}
-          size={15}
-          tintColor={mobileTheme.colors.cyan}
-        />
-        <Text style={styles.pillText}>Live events</Text>
+type OnboardingSlide = {
+  body: string;
+  eyebrow: string;
+  key: string;
+  title: string;
+};
+
+export const LoginHero = () => {
+  const { width } = useWindowDimensions();
+  const slideWidth = Math.max(width - mobileTheme.spacing.screenHorizontal * 2, 280);
+  const slides = useMemo<readonly OnboardingSlide[]>(
+    () => [
+      {
+        body: "Find the next student night, jump into the route, and keep the QR ready before you arrive.",
+        eyebrow: "For students",
+        key: "student-night",
+        title: "One app for the whole appro",
+      },
+      {
+        body: "Each venue scans once, locks the result, and keeps the line moving without paper stamp cards.",
+        eyebrow: "For venues",
+        key: "venue-flow",
+        title: "Live scanning without the scramble",
+      },
+      {
+        body: "Clubs keep the event readable while students collect leimas and rewards across the city.",
+        eyebrow: "For organizers",
+        key: "club-view",
+        title: "A cleaner night from start to reward",
+      },
+    ],
+    []
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.brandRow}>
+        <Text style={styles.kicker}>OmaLeima</Text>
+        <Text style={styles.brandHint}>Student nights, live QR, venue stamps.</Text>
       </View>
-      <View style={styles.pill}>
-        <SymbolView
-          name={{ android: "qr_code_scanner", ios: "qrcode.viewfinder", web: "qr_code_scanner" }}
-          size={15}
-          tintColor={mobileTheme.colors.lime}
-        />
-        <Text style={styles.pillText}>Rolling QR</Text>
-      </View>
-      <View style={styles.pill}>
-        <SymbolView
-          name={{ android: "redeem", ios: "gift.fill", web: "redeem" }}
-          size={15}
-          tintColor={mobileTheme.colors.amber}
-        />
-        <Text style={styles.pillText}>Rewards</Text>
-      </View>
+
+      <AutoAdvancingRail
+        contentContainerStyle={styles.railContent}
+        intervalMs={3200}
+        itemGap={12}
+        itemWidth={slideWidth}
+        items={slides}
+        keyExtractor={(slide: OnboardingSlide) => slide.key}
+        railStyle={styles.rail}
+        renderItem={(slide: OnboardingSlide, index: number) => (
+          <ImageBackground
+            imageStyle={styles.slideImage}
+            source={getFallbackCoverSourceByIndex(index)}
+            style={styles.slide}
+          >
+            <View style={styles.slideOverlay} />
+            <View style={styles.slideContent}>
+              <Text style={styles.slideEyebrow}>{slide.eyebrow}</Text>
+              <Text style={styles.title}>{slide.title}</Text>
+              <Text style={styles.subtitle}>{slide.body}</Text>
+              <View style={styles.slideFooter}>
+                <Text style={styles.slideFooterText}>Swipe or wait</Text>
+                <AppIcon color={mobileTheme.colors.lime} name="chevron-right" size={14} />
+              </View>
+            </View>
+          </ImageBackground>
+        )}
+        showsIndicators={false}
+      />
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
+  brandHint: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
+  },
+  brandRow: {
+    gap: 4,
+  },
   container: {
     gap: 14,
   },
   kicker: {
     color: mobileTheme.colors.lime,
-    fontSize: 13,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
     letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
     textTransform: "uppercase",
   },
-  title: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 32,
-    fontWeight: "700",
-    lineHeight: 38,
+  rail: {
+    minHeight: 218,
+  },
+  railContent: {
+    paddingRight: 8,
+  },
+  slide: {
+    borderRadius: mobileTheme.radius.scene,
+    minHeight: 218,
+    overflow: "hidden",
+  },
+  slideContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 20,
+  },
+  slideEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
+  },
+  slideFooter: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0, 0, 0, 0.28)",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  slideFooterText: {
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+  },
+  slideImage: {
+    borderRadius: mobileTheme.radius.scene,
+  },
+  slideOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.54)",
   },
   subtitle: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 23,
-    maxWidth: 460,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+    maxWidth: 280,
   },
-  pill: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: 999,
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  pillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  pillText: {
+  title: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 12,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: 28,
+    letterSpacing: -0.7,
+    lineHeight: 34,
   },
 });

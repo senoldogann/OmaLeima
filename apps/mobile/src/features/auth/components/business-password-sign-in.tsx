@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
+import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { fetchSessionAccessAsync } from "@/features/auth/session-access";
 import { supabase } from "@/lib/supabase";
@@ -101,6 +102,13 @@ export const BusinessPasswordSignIn = () => {
         {isLoading ? null : <AppIcon color={mobileTheme.colors.screenBase} name="business" size={18} />}
         <Text style={styles.buttonText}>{isLoading ? "Signing in..." : "Sign in with email"}</Text>
       </Pressable>
+
+      {isLoading ? (
+        <AuthLoadingPanel
+          message="Checking business access and opening the scanner tools."
+          title="Signing in"
+        />
+      ) : null}
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>

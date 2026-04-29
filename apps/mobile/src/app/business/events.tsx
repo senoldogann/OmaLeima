@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
@@ -51,6 +51,7 @@ const leaveResultMessages: Record<string, string> = {
 };
 
 export default function BusinessEventsScreen() {
+  const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
@@ -161,22 +162,23 @@ export default function BusinessEventsScreen() {
                     {event.stampLabel ? ` · ${event.stampLabel}` : ""}
                   </Text>
                   <View style={styles.actionRow}>
-                    <Link
-                      href={{
-                        pathname: "/business/scanner",
-                        params: { eventVenueId: event.eventVenueId },
-                      }}
-                      asChild
+                    <Pressable
+                      onPress={() =>
+                        router.push({
+                          pathname: "/business/scanner",
+                          params: { eventVenueId: event.eventVenueId },
+                        })
+                      }
+                      style={[styles.primaryButton, styles.actionFlex]}
                     >
-                      <Pressable style={[styles.primaryButton, styles.actionFlex]}>
-                        <Text style={styles.primaryButtonText}>Open scanner</Text>
-                      </Pressable>
-                    </Link>
-                    <Link href="/business/history" asChild>
-                      <Pressable style={[styles.secondaryButton, styles.actionFlex]}>
-                        <Text style={styles.secondaryButtonText}>History</Text>
-                      </Pressable>
-                    </Link>
+                      <Text style={styles.primaryButtonText}>Open scanner</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => router.push("/business/history")}
+                      style={[styles.secondaryButton, styles.actionFlex]}
+                    >
+                      <Text style={styles.secondaryButtonText}>History</Text>
+                    </Pressable>
                   </View>
                 </View>
               ))}

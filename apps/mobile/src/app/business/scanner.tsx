@@ -5,7 +5,7 @@ import {
   useCameraPermissions,
   type BarcodeScanningResult,
 } from "expo-camera";
-import { Link, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppScreen } from "@/components/app-screen";
@@ -222,6 +222,7 @@ const useStampHitAnimation = (result: ScannerAttemptResult | null) => {
 };
 
 export default function BusinessScannerScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ eventVenueId?: string }>();
   const { session } = useSession();
   const queryClient = useQueryClient();
@@ -557,11 +558,12 @@ export default function BusinessScannerScreen() {
               <Pressable onPress={resetScanner} style={[styles.primaryButton, styles.actionFlex]}>
                 <Text style={styles.primaryButtonText}>Scan again</Text>
               </Pressable>
-              <Link href="/business/history" asChild>
-                <Pressable style={[styles.ghostButton, styles.actionFlex]}>
-                  <Text style={styles.ghostButtonText}>History</Text>
-                </Pressable>
-              </Link>
+              <Pressable
+                onPress={() => router.push("/business/history")}
+                style={[styles.ghostButton, styles.actionFlex]}
+              >
+                <Text style={styles.ghostButtonText}>History</Text>
+              </Pressable>
             </View>
           </InfoCard>
         </Animated.View>

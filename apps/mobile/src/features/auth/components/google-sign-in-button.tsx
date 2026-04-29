@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
+import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { signInWithGoogleAsync } from "@/lib/auth";
 import type { GoogleSignInState } from "@/types/app";
@@ -26,22 +27,31 @@ export const GoogleSignInButton = () => {
   return (
     <View style={styles.container}>
       <Pressable
-        disabled={state === "loading"}
+        disabled={state === "loading" || state === "redirecting"}
         onPress={handlePress}
         style={({ pressed }) => [
           styles.button,
-          state === "loading" ? styles.buttonDisabled : null,
+          state === "loading" || state === "redirecting" ? styles.buttonDisabled : null,
           pressed ? styles.buttonPressed : null,
         ]}
       >
-        {state === "loading" ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
+        {state === "loading" ? <ActivityIndicator color="#08090E" size="small" /> : null}
         {state !== "loading" ? <AppIcon color={mobileTheme.colors.screenBase} name="google" size={18} /> : null}
         <Text style={styles.buttonText}>
           {state === "loading" ? "Opening Google..." : "Continue with Google"}
         </Text>
       </Pressable>
+      {state === "loading" ? (
+        <AuthLoadingPanel
+          message="Preparing the Google sign-in flow."
+          title="Opening Google"
+        />
+      ) : null}
       {state === "redirecting" ? (
-        <Text style={styles.helperText}>Waiting for the Google auth redirect to come back into OmaLeima.</Text>
+        <AuthLoadingPanel
+          message="Waiting for OmaLeima to receive the Google redirect."
+          title="Returning to OmaLeima"
+        />
       ) : null}
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
@@ -74,11 +84,6 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.screenBase,
     fontSize: 14,
     fontWeight: "800",
-  },
-  helperText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
   },
   errorText: {
     color: "#FFC5C1",

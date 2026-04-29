@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
@@ -49,6 +49,7 @@ const historyStatusMeta: Record<
 };
 
 export default function BusinessHistoryScreen() {
+  const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const historyQuery = useBusinessScanHistoryQuery({
@@ -65,18 +66,14 @@ export default function BusinessHistoryScreen() {
         <Text selectable style={styles.metaText}>Your latest scan outcomes.</Text>
       </View>
       <View style={styles.actionRow}>
-        <Link href="/business/scanner" asChild>
-          <Pressable style={styles.primaryButton}>
-            <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
-            <Text style={styles.primaryButtonText}>Scanner</Text>
-          </Pressable>
-        </Link>
-        <Link href="/business/events" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
-            <Text style={styles.secondaryButtonText}>Events</Text>
-          </Pressable>
-        </Link>
+        <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
+          <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
+          <Text style={styles.primaryButtonText}>Scanner</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
+          <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
+          <Text style={styles.secondaryButtonText}>Events</Text>
+        </Pressable>
       </View>
 
       {historyQuery.isLoading ? (
