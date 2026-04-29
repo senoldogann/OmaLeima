@@ -37,8 +37,8 @@ type VariantConfig = {
 const variantConfig: Record<GlassPanelVariant, VariantConfig> = {
   scene: {
     bg: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.limeBorder,
-    borderWidth: 1,
+    borderColor: mobileTheme.colors.borderSubtle,
+    borderWidth: 0,
     radius: mobileTheme.radius.scene,
     topAccentColor: mobileTheme.colors.lime,
     contentPadding: mobileTheme.spacing.scenePadding,
@@ -48,7 +48,7 @@ const variantConfig: Record<GlassPanelVariant, VariantConfig> = {
   card: {
     bg: mobileTheme.colors.surfaceL1,
     borderColor: mobileTheme.colors.borderDefault,
-    borderWidth: 1,
+    borderWidth: 0,
     radius: mobileTheme.radius.card,
     topAccentColor: null,
     contentPadding: mobileTheme.spacing.cardPadding,
@@ -58,7 +58,7 @@ const variantConfig: Record<GlassPanelVariant, VariantConfig> = {
   subtle: {
     bg: mobileTheme.colors.screenBase,
     borderColor: mobileTheme.colors.borderSubtle,
-    borderWidth: 1,
+    borderWidth: 0,
     radius: mobileTheme.radius.inner,
     topAccentColor: null,
     contentPadding: 16,

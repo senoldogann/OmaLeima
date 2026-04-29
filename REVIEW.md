@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Remove user-facing diagnostics and internal status surfaces from the mobile product UI, keep only genuinely useful user/business flows visible, and verify whether the hosted admin login page is actually blank or blocked by deployment protection.
+- **Scope:** Continue the cleaned STARK mobile theme by reducing border noise, adding action icons where they help, narrowing the palette around lime-on-dark, and simplifying auth and sign-out presentation without breaking the validated flows.
 
 ## Affected Files
 
@@ -31,18 +31,19 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/auth/callback.tsx`
 - `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/features/auth/components/login-hero.tsx`
+- `apps/mobile/src/features/auth/components/google-sign-in-button.tsx`
+- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
+- `apps/mobile/src/features/auth/components/sign-out-button.tsx`
 - `apps/mobile/src/features/events/components/event-card.tsx`
 - `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
-- `apps/admin/src/app/login/page.tsx`
-- `apps/admin/src/features/auth/components/admin-login-panel.tsx`
-- `apps/admin/src/app/globals.css`
+- `apps/mobile/src/components/app-icon.tsx`
 
 ## Risks
 
-- Some of the current status cards are not just ugly; they leak internal implementation details such as redirect URIs, backend token registration state, and diagnostics phrasing that users never need to read.
-- The profile route currently mixes real user settings with deep technical push smoke output. Removing too much could make notification opt-in harder, but leaving it as-is hurts product trust.
-- The QR route still contains a dev smoke token block and extra readiness copy. That is fine for engineering, not for a real user-facing app.
-- The hosted admin page may look blank because of Vercel preview protection rather than broken app code; we need to verify the deployment response before touching auth logic unnecessarily.
+- The diagnostic cleanup made the product boundary better, but the UI still leans too hard on bordered boxes and secondary containers.
+- If we keep cyan, pink, lime, and amber equally loud, the app still feels scattered. The user wants one dominant accent, not four competing ones.
+- Auth and sign-out are small surfaces, but they set the tone fast; if they still feel tool-like, the whole product feels less polished.
+- Foundation-level border changes affect many routes at once, so we need to validate web export after any token adjustment.
 
 ## Dependencies
 
@@ -57,18 +58,16 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- The STARK theme continuation is already in place and technically stable after the previous regression fixes.
-- `auth/login.tsx` still shows an `Access status` panel with Supabase URL, redirect URI, and route diagnostics that normal users should never see.
-- `student/events/index.tsx` still shows a `Student events query` status panel that repeats implementation details instead of helping the student make a choice.
-- `student/active-event.tsx` still exposes QR readiness diagnostics and a dev smoke token surface.
-- `student/profile.tsx` still shows large push smoke panels for runtime path, project id, last received notification, and last notification response.
-- The hosted admin login build succeeds locally, while the hosted URL currently responds with HTTP 401 from Vercel, which strongly points to preview protection rather than a broken Next.js route.
+- The user-facing diagnostics are now gone from the main mobile flows.
+- The remaining design complaint is mostly about chrome: too many borders, too many boxed groups, too many equally loud accents.
+- Shared auth buttons, sign-out, and card primitives are the highest leverage places to simplify the visual language.
+- The current hosted admin issue is already understood as Vercel protection, so this pass can stay focused on mobile polish.
 
 ## Review Outcome
 
-Keep the STARK direction, but tighten the product boundary:
+Keep the STARK direction, but make it calmer:
 
-- remove user-facing diagnostics and readiness panels from normal flows
-- leave only user-meaningful content, actions, and error states
-- simplify the profile push area into a normal notification preference surface
-- treat the hosted admin blank-page report as a deployment protection issue unless a local build or route check says otherwise
+- use lime + dark neutrals as the dominant pairing
+- reduce borders and let spacing/shadow carry more structure
+- add icons only to obvious actions and selectors
+- simplify auth, rewards, and sign-out surfaces until they feel like product UI instead of tooling

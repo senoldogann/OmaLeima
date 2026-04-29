@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { supabase } from "@/lib/supabase";
 
@@ -35,6 +36,7 @@ export const SignOutButton = () => {
         ]}
       >
         {isLoading ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
+        {isLoading ? null : <AppIcon color={mobileTheme.colors.textPrimary} name="logout" size={17} />}
         <Text style={styles.buttonText}>{isLoading ? "Signing out..." : "Sign out"}</Text>
       </Pressable>
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -49,8 +51,6 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 8,
     backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: "center",

@@ -27,13 +27,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (UI Cleanup and Hosted Login Check)
+## Current Todos (STARK Simplification Pass)
 
-- [x] Review the remaining user-facing diagnostics and identify which ones should disappear entirely.
-- [x] Remove internal auth diagnostics from the mobile login and callback routes.
-- [x] Remove event and QR readiness diagnostics from the student event surfaces.
-- [x] Simplify the profile push area into a normal notification settings surface.
-- [x] Verify whether the hosted admin login issue is a real app failure or Vercel preview protection.
-- [x] Run admin lint, typecheck, and production build validation.
+- [x] Review the remaining visual noise after the diagnostics cleanup.
+- [x] Reduce shared border intensity in the mobile foundation.
+- [x] Add reusable SVG icons for obvious auth and action controls.
+- [x] Simplify login mode selection and auth buttons with the new icon treatment.
+- [x] Remove leftover explanatory chrome around sign-out and similar simple actions.
+- [x] Apply the cleaner button treatment to selected business and student CTA surfaces.
 - [x] Run mobile lint, typecheck, and export validation.
-- [x] Update `PROGRESS.md` with the cleanup handoff note.
+- [x] Update `PROGRESS.md` with the simplification handoff note.

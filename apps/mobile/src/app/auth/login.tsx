@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Redirect } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
@@ -39,8 +40,13 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <Text style={styles.modeButtonText}>Student</Text>
-            <Text style={styles.modeButtonMeta}>Google sign-in</Text>
+            <AppIcon
+              color={mode === "student" ? mobileTheme.colors.screenBase : mobileTheme.colors.textPrimary}
+              name="google"
+              size={18}
+            />
+            <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>Student</Text>
+            <Text style={[styles.modeButtonMeta, mode === "student" ? styles.modeButtonMetaActive : null]}>Google sign-in</Text>
           </Pressable>
           <Pressable
             onPress={() => setMode("business")}
@@ -50,8 +56,13 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <Text style={styles.modeButtonText}>Business staff</Text>
-            <Text style={styles.modeButtonMeta}>Email and password</Text>
+            <AppIcon
+              color={mode === "business" ? mobileTheme.colors.screenBase : mobileTheme.colors.textPrimary}
+              name="business"
+              size={18}
+            />
+            <Text style={[styles.modeButtonText, mode === "business" ? styles.modeButtonTextActive : null]}>Business staff</Text>
+            <Text style={[styles.modeButtonMeta, mode === "business" ? styles.modeButtonMetaActive : null]}>Email and password</Text>
           </Pressable>
         </View>
 
@@ -84,23 +95,23 @@ const styles = StyleSheet.create({
   modeButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: mobileTheme.radius.card,
-    borderWidth: 1,
     flex: 1,
-    gap: 3,
+    gap: 4,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   modeButtonActive: {
-    borderColor: mobileTheme.colors.cyanBorder,
-    backgroundColor: mobileTheme.colors.cyanSurface,
+    backgroundColor: mobileTheme.colors.lime,
   },
   modeButtonMeta: {
     color: mobileTheme.colors.textMuted,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
+  },
+  modeButtonMetaActive: {
+    color: mobileTheme.colors.screenBase,
   },
   modeButtonPressed: {
     transform: [{ translateY: 1 }, { scale: 0.992 }],
@@ -109,6 +120,9 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
+  },
+  modeButtonTextActive: {
+    color: mobileTheme.colors.screenBase,
   },
   modeSelector: {
     flexDirection: "row",

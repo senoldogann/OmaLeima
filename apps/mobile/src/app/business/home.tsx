@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -94,10 +95,12 @@ export default function BusinessHomeScreen() {
                   style={[styles.primaryButton, styles.actionFlex]}
                   onPress={() => router.push("/business/scanner")}
                 >
+                  <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
                   <Text style={styles.primaryButtonText}>Open scanner</Text>
                 </Pressable>
                 <Link href="/business/history" asChild>
                   <Pressable style={[styles.ghostButton, styles.actionFlex]}>
+                    <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
                     <Text style={styles.ghostButtonText}>Scan history</Text>
                   </Pressable>
                 </Link>
@@ -111,11 +114,13 @@ export default function BusinessHomeScreen() {
               <View style={styles.actionRow}>
                 <Link href="/business/events" asChild>
                   <Pressable style={[styles.primaryButton, styles.actionFlex]}>
+                    <AppIcon color={mobileTheme.colors.screenBase} name="calendar" size={18} />
                     <Text style={styles.primaryButtonText}>Manage events</Text>
                   </Pressable>
                 </Link>
                 <Link href="/business/history" asChild>
                   <Pressable style={[styles.ghostButton, styles.actionFlex]}>
+                    <AppIcon color={mobileTheme.colors.textPrimary} name="history" size={17} />
                     <Text style={styles.ghostButtonText}>Scan history</Text>
                   </Pressable>
                 </Link>
@@ -187,14 +192,12 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 16,
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderWidth: 1,
-    borderColor: mobileTheme.colors.cyanBorder,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
   },
   avatarText: {
-    color: mobileTheme.colors.cyan,
+    color: mobileTheme.colors.lime,
     fontSize: 28,
     fontWeight: "800",
   },
@@ -220,6 +223,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   primaryButton: {
     alignItems: "center",
@@ -236,9 +241,8 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignItems: "center",
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.surfaceL2,
     paddingHorizontal: 16,
     paddingVertical: 13,
   },

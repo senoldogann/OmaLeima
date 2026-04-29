@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { signInWithGoogleAsync } from "@/lib/auth";
 import type { GoogleSignInState } from "@/types/app";
@@ -34,6 +35,7 @@ export const GoogleSignInButton = () => {
         ]}
       >
         {state === "loading" ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
+        {state !== "loading" ? <AppIcon color={mobileTheme.colors.screenBase} name="google" size={18} /> : null}
         <Text style={styles.buttonText}>
           {state === "loading" ? "Opening Google..." : "Continue with Google"}
         </Text>
@@ -52,9 +54,7 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 8,
-    backgroundColor: mobileTheme.colors.actionBlueStrong,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.lime,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: "center",
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   buttonText: {
-    color: mobileTheme.colors.textPrimary,
+    color: mobileTheme.colors.screenBase,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   helperText: {
     color: mobileTheme.colors.textMuted,

@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 
 import { useRouter } from "expo-router";
 
+import { AppIcon } from "@/components/app-icon";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { fetchSessionAccessAsync } from "@/features/auth/session-access";
 import { supabase } from "@/lib/supabase";
@@ -97,14 +98,9 @@ export const BusinessPasswordSignIn = () => {
         ]}
       >
         {isLoading ? <ActivityIndicator color="#F8FAFC" size="small" /> : null}
+        {isLoading ? null : <AppIcon color={mobileTheme.colors.screenBase} name="business" size={18} />}
         <Text style={styles.buttonText}>{isLoading ? "Signing in..." : "Sign in with email"}</Text>
       </Pressable>
-
-      {__DEV__ ? (
-        <Text style={styles.helperText}>
-          Hosted smoke account: use the current scanner credential from the local operator file.
-        </Text>
-      ) : null}
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
@@ -114,10 +110,8 @@ export const BusinessPasswordSignIn = () => {
 const styles = StyleSheet.create({
   button: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionBlueStrong,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
     flexDirection: "row",
     gap: 10,
     justifyContent: "center",
@@ -130,9 +124,9 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 1 }, { scale: 0.992 }],
   },
   buttonText: {
-    color: mobileTheme.colors.textPrimary,
+    color: mobileTheme.colors.screenBase,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   container: {
     gap: 12,
@@ -148,16 +142,9 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: 7,
   },
-  helperText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: 16,
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     paddingHorizontal: 14,

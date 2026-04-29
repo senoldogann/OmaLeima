@@ -358,10 +358,7 @@ export default function StudentProfileScreen() {
         </Pressable>
       </InfoCard>
 
-      <InfoCard eyebrow="Account" title="Session actions">
-        <Text selectable style={styles.bodyText}>
-          Signing out should clear the local Supabase session and return the app to the Google login screen through the student route guard.
-        </Text>
+      <InfoCard eyebrow="Account" title="Sign out">
         <SignOutButton />
       </InfoCard>
     </AppScreen>

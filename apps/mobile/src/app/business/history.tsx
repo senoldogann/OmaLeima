@@ -1,6 +1,7 @@
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { useBusinessScanHistoryQuery } from "@/features/business/business-history";
@@ -68,11 +69,13 @@ export default function BusinessHistoryScreen() {
         <View style={styles.actionRow}>
           <Link href="/business/scanner" asChild>
             <Pressable style={styles.primaryButton}>
+              <AppIcon color={mobileTheme.colors.screenBase} name="scan" size={18} />
               <Text style={styles.primaryButtonText}>Back to scanner</Text>
             </Pressable>
           </Link>
           <Link href="/business/events" asChild>
             <Pressable style={styles.secondaryButton}>
+              <AppIcon color={mobileTheme.colors.textPrimary} name="calendar" size={17} />
               <Text style={styles.secondaryButtonText}>Manage events</Text>
             </Pressable>
           </Link>
@@ -181,8 +184,10 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.cyan,
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
+    flexDirection: "row",
+    gap: 8,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
@@ -203,9 +208,9 @@ const styles = StyleSheet.create({
   secondaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,

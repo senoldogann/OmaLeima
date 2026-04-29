@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useRouter } from "expo-router";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { mobileTheme } from "@/features/foundation/theme";
@@ -84,6 +85,7 @@ export default function StudentRewardsScreen() {
                 Join an event first. Once registered, stamp progress and reward tiers appear here.
               </Text>
               <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
+                <AppIcon color={mobileTheme.colors.screenBase} name="calendar" size={18} />
                 <Text style={styles.primaryButtonText}>Browse events</Text>
               </Pressable>
             </>
@@ -188,6 +190,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
+    flexDirection: "row",
+    gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
@@ -199,9 +203,8 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignSelf: "flex-start",
-    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
+    backgroundColor: mobileTheme.colors.surfaceL2,
     paddingHorizontal: 16,
     paddingVertical: 11,
   },

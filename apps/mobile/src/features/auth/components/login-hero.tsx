@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   kicker: {
-    color: mobileTheme.colors.cyan,
+    color: mobileTheme.colors.lime,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 1.2,
@@ -66,9 +66,7 @@ const styles = StyleSheet.create({
   pill: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: 999,
-    borderWidth: 1,
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 12,
