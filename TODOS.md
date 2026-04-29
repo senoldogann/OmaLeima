@@ -4,11 +4,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/hosted-business-scan-smoke-readiness` branch.
-- [x] Update `REVIEW.md` for the hosted one-device scanner smoke slice.
-- [x] Update `PLAN.md` for the dev-only QR diagnostics helper.
-- [x] Add a development-only QR token diagnostics surface to the active student event screen.
-- [x] Add matching same-device smoke guidance to the business scanner and business sign-in copy.
-- [x] Add a focused mobile audit plus root QA wrapper for this hosted scanner smoke wiring.
-- [x] Update `apps/mobile/README.md`, `docs/TESTING.md`, and `PROGRESS.md`.
+- [x] Create `feature/mobile-diagnostics-cleanup` branch.
+- [x] Update `REVIEW.md` for the runtime-label and refresh-feedback slice.
+- [x] Update `PLAN.md` for the diagnostics cleanup.
+- [x] Fix runtime classification so the current physical-device dev client no longer reads as bare.
+- [x] Add visible feedback to the profile route when push diagnostics refresh runs.
+- [x] Update the native push readiness audit and current docs.
 - [x] Run focused validation and package the branch.
