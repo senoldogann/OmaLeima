@@ -24,13 +24,39 @@ As of `2026-04-29`, the following paths are already verified in the current host
 - business scanner sign-in with the hosted scanner fixture account
 - real hosted `scan-qr` execution through the mobile scanner fallback
 - stamp creation plus reward-unlock push delivery through the real product path
+- Android emulator app-flow smoke through Expo Go
+- Android emulator business email/password sign-in
 
 What is **not** yet fully verified:
 
 - Android remote-push physical-device smoke
+- Android student Google sign-in on a real Android development build
 - public App Store or Play Store distribution
 - public custom domain cutover
 - production-strength operator credentials replacing seeded smoke accounts
+
+## Priority matrix
+
+### Must-have before a private pilot
+
+1. Replace temporary hosted smoke accounts with real operator credentials.
+2. Run one final dry-run with those real operator accounts.
+3. Keep iPhone as the already-proven student and push path if Android remote push is still unverified.
+4. Confirm the first pilot club, event, venue list, and scanner roster.
+
+### Needed before a broader public launch
+
+1. Android remote-push physical-device smoke
+2. Android student Google sign-in proof on a real Android development build
+3. Final custom domain cutover
+4. Public store-release steps
+5. Final hosted secret rotation and stronger operator credentials everywhere
+
+### Later
+
+1. Full mobile UI redesign and broad visual polish
+2. Broader launch marketing assets
+3. Non-critical convenience tooling that does not change pilot risk
 
 ## Owner action items
 
@@ -76,8 +102,8 @@ Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
 ### Su an teknik olarak dogru siramiz
 
 1. Ana gelistirme akisina devam
-2. Android emulator ile login / event / QR / scanner akislarini dogrulamak
-3. Android fiziksel cihaz smoke'unu ancak Android gercekten launch kapsamina girdiginde veya bir cihaz bulundugunda gecmek
+2. Android emulator ile business login / event / QR / scanner akislarini dogrulamak
+3. Android student Google login ve Android remote push'i ancak Android development build veya fiziksel cihaz yolu oldugunda kapatmak
 4. Launch ve operasyon checklist'ini net tutmak
 5. En sonda toplu UI polish ve public launch isi
 
@@ -88,8 +114,13 @@ Bu durumda Android icin tamamen durmuyoruz.
 Simdilik:
 
 - Android emulator ile urun akislarini deneriz
-- login, event, QR ve scanner ekranlarini dogrulariz
+- business login, event, QR ve scanner ekranlarini dogrulariz
 - ama Android remote push'i tam dogrulandi saymayiz
+
+Ek not:
+
+- Android emulator + Expo Go yolunda student Google login'i tam dogrulama saymayiz
+- bu kisim ancak Android development build veya gercek cihaz yolu ile kapanir
 
 Yani Android tarafinda kalan risk:
 
@@ -234,9 +265,11 @@ Current reality:
 
 - iPhone development-build smoke: passed
 - Android emulator fallback: available for app-flow smoke
+- Android emulator business email/password flow: passed
 - Android remote-push physical-device smoke: not yet passed
+- Android student Google sign-in on a real Android development build: not yet passed
 
-That means a private pilot can still move forward if iPhone is the only supported operator path for the first event. Android emulator coverage can reduce UI and flow risk now, but broader Android rollout should wait until a real Android device verifies remote push or Android is explicitly kept out of first-launch scope.
+That means a private pilot can still move forward if iPhone is the only supported student and push-proven path for the first event. Android emulator coverage can reduce UI and business-flow risk now, but broader Android rollout should wait until a real Android device or Android dev build verifies the remaining auth and push pieces.
 
 ## Custom-domain cutover order
 
