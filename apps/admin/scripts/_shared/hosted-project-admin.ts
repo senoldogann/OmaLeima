@@ -9,6 +9,11 @@ const apiKeySchema = z.object({
   type: z.string().min(1),
 });
 
+const readProjectApiKeys = (projectRef: string) =>
+  z.array(apiKeySchema).parse(
+    JSON.parse(runCommand("supabase", ["projects", "api-keys", "--project-ref", projectRef, "-o", "json"])) as unknown
+  );
+
 const runCommand = (command: string, args: string[]): string => {
   const commandResult = spawnSync(command, args, {
     encoding: "utf8",
@@ -39,8 +44,7 @@ export const readSupabaseUrl = (projectRef: string, environmentVariableName: str
 };
 
 export const readServiceRoleKeyFromCli = (projectRef: string): string => {
-  const rawApiKeys = runCommand("supabase", ["projects", "api-keys", "--project-ref", projectRef, "-o", "json"]);
-  const apiKeys = z.array(apiKeySchema).parse(JSON.parse(rawApiKeys) as unknown);
+  const apiKeys = readProjectApiKeys(projectRef);
   const legacyServiceRoleKey = apiKeys.find((apiKey) => apiKey.name === "service_role" && apiKey.type === "legacy");
 
   if (typeof legacyServiceRoleKey?.api_key === "string" && !legacyServiceRoleKey.api_key.includes("·")) {
@@ -57,6 +61,27 @@ export const readServiceRoleKeyFromCli = (projectRef: string): string => {
 
   throw new Error(
     `Could not read a non-redacted service-role key for project ${projectRef}. Run "supabase projects api-keys --project-ref ${projectRef} -o json" and verify the CLI can access the hosted keys.`
+  );
+};
+
+export const readPublishableKeyFromCli = (projectRef: string): string => {
+  const apiKeys = readProjectApiKeys(projectRef);
+  const publishableKey = apiKeys.find((apiKey) => apiKey.type === "publishable" && !apiKey.api_key.includes("·"));
+
+  if (typeof publishableKey?.api_key === "string") {
+    return publishableKey.api_key;
+  }
+
+  const legacyAnonKey = apiKeys.find(
+    (apiKey) => apiKey.name === "anon" && (apiKey.type === "legacy" || apiKey.type === "public") && !apiKey.api_key.includes("·")
+  );
+
+  if (typeof legacyAnonKey?.api_key === "string") {
+    return legacyAnonKey.api_key;
+  }
+
+  throw new Error(
+    `Could not read a non-redacted publishable key for project ${projectRef}. Run "supabase projects api-keys --project-ref ${projectRef} -o json" and verify the CLI can access the hosted keys.`
   );
 };
 

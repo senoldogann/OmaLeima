@@ -296,6 +296,34 @@ It is read-only and checks:
 
 This audit does not prove password rotation by itself. It is specifically a hosted-user and privileged-membership cleanup gate before a private pilot.
 
+## Private pilot final dry-run
+
+Run from repo root:
+
+```bash
+npm run qa:private-pilot-final-dry-run
+```
+
+The direct hosted command is:
+
+```bash
+npm --prefix apps/admin run run:pilot-final-dry-run
+```
+
+This gate reads the local Desktop credential file at `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt` and proves:
+
+- the current hosted admin account can still sign in with password auth
+- the current hosted organizer account can still sign in and still has at least one active `club_members` row
+- the current hosted scanner account can still sign in and still has at least one active `business_staff` row
+- the hosted fixture-account hygiene audit is still green in the same run
+
+This gate is intentionally narrower than a full browser or device smoke. It does **not** prove:
+
+- admin route rendering in the browser
+- iPhone or Android device behavior
+- real scan execution
+- real reward push delivery
+
 ## Mobile reward notification bridge
 
 For the local foreground reward notification bridge:
