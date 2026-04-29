@@ -35,7 +35,7 @@ export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileT
         </Text>
       </View>
       <View style={styles.badges}>
-        {tag.isPrimary ? <StatusBadge label="primary" state="ready" /> : null}
+        {tag.isPrimary ? <StatusBadge label="active" state="ready" /> : null}
         <StatusBadge label={createSourceLabel(tag)} state={tag.isOfficial ? "loading" : "pending"} />
       </View>
     </View>
@@ -46,7 +46,7 @@ export const ProfileTagCard = ({ tag, isBusy, onSetPrimary, onRemove }: ProfileT
         onPress={() => onSetPrimary(tag)}
         style={[styles.secondaryButton, isBusy || tag.isPrimary ? styles.disabledButton : null]}
       >
-        <Text style={styles.secondaryButtonText}>{tag.isPrimary ? "Primary" : "Make primary"}</Text>
+        <Text style={styles.secondaryButtonText}>{tag.isPrimary ? "Active" : "Set active"}</Text>
       </Pressable>
       <Pressable
         disabled={isBusy}

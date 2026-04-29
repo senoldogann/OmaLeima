@@ -27,11 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Rewards + Discovery + Profile Pass)
+## Current Todos (Profile + Rewards + QR Refinement)
 
 - [x] Review the current rewards, discovery, profile, and stamp-rule shape again.
-- [x] Add event imagery and a clearer swipe cue to the rewards rail.
-- [x] Add an image-backed discovery hero.
-- [x] Move tag management into a modal and add a stronger profile identity block.
+- [x] Remove the visible primary wording and lighten the profile identity / tags surfaces.
+- [x] Replace initials avatar with a proper icon avatar treatment.
+- [x] Strengthen the rewards top hero without repeating more counts.
+- [x] Replace the long reward card below QR with a compact progress summary.
 - [x] Run mobile lint, typecheck, and export validation.
 - [x] Update `PROGRESS.md` with the new handoff note.

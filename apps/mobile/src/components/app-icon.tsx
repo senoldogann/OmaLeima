@@ -3,6 +3,7 @@ import { Svg, Circle, Path, Rect } from "react-native-svg";
 type AppIconName =
   | "google"
   | "business"
+  | "user"
   | "logout"
   | "bell"
   | "scan"
@@ -48,6 +49,25 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           <Rect fill={color} height="14" opacity={0.18} rx="2.5" width="14" x="5" y="7" />
           <Path
             d="M7 20V9.5A1.5 1.5 0 0 1 8.5 8h7A1.5 1.5 0 0 1 17 9.5V20M10 20v-3h4v3M9.5 11.5h1M13.5 11.5h1M9.5 14.5h1M13.5 14.5h1M4 20h16M10 8V6.8A.8.8 0 0 1 10.8 6h2.4a.8.8 0 0 1 .8.8V8"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "user":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="8" fill={color} opacity={0.16} r="4.5" />
+          <Path
+            d="M5.5 19.25c1.2-3.25 3.45-4.9 6.5-4.9 3.05 0 5.3 1.65 6.5 4.9"
+            fill={color}
+            opacity={0.16}
+          />
+          <Path
+            d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5ZM5.75 19.5c1.03-3.01 3.2-4.52 6.25-4.52s5.22 1.51 6.25 4.52"
             fill="none"
             stroke={color}
             strokeLinecap="round"

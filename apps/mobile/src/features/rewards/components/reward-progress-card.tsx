@@ -182,10 +182,6 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       {/* Summary */}
       <Text style={styles.summaryText}>{getEventSummaryCopy(event)}</Text>
 
-      <Text style={styles.dateLine}>
-        {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
-      </Text>
-
       {/* Memory tokens */}
       {event.stampCount > 0 ? (
         <View style={styles.memorySection}>
@@ -305,9 +301,8 @@ const styles = StyleSheet.create({
     color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.extrabold,
     fontSize: 60,
-    lineHeight: 76,
+    lineHeight: 68,
     letterSpacing: -2,
-    paddingTop: 6,
     fontVariant: ["tabular-nums"],
   },
   stampMeta: {
@@ -360,13 +355,6 @@ const styles = StyleSheet.create({
     fontFamily: mobileTheme.typography.families.regular,
     fontSize: mobileTheme.typography.sizes.bodySmall,
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,
-  },
-
-  dateLine: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.medium,
-    fontSize: mobileTheme.typography.sizes.caption,
-    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
 
   // --- Memory tokens ---

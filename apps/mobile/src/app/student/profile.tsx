@@ -4,7 +4,6 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
@@ -73,21 +72,6 @@ const createPushPreferenceSummary = (
   }
 
   return createPushPermissionDetail(permissionState);
-};
-
-const createProfileInitials = (displayName: string | null, email: string): string => {
-  const source = (displayName ?? email).trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-
-  if (parts.length === 0) {
-    return "ST";
-  }
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 };
 
 export default function StudentProfileScreen() {
@@ -190,15 +174,11 @@ export default function StudentProfileScreen() {
     });
   };
 
-  const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
-  const profileInitials =
-    profileOverview === null ? "ST" : createProfileInitials(profileOverview.displayName, profileOverview.email);
-
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
         <Text style={styles.screenTitle}>Profile</Text>
-        <Text style={styles.metaText}>Keep your identity and notifications ready for the next event.</Text>
+        <Text style={styles.metaText}>Keep your account ready for the next event.</Text>
       </View>
 
       {profileOverviewQuery.isLoading ? (
@@ -219,11 +199,11 @@ export default function StudentProfileScreen() {
       ) : null}
 
       {profileOverview ? (
-        <InfoCard eyebrow="Account" title="Student identity">
+        <View style={styles.profileStage}>
           <View style={styles.profileHero}>
             <View style={styles.avatarShell}>
               <View style={styles.avatarCore}>
-                <Text selectable style={styles.avatarText}>{profileInitials}</Text>
+                <AppIcon color={mobileTheme.colors.screenBase} name="user" size={34} />
               </View>
             </View>
 
@@ -232,46 +212,47 @@ export default function StudentProfileScreen() {
                 {profileOverview.displayName ?? "Student profile"}
               </Text>
               <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
-              <View style={styles.badgeRow}>
-                <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
-                {primaryTag ? <StatusBadge label={`primary: ${primaryTag.title}`} state="pending" /> : null}
-              </View>
+              <Text selectable style={styles.roleLine}>
+                {profileOverview.primaryRole.toLowerCase()} student
+              </Text>
             </View>
           </View>
 
           <View style={styles.accountMetaRow}>
-            <View style={styles.accountMetaPill}>
-              <Text selectable style={styles.accountMetaValue}>{selectedTags.length}</Text>
-              <Text selectable style={styles.accountMetaLabel}>tags</Text>
-            </View>
-            <View style={styles.accountMetaPill}>
-              <Text selectable style={styles.accountMetaValue}>{remainingTagSlots}</Text>
-              <Text selectable style={styles.accountMetaLabel}>left</Text>
-            </View>
-            <View style={styles.accountMetaPill}>
-              <Text selectable style={styles.accountMetaValue}>{profileOverview.status.toLowerCase()}</Text>
-              <Text selectable style={styles.accountMetaLabel}>status</Text>
-            </View>
+            <Text selectable style={styles.accountMetaInline}>
+              {selectedTags.length} tag{selectedTags.length === 1 ? "" : "s"}
+            </Text>
+            <Text selectable style={styles.accountMetaDot}>•</Text>
+            <Text selectable style={styles.accountMetaInline}>
+              {remainingTagSlots} left
+            </Text>
+            <Text selectable style={styles.accountMetaDot}>•</Text>
+            <Text selectable style={styles.accountMetaInline}>
+              {profileOverview.status.toLowerCase()}
+            </Text>
           </View>
-        </InfoCard>
+        </View>
       ) : null}
 
       {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Tags" title="Department tags">
-          <Text selectable style={styles.metaText}>
-            {createTagSummary(selectedTags.length, remainingTagSlots)}
-          </Text>
-
-          {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
+        <View style={styles.tagsEntrySection}>
+          <View style={styles.tagsEntryCopy}>
+            <Text selectable style={styles.tagsEntryTitle}>Department tags</Text>
+            <Text selectable style={styles.metaText}>
+              {createTagSummary(selectedTags.length, remainingTagSlots)}
+            </Text>
+          </View>
 
           <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.secondaryButton}>
             <View style={styles.secondaryButtonRow}>
-              <Text style={styles.secondaryButtonText}>Manage tags</Text>
+              <Text style={styles.secondaryButtonText}>Manage</Text>
               <AppIcon color={mobileTheme.colors.textPrimary} name="chevron-right" size={16} />
             </View>
           </Pressable>
-        </InfoCard>
+        </View>
       ) : null}
+
+      {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
       <InfoCard eyebrow="Push" title="Notifications">
         <Text selectable style={styles.bodyText}>
@@ -396,30 +377,22 @@ const styles = StyleSheet.create({
     fontSize: mobileTheme.typography.sizes.bodySmall,
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
-  accountMetaLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.eyebrow,
-    textTransform: "uppercase",
+  accountMetaDot: {
+    color: mobileTheme.colors.textDim,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
-  accountMetaPill: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.chip,
-    gap: 2,
-    minWidth: 74,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  accountMetaInline: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   accountMetaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-  },
-  accountMetaValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontFamily: mobileTheme.typography.families.bold,
-    fontSize: mobileTheme.typography.sizes.body,
-    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   avatarCore: {
     alignItems: "center",
@@ -431,24 +404,13 @@ const styles = StyleSheet.create({
   },
   avatarShell: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.limeSurface,
-    borderColor: mobileTheme.colors.limeBorder,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
     height: 88,
     justifyContent: "center",
     width: 88,
-  },
-  avatarText: {
-    color: mobileTheme.colors.screenBase,
-    fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: 26,
-    lineHeight: 28,
-  },
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
   },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
@@ -566,6 +528,18 @@ const styles = StyleSheet.create({
     fontSize: mobileTheme.typography.sizes.subtitle,
     lineHeight: mobileTheme.typography.lineHeights.subtitle,
   },
+  profileStage: {
+    gap: 14,
+    paddingBottom: 4,
+  },
+  roleLine: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.caption,
+    letterSpacing: 0.8,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
   screenHeader: {
     gap: 6,
     marginBottom: 4,
@@ -624,5 +598,21 @@ const styles = StyleSheet.create({
     fontFamily: mobileTheme.typography.families.semibold,
     fontSize: mobileTheme.typography.sizes.body,
     lineHeight: mobileTheme.typography.lineHeights.body,
+  },
+  tagsEntryCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  tagsEntrySection: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
+  },
+  tagsEntryTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
+    lineHeight: mobileTheme.typography.lineHeights.subtitle,
   },
 });

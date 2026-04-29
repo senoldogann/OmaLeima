@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { mobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
@@ -23,13 +24,20 @@ export default function StudentRewardsScreen() {
 
   const events = useMemo(() => rewardOverviewQuery.data?.events ?? [], [rewardOverviewQuery.data]);
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
-  const claimableCount = events.filter((e) => e.claimableTierCount > 0).length;
-  const totalStamps = events.reduce((acc, e) => acc + e.stampCount, 0);
+  const claimableCount = events.filter((event) => event.claimableTierCount > 0).length;
+  const totalStamps = events.reduce((accumulator, event) => accumulator + event.stampCount, 0);
   const railCardWidth = Math.max(Math.min(windowWidth - 52, 420), 286);
+  const featuredEvent = events[0] ?? null;
+  const featuredHeroSource = getEventCoverSource(
+    featuredEvent?.coverImageUrl ?? null,
+    featuredEvent?.id ?? "rewards-hero"
+  );
   const summaryLabel =
-    registeredEventCount === 0
-      ? "Leimat appear here after your first joined event."
-      : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
+    claimableCount > 0
+      ? `${claimableCount} event${claimableCount === 1 ? "" : "s"} ready for claim.`
+      : registeredEventCount === 0
+        ? "Leimat appear here after your first joined event."
+        : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
 
   return (
     <AppScreen>
@@ -39,12 +47,21 @@ export default function StudentRewardsScreen() {
         <Text style={styles.metaText}>Track collected leimas and see what is ready for claim.</Text>
       </View>
 
-      <View style={styles.summaryHero}>
+      <ImageBackground imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
+        <View style={styles.summaryHeroOverlay} />
         <View style={styles.summaryLead}>
-          <Text style={styles.summaryNumber}>{totalStamps}</Text>
+          <Text style={styles.summaryEyebrow}>Reward trail</Text>
+          <Text style={styles.summaryTitle}>
+            {featuredEvent?.name ?? "Your next unlock starts here"}
+          </Text>
           <Text style={styles.summaryLabel}>{summaryLabel}</Text>
         </View>
-      </View>
+
+        <View style={styles.summaryCountWrap}>
+          <Text style={styles.summaryNumber}>{totalStamps}</Text>
+          <Text style={styles.summaryCountLabel}>leimat</Text>
+        </View>
+      </ImageBackground>
 
       {claimableCount > 0 ? (
         <View style={styles.claimableAlert}>
@@ -54,14 +71,12 @@ export default function StudentRewardsScreen() {
         </View>
       ) : null}
 
-      {/* Loading */}
       {rewardOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening rewards">
           <Text style={styles.bodyText}>Loading leima counts and tier status.</Text>
         </InfoCard>
       ) : null}
 
-      {/* Error */}
       {rewardOverviewQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load rewards">
           <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
@@ -71,7 +86,6 @@ export default function StudentRewardsScreen() {
         </InfoCard>
       ) : null}
 
-      {/* Empty */}
       {!rewardOverviewQuery.isLoading && !rewardOverviewQuery.error && events.length === 0 ? (
         <InfoCard eyebrow="Standby" title="No reward progress yet">
           {registeredEventCount === 0 ? (
@@ -92,15 +106,12 @@ export default function StudentRewardsScreen() {
         </InfoCard>
       ) : null}
 
-      {/* Event cards */}
       {events.length > 0 ? (
         <View style={styles.railSection}>
           <View style={styles.railHeader}>
             <View style={styles.railHeaderCopy}>
               <Text style={styles.railTitle}>Event rewards</Text>
-              <Text style={styles.railMeta}>
-                {events.length} event{events.length === 1 ? "" : "s"}
-              </Text>
+              <Text style={styles.railMeta}>Slide through active reward paths.</Text>
             </View>
             <View style={styles.railHint}>
               <Text style={styles.railHintText}>Swipe</Text>
@@ -139,10 +150,10 @@ const styles = StyleSheet.create({
     lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   claimableAlert: {
-    flexDirection: "row",
     alignItems: "center",
     backgroundColor: mobileTheme.colors.limeSurface,
     borderRadius: 999,
+    flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 11,
   },
@@ -154,8 +165,8 @@ const styles = StyleSheet.create({
   },
   ghostButton: {
     alignSelf: "flex-start",
-    borderRadius: 999,
     backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
@@ -195,8 +206,8 @@ const styles = StyleSheet.create({
   railHeader: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
     gap: 12,
+    justifyContent: "space-between",
   },
   railHeaderCopy: {
     flex: 1,
@@ -228,10 +239,6 @@ const styles = StyleSheet.create({
     fontSize: mobileTheme.typography.sizes.body,
     lineHeight: mobileTheme.typography.lineHeights.body,
   },
-  screenHeader: {
-    gap: 8,
-    marginBottom: 6,
-  },
   screenEyebrow: {
     color: mobileTheme.colors.lime,
     fontFamily: mobileTheme.typography.families.bold,
@@ -240,17 +247,56 @@ const styles = StyleSheet.create({
     lineHeight: mobileTheme.typography.lineHeights.eyebrow,
     textTransform: "uppercase",
   },
+  screenHeader: {
+    gap: 8,
+    marginBottom: 6,
+  },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.extrabold,
     fontSize: mobileTheme.typography.sizes.titleLarge,
-    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
     letterSpacing: -0.9,
+    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
+  },
+  summaryCountLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  summaryCountWrap: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0, 0, 0, 0.46)",
+    borderRadius: 16,
+    gap: 2,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    zIndex: 1,
+  },
+  summaryEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
   },
   summaryHero: {
-    gap: 12,
-    paddingBottom: 6,
-    paddingTop: 2,
+    borderRadius: mobileTheme.radius.scene,
+    justifyContent: "space-between",
+    minHeight: 228,
+    overflow: "hidden",
+    padding: 20,
+    position: "relative",
+  },
+  summaryHeroImage: {
+    borderRadius: mobileTheme.radius.scene,
+  },
+  summaryHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.58)",
   },
   summaryLabel: {
     color: mobileTheme.colors.textMuted,
@@ -259,15 +305,23 @@ const styles = StyleSheet.create({
     lineHeight: mobileTheme.typography.lineHeights.body,
   },
   summaryLead: {
-    gap: 4,
+    gap: 8,
+    maxWidth: 250,
+    zIndex: 1,
   },
   summaryNumber: {
     color: mobileTheme.colors.textPrimary,
     fontFamily: mobileTheme.typography.families.extrabold,
-    fontSize: mobileTheme.typography.sizes.number,
-    fontWeight: "800",
-    letterSpacing: -2.2,
+    fontSize: 68,
+    letterSpacing: -2.6,
+    lineHeight: 68,
     fontVariant: ["tabular-nums"],
-    lineHeight: mobileTheme.typography.lineHeights.number,
+  },
+  summaryTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
+    letterSpacing: -0.6,
+    lineHeight: mobileTheme.typography.lineHeights.title,
   },
 });
