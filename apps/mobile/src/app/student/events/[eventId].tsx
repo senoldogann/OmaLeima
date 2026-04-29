@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
 import {
   useJoinEventMutation,
@@ -238,6 +239,8 @@ export default function StudentEventDetailScreen() {
   const registrationBadge = event ? getRegistrationBadge(event.registrationState) : null;
   const joinAvailability = event ? getJoinAvailability(event) : null;
   const joinPresentation = getJoinResultPresentation(joinMutation.data);
+  const coverSource =
+    event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
   const handleJoinPress = async (): Promise<void> => {
     if (studentId === null || event === null) {
@@ -274,38 +277,40 @@ export default function StudentEventDetailScreen() {
       {event ? (
         <>
           <InfoCard eyebrow={event.city} title={event.name}>
-            <View style={styles.heroCard}>
-              <View style={styles.heroGlow} />
-              <View style={styles.badges}>
-                <StatusBadge
-                  label={event.status.toLowerCase()}
-                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
-                />
-                {registrationBadge ? (
-                  <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-                ) : null}
-              </View>
+            <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
+              <View style={styles.heroOverlay} />
+              <View style={styles.heroContent}>
+                <View style={styles.badges}>
+                  <StatusBadge
+                    label={event.status.toLowerCase()}
+                    state={event.status === "PUBLISHED" ? "ready" : "warning"}
+                  />
+                  {registrationBadge ? (
+                    <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+                  ) : null}
+                </View>
 
-              <Text style={styles.heroSummary}>
-                {event.description ?? "The organizer has not added a description for this event yet."}
-              </Text>
+                <Text style={styles.heroSummary}>
+                  {event.description ?? "The organizer has not added a description for this event yet."}
+                </Text>
 
-              <View style={styles.metaStrip}>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
-                </View>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
-                </View>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillValue}>
-                    {event.maxParticipants === null
-                      ? "Open capacity"
-                      : `${event.maxParticipants} participant cap`}
-                  </Text>
+                <View style={styles.metaStrip}>
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
+                  </View>
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
+                  </View>
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaPillValue}>
+                      {event.maxParticipants === null
+                        ? "Open capacity"
+                        : `${event.maxParticipants} participant cap`}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </ImageBackground>
           </InfoCard>
 
           <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
@@ -425,27 +430,28 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   heroCard: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
     borderRadius: mobileTheme.radius.scene,
-    gap: 16,
+    minHeight: 264,
     overflow: "hidden",
-    padding: 18,
     position: "relative",
   },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.limeSurface,
-    borderRadius: 120,
-    height: 144,
-    opacity: 1,
-    position: "absolute",
-    right: -34,
-    top: -48,
-    width: 144,
+  heroContent: {
+    flex: 1,
+    gap: 18,
+    justifyContent: "space-between",
+    padding: 18,
+  },
+  heroImage: {
+    borderRadius: mobileTheme.radius.scene,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.58)",
   },
   heroSummary: {
     color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.semibold,
     fontSize: 16,
-    fontWeight: "600",
     lineHeight: 24,
   },
   inlineStatusRow: {
@@ -474,15 +480,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   metaPill: {
-    backgroundColor: mobileTheme.colors.surfaceL3,
+    backgroundColor: "rgba(0, 0, 0, 0.42)",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   metaPillValue: {
-    color: mobileTheme.colors.textSecondary,
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.medium,
     fontSize: 13,
-    fontWeight: "600",
   },
   metaStrip: {
     flexDirection: "row",

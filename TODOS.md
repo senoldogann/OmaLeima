@@ -27,16 +27,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (All-Role Simplification Pass)
+## Current Todos (Event Imagery Pass)
 
-- [x] Review the busiest student and business routes again.
-- [x] Reduce the number of top-level cards on `student/profile` and `student/leaderboard`.
-- [x] Simplify `student/events/[eventId]`, `student/rewards`, and `student/active-event` without losing key actions.
-- [x] Simplify `business/home`, `business/history`, `business/events`, and `business/scanner`.
-- [x] Refine `student/rewards`, account summary, and profile tag visuals one more step.
-- [x] Collapse the shared mobile palette into black, lime, and white.
-- [x] Remove decorative background linework and make the tab bar fully black.
-- [x] Load Poppins as the shared mobile font family and apply it to the main shared typography surfaces.
-- [x] Rebalance the `student/rewards` heading, summary, and event-card typography.
+- [x] Review the current student event card and event detail surfaces.
+- [x] Remove the broken Canva-export placeholder files from the local asset folders.
+- [x] Add a typed event-cover helper with deterministic local fallback assets.
+- [x] Extend the student event summary query with `cover_image_url`.
+- [x] Render real cover imagery in `event-card.tsx`.
+- [x] Render real cover imagery in `student/events/[eventId].tsx`.
+- [x] Add a short Canva / imagery handoff doc with poster links and cover-photo sources.
 - [x] Run mobile lint, typecheck, and export validation.
-- [x] Update `PROGRESS.md` with the simplification handoff note.
+- [x] Update `PROGRESS.md` with the event-imagery handoff note.

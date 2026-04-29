@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { mobileTheme } from "@/features/foundation/theme";
 import type { StudentEventSummary } from "@/features/events/types";
 
@@ -55,6 +56,7 @@ const formatDeadline = (event: StudentEventSummary): string => `Join deadline ${
 export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
   const timelineBadge = getTimelineBadge(event);
   const registrationBadge = getRegistrationBadge(event);
+  const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
   return (
     <Pressable
@@ -62,19 +64,22 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
       style={({ pressed }) => [styles.pressable, pressed ? styles.pressablePressed : null]}
     >
       <InfoCard eyebrow={event.city} motionIndex={motionIndex} title={event.name}>
-        <View style={styles.heroBand}>
-          <View style={styles.heroGlow} />
-          <View style={styles.heroCopy}>
-            <Text style={styles.heroKicker}>{event.country}</Text>
-            <Text style={styles.heroTimeline}>
-              {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
-            </Text>
+        <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <View style={styles.badges}>
+              <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+              <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+            </View>
+
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroKicker}>{event.country}</Text>
+              <Text style={styles.heroTimeline}>
+                {formatDateTime(event.startAt)} - {formatDateTime(event.endAt)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.badges}>
-            <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-            <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-          </View>
-        </View>
+        </ImageBackground>
 
         <Text style={styles.description}>
           {event.description ?? "Event description will be added by the organizer."}
@@ -98,6 +103,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 const styles = StyleSheet.create({
   actionMeta: {
     color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.regular,
     fontSize: 12,
     lineHeight: 17,
   },
@@ -105,9 +111,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionText: {
-    color: mobileTheme.colors.cyan,
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
     fontSize: 13,
-    fontWeight: "700",
     letterSpacing: 0.4,
   },
   badges: {
@@ -117,50 +123,50 @@ const styles = StyleSheet.create({
   },
   description: {
     color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.regular,
     fontSize: 14,
     lineHeight: 20,
   },
   heroBand: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderColor: mobileTheme.colors.pinkBorder,
     borderRadius: mobileTheme.radius.scene,
-    borderWidth: 1,
-    gap: 14,
+    minHeight: 188,
     overflow: "hidden",
-    padding: 16,
     position: "relative",
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: 18,
   },
   heroCopy: {
     gap: 6,
   },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.pinkSurface,
-    borderRadius: 72,
-    height: 92,
-    opacity: 1,
-    position: "absolute",
-    right: -14,
-    top: -18,
-    width: 92,
+  heroImage: {
+    borderRadius: mobileTheme.radius.scene,
   },
   heroKicker: {
-    color: mobileTheme.colors.pink,
+    color: "rgba(245, 247, 241, 0.72)",
+    fontFamily: mobileTheme.typography.families.semibold,
     fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 1.1,
     textTransform: "uppercase",
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
   },
   heroTimeline: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 20,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: 16,
+    lineHeight: 22,
   },
   metaGroup: {
     gap: 7,
   },
   metaLine: {
     color: mobileTheme.colors.textMuted,
+    fontFamily: mobileTheme.typography.families.regular,
     fontSize: 13,
     lineHeight: 18,
   },

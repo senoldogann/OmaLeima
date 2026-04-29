@@ -17,6 +17,7 @@ type EventRow = {
   description: string | null;
   city: string;
   country: string;
+  cover_image_url: string | null;
   start_at: string;
   end_at: string;
   join_deadline_at: string;
@@ -88,6 +89,7 @@ const mapEventSummary = (
     description: row.description,
     city: row.city,
     country: row.country,
+    coverImageUrl: row.cover_image_url,
     startAt: row.start_at,
     endAt: row.end_at,
     joinDeadlineAt: row.join_deadline_at,
@@ -107,7 +109,7 @@ const fetchVisibleEventsAsync = async (): Promise<EventRow[]> => {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
     )
     .in("status", ["PUBLISHED", "ACTIVE"])
     .eq("visibility", "PUBLIC")
