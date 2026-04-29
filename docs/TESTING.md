@@ -262,6 +262,34 @@ Current readiness matrix:
 - Android emulator student Google login in Expo Go: not treated as a reliable proof
 - Android remote push: still requires a real Android device
 
+## Pilot operator hygiene readiness
+
+Run from repo root:
+
+```bash
+npm run qa:pilot-operator-readiness
+```
+
+This focused readiness wrapper currently does three things in order:
+
+1. `npm --prefix apps/admin run lint`
+2. `npm --prefix apps/admin run typecheck`
+3. `npm --prefix apps/admin run smoke:pilot-operator-hygiene-audit`
+
+The real hosted audit is:
+
+```bash
+npm --prefix apps/admin run audit:pilot-operator-hygiene
+```
+
+It is read-only and checks:
+
+- whether known fixture users like `admin@omaleima.test`, `organizer@omaleima.test`, and `scanner@omaleima.test` still exist in hosted auth
+- whether any `@omaleima.test` user still has a privileged profile role
+- whether any `@omaleima.test` user still has active `business_staff` or `club_members` access
+
+This audit does not prove password rotation by itself. It is specifically a hosted-user and privileged-membership cleanup gate before a private pilot.
+
 ## Mobile reward notification bridge
 
 For the local foreground reward notification bridge:

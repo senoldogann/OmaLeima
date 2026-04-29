@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/readiness-priority-matrix`
-- **Scope:** Turn the current verified state into a prioritized remaining-work matrix so the next slices stay aligned with the plan: what is required before a private pilot, what is only needed before a broader public launch, and what can safely wait until the final UI/product polish pass.
+- **Branch:** `feature/pilot-operator-hygiene-audit`
+- **Scope:** Add a read-only hosted audit that tells us whether temporary smoke operator accounts are still alive in the hosted project and whether any privileged pilot path still depends on them.
 
 ## Affected Files
 
@@ -17,30 +17,36 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `README.md`
 - `docs/LAUNCH_RUNBOOK.md`
 - `docs/TESTING.md`
+- `package.json`
+- `apps/admin/package.json`
+- `apps/admin/README.md`
+- `apps/admin/scripts/audit-pilot-operator-hygiene.ts`
+- `apps/admin/scripts/smoke-pilot-operator-hygiene-audit.ts`
+- `tests/run-pilot-operator-readiness.mjs`
 
 ## Risks
 
-- The repo already has a lot of launch and testing notes; adding another vague checklist would make it harder to use, not easier.
-- We should not overstate Android readiness: emulator app-flow smoke is useful, but Android remote push still lacks physical-device proof.
-- The next-step list needs to reflect what is already manually verified on iPhone and Android, otherwise we will keep re-doing the same smoke work.
+- The audit should be read-only. It must not mutate hosted users, memberships, or passwords.
+- It should fail with concrete fixture emails and membership contexts, not with a generic “not ready” message.
+- The script must not rely on local seeded data; it should read the real hosted project.
 
 ## Dependencies
 
-- Current readiness summary in `README.md`
-- Owner and pilot guidance in `docs/LAUNCH_RUNBOOK.md`
-- Test entry points and platform notes in `docs/TESTING.md`
-- Latest handoff discipline in `PROGRESS.md`
+- Hosted project ref and Supabase CLI auth
+- `supabase projects api-keys` to read a service-role key for hosted inspection
+- `@supabase/supabase-js` already present in `apps/admin`
+- Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
 
 ## Existing Logic Checked
 
-- `README.md` already lists a short current-readiness summary, but it is still too coarse for deciding the next engineering slice.
-- `docs/LAUNCH_RUNBOOK.md` has owner action items and pilot gates, but it does not yet separate `must-have`, `good-to-have`, and `later` in a way that maps directly to ongoing development.
-- `docs/TESTING.md` documents the Android emulator fallback, but it does not currently feed a single priority view of what is truly still open.
+- The launch docs already say temporary fixture accounts must be removed before a private pilot.
+- There is no repo-owned audit yet that checks whether those fixture accounts still exist in hosted auth or still hold active club/business access.
+- Existing hosted audits already follow a pattern: one real read-only audit script, one deterministic smoke for the script itself, and one root QA wrapper.
 
 ## Review Outcome
 
-Ship a narrow documentation-and-prioritization follow-up that:
+Ship a narrow hosted-readiness follow-up that:
 
-- records the already verified iPhone and Android-emulator results without pretending more than we proved
-- defines the remaining work as `must-have before private pilot`, `needed before broader public launch`, and `later`
-- keeps the next coding slices focused on real product risk instead of generic polish
+- reads the hosted project and finds fixture users by email
+- checks whether any such users still hold active privileged memberships
+- exposes the result through a real audit, a deterministic smoke, and a root QA wrapper
