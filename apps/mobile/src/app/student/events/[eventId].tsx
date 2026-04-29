@@ -285,42 +285,45 @@ export default function StudentEventDetailScreen() {
 
       {event ? (
         <>
-          <InfoCard eyebrow={event.city} title={event.name}>
-            <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
-              <View style={styles.heroOverlay} />
-              <View style={styles.heroContent}>
-                <View style={styles.badges}>
-                  <StatusBadge
-                    label={event.status.toLowerCase()}
-                    state={event.status === "PUBLISHED" ? "ready" : "warning"}
-                  />
-                  {registrationBadge ? (
-                    <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-                  ) : null}
+          <ImageBackground imageStyle={styles.heroImage} source={coverSource} style={styles.heroCard}>
+            <View style={styles.heroOverlay} />
+            <View style={styles.heroContent}>
+              <View style={styles.heroHeading}>
+                <Text style={styles.heroEyebrow}>{event.city}</Text>
+                <Text style={styles.heroTitle}>{event.name}</Text>
+              </View>
+
+              <View style={styles.badges}>
+                <StatusBadge
+                  label={event.status.toLowerCase()}
+                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
+                />
+                {registrationBadge ? (
+                  <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+                ) : null}
+              </View>
+
+              <Text style={styles.heroSummary}>
+                {event.description ?? "The organizer has not added a description for this event yet."}
+              </Text>
+
+              <View style={styles.metaStrip}>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
                 </View>
-
-                <Text style={styles.heroSummary}>
-                  {event.description ?? "The organizer has not added a description for this event yet."}
-                </Text>
-
-                <View style={styles.metaStrip}>
-                  <View style={styles.metaPill}>
-                    <Text style={styles.metaPillValue}>Starts {formatDateTime(event.startAt)}</Text>
-                  </View>
-                  <View style={styles.metaPill}>
-                    <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
-                  </View>
-                  <View style={styles.metaPill}>
-                    <Text style={styles.metaPillValue}>
-                      {event.maxParticipants === null
-                        ? "Open capacity"
-                        : `${event.maxParticipants} participant cap`}
-                    </Text>
-                  </View>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>Join before {formatDateTime(event.joinDeadlineAt)}</Text>
+                </View>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillValue}>
+                    {event.maxParticipants === null
+                      ? "Open capacity"
+                      : `${event.maxParticipants} participant cap`}
+                  </Text>
                 </View>
               </View>
-            </ImageBackground>
-          </InfoCard>
+            </View>
+          </ImageBackground>
 
           <InfoCard eyebrow="Registration" title={joinAvailability?.label ?? "Join event"}>
             <Text style={styles.bodyText}>{joinAvailability?.detail ?? "Registration state is loading."}</Text>
@@ -439,10 +442,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   heroCard: {
-    borderRadius: mobileTheme.radius.scene,
     minHeight: 264,
     overflow: "hidden",
     position: "relative",
+    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
+    marginTop: -mobileTheme.spacing.screenVertical,
   },
   heroContent: {
     flex: 1,
@@ -450,8 +454,26 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 18,
   },
+  heroEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
+  },
+  heroHeading: {
+    gap: 6,
+  },
   heroImage: {
-    borderRadius: mobileTheme.radius.scene,
+    borderRadius: 0,
+    },
+  heroTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.title,
+    lineHeight: mobileTheme.typography.lineHeights.title,
+    letterSpacing: -0.5,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,

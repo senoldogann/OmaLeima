@@ -109,10 +109,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   heroBand: {
-    borderRadius: mobileTheme.radius.scene,
     minHeight: 248,
     overflow: "hidden",
     position: "relative",
+    marginHorizontal: -mobileTheme.spacing.screenHorizontal,
+    marginTop: -mobileTheme.spacing.screenVertical,
     ...interactiveSurfaceShadowStyle,
   },
   heroCopy: {
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   heroImage: {
-    borderRadius: mobileTheme.radius.scene,
+    borderRadius: 0,
   },
   heroMetaDot: {
     backgroundColor: mobileTheme.colors.limeBorder,
