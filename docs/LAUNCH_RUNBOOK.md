@@ -99,7 +99,8 @@ These are not required for the current private pilot path. They matter when we s
 5. Configure the final Apple and Google submission credentials outside the repo.
 6. Run the repo gate before any submission work:
    - `npm run qa:mobile-store-release-readiness`
-7. Only after that, move into EAS build + submit execution.
+7. Keep the required Expo EAS environment variables present for `development`, `preview`, and `production`.
+8. Only after that, move into EAS build + submit execution.
 
 ## Senin icin kisa not (TR)
 
@@ -138,6 +139,11 @@ Store hazirligi icin repo icinde artik ayri bir gate var:
 - `npm run qa:mobile-store-release-readiness`
 
 Bu gate sadece bizim repo tarafindan dogrulanabilecek kisimlari kontrol eder. App Store Connect veya Google Play Console icindeki gerçek listing, screenshot, privacy policy, support URL ve submission credential adimlari daha sonra owner isi olarak yapilacak.
+Repo tarafinda buna ek olarak Expo EAS environment variable isimlerinin `development`, `preview`, `production` icinde var olup olmadigi da kontrol edilir.
+
+### Expo EAS env notu
+
+Store/public launch gate’i yesil saymak icin Expo EAS CLI auth da gerekli. Audit su anda `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ve `EXPO_PUBLIC_EAS_PROJECT_ID` isimlerinin `development`, `preview`, `production` ortamlarinda mevcut oldugunu read-only kontrol eder; degerleri loglamaz.
 
 ### Android telefon yoksa ne olacak
 

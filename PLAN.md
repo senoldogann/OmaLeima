@@ -5,37 +5,38 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/store-release-readiness`
-- **Goal:** Add a repo-owned readiness gate for Expo store/public-launch preparation without pretending to automate store-console work.
+- **Branch:** `feature/store-readiness-hardening`
+- **Goal:** Remove the false-green paths from the mobile store/public-launch readiness gate.
 
 ## Architectural Decisions
 
-- Add one local audit under `apps/mobile/scripts` that checks repo-owned store prerequisites only.
-- Keep the audit static and read-only: inspect `app.config.ts`, `eas.json`, and current package wiring instead of touching Expo or store consoles.
-- Make EAS build environments explicit in `eas.json` so build intent is stable across development, preview, and production.
-- Document owner-owned App Store Connect and Google Play tasks separately in launch docs.
+- Extend the existing audit instead of adding a second store gate.
+- Check Expo-hosted env-name presence with `eas env:list`, but never print sensitive values.
+- Keep the audit read-only: do not mutate EAS config during the check.
+- Verify asset-file existence on disk in addition to config string anchors.
+- Fix the docs wording directly where the contradictory bullets currently live.
 
 ## Alternatives Considered
 
-- Trying to automate App Store Connect or Google Play setup from the repo:
-  - rejected because those steps are owner/account specific and not safely reproducible from this workstation
-- Leaving store readiness as a docs-only item:
-  - rejected because the repo can still prove whether the Expo app config and EAS config are shaped correctly
-- Hardcoding placeholder submit identifiers into `eas.json`:
-  - rejected because false placeholders create confusion and are easy to forget later
+- Leaving remote EAS envs as a manual checklist item:
+  - rejected because the gate was already claiming broader launch readiness and should prove the hosted env-name surface
+- Creating a separate EAS-only audit:
+  - rejected because one gate is easier to understand and less likely to drift
+- Checking sensitive env values directly:
+  - rejected because env-name presence is enough for this gate and keeps secrets out of logs
 
 ## Edge Cases
 
-- The mobile app may be launch-ready for a private pilot while still missing broader public-launch store inputs; the audit should say that clearly.
-- Expo config may have the right features but still miss stable build environment mapping; the audit should catch that.
-- App-store metadata items like screenshots, privacy URLs, and listing copy are intentionally not in repo and must remain explicit external tasks.
+- `eas env:list` can fail when Expo CLI auth is missing; the audit should fail clearly.
+- Sensitive envs show masked values in CLI output; the parser must only require names.
+- The iOS icon path is a directory asset set, not a `.png`, so file existence must support both files and directories.
 
 ## Validation Plan
 
 - Update the working docs.
-- Add the store/public-launch readiness audit and root wrapper.
-- Make `eas.json` build environments explicit if they are not already.
+- Harden the store-release audit for remote EAS env names and asset existence.
 - Run `npm --prefix apps/mobile run lint`.
 - Run `npm --prefix apps/mobile run typecheck`.
-- Run the new audit and its root QA wrapper.
-- Update launch docs and handoff notes with the new gate and owner checklist.
+- Run `npm --prefix apps/mobile run export:web`.
+- Run the real `audit:store-release-readiness` and `qa:mobile-store-release-readiness`.
+- Update docs and handoff notes with the stronger proof surface.

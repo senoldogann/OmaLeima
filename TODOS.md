@@ -4,11 +4,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/store-release-readiness` branch.
-- [x] Update `REVIEW.md` for the store-readiness slice.
+- [x] Create `feature/store-readiness-hardening` branch.
+- [x] Update `REVIEW.md` for the hardening slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Add the mobile store/public-launch readiness audit and root wrapper.
-- [x] Tighten `apps/mobile/eas.json` where the repo can make build intent explicit.
-- [x] Run focused validation for the new mobile store-readiness gate.
-- [x] Update owner-facing docs with the new command and the remaining store tasks.
-- [x] Update `PROGRESS.md` with the new handoff note.
+- [x] Harden the mobile store/public-launch audit for remote EAS env names and asset existence.
+- [x] Clean the contradictory Android wording in `docs/TESTING.md`.
+- [x] Run focused validation for the hardened store-readiness gate.
+- [x] Update docs with the stronger gate scope and EAS auth expectation.
+- [x] Update `PROGRESS.md` with the hardening handoff note.

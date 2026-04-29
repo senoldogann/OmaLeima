@@ -97,6 +97,7 @@ npm run audit:store-release-readiness
 ## Store/public launch note
 
 - The repo now has a dedicated store/public-launch readiness audit for Expo config, build assets, native policy fields, and explicit EAS build environments.
+- The same gate also expects Expo EAS CLI auth and verifies the required remote EAS environment-variable names for `development`, `preview`, and `production`.
 - This gate does not prove App Store Connect or Google Play Console state by itself.
 - Store listing metadata, screenshots, privacy/support URLs, and final submission credentials remain owner-owned work for the broader public launch phase.
 
