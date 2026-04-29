@@ -4,11 +4,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/android-emulator-smoke-fallback` branch.
-- [x] Update `REVIEW.md` for the Android emulator fallback slice.
+- [x] Create `feature/android-expo-go-push-guard` branch.
+- [x] Update `REVIEW.md` for the Expo Go Android guard slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Clarify Android readiness wording in `README.md`.
-- [x] Add an Android emulator fallback section to `docs/TESTING.md`.
-- [x] Add an Android emulator note to `docs/LAUNCH_RUNBOOK.md` and `apps/mobile/README.md`.
+- [x] Guard `expo-notifications` behind lazy loading in `apps/mobile/src/lib/push.ts`.
+- [x] Update the diagnostics provider to tolerate missing notifications module on Android Expo Go.
 - [x] Update `PROGRESS.md` with the new handoff note.
-- [x] Run a focused sanity pass and package the branch.
+- [x] Run focused mobile validation and re-open the app on the emulator.

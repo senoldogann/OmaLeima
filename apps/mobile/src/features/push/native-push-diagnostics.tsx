@@ -2,10 +2,11 @@ import type { PropsWithChildren } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
+import type * as ExpoNotifications from "expo-notifications";
 import { AppState, Platform } from "react-native";
 
 import {
+  readNotificationsModuleAsync,
   readPushPermissionStateAsync,
   readPushProjectId,
   readPushRuntimeMode,
@@ -50,12 +51,12 @@ const readNotificationDataRecord = (value: unknown): Record<string, unknown> => 
 };
 
 const hasTriggerType = (
-  trigger: Notifications.NotificationRequest["trigger"] | null | undefined
-): trigger is Notifications.NotificationRequest["trigger"] & { type: string } =>
+  trigger: ExpoNotifications.NotificationRequest["trigger"] | null | undefined
+): trigger is ExpoNotifications.NotificationRequest["trigger"] & { type: string } =>
   trigger !== null && typeof trigger !== "undefined" && "type" in trigger && typeof trigger.type === "string";
 
 const readNotificationSource = (
-  trigger: Notifications.NotificationRequest["trigger"] | null | undefined
+  trigger: ExpoNotifications.NotificationRequest["trigger"] | null | undefined
 ): PushNotificationCapture["source"] => {
   if (trigger === null || typeof trigger === "undefined") {
     return "local";
@@ -73,7 +74,7 @@ const readNotificationSource = (
 };
 
 const readNotificationTriggerType = (
-  trigger: Notifications.NotificationRequest["trigger"] | null | undefined
+  trigger: ExpoNotifications.NotificationRequest["trigger"] | null | undefined
 ): string => {
   if (trigger === null || typeof trigger === "undefined") {
     return "immediate";
@@ -87,7 +88,7 @@ const readNotificationTriggerType = (
 };
 
 const createNotificationCapture = (
-  notification: Notifications.Notification,
+  notification: ExpoNotifications.Notification,
   capturedAt: string,
   actionIdentifier: string | null
 ): PushNotificationCapture => {
@@ -108,7 +109,7 @@ const createNotificationCapture = (
 };
 
 const createNotificationResponseCapture = (
-  response: Notifications.NotificationResponse,
+  response: ExpoNotifications.NotificationResponse,
   capturedAt: string
 ): PushNotificationCapture =>
   createNotificationCapture(response.notification, capturedAt, response.actionIdentifier);
@@ -139,13 +140,19 @@ export const NativePushDiagnosticsProvider = ({ children }: PropsWithChildren) =
 
   const clearCapturedPushActivity = useCallback((): void => {
     if (Platform.OS !== "web") {
-      try {
-        Notifications.clearLastNotificationResponse();
-      } catch (error) {
-        logNativePushDiagnosticsWarning("native-push-diagnostics-clear-failed", {
-          message: error instanceof Error ? error.message : String(error),
+      void readNotificationsModuleAsync()
+        .then((notificationsModule) => {
+          if (notificationsModule === null) {
+            return;
+          }
+
+          notificationsModule.clearLastNotificationResponse();
+        })
+        .catch((error) => {
+          logNativePushDiagnosticsWarning("native-push-diagnostics-clear-failed", {
+            message: error instanceof Error ? error.message : String(error),
+          });
         });
-      }
     }
 
     setDiagnostics((currentDiagnostics) => ({
@@ -192,14 +199,20 @@ export const NativePushDiagnosticsProvider = ({ children }: PropsWithChildren) =
     previousUserIdRef.current = currentUserId;
 
     if (Platform.OS !== "web") {
-      try {
-        Notifications.clearLastNotificationResponse();
-      } catch (error) {
-        logNativePushDiagnosticsWarning("native-push-diagnostics-session-reset-failed", {
-          currentUserId,
-          message: error instanceof Error ? error.message : String(error),
+      void readNotificationsModuleAsync()
+        .then((notificationsModule) => {
+          if (notificationsModule === null) {
+            return;
+          }
+
+          notificationsModule.clearLastNotificationResponse();
+        })
+        .catch((error) => {
+          logNativePushDiagnosticsWarning("native-push-diagnostics-session-reset-failed", {
+            currentUserId,
+            message: error instanceof Error ? error.message : String(error),
+          });
         });
-      }
     }
 
     setDiagnostics((currentDiagnostics) => ({
@@ -214,50 +227,70 @@ export const NativePushDiagnosticsProvider = ({ children }: PropsWithChildren) =
       return;
     }
 
-    try {
-      const lastResponse = Notifications.getLastNotificationResponse();
+    let isMounted = true;
+    let cleanup = () => {};
 
-      if (lastResponse !== null) {
-        const responseCapture = createNotificationResponseCapture(
-          lastResponse,
-          new Date().toISOString()
-        );
+    void readNotificationsModuleAsync()
+      .then((notificationsModule) => {
+        if (!isMounted || notificationsModule === null) {
+          return;
+        }
 
-        setDiagnostics((currentDiagnostics) => ({
-          ...currentDiagnostics,
-          lastNotification: responseCapture,
-          lastNotificationResponse: responseCapture,
-        }));
-      }
-    } catch (error) {
-      logNativePushDiagnosticsWarning("native-push-diagnostics-bootstrap-response-failed", {
-        message: error instanceof Error ? error.message : String(error),
+        try {
+          const lastResponse = notificationsModule.getLastNotificationResponse();
+
+          if (lastResponse !== null) {
+            const responseCapture = createNotificationResponseCapture(
+              lastResponse,
+              new Date().toISOString()
+            );
+
+            setDiagnostics((currentDiagnostics) => ({
+              ...currentDiagnostics,
+              lastNotification: responseCapture,
+              lastNotificationResponse: responseCapture,
+            }));
+          }
+        } catch (error) {
+          logNativePushDiagnosticsWarning("native-push-diagnostics-bootstrap-response-failed", {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+
+        const notificationSubscription = notificationsModule.addNotificationReceivedListener((notification) => {
+          setDiagnostics((currentDiagnostics) => ({
+            ...currentDiagnostics,
+            lastNotification: createNotificationCapture(notification, new Date().toISOString(), null),
+          }));
+        });
+
+        const responseSubscription = notificationsModule.addNotificationResponseReceivedListener((response) => {
+          const responseCapture = createNotificationResponseCapture(
+            response,
+            new Date().toISOString()
+          );
+
+          setDiagnostics((currentDiagnostics) => ({
+            ...currentDiagnostics,
+            lastNotification: responseCapture,
+            lastNotificationResponse: responseCapture,
+          }));
+        });
+
+        cleanup = () => {
+          notificationSubscription.remove();
+          responseSubscription.remove();
+        };
+      })
+      .catch((error) => {
+        logNativePushDiagnosticsWarning("native-push-diagnostics-module-load-failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
       });
-    }
-
-    const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
-      setDiagnostics((currentDiagnostics) => ({
-        ...currentDiagnostics,
-        lastNotification: createNotificationCapture(notification, new Date().toISOString(), null),
-      }));
-    });
-
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const responseCapture = createNotificationResponseCapture(
-        response,
-        new Date().toISOString()
-      );
-
-      setDiagnostics((currentDiagnostics) => ({
-        ...currentDiagnostics,
-        lastNotification: responseCapture,
-        lastNotificationResponse: responseCapture,
-      }));
-    });
 
     return () => {
-      notificationSubscription.remove();
-      responseSubscription.remove();
+      isMounted = false;
+      cleanup();
     };
   }, []);
 
