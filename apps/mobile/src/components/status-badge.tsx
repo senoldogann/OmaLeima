@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
     width: 5,
   },
   label: {
+    fontFamily: mobileTheme.typography.families.semibold,
     fontSize: 11,
-    fontWeight: "700",
     letterSpacing: 0.3,
     textTransform: "uppercase",
   },

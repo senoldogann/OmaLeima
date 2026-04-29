@@ -114,6 +114,38 @@ export const mobileTheme = {
     textSoft: "rgba(245, 247, 241, 0.44)",
   },
 
+  typography: {
+    families: {
+      regular: "Poppins_400Regular",
+      medium: "Poppins_500Medium",
+      semibold: "Poppins_600SemiBold",
+      bold: "Poppins_700Bold",
+      extrabold: "Poppins_800ExtraBold",
+    },
+    sizes: {
+      display: 52,
+      title: 30,
+      titleLarge: 36,
+      subtitle: 20,
+      body: 15,
+      bodySmall: 13,
+      caption: 12,
+      eyebrow: 11,
+      number: 64,
+    },
+    lineHeights: {
+      display: 54,
+      title: 38,
+      titleLarge: 44,
+      subtitle: 28,
+      body: 22,
+      bodySmall: 19,
+      caption: 17,
+      eyebrow: 15,
+      number: 62,
+    },
+  },
+
   radius: {
     chip: 6,
     button: 10,

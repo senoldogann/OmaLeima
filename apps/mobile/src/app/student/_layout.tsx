@@ -99,15 +99,15 @@ export default function StudentTabsLayout() {
         tabBarInactiveTintColor: mobileTheme.colors.textMuted,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "700",
+          fontFamily: mobileTheme.typography.families.semibold,
+          fontSize: mobileTheme.typography.sizes.eyebrow,
           marginBottom: 2,
         },
         tabBarItemStyle: {
           paddingTop: 8,
         },
         tabBarStyle: {
-          backgroundColor: "transparent",
+          backgroundColor: mobileTheme.colors.screenBase,
           borderTopWidth: 0,
           bottom: 16,
           height: 78,

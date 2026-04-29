@@ -36,5 +36,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Refine `student/rewards`, account summary, and profile tag visuals one more step.
 - [x] Collapse the shared mobile palette into black, lime, and white.
 - [x] Remove decorative background linework and make the tab bar fully black.
+- [x] Load Poppins as the shared mobile font family and apply it to the main shared typography surfaces.
+- [x] Rebalance the `student/rewards` heading, summary, and event-card typography.
 - [x] Run mobile lint, typecheck, and export validation.
 - [x] Update `PROGRESS.md` with the simplification handoff note.

@@ -28,8 +28,9 @@ export default function StudentRewardsScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
+        <Text style={styles.screenEyebrow}>Rewards</Text>
         <Text style={styles.screenTitle}>Rewards</Text>
-        <Text style={styles.metaText}>Track what you have earned and what is ready to claim.</Text>
+        <Text style={styles.metaText}>Track collected leimas and see what is ready for claim.</Text>
       </View>
 
       <View style={styles.summaryHero}>
@@ -37,17 +38,12 @@ export default function StudentRewardsScreen() {
           <Text style={styles.summaryNumber}>{totalStamps}</Text>
           <Text style={styles.summaryLabel}>leimat collected</Text>
         </View>
-        <View style={styles.summaryPills}>
-          <View style={styles.summaryPill}>
-            <Text style={styles.summaryPillValue}>{registeredEventCount}</Text>
-            <Text style={styles.summaryPillLabel}>events</Text>
-          </View>
-          {claimableCount > 0 ? (
-            <View style={[styles.summaryPill, styles.summaryPillLime]}>
-              <Text style={[styles.summaryPillValue, styles.summaryPillValueLime]}>{claimableCount}</Text>
-              <Text style={[styles.summaryPillLabel, styles.summaryPillLabelLime]}>claimable</Text>
-            </View>
-          ) : null}
+        <View style={styles.summaryMetaRow}>
+          <Text style={styles.summaryMetaText}>{registeredEventCount} event{registeredEventCount === 1 ? "" : "s"}</Text>
+          <View style={styles.summaryMetaDivider} />
+          <Text style={[styles.summaryMetaText, claimableCount > 0 ? styles.summaryMetaTextAccent : null]}>
+            {claimableCount} claimable
+          </Text>
         </View>
       </View>
 
@@ -112,117 +108,119 @@ export default function StudentRewardsScreen() {
 const styles = StyleSheet.create({
   bodyText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 21,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   claimableAlert: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: mobileTheme.colors.limeSurface,
-    borderRadius: mobileTheme.radius.chip,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
   },
   claimableAlertText: {
     color: mobileTheme.colors.lime,
     flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
   ghostButton: {
     alignSelf: "flex-start",
-    borderRadius: mobileTheme.radius.button,
+    borderRadius: 999,
     backgroundColor: mobileTheme.colors.surfaceL2,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   ghostButtonText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "600",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
   metaText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
+    maxWidth: 320,
   },
   primaryButton: {
     alignItems: "center",
     backgroundColor: mobileTheme.colors.lime,
-    borderRadius: mobileTheme.radius.button,
+    borderRadius: 999,
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 14,
   },
   primaryButtonText: {
     color: "#08090E",
-    fontSize: 14,
-    fontWeight: "800",
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
     letterSpacing: 0.3,
   },
   screenHeader: {
-    gap: 6,
-    marginBottom: 2,
+    gap: 8,
+    marginBottom: 6,
+  },
+  screenEyebrow: {
+    color: mobileTheme.colors.lime,
+    fontFamily: mobileTheme.typography.families.bold,
+    fontSize: mobileTheme.typography.sizes.eyebrow,
+    letterSpacing: 1.2,
+    lineHeight: mobileTheme.typography.lineHeights.eyebrow,
+    textTransform: "uppercase",
   },
   screenTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
-    letterSpacing: -0.8,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.titleLarge,
+    lineHeight: mobileTheme.typography.lineHeights.titleLarge,
+    letterSpacing: -0.9,
   },
   summaryHero: {
-    gap: 14,
-    paddingVertical: 8,
+    gap: 12,
+    paddingBottom: 6,
+    paddingTop: 2,
   },
   summaryLabel: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
   summaryLead: {
-    gap: 2,
+    gap: 4,
   },
   summaryNumber: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 56,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: mobileTheme.typography.sizes.number,
     fontWeight: "800",
-    letterSpacing: -1.8,
+    letterSpacing: -2.2,
     fontVariant: ["tabular-nums"],
-    lineHeight: 58,
+    lineHeight: mobileTheme.typography.lineHeights.number,
   },
-  summaryPill: {
-    backgroundColor: mobileTheme.colors.surfaceL2,
-    borderRadius: mobileTheme.radius.chip,
-    gap: 2,
-    minWidth: 92,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  summaryMetaDivider: {
+    backgroundColor: mobileTheme.colors.borderStrong,
+    borderRadius: 999,
+    height: 4,
+    width: 4,
   },
-  summaryPillLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  summaryPillLabelLime: {
-    color: mobileTheme.colors.limeDim,
-  },
-  summaryPills: {
+  summaryMetaRow: {
+    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
-  summaryPillLime: {
-    backgroundColor: mobileTheme.colors.limeSurface,
+  summaryMetaText: {
+    color: mobileTheme.colors.textSecondary,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
-  summaryPillValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 20,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-  },
-  summaryPillValueLime: {
+  summaryMetaTextAccent: {
     color: mobileTheme.colors.lime,
   },
 });

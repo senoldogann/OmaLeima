@@ -68,12 +68,13 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
   errorText: {
     color: "#FFC5C1",
-    fontSize: 12,
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
 });

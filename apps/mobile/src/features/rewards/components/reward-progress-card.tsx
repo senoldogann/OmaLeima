@@ -140,7 +140,7 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
             styles.progressFill,
             {
               width: `${event.goalProgressRatio * 100}%`,
-              backgroundColor: hasClaimable ? mobileTheme.colors.lime : mobileTheme.colors.cyan,
+              backgroundColor: mobileTheme.colors.lime,
             },
           ]}
         />
@@ -167,14 +167,14 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
                     {
                       backgroundColor: hasClaimable
                         ? mobileTheme.colors.limeSurface
-                        : mobileTheme.colors.cyanSurface,
+                        : mobileTheme.colors.surfaceL3,
                       borderColor: hasClaimable
                         ? mobileTheme.colors.limeBorder
-                        : mobileTheme.colors.cyanBorder,
+                        : mobileTheme.colors.borderDefault,
                     },
                   ]}
                 >
-                  <Text style={[styles.tokenMark, { color: hasClaimable ? mobileTheme.colors.lime : mobileTheme.colors.cyan }]}>
+                  <Text style={[styles.tokenMark, { color: hasClaimable ? mobileTheme.colors.lime : mobileTheme.colors.textPrimary }]}>
                     ✦
                   </Text>
                 </View>
@@ -243,9 +243,9 @@ const styles = StyleSheet.create({
   },
   stampNumber: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 72,
-    fontWeight: "800",
-    lineHeight: 74,
+    fontFamily: mobileTheme.typography.families.extrabold,
+    fontSize: 68,
+    lineHeight: 70,
     letterSpacing: -2,
     fontVariant: ["tabular-nums"],
   },
@@ -256,14 +256,14 @@ const styles = StyleSheet.create({
   },
   stampDivider: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 18,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.subtitle,
     fontVariant: ["tabular-nums"],
   },
   stampUnit: {
     color: mobileTheme.colors.textDim,
-    fontSize: 12,
-    fontWeight: "600",
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
@@ -276,8 +276,8 @@ const styles = StyleSheet.create({
   },
   claimableBadgeText: {
     color: "#08090E",
+    fontFamily: mobileTheme.typography.families.bold,
     fontSize: 10,
-    fontWeight: "800",
     letterSpacing: 1.2,
   },
 
@@ -296,15 +296,16 @@ const styles = StyleSheet.create({
   // --- Summary ---
   summaryText: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 21,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.body,
+    lineHeight: mobileTheme.typography.lineHeights.body,
   },
 
   dateLine: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 18,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
+    lineHeight: mobileTheme.typography.lineHeights.caption,
   },
 
   // --- Memory tokens ---
@@ -313,8 +314,8 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     color: mobileTheme.colors.textDim,
+    fontFamily: mobileTheme.typography.families.bold,
     fontSize: 10,
-    fontWeight: "700",
     letterSpacing: 1.5,
   },
   tokenStrip: {
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   },
   tokenMark: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.bold,
   },
   tokenOverflow: {
     backgroundColor: mobileTheme.colors.surfaceL3,
@@ -342,8 +343,8 @@ const styles = StyleSheet.create({
   },
   tokenOverflowText: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.caption,
   },
 
   // --- Tiers ---
@@ -376,39 +377,40 @@ const styles = StyleSheet.create({
   },
   tierTitle: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.body,
     flex: 1,
   },
   tierMeta: {
-    color: mobileTheme.colors.cyan,
-    fontSize: 12,
-    fontWeight: "600",
+    color: mobileTheme.colors.limeDim,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
     letterSpacing: 0.3,
     textTransform: "uppercase",
   },
   tierCopy: {
     color: mobileTheme.colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
+    fontFamily: mobileTheme.typography.families.regular,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
+    lineHeight: mobileTheme.typography.lineHeights.bodySmall,
   },
   tierInventory: {
     color: mobileTheme.colors.textMuted,
-    fontSize: 12,
+    fontFamily: mobileTheme.typography.families.medium,
+    fontSize: mobileTheme.typography.sizes.caption,
   },
 
   // --- Button ---
   ghostButton: {
     alignSelf: "flex-start",
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   ghostButtonText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "600",
+    fontFamily: mobileTheme.typography.families.semibold,
+    fontSize: mobileTheme.typography.sizes.bodySmall,
   },
 });
