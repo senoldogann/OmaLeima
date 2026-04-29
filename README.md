@@ -24,6 +24,7 @@ Current verified state:
 
 Must-have before a private pilot:
 
+- current operator credential file proves a green hosted final dry-run
 - one last pilot dry-run with real operator accounts
 - replacing the placeholder pilot operator emails with real club/operator emails once the first pilot club is known
 - keeping the local operator credential file stored safely outside the repo
@@ -95,6 +96,13 @@ Pilot operator hygiene readiness gate:
 ```bash
 npm run qa:pilot-operator-readiness
 npm --prefix apps/admin run audit:pilot-operator-hygiene
+```
+
+Hosted final dry-run gate using the Desktop operator credential file:
+
+```bash
+npm run qa:private-pilot-final-dry-run
+npm --prefix apps/admin run run:pilot-final-dry-run
 ```
 
 Supabase auth cutover readiness for the hosted preview-mode versus custom-domain-mode switch:

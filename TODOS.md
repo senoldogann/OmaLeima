@@ -4,14 +4,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos
 
-- [x] Create `feature/operator-account-bootstrap` branch.
-- [x] Update `REVIEW.md` for the hosted operator bootstrap slice.
+- [x] Create `feature/private-pilot-final-dry-run` branch.
+- [x] Update `REVIEW.md` for the final dry-run slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Add a hosted bootstrap script for real operator credentials.
-- [x] Create the new hosted admin, organizer, and scanner accounts with random passwords.
-- [x] Save the generated credentials into a Desktop file outside the repo.
-- [x] Reassign hosted club/business access away from fixture users and archive the old fixture accounts.
-- [x] Rotate hosted staging-admin secrets if GitHub CLI access is available.
-- [x] Update the small set of docs/UI copy that still hardcodes hosted fixture credentials.
-- [x] Run focused validation, including the real hosted hygiene audit after cleanup.
+- [x] Add a hosted final dry-run script that reads the Desktop operator credential file.
+- [x] Add a root wrapper for the new dry-run command.
+- [x] Run focused validation, including the real hosted dry-run and the hosted hygiene audit.
+- [x] Update owner-facing docs with the new command and what it does not prove.
 - [x] Update `PROGRESS.md` with the new handoff note.

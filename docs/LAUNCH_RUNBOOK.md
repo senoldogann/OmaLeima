@@ -42,7 +42,7 @@ What is **not** yet fully verified:
 ### Must-have before a private pilot
 
 1. Replace temporary hosted smoke accounts with real operator credentials.
-2. Run one final dry-run with those real operator accounts.
+2. Run the repo-owned final dry-run with those real operator accounts.
 3. Keep iPhone as the already-proven student and push path if Android remote push is still unverified.
 4. Confirm the first pilot club, event, venue list, and scanner roster.
 5. Replace the current placeholder pilot operator emails with the real club/operator emails once the first pilot club is known.
@@ -163,6 +163,11 @@ Before a private pilot with a real club:
 3. verify access with those accounts
 4. rotate any shared passwords used during development
 
+Current repo-owned operator gate:
+
+- `npm run qa:private-pilot-final-dry-run`
+- `npm --prefix apps/admin run run:pilot-final-dry-run`
+
 ## Private-pilot go or no-go gate
 
 Treat the project as ready for a **private hosted pilot** only when all of the following are true:
@@ -174,6 +179,7 @@ Treat the project as ready for a **private hosted pilot** only when all of the f
 - remote reward-unlock push is seen on the physical device
 - `audit:pilot-operator-hygiene` passes on the hosted project
 - current pilot operator credentials are in place
+- `qa:private-pilot-final-dry-run` passes on the current Desktop credential file
 - seeded smoke credentials are disabled or removed
 - event-day fallback ownership is assigned to named people
 

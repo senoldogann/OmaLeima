@@ -36,7 +36,8 @@
     "smoke:scan-race": "tsx scripts/smoke-scan-race.ts",
     "smoke:routes": "tsx scripts/smoke-routes.ts",
     "smoke:supabase-auth-url-config-apply": "tsx scripts/smoke-supabase-auth-url-config-apply.ts",
-    "smoke:supabase-auth-url-config-audit": "tsx scripts/smoke-supabase-auth-url-config-audit.ts"
+    "smoke:supabase-auth-url-config-audit": "tsx scripts/smoke-supabase-auth-url-config-audit.ts",
+    "run:pilot-final-dry-run": "tsx scripts/run-pilot-final-dry-run.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/operator-account-bootstrap`
-- **Scope:** Create real hosted operator accounts with strong random passwords, save them to a local Desktop file, reassign hosted pilot access away from fixture accounts, and get the hosted operator-hygiene audit to pass.
+- **Branch:** `feature/private-pilot-final-dry-run`
+- **Scope:** Add a repo-owned final hosted dry-run gate that uses the generated pilot operator accounts and proves the current private-pilot credential set still works.
 
 ## Affected Files
 
@@ -20,36 +20,34 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/admin/package.json`
 - `apps/admin/README.md`
 - `apps/admin/scripts/_shared/hosted-project-admin.ts`
-- `apps/admin/scripts/audit-pilot-operator-hygiene.ts`
-- `apps/admin/scripts/bootstrap-pilot-operator-accounts.ts`
+- `apps/admin/scripts/run-pilot-final-dry-run.ts`
+- `tests/run-private-pilot-final-dry-run.mjs`
 
 ## Risks
 
-- The bootstrap flow will mutate the real hosted project, so it must only touch the intended operator accounts and hosted memberships.
-- Existing fixture users can still be referenced by old records like events or reviews, so deleting them outright may break foreign-key integrity.
-- The generated credentials file must stay outside the repo and must not leak into git.
-- Hosted verification flows currently rely on an admin password account, so secret rotation must stay aligned with the new admin credential.
+- The dry-run should not mutate hosted pilot data. It should authenticate and read only what is needed to prove access.
+- The Desktop credential file is secret material. The script must read it without copying passwords back into the repo.
+- The gate should fail clearly when the Desktop file is missing or stale, otherwise the owner will not know what to fix.
 
 ## Dependencies
 
 - Hosted project ref and Supabase CLI auth
-- `supabase projects api-keys` to read a service-role key for hosted inspection
+- `supabase projects api-keys` to read publishable and service-role keys for hosted inspection
 - `@supabase/supabase-js` already present in `apps/admin`
 - Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
-- GitHub CLI auth if we rotate hosted verification secrets from the same machine
+- The local Desktop operator credential file at `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt`
 
 ## Existing Logic Checked
 
-- The launch docs already say temporary fixture accounts must be removed before a private pilot.
-- The new hosted hygiene audit already tells us exactly which fixture users and memberships are still active.
-- Existing hosted helper logic already knows how to read the hosted service-role key through the Supabase CLI.
-- The mobile business sign-in and hosted smoke copy still reference seeded hosted credentials directly, so those strings need to become generic before fixture cleanup is complete.
+- The hosted hygiene audit is now green, so the next useful proof is whether the current operator credentials still authenticate and still map to the expected roles.
+- Existing hosted helper logic already knows how to read hosted keys through the Supabase CLI.
+- Existing docs already say a final private-pilot dry-run is required, but there is no repo-owned command for it yet.
 
 ## Review Outcome
 
-Ship a narrow hosted-operator bootstrap follow-up that:
+Ship a narrow private-pilot readiness follow-up that:
 
-- creates one real hosted admin, one hosted club organizer, and one hosted scanner account
-- saves the generated credentials into a Desktop file outside the repo
-- reassigns hosted club/business access away from seeded `@omaleima.test` users
-- archives seeded hosted operator accounts so the hygiene audit can turn green
+- reads the Desktop operator credential file
+- signs in the admin, organizer, and scanner accounts against the hosted project
+- verifies the expected hosted role and active access shape for each account
+- exposes the result through a repeatable root command and owner-facing docs
