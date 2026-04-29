@@ -296,6 +296,40 @@ It is read-only and checks:
 
 This audit does not prove password rotation by itself. It is specifically a hosted-user and privileged-membership cleanup gate before a private pilot.
 
+## Pilot secret/password hygiene
+
+Run from repo root:
+
+```bash
+npm run qa:pilot-secret-hygiene
+```
+
+The direct local command is:
+
+```bash
+npm --prefix apps/admin run audit:pilot-secret-hygiene
+```
+
+This gate reads the local Desktop credential file at `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt` and checks:
+
+- the file still exists at the expected path
+- the file mode is still strict owner-only (`600`)
+- admin, organizer, and scanner credentials still parse correctly
+- passwords are not duplicated across operator accounts
+- passwords are not known weak placeholders such as `password123`
+- passwords still meet the current minimum complexity gate
+- required GitHub secret names are still present:
+  - `STAGING_ADMIN_EMAIL`
+  - `STAGING_ADMIN_PASSWORD`
+  - `VERCEL_AUTOMATION_BYPASS_SECRET`
+
+This is intentionally a local hygiene gate. It does **not** prove:
+
+- the exact GitHub secret values
+- browser rendering
+- device behavior
+- hosted role or membership shape by itself
+
 ## Private pilot final dry-run
 
 Run from repo root:

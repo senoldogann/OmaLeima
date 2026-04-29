@@ -17,6 +17,7 @@ Current verified state:
 
 - hosted admin verification is wired
 - hosted pilot operator hygiene audit is green
+- hosted pilot secret/password hygiene audit is green
 - placeholder pilot admin, organizer, and scanner accounts now exist with random passwords generated locally
 - iPhone student login, push, QR rotation, scanner fallback, stamp creation, and reward-unlock push are verified
 - Android emulator app-flow smoke is usable for OmaLeima on Expo Go
@@ -25,6 +26,7 @@ Current verified state:
 Must-have before a private pilot:
 
 - current operator credential file proves a green hosted final dry-run
+- current operator credential file proves a green secret/password hygiene audit
 - one last pilot dry-run with real operator accounts
 - replacing the placeholder pilot operator emails with real club/operator emails once the first pilot club is known
 - keeping the local operator credential file stored safely outside the repo
@@ -96,6 +98,13 @@ Pilot operator hygiene readiness gate:
 ```bash
 npm run qa:pilot-operator-readiness
 npm --prefix apps/admin run audit:pilot-operator-hygiene
+```
+
+Pilot secret/password hygiene readiness gate:
+
+```bash
+npm run qa:pilot-secret-hygiene
+npm --prefix apps/admin run audit:pilot-secret-hygiene
 ```
 
 Hosted final dry-run gate using the Desktop operator credential file:

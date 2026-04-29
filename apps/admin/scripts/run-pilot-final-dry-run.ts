@@ -1,12 +1,15 @@
-import { readFile } from "node:fs/promises";
-
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { createAdminClient, readPublishableKeyFromCli, readServiceRoleKey, readSupabaseUrl } from "./_shared/hosted-project-admin";
+import {
+  defaultPilotOperatorCredentialPath,
+  readPilotOperatorCredentialsAsync,
+  type PilotOperatorCredential,
+} from "./_shared/pilot-operator-credentials";
 import { readProjectRef } from "./_shared/supabase-auth-config";
 
-const credentialFilePath = process.env.PILOT_OPERATOR_BOOTSTRAP_OUTPUT_PATH ?? "/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt";
+const credentialFilePath = defaultPilotOperatorCredentialPath;
 
 const operatorRoleMap = {
   Admin: "PLATFORM_ADMIN",
@@ -25,50 +28,6 @@ const membershipSchema = z.object({
   user_id: z.string().min(1),
 });
 
-type OperatorKey = keyof typeof operatorRoleMap;
-
-type OperatorCredential = {
-  email: string;
-  password: string;
-};
-
-type OperatorCredentialMap = Record<OperatorKey, OperatorCredential>;
-
-const parseCredentialFile = (source: string): OperatorCredentialMap => {
-  const lines = source.split("\n").map((line) => line.trim());
-
-  const readValue = (label: string): string => {
-    const matchingLine = lines.find((line) => line.startsWith(`${label}: `));
-
-    if (matchingLine === undefined) {
-      throw new Error(`Missing "${label}" in ${credentialFilePath}.`);
-    }
-
-    return matchingLine.slice(`${label}: `.length).trim();
-  };
-
-  return {
-    Admin: {
-      email: readValue("Admin email"),
-      password: readValue("Admin password"),
-    },
-    Organizer: {
-      email: readValue("Organizer email"),
-      password: readValue("Organizer password"),
-    },
-    Scanner: {
-      email: readValue("Scanner email"),
-      password: readValue("Scanner password"),
-    },
-  };
-};
-
-const readOperatorCredentialsAsync = async (): Promise<OperatorCredentialMap> => {
-  const source = await readFile(credentialFilePath, "utf8");
-
-  return parseCredentialFile(source);
-};
-
 const createPublishableClient = (supabaseUrl: string, publishableKey: string): SupabaseClient =>
   createClient(supabaseUrl, publishableKey, {
     auth: {
@@ -80,7 +39,7 @@ const createPublishableClient = (supabaseUrl: string, publishableKey: string): S
 const signInAndReadProfileAsync = async (
   supabaseUrl: string,
   publishableKey: string,
-  credential: OperatorCredential
+  credential: PilotOperatorCredential
 ): Promise<z.infer<typeof profileSchema>> => {
   const client = createPublishableClient(supabaseUrl, publishableKey);
   const { data, error } = await client.auth.signInWithPassword({
@@ -152,7 +111,7 @@ const run = async (): Promise<void> => {
   const supabaseUrl = readSupabaseUrl(projectRef, "PILOT_OPERATOR_AUDIT_SUPABASE_URL");
   const serviceRoleKey = readServiceRoleKey(projectRef, "PILOT_OPERATOR_AUDIT_SERVICE_ROLE_KEY");
   const publishableKey = readPublishableKeyFromCli(projectRef);
-  const credentials = await readOperatorCredentialsAsync();
+  const credentials = await readPilotOperatorCredentialsAsync(credentialFilePath);
   const adminClient = createAdminClient(supabaseUrl, serviceRoleKey);
 
   const adminProfile = await signInAndReadProfileAsync(supabaseUrl, publishableKey, credentials.Admin);

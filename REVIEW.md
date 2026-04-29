@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/private-pilot-final-dry-run`
-- **Scope:** Add a repo-owned final hosted dry-run gate that uses the generated pilot operator accounts and proves the current private-pilot credential set still works.
+- **Branch:** `feature/pilot-secret-hygiene-audit`
+- **Scope:** Add a repo-owned secret and password hygiene gate for the current hosted pilot credential set.
 
 ## Affected Files
 
@@ -20,34 +20,36 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/admin/package.json`
 - `apps/admin/README.md`
 - `apps/admin/scripts/_shared/hosted-project-admin.ts`
+- `apps/admin/scripts/_shared/pilot-operator-credentials.ts`
+- `apps/admin/scripts/audit-pilot-secret-hygiene.ts`
+- `apps/admin/scripts/smoke-pilot-secret-hygiene-audit.ts`
 - `apps/admin/scripts/run-pilot-final-dry-run.ts`
-- `tests/run-private-pilot-final-dry-run.mjs`
+- `package.json`
+- `tests/run-pilot-secret-hygiene.mjs`
 
 ## Risks
 
-- The dry-run should not mutate hosted pilot data. It should authenticate and read only what is needed to prove access.
-- The Desktop credential file is secret material. The script must read it without copying passwords back into the repo.
-- The gate should fail clearly when the Desktop file is missing or stale, otherwise the owner will not know what to fix.
+- The Desktop credential file is secret material. The audit must inspect it without copying secrets into repo files or logs.
+- GitHub Actions secret values are not readable, so the audit can only prove presence, not exact value equality.
+- A false-green hygiene gate would be worse than none; failures must be explicit about file permissions, weak passwords, or missing secret names.
 
 ## Dependencies
 
-- Hosted project ref and Supabase CLI auth
-- `supabase projects api-keys` to read publishable and service-role keys for hosted inspection
-- `@supabase/supabase-js` already present in `apps/admin`
-- Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
 - The local Desktop operator credential file at `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt`
+- GitHub CLI auth to inspect repo secret names
+- Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
 
 ## Existing Logic Checked
 
-- The hosted hygiene audit is now green, so the next useful proof is whether the current operator credentials still authenticate and still map to the expected roles.
-- Existing hosted helper logic already knows how to read hosted keys through the Supabase CLI.
-- Existing docs already say a final private-pilot dry-run is required, but there is no repo-owned command for it yet.
+- The hosted final dry-run is now green, so the next useful gate is whether the current local credential file still looks safe enough for a pilot handoff.
+- The project already has a Desktop credential file as the current source of truth for operator passwords.
+- Current docs mention moving the file somewhere safer, but there is no repeatable audit for permissions, weak passwords, or missing GitHub secret names.
 
 ## Review Outcome
 
-Ship a narrow private-pilot readiness follow-up that:
+Ship a narrow secret-hygiene follow-up that:
 
-- reads the Desktop operator credential file
-- signs in the admin, organizer, and scanner accounts against the hosted project
-- verifies the expected hosted role and active access shape for each account
+- reuses the Desktop credential parser in one shared helper
+- audits credential-file permissions, password quality, and duplicate passwords
+- audits the required GitHub secret names for the pilot path
 - exposes the result through a repeatable root command and owner-facing docs
