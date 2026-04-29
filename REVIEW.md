@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Continue the full UI redesign by proving the new mobile surfaces in runtime, starting with the redesigned business routes on local web so the visual system is tested in a real signed-in flow before the next wave.
+- **Scope:** Prepare a clean design handoff package for another agent by collecting the visual direction, local Stitch references, and every mobile/admin file that belongs to the redesign surface area.
 
 ## Affected Files
 
@@ -14,56 +14,37 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/foundation/theme.ts`
-- `apps/mobile/src/features/foundation/components/glass-panel.tsx`
-- `apps/mobile/src/features/foundation/components/foundation-status-card.tsx`
-- `apps/mobile/src/components/app-screen.tsx`
-- `apps/mobile/src/components/info-card.tsx`
-- `apps/mobile/src/components/status-badge.tsx`
-- `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/app/student/events/index.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/business/home.tsx`
-- `apps/mobile/src/app/business/events.tsx`
-- `apps/mobile/src/app/business/scanner.tsx`
-- `apps/mobile/src/features/events/components/event-card.tsx`
-- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
-- `apps/mobile/src/features/profile/components/profile-tag-card.tsx`
-- `docs/TESTING.md`
+- `docs/UI_REDESIGN_AGENT_HANDOFF.md`
 
 ## Risks
 
-- A visual redesign can accidentally weaken readability in dark, crowded event conditions if we over-index on glass and glow.
-- Shared foundation changes affect many screens at once, so spacing, contrast, and status semantics must remain consistent.
-- The QR screen is already physically validated; redesign work must not break its refresh cadence, token visibility, or scanner helper copy.
-- Profile, rewards, and business surfaces still mix older tokens with the newer glass system, so partial updates can make the app feel less coherent before it feels better.
-- The business scanner is already part of a physically validated hosted flow. Visual changes must not weaken scan clarity, active event selection, or result legibility during dark event conditions.
-- The event detail screen is information-dense and easy to over-style. If hierarchy gets too decorative, join state, reward state, and schedule details become harder to scan.
-- A static web export can stay green while a signed-in runtime route still overflows, clips, or collapses on real viewport sizes. We need at least one logged-in runtime proof before calling the redesign stable.
+- If the handoff inventory is incomplete, the next design agent may redesign only the visible screens and miss shared foundation files, causing another half-finished visual pass.
+- If the handoff file does not clearly separate visual scope from validated product logic, a new agent may accidentally reopen auth, QR, scanner, or push flows that are already proven.
+- The mobile and admin references come from different Stitch directions, so the handoff must explain the intended product spirit instead of dumping screenshots without hierarchy.
+- The repo still contains validated operator and pilot flows. Any redesign work must preserve those flows while changing presentation only.
 
 ## Dependencies
 
-- Existing mobile glass foundation from the previous UI pass
-- Expo Glass Effect fallback behavior across iOS, Android, and web
-- Current student flows that already passed physical-device and hosted smoke validation
+- Existing redesign branch state in `feature/full-ui-redesign-foundation`
+- Local Stitch exports on Desktop:
+  - `/Users/dogan/Desktop/stitch_omaleima_liquid_glass_pass`
+  - `/Users/dogan/Desktop/stitch_omaleima_liquid_admin_panel`
+  - `/Users/dogan/Desktop/stitch_omaleima_android_m3_expressive`
 - User inspiration file: `/Users/dogan/Desktop/platform_design_prompts.md`
+- Previously validated mobile and hosted product flows that must stay intact
 
 ## Existing Logic Checked
 
-- `mobileTheme`, `GlassPanel`, `AppScreen`, `InfoCard`, and `StatusBadge` already provide a good structural base, but they still read as conservative and system-like rather than distinctly OmaLeima.
-- The student QR and event list now speak the new visual language, but event detail, rewards, and profile still feel split between the redesign and the older slate-card pass.
-- Business home, events, and scanner still rely heavily on hardcoded dark-blue cards and generic action buttons, so the operator side does not yet feel like the same product family as the student side.
-- Business email/password auth already gives us a reliable local runtime entry point, so it is the fastest way to prove the redesign in motion before we tackle student Google-linked proof or admin web redesign.
-- Reward progress currently has no richer "earned leima" stamp strip or venue-memory cue, but the current data shape does not yet expose venue logos or per-stamp visuals. The first redesign slice should therefore improve the surface language now and leave deeper data-backed celebratory details for a later pass if needed.
-- The user wants the redesign to reflect students, parties, and simplicity without becoming noisy or generic. The shared visual system needs stronger rhythm, richer highlights, and more character while keeping one-thumb usability and scan readability intact.
+- The user no longer wants me to execute the redesign. The immediate need is a precise inventory that another design-focused agent can use without re-discovering the codebase.
+- The redesign surface spans both mobile and admin web. The next agent needs the shared foundation files and all route files together in one place.
+- The current branch already contains redesign context and prior proof notes, so the new handoff file should point to that state instead of pretending the redesign starts from zero.
+- The user explicitly wants an energetic but simple student/party spirit, stronger liquid-glass cues, and venue/logo-based celebratory moments after a successful scan.
 
 ## Review Outcome
 
-Ship the redesign as a controlled runtime-proof slice that:
+Do not push more design code in this turn. Instead:
 
-- reuses the shared foundation instead of creating a second competing component style
-- verifies business home, events, and scanner in a real signed-in route flow
-- keeps student runtime proof honest instead of over-claiming it before Google-linked local smoke exists
-- fixes any runtime-only layout regression that the signed-in browser smoke reveals
+- prepare one design-handoff document inside the repo
+- include the Stitch links, Desktop reference folders, and product direction
+- list every mobile/admin file that belongs to the redesign scope
+- document the guardrails so the next agent changes presentation without reopening validated behavior

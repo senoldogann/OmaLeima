@@ -21,3 +21,8 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Fix any runtime-only layout or interaction regression found during the smoke.
 - [x] Narrow the remaining student runtime proof gap honestly in docs and handoff.
 - [x] Update `PROGRESS.md` with the runtime-proof handoff note and next visual wave.
+- [x] Update the working docs for the design-handoff slice.
+- [x] Create a repo-owned redesign handoff document with references and file inventory.
+- [x] Group redesign files by mobile foundation, student routes, business routes, and admin web routes.
+- [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
+- [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
