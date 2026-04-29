@@ -5,34 +5,33 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/owner-checklist-tr`
-- **Goal:** Add a short Turkish owner-facing checklist that tells the user what they do not need to worry about yet, what they will need to do once the app is more complete, and how this fits into the existing technical roadmap.
+- **Branch:** `feature/android-emulator-smoke-fallback`
+- **Goal:** Clarify the Android fallback path when there is no physical Android phone: use the emulator for flow and UI smoke now, and keep remote push as an explicitly deferred real-device proof.
 
 ## Architectural Decisions
 
 - Keep this slice documentation-first.
-- Reuse `docs/LAUNCH_RUNBOOK.md` and add a compact Turkish section instead of creating a second owner document.
-- Keep the Turkish part limited to the user's decisions and timing; the rest of the runbook can stay in English.
-- Explicitly mark club outreach, real operator account creation, and domain purchase as deferred until the app is more complete.
+- Update the existing launch and testing docs instead of creating a new Android-only note.
+- Narrow the wording from broad “Android physical-device smoke pending” to the more accurate “Android remote-push physical-device smoke pending.”
+- Add a practical emulator checklist so the user can still validate Android UI and product flows now.
 
 ## Alternatives Considered
 
-- Creating a separate Turkish checklist file:
-  - rejected because the launch runbook is already the natural place for owner actions
-- Translating the full runbook:
-  - rejected because the user only asked for the parts they need to act on
-- Leaving the current English-only owner section unchanged:
-  - rejected because the user asked for a clearer note/todolist and we should meet them where they are
+- Treating Android as fully blocked until a real phone appears:
+  - rejected because emulator coverage can still de-risk auth, routing, QR, and scanner UI behavior
+- Treating emulator coverage as a full replacement for Android launch confidence:
+  - rejected because Expo's official push docs still require a real device for push verification
+- Adding a new standalone Android document:
+  - rejected because this belongs inside the existing testing and launch docs
 
 ## Edge Cases
 
-- The Turkish checklist should not imply that the user must find a real club right now.
-- The notes should separate “not needed yet” from “needed when pilot planning starts.”
-- The next technical step should still remain visible after the owner note is added.
+- The docs should help the user today even if `adb` is not installed locally.
+- The emulator checklist should clearly distinguish what can be proven without FCM-backed delivery.
+- The private-pilot recommendation should stay flexible: iPhone-first pilot can continue while Android remote push remains open.
 
 ## Validation Plan
 
-- Update `docs/LAUNCH_RUNBOOK.md` with the Turkish owner checklist.
-- Add a short pointer in `README.md`.
-- Run a focused sanity pass on the new headings and wording.
+- Update `README.md`, `docs/TESTING.md`, `docs/LAUNCH_RUNBOOK.md`, and `apps/mobile/README.md`.
+- Run a focused wording sanity pass with `rg`.
 - Update `PROGRESS.md` and the working docs.

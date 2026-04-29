@@ -27,7 +27,7 @@ As of `2026-04-29`, the following paths are already verified in the current host
 
 What is **not** yet fully verified:
 
-- Android physical-device smoke
+- Android remote-push physical-device smoke
 - public App Store or Play Store distribution
 - public custom domain cutover
 - production-strength operator credentials replacing seeded smoke accounts
@@ -76,9 +76,27 @@ Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.
 ### Su an teknik olarak dogru siramiz
 
 1. Ana gelistirme akisina devam
-2. Android fiziksel cihaz smoke'u ilk uygun anda gecmek
-3. Launch ve operasyon checklist'ini net tutmak
-4. En sonda toplu UI polish ve public launch isi
+2. Android emulator ile login / event / QR / scanner akislarini dogrulamak
+3. Android fiziksel cihaz smoke'unu ancak Android gercekten launch kapsamina girdiginde veya bir cihaz bulundugunda gecmek
+4. Launch ve operasyon checklist'ini net tutmak
+5. En sonda toplu UI polish ve public launch isi
+
+### Android telefon yoksa ne olacak
+
+Bu durumda Android icin tamamen durmuyoruz.
+
+Simdilik:
+
+- Android emulator ile urun akislarini deneriz
+- login, event, QR ve scanner ekranlarini dogrulariz
+- ama Android remote push'i tam dogrulandi saymayiz
+
+Yani Android tarafinda kalan risk:
+
+- gercek cihaz uzerinden remote push teslimati
+- notification'a dokunup app'e donus davranisi
+
+Bu risk, Android public launch hedeflenene kadar parkta kalabilir.
 
 ### Kulup yoksa bugun problem mi
 
@@ -215,9 +233,10 @@ At that point the remaining human step should be only:
 Current reality:
 
 - iPhone development-build smoke: passed
-- Android physical-device smoke: not yet passed
+- Android emulator fallback: available for app-flow smoke
+- Android remote-push physical-device smoke: not yet passed
 
-That means a private pilot can still move forward if iPhone is the only supported operator path for the first event, but broader public rollout should wait until Android is also validated or intentionally declared out of scope for launch.
+That means a private pilot can still move forward if iPhone is the only supported operator path for the first event. Android emulator coverage can reduce UI and flow risk now, but broader Android rollout should wait until a real Android device verifies remote push or Android is explicitly kept out of first-launch scope.
 
 ## Custom-domain cutover order
 
