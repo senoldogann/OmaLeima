@@ -1,7 +1,7 @@
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import type * as ExpoNotifications from "expo-notifications";
 
 import { publicEnv } from "@/lib/env";
 import type {
@@ -10,23 +10,71 @@ import type {
   PushRuntimeMode,
 } from "@/types/app";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+type NotificationsModule = typeof ExpoNotifications;
+
+let notificationsModulePromise: Promise<NotificationsModule | null> | null = null;
+const IOS_PROVISIONAL_STATUS = 3;
+
+const createExpoGoAndroidDetail = (): string =>
+  "Expo Go on Android SDK 53+ does not expose expo-notifications remote APIs. Use the emulator for app-flow smoke or install a development build for push checks.";
+
+const loadNotificationsModuleAsync = async (): Promise<NotificationsModule | null> => {
+  if (Platform.OS === "web") {
+    return null;
+  }
+
+  if (Platform.OS === "android" && isExpoGoRuntime()) {
+    return null;
+  }
+
+  if (notificationsModulePromise !== null) {
+    return notificationsModulePromise;
+  }
+
+  notificationsModulePromise = import("expo-notifications")
+    .then((module) => {
+      module.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+
+      return module;
+    })
+    .catch((error: unknown) => {
+      if (Platform.OS === "android" && isExpoGoRuntime()) {
+        console.warn("push-notifications-module-unavailable", {
+          platform: Platform.OS,
+          runtime: readPushRuntimeMode(),
+          message: error instanceof Error ? error.message : String(error),
+        });
+
+        return null;
+      }
+
+      throw error;
+    });
+
+  return notificationsModulePromise;
+};
 
 const ensureAndroidNotificationChannelAsync = async (): Promise<void> => {
   if (Platform.OS !== "android") {
     return;
   }
 
-  await Notifications.setNotificationChannelAsync("default", {
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return;
+  }
+
+  await notificationsModule.setNotificationChannelAsync("default", {
     name: "default",
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: notificationsModule.AndroidImportance.DEFAULT,
   });
 };
 
@@ -56,11 +104,11 @@ export const readPushProjectId = (): string | null => {
   return projectId;
 };
 
-const hasGrantedNotificationPermission = (status: Notifications.NotificationPermissionsStatus): boolean =>
-  status.granted || status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+const hasGrantedNotificationPermission = (status: ExpoNotifications.NotificationPermissionsStatus): boolean =>
+  status.granted || status.ios?.status === IOS_PROVISIONAL_STATUS;
 
-const readPermissionState = (status: Notifications.NotificationPermissionsStatus): PushPermissionState => {
-  if (status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
+const readPermissionState = (status: ExpoNotifications.NotificationPermissionsStatus): PushPermissionState => {
+  if (status.ios?.status === IOS_PROVISIONAL_STATUS) {
     return "provisional";
   }
 
@@ -104,13 +152,19 @@ export const hasGrantedNotificationPermissionAsync = async (): Promise<boolean> 
     return false;
   }
 
-  const permissions = await Notifications.getPermissionsAsync();
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return false;
+  }
+
+  const permissions = await notificationsModule.getPermissionsAsync();
 
   return hasGrantedNotificationPermission(permissions);
 };
 
 export const presentLocalNotificationAsync = async (
-  content: Notifications.NotificationContentInput
+  content: ExpoNotifications.NotificationContentInput
 ): Promise<string | null> => {
   const hasPermission = await hasGrantedNotificationPermissionAsync();
 
@@ -118,7 +172,13 @@ export const presentLocalNotificationAsync = async (
     return null;
   }
 
-  return Notifications.scheduleNotificationAsync({
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return null;
+  }
+
+  return notificationsModule.scheduleNotificationAsync({
     content,
     trigger: null,
   });
@@ -129,7 +189,13 @@ export const readPushPermissionStateAsync = async (): Promise<PushPermissionStat
     return "unavailable";
   }
 
-  const permissions = await Notifications.getPermissionsAsync();
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return "unavailable";
+  }
+
+  const permissions = await notificationsModule.getPermissionsAsync();
 
   return readPermissionState(permissions);
 };
@@ -153,11 +219,21 @@ export const preparePushTokenAsync = async (): Promise<PushPreparationResult> =>
 
   await ensureAndroidNotificationChannelAsync();
 
-  const permissions = await Notifications.getPermissionsAsync();
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return {
+      status: "unavailable",
+      expoPushToken: null,
+      detail: createExpoGoAndroidDetail(),
+    };
+  }
+
+  const permissions = await notificationsModule.getPermissionsAsync();
   let finalStatus = permissions.status;
 
   if (finalStatus !== "granted") {
-    const request = await Notifications.requestPermissionsAsync();
+    const request = await notificationsModule.requestPermissionsAsync();
     finalStatus = request.status;
   }
 
@@ -179,7 +255,7 @@ export const preparePushTokenAsync = async (): Promise<PushPreparationResult> =>
     };
   }
 
-  const pushToken = await Notifications.getExpoPushTokenAsync({
+  const pushToken = await notificationsModule.getExpoPushTokenAsync({
     projectId,
   });
 
@@ -189,3 +265,6 @@ export const preparePushTokenAsync = async (): Promise<PushPreparationResult> =>
     detail: "Expo push token is ready for register-device-token.",
   };
 };
+
+export const readNotificationsModuleAsync = async (): Promise<NotificationsModule | null> =>
+  loadNotificationsModuleAsync();

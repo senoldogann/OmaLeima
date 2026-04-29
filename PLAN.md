@@ -5,33 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/android-emulator-smoke-fallback`
-- **Goal:** Clarify the Android fallback path when there is no physical Android phone: use the emulator for flow and UI smoke now, and keep remote push as an explicitly deferred real-device proof.
+- **Branch:** `feature/android-expo-go-push-guard`
+- **Goal:** Make the Android emulator usable today by preventing Expo Go from crashing on `expo-notifications`, while still treating remote push as unavailable there.
 
 ## Architectural Decisions
 
-- Keep this slice documentation-first.
-- Update the existing launch and testing docs instead of creating a new Android-only note.
-- Narrow the wording from broad “Android physical-device smoke pending” to the more accurate “Android remote-push physical-device smoke pending.”
-- Add a practical emulator checklist so the user can still validate Android UI and product flows now.
+- Keep the change focused inside the mobile push helper and diagnostics provider.
+- Replace eager runtime imports of `expo-notifications` with lazy loading.
+- When Android Expo Go cannot provide the notifications module, return a typed `unavailable` state instead of throwing.
+- Do not weaken real-device push logic for iPhone development builds or real Android development builds.
 
 ## Alternatives Considered
 
-- Treating Android as fully blocked until a real phone appears:
-  - rejected because emulator coverage can still de-risk auth, routing, QR, and scanner UI behavior
-- Treating emulator coverage as a full replacement for Android launch confidence:
-  - rejected because Expo's official push docs still require a real device for push verification
-- Adding a new standalone Android document:
-  - rejected because this belongs inside the existing testing and launch docs
+- Leaving Expo Go Android unsupported and asking the user to ignore the crash:
+  - rejected because it blocks useful emulator flow smoke
+- Adding special-case guards throughout the UI only:
+  - rejected because the root cause lives in the shared push module
+- Removing `expo-notifications` usage entirely for emulator sessions:
+  - rejected because we still want the same codepath to work on real builds
 
 ## Edge Cases
 
-- The docs should help the user today even if `adb` is not installed locally.
-- The emulator checklist should clearly distinguish what can be proven without FCM-backed delivery.
-- The private-pilot recommendation should stay flexible: iPhone-first pilot can continue while Android remote push remains open.
+- Android Expo Go should not crash even if the diagnostics provider mounts immediately.
+- Notification listener cleanup should still work when the module is available.
+- `presentLocalNotificationAsync` should quietly no-op when the module is unavailable.
 
 ## Validation Plan
 
-- Update `README.md`, `docs/TESTING.md`, `docs/LAUNCH_RUNBOOK.md`, and `apps/mobile/README.md`.
-- Run a focused wording sanity pass with `rg`.
-- Update `PROGRESS.md` and the working docs.
+- Update the working docs.
+- Run `npm --prefix apps/mobile run lint`.
+- Run `npm --prefix apps/mobile run typecheck`.
+- Restart Expo Go on the Android emulator and confirm the crash is gone.
