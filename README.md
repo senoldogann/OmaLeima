@@ -24,6 +24,7 @@ Must-have before a private pilot:
 
 - final operator credential rotation away from smoke accounts
 - one last pilot dry-run with real operator accounts
+- hosted pilot-operator hygiene audit green
 
 Needed before a broader public launch:
 
@@ -85,6 +86,13 @@ Hosted admin readiness audit for real Vercel link, Vercel env names, and GitHub 
 ```bash
 npm run qa:hosted-admin-readiness
 npm --prefix apps/admin run audit:hosted-setup
+```
+
+Pilot operator hygiene readiness gate:
+
+```bash
+npm run qa:pilot-operator-readiness
+npm --prefix apps/admin run audit:pilot-operator-hygiene
 ```
 
 Supabase auth cutover readiness for the hosted preview-mode versus custom-domain-mode switch:

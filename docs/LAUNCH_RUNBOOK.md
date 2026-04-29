@@ -43,6 +43,7 @@ What is **not** yet fully verified:
 2. Run one final dry-run with those real operator accounts.
 3. Keep iPhone as the already-proven student and push path if Android remote push is still unverified.
 4. Confirm the first pilot club, event, venue list, and scanner roster.
+5. Get `audit:pilot-operator-hygiene` to pass on the hosted project.
 
 ### Needed before a broader public launch
 
@@ -69,6 +70,7 @@ These are the next user-owned tasks outside the repo. Split them into “needed 
 3. Confirm the hosted Supabase project is the one you want to keep using for the pilot.
 4. Set the final hosted secrets and rotate any weak placeholder values.
 5. Run one last pilot dry-run with real operator accounts before the event date.
+6. Run `npm --prefix apps/admin run audit:pilot-operator-hygiene` and make sure it no longer finds any `@omaleima.test` operator accounts or active privileged memberships.
 
 ### Can wait until later
 
@@ -164,6 +166,7 @@ Treat the project as ready for a **private hosted pilot** only when all of the f
 - iPhone student flow passes
 - iPhone scanner flow passes
 - remote reward-unlock push is seen on the physical device
+- `audit:pilot-operator-hygiene` passes on the hosted project
 - real pilot operator credentials are in place
 - seeded smoke credentials are disabled or removed
 - event-day fallback ownership is assigned to named people
@@ -223,6 +226,8 @@ Run these checks before a hosted pilot or a real event:
    - `scanner@omaleima.test`
    - `admin@omaleima.test`
    - any credential still using `password123`
+12. Pilot operator hygiene audit is green:
+   - `npm --prefix apps/admin run audit:pilot-operator-hygiene`
 
 ## Hosted staging notes
 
@@ -230,6 +235,7 @@ Run these checks before a hosted pilot or a real event:
 - If you create a dedicated Vercel custom environment such as `staging`, deploy with `vercel deploy --target=staging` and pull matching variables with `vercel pull --environment=staging`.
 - The admin app now runs a hosted env prebuild check on Vercel. If `NEXT_PUBLIC_SUPABASE_URL` still points at localhost or the publishable key is still an example placeholder, the build should fail immediately.
 - The admin app now also has a read-only readiness audit. Run `npm --prefix apps/admin run audit:hosted-setup` after linking the real project or rotating secrets so the next hosted verification does not fail late.
+- The admin app now also has a read-only pilot operator hygiene audit. Run `npm --prefix apps/admin run audit:pilot-operator-hygiene` before a private pilot to catch leftover `@omaleima.test` operator accounts and any active club/business memberships still tied to them.
 - The admin app also now has a read-only Supabase auth-config audit. Run `npm --prefix apps/admin run audit:supabase-auth-url-config` before and after the auth-domain cutover so the live `site_url`, redirect allow-list, and Google OAuth state are verified from the repo.
 - The admin app now also has a controlled apply command for the hosted auth-domain switch. Rehearse with `SUPABASE_AUTH_CONFIG_APPLY_MODE=dry-run` first; only use `apply` after the DNS and audit gates are green.
 - If preview deployments are protected by Vercel SSO, a successful deploy can still return `401` to anonymous smoke checks. Treat that as deployment protection configuration, not as an app regression.

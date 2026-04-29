@@ -11,6 +11,7 @@
     "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",
     "qa:custom-domain-readiness": "node tests/run-custom-domain-readiness.mjs",
     "qa:hosted-admin-readiness": "node tests/run-hosted-admin-readiness.mjs",
+    "qa:pilot-operator-readiness": "node tests/run-pilot-operator-readiness.mjs",
     "qa:staging-admin-verification": "node tests/run-staging-admin-verification.mjs",
     "qa:supabase-auth-cutover-readiness": "node tests/run-supabase-auth-cutover-readiness.mjs",
     "qa:phase6-core": "node tests/run-phase6-core.mjs",

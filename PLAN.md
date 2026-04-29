@@ -5,33 +5,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/readiness-priority-matrix`
-- **Goal:** Convert the current verified state into a small, durable priority matrix so we can keep building in the right order without losing the phased plan.
+- **Branch:** `feature/pilot-operator-hygiene-audit`
+- **Goal:** Add a hosted audit gate for fixture operator-account cleanup before a private pilot.
 
 ## Architectural Decisions
 
-- Keep this slice documentation-first and scoped to existing readiness docs.
-- Do not create a new standalone checklist file unless the existing launch and testing docs cannot hold the matrix cleanly.
-- Use three buckets only: `must-have before private pilot`, `needed before broader public launch`, and `later`.
-- Explicitly mention which verifications are already done manually so we stop re-asking the same questions.
+- Follow the existing hosted-audit pattern under `apps/admin/scripts`.
+- Use Supabase CLI to read a hosted service-role key instead of asking the owner to copy secrets into the repo.
+- Query hosted auth users plus hosted `profiles`, `business_staff`, and `club_members` in read-only mode.
+- Treat known fixture emails and any active privileged memberships attached to them as a readiness failure.
 
 ## Alternatives Considered
 
-- Creating a brand-new `readiness.md` file:
-  - rejected because the project already uses `README.md` and `docs/LAUNCH_RUNBOOK.md` for this kind of current-state guidance
-- Leaving the current docs as-is and deciding next steps ad hoc:
-  - rejected because we are at the point where repeated manual verification can waste time if priorities stay fuzzy
-- Treating Android emulator success as the same as Android launch readiness:
-  - rejected because the missing part is still specifically Android remote push on a physical device
+- Leaving operator cleanup as a manual checklist item only:
+  - rejected because the hosted project can drift and we need a repeatable gate before a real pilot
+- Reading only docs and env names without touching hosted data:
+  - rejected because the actual risk is stale fixture users still existing in hosted auth and memberships
+- Mutating or auto-disabling fixture users from the audit:
+  - rejected because this slice should stay read-only and safe
 
 ## Edge Cases
 
-- The matrix should not accidentally make domain purchase, store release, or full UI redesign look like current blockers.
-- The docs should preserve the fact that there is no real club yet, and that this is not blocking core product completion today.
-- The owner-facing Turkish note should stay short and action-oriented.
+- Hosted projects with no users or no privileged memberships should still produce a clear `READY` result.
+- The audit should not fail just because student smoke users exist; the important part is privileged operator cleanup.
+- Legacy service-role and newer secret-key listings may both appear in CLI output, so key selection should be explicit.
 
 ## Validation Plan
 
 - Update the working docs.
-- Update `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md` with the priority matrix.
-- Run a focused sanity pass with `rg` across the updated anchors.
+- Add the hosted audit script, deterministic smoke, and root QA wrapper.
+- Run `npm --prefix apps/admin run lint`.
+- Run `npm --prefix apps/admin run typecheck`.
+- Run `npm --prefix apps/admin run smoke:pilot-operator-hygiene-audit`.
+- Run `npm run qa:pilot-operator-readiness`.
+- Run the real hosted audit once and record the current blocker honestly.
