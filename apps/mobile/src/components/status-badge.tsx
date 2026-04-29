@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { mobileTheme } from "@/features/foundation/theme";
 import type { AppReadinessState } from "@/types/app";
 
 type StatusBadgeProps = {
@@ -8,28 +8,34 @@ type StatusBadgeProps = {
   state: AppReadinessState;
 };
 
-const getBadgeColors = (state: AppReadinessState): { backgroundColor: string; textColor: string } => {
+type BadgeStyle = {
+  bg: string;
+  text: string;
+  dot: string;
+};
+
+const getBadgeStyle = (state: AppReadinessState): BadgeStyle => {
   switch (state) {
     case "ready":
-      return { backgroundColor: "rgba(126, 241, 194, 0.16)", textColor: mobileTheme.colors.accentMint };
+      return { bg: mobileTheme.colors.successSurface, text: mobileTheme.colors.success, dot: mobileTheme.colors.success };
     case "loading":
-      return { backgroundColor: "rgba(138, 215, 255, 0.18)", textColor: mobileTheme.colors.accentBlue };
+      return { bg: mobileTheme.colors.cyanSurface, text: mobileTheme.colors.cyan, dot: mobileTheme.colors.cyan };
     case "pending":
-      return { backgroundColor: "rgba(246, 210, 139, 0.18)", textColor: mobileTheme.colors.accentGold };
+      return { bg: mobileTheme.colors.amberSurface, text: mobileTheme.colors.amber, dot: mobileTheme.colors.amber };
     case "warning":
-      return { backgroundColor: "rgba(255, 177, 168, 0.16)", textColor: mobileTheme.colors.accentRose };
+      return { bg: mobileTheme.colors.pinkSurface, text: mobileTheme.colors.pink, dot: mobileTheme.colors.pink };
     case "error":
-      return { backgroundColor: "rgba(255, 141, 141, 0.18)", textColor: "#FFC5C1" };
+      return { bg: mobileTheme.colors.dangerSurface, text: mobileTheme.colors.danger, dot: mobileTheme.colors.danger };
   }
 };
 
 export const StatusBadge = ({ label, state }: StatusBadgeProps) => {
-  const colors = getBadgeColors(state);
+  const style = getBadgeStyle(state);
 
   return (
-    <View style={[styles.badge, { backgroundColor: colors.backgroundColor }]}>
-      <View style={[styles.dot, { backgroundColor: colors.textColor }]} />
-      <Text style={[styles.label, { color: colors.textColor }]}>{label}</Text>
+    <View style={[styles.badge, { backgroundColor: style.bg }]}>
+      <View style={[styles.dot, { backgroundColor: style.dot }]} />
+      <Text style={[styles.label, { color: style.text }]}>{label}</Text>
     </View>
   );
 };
@@ -38,23 +44,21 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: "center",
     alignSelf: "flex-start",
-    borderColor: mobileTheme.colors.cardBorderStrong,
-    borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: 4,
     flexDirection: "row",
-    gap: 7,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    ...interactiveSurfaceShadowStyle,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   dot: {
     borderRadius: 999,
-    height: 6,
-    width: 6,
+    height: 5,
+    width: 5,
   },
   label: {
     fontSize: 11,
     fontWeight: "700",
+    letterSpacing: 0.3,
     textTransform: "uppercase",
   },
 });

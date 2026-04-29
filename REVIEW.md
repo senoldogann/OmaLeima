@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Prepare a clean design handoff package for another agent by collecting the visual direction, local Stitch references, and every mobile/admin file that belongs to the redesign surface area.
+- **Scope:** Review the new STARK theme wave started by another agent, make sure it does not break the product, fix the real compile/runtime issues it introduced, and carry the same theme language into the remaining mobile surfaces that still look half-updated.
 
 ## Affected Files
 
@@ -14,37 +14,55 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `docs/UI_REDESIGN_AGENT_HANDOFF.md`
+- `apps/mobile/src/features/foundation/theme.ts`
+- `apps/mobile/src/features/foundation/components/glass-panel.tsx`
+- `apps/mobile/src/features/foundation/components/glass-tab-bar-background.tsx`
+- `apps/mobile/src/components/app-screen.tsx`
+- `apps/mobile/src/components/info-card.tsx`
+- `apps/mobile/src/components/status-badge.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/history.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/student/rewards.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/app/student/leaderboard.tsx`
+- `apps/mobile/src/app/auth/login.tsx`
+- `apps/mobile/src/features/auth/components/login-hero.tsx`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
 
 ## Risks
 
-- If the handoff inventory is incomplete, the next design agent may redesign only the visible screens and miss shared foundation files, causing another half-finished visual pass.
-- If the handoff file does not clearly separate visual scope from validated product logic, a new agent may accidentally reopen auth, QR, scanner, or push flows that are already proven.
-- The mobile and admin references come from different Stitch directions, so the handoff must explain the intended product spirit instead of dumping screenshots without hierarchy.
-- The repo still contains validated operator and pilot flows. Any redesign work must preserve those flows while changing presentation only.
+- The new STARK wave already introduced a real compile break in `business/home.tsx`; we need to treat this as a live integration pass, not just visual polish.
+- Several screens now mix the new opaque STARK tokens with older blue/glass accents, which can make the app feel inconsistent even when each file looks fine alone.
+- The QR and scanner flows are already physically validated, so theme continuation must not weaken readability, countdown clarity, or scan-result urgency.
+- The agent changed admin global CSS heavily; mobile continuation should stay focused and not casually reopen web logic or routing.
 
 ## Dependencies
 
 - Existing redesign branch state in `feature/full-ui-redesign-foundation`
-- Local Stitch exports on Desktop:
+- The newly introduced STARK design tokens and opaque surface direction
+- Local Stitch exports and prompt file for reference:
   - `/Users/dogan/Desktop/stitch_omaleima_liquid_glass_pass`
   - `/Users/dogan/Desktop/stitch_omaleima_liquid_admin_panel`
   - `/Users/dogan/Desktop/stitch_omaleima_android_m3_expressive`
-- User inspiration file: `/Users/dogan/Desktop/platform_design_prompts.md`
-- Previously validated mobile and hosted product flows that must stay intact
+  - `/Users/dogan/Desktop/platform_design_prompts.md`
+- Previously validated auth, QR, scanner, stamp, reward, and push flows that must stay intact
 
 ## Existing Logic Checked
 
-- The user no longer wants me to execute the redesign. The immediate need is a precise inventory that another design-focused agent can use without re-discovering the codebase.
-- The redesign surface spans both mobile and admin web. The next agent needs the shared foundation files and all route files together in one place.
-- The current branch already contains redesign context and prior proof notes, so the new handoff file should point to that state instead of pretending the redesign starts from zero.
-- The user explicitly wants an energetic but simple student/party spirit, stronger liquid-glass cues, and venue/logo-based celebratory moments after a successful scan.
+- Another agent already started a new STARK theme direction: darker opaque surfaces, lime/cyan/pink accents, less glass and fewer soft halos.
+- That direction is materially different from the earlier liquid-glass pass, but the user explicitly asked us to continue this new theme logic and color language rather than revert it.
+- The branch currently fails mobile lint/typecheck because `business/home.tsx` imports the wrong Supabase module and references a non-existent `joinedEvents` field.
+- `student/events/index.tsx`, `student/leaderboard.tsx`, `business/history.tsx`, `auth/login.tsx`, and `login-hero.tsx` still show clear pre-STARK visual leftovers.
+- `reward-progress-card.tsx`, `student/rewards.tsx`, `student/active-event.tsx`, and `business/scanner.tsx` are already partially migrated and should become the reference for the rest of this pass.
 
 ## Review Outcome
 
-Do not push more design code in this turn. Instead:
+Continue the redesign in the new STARK direction, but do it as a hardening pass:
 
-- prepare one design-handoff document inside the repo
-- include the Stitch links, Desktop reference folders, and product direction
-- list every mobile/admin file that belongs to the redesign scope
-- document the guardrails so the next agent changes presentation without reopening validated behavior
+- fix the real compile and lint regressions first
+- normalize the remaining mobile surfaces to the same theme language
+- preserve validated product behavior while changing presentation only
+- keep admin work out of scope unless a clear shared-token issue forces it

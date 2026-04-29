@@ -126,12 +126,13 @@ const styles = StyleSheet.create({
   footerText: {
     color: mobileTheme.colors.textMuted,
     fontSize: 12,
+    lineHeight: 18,
   },
   modeButton: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 20,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
     flex: 1,
     gap: 3,
@@ -139,13 +140,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   modeButtonActive: {
-    borderColor: "rgba(94, 181, 255, 0.46)",
-    backgroundColor: "rgba(94, 181, 255, 0.1)",
+    borderColor: mobileTheme.colors.cyanBorder,
+    backgroundColor: mobileTheme.colors.cyanSurface,
   },
   modeButtonMeta: {
     color: mobileTheme.colors.textMuted,
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   modeButtonPressed: {
     transform: [{ translateY: 1 }, { scale: 0.992 }],

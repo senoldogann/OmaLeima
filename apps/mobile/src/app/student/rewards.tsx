@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { mobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
@@ -21,84 +21,86 @@ export default function StudentRewardsScreen() {
 
   const events = useMemo(() => rewardOverviewQuery.data?.events ?? [], [rewardOverviewQuery.data]);
   const registeredEventCount = rewardOverviewQuery.data?.registeredEventCount ?? 0;
-  const claimableEventCount = events.filter((event) => event.claimableTierCount > 0).length;
+  const claimableCount = events.filter((e) => e.claimableTierCount > 0).length;
+  const totalStamps = events.reduce((acc, e) => acc + e.stampCount, 0);
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="Reward progress">
-        <View style={styles.heroCard}>
-          <View style={styles.heroGlow} />
-          <Text selectable style={styles.heroEyebrow}>Collected memories</Text>
-          <Text selectable style={styles.heroTitle}>
-            Every leima gets its own place here before the club handoff happens.
-          </Text>
-          <Text selectable style={styles.bodyText}>
-            Track event rewards here. Claimable tiers still require club or venue staff handoff even when the mobile app shows that you are eligible.
+      {/* Stats bar */}
+      <View style={styles.statsBar}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{totalStamps}</Text>
+          <Text style={styles.statLabel}>LEIMAT</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{registeredEventCount}</Text>
+          <Text style={styles.statLabel}>EVENTS</Text>
+        </View>
+        {claimableCount > 0 ? (
+          <>
+            <View style={styles.statDivider} />
+            <View style={[styles.statItem, styles.statItemLime]}>
+              <Text style={[styles.statValue, styles.statValueLime]}>{claimableCount}</Text>
+              <Text style={[styles.statLabel, styles.statLabelLime]}>CLAIMABLE</Text>
+            </View>
+          </>
+        ) : null}
+      </View>
+
+      {/* Claimable alert */}
+      {claimableCount > 0 ? (
+        <View style={styles.claimableAlert}>
+          <View style={styles.claimableAlertDot} />
+          <Text style={styles.claimableAlertText}>
+            {claimableCount} event{claimableCount === 1 ? "" : "s"} ready — go to venue to claim.
           </Text>
         </View>
-      </InfoCard>
+      ) : null}
 
+      {/* Loading */}
       {rewardOverviewQuery.isLoading ? (
         <InfoCard eyebrow="Loading" title="Opening rewards">
-          <Text style={styles.bodyText}>Loading registered events, reward tiers, claims, and leima counts.</Text>
+          <Text style={styles.bodyText}>Loading leima counts and tier status.</Text>
         </InfoCard>
       ) : null}
 
+      {/* Error */}
       {rewardOverviewQuery.error ? (
         <InfoCard eyebrow="Error" title="Could not load rewards">
           <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
-          <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Retry</Text>
+          <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.ghostButton}>
+            <Text style={styles.ghostButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
+      {/* Empty */}
       {!rewardOverviewQuery.isLoading && !rewardOverviewQuery.error && events.length === 0 ? (
         <InfoCard eyebrow="Standby" title="No reward progress yet">
           {registeredEventCount === 0 ? (
             <>
               <Text style={styles.bodyText}>
-                Join an event first. Once you are registered, this tab will show stamp progress and reward eligibility per event.
+                Join an event first. Once registered, stamp progress and reward tiers appear here.
               </Text>
-              <Pressable onPress={() => router.push("/student/events")} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Open events</Text>
+              <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>Browse events</Text>
               </Pressable>
             </>
           ) : (
             <Text style={styles.bodyText}>
-              You already have registered events, but none of them currently expose reward progress in the student view. Check again if the organizer republishes or reopens the event.
+              Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers.
             </Text>
           )}
         </InfoCard>
       ) : null}
 
-      {events.length > 0 ? (
-        <InfoCard eyebrow="Summary" title="Reward status">
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text selectable style={styles.summaryValue}>{registeredEventCount}</Text>
-              <Text selectable style={styles.summaryLabel}>registered events</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text selectable style={styles.summaryValue}>{claimableEventCount}</Text>
-              <Text selectable style={styles.summaryLabel}>claimable now</Text>
-            </View>
-          </View>
-          <Text style={styles.bodyText}>
-            {claimableEventCount > 0
-              ? `${claimableEventCount} event${claimableEventCount === 1 ? "" : "s"} currently has at least one claimable reward tier.`
-              : "No claimable reward tiers yet. Keep collecting leima at participating venues."}
-          </Text>
-        </InfoCard>
-      ) : null}
-
+      {/* Event cards */}
       {events.map((event) => (
         <RewardProgressCard
           key={event.id}
           event={event}
-          onOpenEvent={(eventId: string) => {
-            router.push(`/student/events/${eventId}`);
-          }}
+          onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
         />
       ))}
     </AppScreen>
@@ -109,81 +111,103 @@ const styles = StyleSheet.create({
   bodyText: {
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
   },
-  heroCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.045)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 28,
+
+  // --- Stats bar ---
+  statsBar: {
+    flexDirection: "row",
+    backgroundColor: mobileTheme.colors.surfaceL1,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
-    gap: 12,
     overflow: "hidden",
-    padding: 18,
-    position: "relative",
   },
-  heroEyebrow: {
-    color: mobileTheme.colors.accentGold,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.chromeTintWarm,
-    borderRadius: 132,
-    height: 148,
-    opacity: 0.42,
-    position: "absolute",
-    right: -40,
-    top: -56,
-    width: 148,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 30,
-  },
-  secondaryButton: {
+  statItem: {
+    flex: 1,
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
-    borderRadius: mobileTheme.radius.button,
+    paddingVertical: 18,
+    gap: 4,
+  },
+  statItemLime: {
+    backgroundColor: mobileTheme.colors.limeSurface,
+  },
+  statValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -1,
+    fontVariant: ["tabular-nums"],
+    lineHeight: 34,
+  },
+  statValueLime: {
+    color: mobileTheme.colors.lime,
+  },
+  statLabel: {
+    color: mobileTheme.colors.textDim,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+  },
+  statLabelLime: {
+    color: mobileTheme.colors.limeDim,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: mobileTheme.colors.borderDefault,
+    marginVertical: 14,
+  },
+
+  // --- Claimable alert ---
+  claimableAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: mobileTheme.colors.limeSurface,
+    borderColor: mobileTheme.colors.limeBorder,
+    borderRadius: mobileTheme.radius.chip,
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
+    paddingVertical: 10,
   },
-  secondaryButtonText: {
+  claimableAlertDot: {
+    backgroundColor: mobileTheme.colors.lime,
+    borderRadius: 999,
+    height: 6,
+    width: 6,
+  },
+  claimableAlertText: {
+    color: mobileTheme.colors.lime,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  // --- Buttons ---
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.lime,
+    borderRadius: mobileTheme.radius.button,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  primaryButtonText: {
+    color: "#08090E",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  ghostButton: {
+    alignSelf: "flex-start",
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radius.button,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  ghostButtonText: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
-  },
-  summaryCard: {
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 24,
-    borderWidth: 1,
-    flex: 1,
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  summaryLabel: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  summaryValue: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 28,
-    fontVariant: ["tabular-nums"],
-    fontWeight: "800",
+    fontWeight: "600",
   },
 });

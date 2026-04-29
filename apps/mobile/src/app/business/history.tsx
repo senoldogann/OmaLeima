@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { useBusinessScanHistoryQuery } from "@/features/business/business-history";
+import { mobileTheme } from "@/features/foundation/theme";
 import type { BusinessScanHistoryEntry } from "@/features/business/types";
 import { useSession } from "@/providers/session-provider";
 
@@ -28,20 +29,20 @@ const historyStatusMeta: Record<
 > = {
   VALID: {
     eyebrow: "Valid",
-    borderColor: "#166534",
-    backgroundColor: "#052E16",
+    borderColor: mobileTheme.colors.successBorder,
+    backgroundColor: mobileTheme.colors.successSurface,
     detail: "Stamp was accepted and counted toward the student progress.",
   },
   MANUAL_REVIEW: {
     eyebrow: "Review",
-    borderColor: "#92400E",
-    backgroundColor: "#451A03",
+    borderColor: mobileTheme.colors.warningBorder,
+    backgroundColor: mobileTheme.colors.warningSurface,
     detail: "This scan needs manual follow-up before it should be treated as final.",
   },
   REVOKED: {
     eyebrow: "Revoked",
-    borderColor: "#991B1B",
-    backgroundColor: "#450A0A",
+    borderColor: mobileTheme.colors.dangerBorder,
+    backgroundColor: mobileTheme.colors.dangerSurface,
     detail: "This stamp was later revoked and should not be counted as an active stamp.",
   },
 };
@@ -59,9 +60,11 @@ export default function BusinessHistoryScreen() {
   return (
     <AppScreen>
       <InfoCard eyebrow="History" title="Recent own scans">
-        <Text selectable style={styles.bodyText}>
-          This view lists the latest scan outcomes performed by the signed-in staff account. It is scoped to the operator, not every business employee.
-        </Text>
+        <View style={styles.heroBand}>
+          <Text selectable style={styles.heroText}>
+            This view lists the latest scan outcomes performed by the signed-in staff account. It stays scoped to the operator, not every business employee.
+          </Text>
+        </View>
         <View style={styles.actionRow}>
           <Link href="/business/scanner" asChild>
             <Pressable style={styles.primaryButton}>
@@ -142,30 +145,44 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bodyText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
   cardTitle: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
   eyebrowText: {
-    color: "#E2E8F0",
-    fontSize: 12,
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 11,
     fontWeight: "700",
+    letterSpacing: 1.1,
     textTransform: "uppercase",
   },
+  heroBand: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.cyanBorder,
+    borderRadius: mobileTheme.radius.scene,
+    borderWidth: 1,
+    padding: 18,
+  },
+  heroText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 23,
+  },
   metaText: {
-    color: "#CBD5E1",
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.cyan,
+    borderRadius: mobileTheme.radius.button,
     flex: 1,
     justifyContent: "center",
     minHeight: 44,
@@ -173,21 +190,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   primaryButtonText: {
-    color: "#F8FAFC",
+    color: mobileTheme.colors.screenBase,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   rowCard: {
-    borderRadius: 8,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
     gap: 6,
     padding: 14,
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderStrong,
+    borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
@@ -196,7 +213,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   secondaryButtonText: {
-    color: "#E2E8F0",
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
     fontWeight: "700",
   },

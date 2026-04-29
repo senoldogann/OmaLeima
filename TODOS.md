@@ -2,7 +2,7 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
-## Current Todos
+## Completed Todos (Previous Waves)
 
 - [x] Create `feature/full-ui-redesign-foundation` branch.
 - [x] Update `REVIEW.md` for the redesign foundation slice.
@@ -26,3 +26,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Group redesign files by mobile foundation, student routes, business routes, and admin web routes.
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
+
+## Current Todos (STARK Continuation Wave)
+
+- [x] Review the new STARK theme changes and identify real regressions.
+- [x] Fix current compile/lint regressions in `business/home.tsx` and related imports.
+- [x] Bring `student/events/index.tsx` onto the STARK theme language.
+- [x] Bring `student/leaderboard.tsx` onto the STARK theme language.
+- [x] Bring `business/history.tsx` onto the STARK theme language.
+- [x] Bring `auth/login.tsx`, `login-hero.tsx`, and `event-card.tsx` onto the STARK theme language.
+- [x] Run mobile lint, typecheck, and export validation.
+- [x] Update `PROGRESS.md` with the STARK continuation handoff note.

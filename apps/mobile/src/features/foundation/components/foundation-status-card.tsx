@@ -38,9 +38,9 @@ export const FoundationStatusCard = ({
 const styles = StyleSheet.create({
   row: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 22,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   value: {
-    color: mobileTheme.colors.textSoft,
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 19,
   },

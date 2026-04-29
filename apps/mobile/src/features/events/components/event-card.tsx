@@ -105,9 +105,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionText: {
-    color: mobileTheme.colors.accentBlue,
+    color: mobileTheme.colors.cyan,
     fontSize: 13,
     fontWeight: "700",
+    letterSpacing: 0.4,
   },
   badges: {
     flexDirection: "row",
@@ -120,9 +121,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   heroBand: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.pinkBorder,
+    borderRadius: mobileTheme.radius.scene,
     borderWidth: 1,
     gap: 14,
     overflow: "hidden",
@@ -133,20 +134,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   heroGlow: {
-    backgroundColor: mobileTheme.colors.chromeTintIndigo,
+    backgroundColor: mobileTheme.colors.pinkSurface,
     borderRadius: 72,
     height: 92,
-    opacity: 0.65,
+    opacity: 1,
     position: "absolute",
     right: -14,
     top: -18,
     width: 92,
   },
   heroKicker: {
-    color: mobileTheme.colors.accentGold,
+    color: mobileTheme.colors.pink,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: "uppercase",
   },
   heroTimeline: {
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   metaLine: {
-    color: mobileTheme.colors.textSoft,
+    color: mobileTheme.colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
   },

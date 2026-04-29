@@ -16,7 +16,7 @@ export const LoginHero = () => (
         <SymbolView
           name={{ android: "event", ios: "sparkles.rectangle.stack.fill", web: "event" }}
           size={15}
-          tintColor={mobileTheme.colors.accentBlue}
+          tintColor={mobileTheme.colors.cyan}
         />
         <Text style={styles.pillText}>Live events</Text>
       </View>
@@ -24,7 +24,7 @@ export const LoginHero = () => (
         <SymbolView
           name={{ android: "qr_code_scanner", ios: "qrcode.viewfinder", web: "qr_code_scanner" }}
           size={15}
-          tintColor={mobileTheme.colors.accentMint}
+          tintColor={mobileTheme.colors.lime}
         />
         <Text style={styles.pillText}>Rolling QR</Text>
       </View>
@@ -32,7 +32,7 @@ export const LoginHero = () => (
         <SymbolView
           name={{ android: "redeem", ios: "gift.fill", web: "redeem" }}
           size={15}
-          tintColor={mobileTheme.colors.accentGold}
+          tintColor={mobileTheme.colors.amber}
         />
         <Text style={styles.pillText}>Rewards</Text>
       </View>
@@ -45,9 +45,10 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   kicker: {
-    color: mobileTheme.colors.accentBlue,
+    color: mobileTheme.colors.cyan,
     fontSize: 13,
     fontWeight: "700",
+    letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   title: {
@@ -64,8 +65,8 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: "row",
@@ -79,8 +80,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pillText: {
-    color: mobileTheme.colors.textSecondary,
+    color: mobileTheme.colors.textPrimary,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

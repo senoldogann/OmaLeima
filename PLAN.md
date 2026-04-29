@@ -6,35 +6,44 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-29
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Hand off the redesign cleanly to another agent by turning the current design scope into one repo-owned reference document.
+- **Goal:** Stabilize and continue the new STARK theme wave so the current branch is both visually coherent and technically safe.
 
 ## Architectural Decisions
 
-- Keep this turn docs-only. Do not leave half-finished visual code changes in the branch.
-- Put the redesign handoff inside the repo so it travels with the branch and PR history.
-- Group the file inventory by surface area: mobile foundation, student routes, business routes, admin/club web routes.
-- Capture both remote Stitch URLs and local Desktop exports because the next agent may need either the live reference or the already-exported assets.
-- Record explicit guardrails: preserve validated auth, QR, scanner, stamp, reward, and push flows unless a visual task absolutely forces a safe markup-only adjustment.
+- Accept the new STARK direction as the active redesign language for this branch instead of trying to merge two competing styles.
+- Fix compile/runtime issues before broadening the theme pass any further.
+- Use already-migrated STARK surfaces (`active-event`, `rewards`, `scanner`, `reward-progress-card`) as the style reference for remaining screens.
+- Keep the scope on mobile surfaces in this turn; admin already typechecks and the user’s immediate concern is the app theme continuity.
+- Preserve all validated product logic and stay at the presentation/layout/token layer.
 
 ## Alternatives Considered
 
-- Continue redesign implementation myself:
-  - rejected because the user explicitly wants another agent to own the design work
-- Create only a short note in `PROGRESS.md`:
-  - rejected because another agent needs an actual file map and visual brief, not just a handoff paragraph
-- Store the design inventory outside the repo:
-  - rejected because the redesign branch itself should carry the current scope and constraints
+- Revert the STARK wave back to the previous liquid-glass pass:
+  - rejected because the user explicitly wants us to continue the new theme language
+- Keep only the compile fix and avoid touching the remaining old-looking screens:
+  - rejected because the branch would still feel visually split and unfinished
+- Continue into admin pages in the same pass:
+  - rejected because the highest-value inconsistency is still in the mobile routes
 
 ## Edge Cases
 
-- The handoff file should not imply that every listed file must change; some are support files or shared primitives that the next agent may inspect first.
-- The local Stitch folders contain multiple exports and screenshots. The handoff should point to the relevant roots and not overwhelm the next agent with raw dumps.
-- Admin web and mobile references intentionally differ a bit; the handoff should explain the shared spirit instead of forcing literal one-to-one visual copying.
-- The user wants future work to continue in the same process discipline, so the handoff must be specific enough that the next agent can update `REVIEW.md`, `PLAN.md`, and `TODOS.md` from it directly.
+- The new theme intentionally uses older compatibility aliases in `mobileTheme`; if we replace too many at once, we can cause unnecessary wide diffs.
+- Some screens still rely on `InfoCard` and `StatusBadge` as structure. The safest continuation is to restyle through those primitives and local screen layout, not invent parallel one-off blocks everywhere.
+- Student event and leaderboard screens carry dense information; the STARK pass must improve hierarchy without flattening everything into identical boxes.
+- Login and history screens should join the new direction without losing clarity around auth mode and operator actions.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` to reflect the handoff-only scope.
-- Create `docs/UI_REDESIGN_AGENT_HANDOFF.md` with references, file inventory, sequence, and guardrails.
-- Update `PROGRESS.md` latest handoff so the redesign execution clearly moves to another agent.
-- Keep code unchanged in this turn; no frontend validation is needed if only docs change.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the STARK continuation slice.
+- Fix `business/home.tsx` so mobile lint/typecheck go green again.
+- Move the most obviously inconsistent mobile screens onto the same STARK language:
+  - `student/events/index.tsx`
+  - `student/leaderboard.tsx`
+  - `business/history.tsx`
+  - `auth/login.tsx`
+  - `login-hero.tsx`
+  - `event-card.tsx`
+- Run `npm --prefix apps/mobile run lint`.
+- Run `npm --prefix apps/mobile run typecheck`.
+- Run `npm --prefix apps/mobile run export:web`.
+- Update `PROGRESS.md` with the STARK continuation handoff note.

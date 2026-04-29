@@ -1,11 +1,13 @@
-import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Link, useRouter } from "expo-router";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { StatusBadge } from "@/components/status-badge";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { mobileTheme } from "@/features/foundation/theme";
+import type { BusinessJoinedEventSummary } from "@/features/business/types";
 import { useSession } from "@/providers/session-provider";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
@@ -18,200 +20,151 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
 
+const getTimelineBadge = (
+  event: BusinessJoinedEventSummary
+): { label: string; state: "ready" | "pending" | "warning" } => {
+  switch (event.timelineState) {
+    case "ACTIVE":
+      return { label: "live", state: "ready" };
+    case "UPCOMING":
+      return { label: "upcoming", state: "pending" };
+    case "COMPLETED":
+      return { label: "completed", state: "warning" };
+  }
+};
+
 export default function BusinessHomeScreen() {
+  const router = useRouter();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
+
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
   });
 
-  const memberships = homeOverviewQuery.data?.memberships ?? [];
-  const joinedActiveEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
+  const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
-  const cityOpportunities = homeOverviewQuery.data?.cityOpportunities ?? [];
+  const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents];
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Business" title="Scanner home">
-        <View style={styles.heroCard}>
-          <View style={styles.heroGlow} />
-          <Text selectable style={styles.heroEyebrow}>Operator launchpad</Text>
-          <Text selectable style={styles.heroTitle}>
-            Keep the venue team close to the next scan, not buried in admin noise.
-          </Text>
-          <Text selectable style={styles.bodyText}>
-            This route now acts as the business launchpad. Staff can jump into event joining or scanner work from here while still seeing the current joined-event context.
+      {/* Identity hero */}
+      <View style={styles.identityHero}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {session?.user.email?.[0]?.toUpperCase() ?? "B"}
           </Text>
         </View>
-        <View style={styles.actionRow}>
-          <Link href="/business/events" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Manage events</Text>
-            </Pressable>
-          </Link>
-          <Link href="/business/scanner" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Open scanner</Text>
-            </Pressable>
-          </Link>
-        </View>
-        <Link href="/business/history" asChild>
-          <Pressable style={styles.ghostButton}>
-            <Text style={styles.ghostButtonText}>Open scan history</Text>
-          </Pressable>
-        </Link>
-      </InfoCard>
+        <Text style={styles.emailText}>{session?.user.email}</Text>
+        <Text style={styles.roleLabel}>BUSINESS ACCOUNT</Text>
+      </View>
 
+      {/* Loading */}
       {homeOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening business home">
-          <Text selectable style={styles.bodyText}>
-            Loading staff memberships, joined event venues, and upcoming city opportunities.
-          </Text>
+        <InfoCard eyebrow="LOADING" title="Fetching overview">
+          <Text style={styles.bodyText}>Loading business profile and active events.</Text>
         </InfoCard>
       ) : null}
 
+      {/* Error */}
       {homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load business home">
-          <Text selectable style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
-          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+        <InfoCard eyebrow="ERROR" title="Overview unavailable">
+          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.ghostButton}>
+            <Text style={styles.ghostButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
+      {/* Active events scanner access */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Access" title="Active business memberships">
-          {memberships.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              This signed-in account does not currently expose any active business memberships in the mobile app.
-            </Text>
+        <InfoCard
+          eyebrow="SCANNER"
+          title={activeJoinedEvents.length > 0 ? "Scanner ready" : "No active events"}
+          variant={activeJoinedEvents.length > 0 ? "scene" : "card"}
+        >
+          {activeJoinedEvents.length > 0 ? (
+            <>
+              <Text style={styles.bodyText}>
+                You have {activeJoinedEvents.length} active event{activeJoinedEvents.length === 1 ? "" : "s"} live right now.
+              </Text>
+              <View style={styles.actionRow}>
+                <Pressable
+                  style={[styles.primaryButton, styles.actionFlex]}
+                  onPress={() => router.push("/business/scanner")}
+                >
+                  <Text style={styles.primaryButtonText}>Open scanner</Text>
+                </Pressable>
+                <Link href="/business/history" asChild>
+                  <Pressable style={[styles.ghostButton, styles.actionFlex]}>
+                    <Text style={styles.ghostButtonText}>Scan history</Text>
+                  </Pressable>
+                </Link>
+              </View>
+            </>
           ) : (
-            <View style={styles.stack}>
-              {memberships.map((membership) => (
-                <View key={`${membership.businessId}-${membership.role}`} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>
-                    {membership.businessName}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    {membership.city} · {membership.role.toLowerCase()}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <>
+              <Text style={styles.bodyText}>
+                There are no active events for your business right now. You cannot use the scanner until an event starts.
+              </Text>
+              <View style={styles.actionRow}>
+                <Link href="/business/events" asChild>
+                  <Pressable style={[styles.primaryButton, styles.actionFlex]}>
+                    <Text style={styles.primaryButtonText}>Manage events</Text>
+                  </Pressable>
+                </Link>
+                <Link href="/business/history" asChild>
+                  <Pressable style={[styles.ghostButton, styles.actionFlex]}>
+                    <Text style={styles.ghostButtonText}>Scan history</Text>
+                  </Pressable>
+                </Link>
+              </View>
+            </>
           )}
         </InfoCard>
       ) : null}
 
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Joined" title="Live joined events">
-          {joinedActiveEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No joined event is live right now for this business account.
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {joinedActiveEvents.map((event) => (
-                <View key={event.eventVenueId} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>
-                    {event.eventName}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
+      {/* Joined Events List */}
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
+        <InfoCard eyebrow="DIRECTORY" title="Your joined events">
+          <View style={styles.eventList}>
+            {joinedEvents.map((event) => {
+              const timelineBadge = getTimelineBadge(event);
+              const isActive = event.timelineState === "ACTIVE";
+
+              return (
+                <View key={event.eventVenueId} style={styles.eventRow}>
+                  <View style={styles.eventRowHeader}>
+                    <Text style={styles.eventRowTitle}>{event.eventName}</Text>
+                    <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+                  </View>
+                  <Text style={styles.eventRowMeta}>
                     {event.businessName} · {event.city}
                   </Text>
-                  <Text selectable style={styles.metaText}>
-                    Ends {formatDateTime(event.endAt)}
-                    {event.stampLabel ? ` · ${event.stampLabel}` : ""}
+                  <Text style={styles.eventRowMeta}>
+                    {isActive ? "Ends" : event.timelineState === "UPCOMING" ? "Starts" : "Ended"}{" "}
+                    {formatDateTime(isActive ? event.endAt : event.startAt)}
                   </Text>
-                  <Link
-                    href={{
-                      pathname: "/business/scanner",
-                      params: {
-                        eventVenueId: event.eventVenueId,
-                      },
-                    }}
-                    asChild
-                  >
-                    <Pressable style={styles.secondaryButton}>
-                      <Text style={styles.secondaryButtonText}>Scan this event</Text>
-                    </Pressable>
-                  </Link>
+                  {event.stampLabel ? (
+                    <Text style={styles.eventRowStamp}>{event.stampLabel}</Text>
+                  ) : null}
                 </View>
-              ))}
-            </View>
-          )}
+              );
+            })}
+          </View>
+
+          <Link href="/business/events" asChild>
+            <Pressable style={styles.ghostButton}>
+              <Text style={styles.ghostButtonText}>View all events</Text>
+            </Pressable>
+          </Link>
         </InfoCard>
       ) : null}
 
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Upcoming" title="Joined upcoming events">
-          {joinedUpcomingEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No upcoming joined events yet. The future join flow will let staff add new public events before they start.
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {joinedUpcomingEvents.map((event) => (
-                <View key={event.eventVenueId} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>
-                    {event.eventName}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    {event.businessName} · Starts {formatDateTime(event.startAt)}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    Join deadline {formatDateTime(event.joinDeadlineAt)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </InfoCard>
-      ) : null}
-
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Opportunities" title="Public events in your cities">
-          {cityOpportunities.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No extra upcoming public event is visible in the cities linked to this business account right now.
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {cityOpportunities.map((event) => (
-                <View key={event.eventId} style={styles.rowCard}>
-                  <Text selectable style={styles.cardTitle}>
-                    {event.eventName}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    {event.city} · Starts {formatDateTime(event.startAt)}
-                  </Text>
-                  <Text selectable style={styles.metaText}>
-                    {event.businessName} · Join deadline {formatDateTime(event.joinDeadlineAt)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </InfoCard>
-      ) : null}
-
-      <InfoCard eyebrow="History" title="Recent scan history">
-        <Text selectable style={styles.bodyText}>
-          Staff can now review recent own scans in a dedicated history screen instead of relying on the live scanner route only.
-        </Text>
-        <Link href="/business/history" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>View scan history</Text>
-          </Pressable>
-        </Link>
-      </InfoCard>
-
-      <InfoCard eyebrow="Account" title="Session actions">
-        <Text selectable style={styles.bodyText}>
-          Signing out clears the local Supabase session and returns this device to the shared auth entry screen.
-        </Text>
+      <View style={styles.dangerZone}>
         <SignOutButton />
-      </InfoCard>
+      </View>
     </AppScreen>
   );
 }
@@ -222,109 +175,117 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  cardTitle: {
+
+  // --- Identity hero ---
+  identityHero: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 12,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderWidth: 1,
+    borderColor: mobileTheme.colors.cyanBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  avatarText: {
+    color: mobileTheme.colors.cyan,
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  emailText: {
     color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "700",
+  },
+  roleLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+
+  // --- Actions ---
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  actionFlex: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: mobileTheme.colors.lime,
+    borderRadius: mobileTheme.radius.button,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  primaryButtonText: {
+    color: "#08090E",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   ghostButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
   ghostButtonText: {
-    color: mobileTheme.colors.textSecondary,
+    color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-  heroCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.045)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 28,
+
+  // --- Event List ---
+  eventList: {
+    gap: 8,
+  },
+  eventRow: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
     borderWidth: 1,
-    gap: 12,
-    overflow: "hidden",
-    padding: 18,
-    position: "relative",
+    padding: 14,
+    gap: 6,
   },
-  heroEyebrow: {
-    color: mobileTheme.colors.accentBlue,
+  eventRowHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  eventRowTitle: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+    marginRight: 8,
+  },
+  eventRowMeta: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+  },
+  eventRowStamp: {
+    color: mobileTheme.colors.lime,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.chromeTint,
-    borderRadius: 140,
-    height: 152,
-    opacity: 0.5,
-    position: "absolute",
-    right: -42,
-    top: -58,
-    width: 152,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 30,
-  },
-  metaText: {
-    color: mobileTheme.colors.textSoft,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  primaryButton: {
+
+  dangerZone: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionBlueStrong,
-    borderRadius: mobileTheme.radius.button,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  primaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  rowCard: {
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  stack: {
-    gap: 12,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
+    marginTop: 16,
   },
 });

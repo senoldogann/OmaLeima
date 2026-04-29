@@ -27,137 +27,91 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
 
-const getTimelineBadgeState = (timelineState: StudentRewardTimelineState): AppReadinessState => {
-  switch (timelineState) {
-    case "ACTIVE":
-      return "ready";
-    case "UPCOMING":
-      return "pending";
-    case "COMPLETED":
-      return "warning";
+const getTimelineBadgeState = (state: StudentRewardTimelineState): AppReadinessState => {
+  switch (state) {
+    case "ACTIVE": return "ready";
+    case "UPCOMING": return "pending";
+    case "COMPLETED": return "warning";
   }
 };
 
 const getTierBadgeState = (state: StudentRewardTierState): AppReadinessState => {
   switch (state) {
-    case "CLAIMED":
-      return "ready";
-    case "CLAIMABLE":
-      return "ready";
-    case "MORE_NEEDED":
-      return "pending";
-    case "OUT_OF_STOCK":
-      return "warning";
-    case "REVOKED":
-      return "warning";
+    case "CLAIMED": return "ready";
+    case "CLAIMABLE": return "ready";
+    case "MORE_NEEDED": return "pending";
+    case "OUT_OF_STOCK": return "warning";
+    case "REVOKED": return "warning";
   }
 };
 
 const getTierBadgeLabel = (state: StudentRewardTierState): string => {
   switch (state) {
-    case "CLAIMED":
-      return "claimed";
-    case "CLAIMABLE":
-      return "claimable now";
-    case "MORE_NEEDED":
-      return "more needed";
-    case "OUT_OF_STOCK":
-      return "out of stock";
-    case "REVOKED":
-      return "revoked";
+    case "CLAIMED": return "claimed";
+    case "CLAIMABLE": return "claimable";
+    case "MORE_NEEDED": return "more needed";
+    case "OUT_OF_STOCK": return "out of stock";
+    case "REVOKED": return "revoked";
   }
 };
 
-const getTierPrimaryCopy = (tier: StudentRewardTierProgress): string => {
+const getTierCopy = (tier: StudentRewardTierProgress): string => {
   switch (tier.state) {
     case "CLAIMED":
-      return tier.claimedAt === null ? "Already claimed." : `Claimed on ${formatDateTime(tier.claimedAt)}.`;
+      return tier.claimedAt === null ? "Already claimed." : `Claimed ${formatDateTime(tier.claimedAt)}.`;
     case "CLAIMABLE":
-      return "Ready for club handoff once staff confirms the reward.";
+      return "Ready for staff handoff.";
     case "MORE_NEEDED":
-      return `${tier.missingStampCount} more leima needed.`;
+      return `${tier.missingStampCount} more leimat needed.`;
     case "OUT_OF_STOCK":
-      return "This reward is currently out of stock.";
+      return "Currently out of stock.";
     case "REVOKED":
-      return "This reward claim was revoked. Check with club staff before expecting another handoff.";
+      return "Revoked. Check with staff.";
   }
 };
 
 const getInventoryCopy = (tier: StudentRewardTierProgress): string => {
-  if (tier.inventoryTotal === null) {
-    return "Unlimited stock";
-  }
-
-  if (tier.remainingInventory === null || tier.remainingInventory <= 0) {
-    return "No stock left";
-  }
-
-  if (tier.remainingInventory === 1) {
-    return "1 reward left";
-  }
-
+  if (tier.inventoryTotal === null) return "Unlimited stock";
+  if (tier.remainingInventory === null || tier.remainingInventory <= 0) return "No stock left";
+  if (tier.remainingInventory === 1) return "1 reward left";
   return `${tier.remainingInventory} rewards left`;
 };
 
 const getEventSummaryCopy = (event: StudentRewardEventProgress): string => {
-  if (event.tiers.length === 0) {
-    return "No reward tiers published for this event yet.";
-  }
-
+  if (event.tiers.length === 0) return "No reward tiers published yet.";
   if (event.claimableTierCount > 0) {
-    const claimableCopy = `${event.claimableTierCount} reward tier${event.claimableTierCount === 1 ? "" : "s"} can be claimed with staff handoff.`;
-
-    if (event.revokedTierCount > 0) {
-      return `${claimableCopy} ${event.revokedTierCount} tier${event.revokedTierCount === 1 ? "" : "s"} also needs staff review after a revoked claim.`;
-    }
-
-    return claimableCopy;
+    const base = `${event.claimableTierCount} tier${event.claimableTierCount === 1 ? "" : "s"} ready for handoff.`;
+    return event.revokedTierCount > 0 ? `${base} ${event.revokedTierCount} revoked.` : base;
   }
-
-  if (event.revokedTierCount > 0) {
-    return `${event.revokedTierCount} reward tier${event.revokedTierCount === 1 ? "" : "s"} was revoked and now needs staff review.`;
-  }
-
-  if (event.claimedTierCount > 0) {
-    return `${event.claimedTierCount} reward tier${event.claimedTierCount === 1 ? "" : "s"} already claimed for this event.`;
-  }
-
-  return "Keep collecting leima to unlock the next reward tier.";
+  if (event.revokedTierCount > 0) return `${event.revokedTierCount} tier${event.revokedTierCount === 1 ? "" : "s"} revoked.`;
+  if (event.claimedTierCount > 0) return `${event.claimedTierCount} tier${event.claimedTierCount === 1 ? "" : "s"} claimed.`;
+  return "Keep collecting leimat to unlock rewards.";
 };
 
-type MemoryStripItem =
-  | { kind: "stamp"; index: number }
-  | { kind: "overflow"; remainingCount: number };
+type MemoryItem = { kind: "stamp"; index: number } | { kind: "overflow"; remainingCount: number };
+const MAX_TOKENS = 12;
 
-const maxVisibleMemoryTokens = 8;
-
-const getMemoryStripItems = (stampCount: number): MemoryStripItem[] => {
-  if (stampCount <= maxVisibleMemoryTokens) {
-    return Array.from({ length: stampCount }, (_, index) => ({
-      kind: "stamp",
-      index,
-    }));
+const getMemoryItems = (count: number): MemoryItem[] => {
+  if (count <= MAX_TOKENS) {
+    return Array.from({ length: count }, (_, i) => ({ kind: "stamp", index: i }));
   }
-
-  const visibleStampCount = maxVisibleMemoryTokens - 1;
-  const visibleItems = Array.from({ length: visibleStampCount }, (_, index) => ({
-    kind: "stamp" as const,
-    index,
-  }));
-
+  const visible = MAX_TOKENS - 1;
   return [
-    ...visibleItems,
-    {
-      kind: "overflow",
-      remainingCount: stampCount - visibleStampCount,
-    },
+    ...Array.from({ length: visible }, (_, i) => ({ kind: "stamp" as const, index: i })),
+    { kind: "overflow", remainingCount: count - visible },
   ];
 };
 
-export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => (
-  <InfoCard eyebrow={event.city} title={event.name}>
-    <View style={styles.heroCard}>
-      <View style={styles.heroGlow} />
+export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => {
+  const hasClaimable = event.claimableTierCount > 0;
+
+  return (
+    <InfoCard
+      eyebrow={event.city}
+      title={event.name}
+      variant={hasClaimable ? "scene" : "card"}
+    >
+      {/* Badges */}
       <View style={styles.badges}>
         <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
         {event.claimableTierCount > 0 ? <StatusBadge label="claimable" state="ready" /> : null}
@@ -165,243 +119,332 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
         {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
       </View>
 
-      <Text style={styles.progressCaption}>Collected leimat</Text>
-      <View style={styles.progressHeadlineRow}>
-        <Text style={styles.progressHeadline}>{event.stampCount}</Text>
-        <Text style={styles.progressGoal}>/ {event.minimumStampsRequired}</Text>
-      </View>
-      <Text style={styles.bodyText}>{getEventSummaryCopy(event)}</Text>
-    </View>
-
-    <View style={styles.metaGroup}>
-      <Text style={styles.metaLine}>Starts {formatDateTime(event.startAt)}</Text>
-      <Text style={styles.metaLine}>Ends {formatDateTime(event.endAt)}</Text>
-    </View>
-
-    <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${event.goalProgressRatio * 100}%` }]} />
-    </View>
-
-    {event.stampCount > 0 ? (
-      <>
-        <View style={styles.memoryStrip}>
-          {getMemoryStripItems(event.stampCount).map((item) =>
-            item.kind === "stamp" ? (
-              <View key={`${event.id}-stamp-${item.index}`} style={styles.memoryToken}>
-                <View style={[styles.memoryDot, styles.memoryDotCollected]} />
-              </View>
-            ) : (
-              <View key={`${event.id}-overflow`} style={styles.memoryOverflowToken}>
-                <Text style={styles.memoryOverflowText}>+{item.remainingCount}</Text>
-              </View>
-            )
-          )}
-        </View>
-        <Text style={styles.secondaryText}>
-          Recent leima memory strip for this event. The main progress bar above still reflects full reward progress.
-        </Text>
-      </>
-    ) : null}
-
-    {event.tiers.length === 0 ? (
-      <Text style={styles.secondaryText}>The organizer has not published reward tiers for this event yet.</Text>
-    ) : (
-      <View style={styles.tierList}>
-        {event.tiers.map((tier) => (
-          <View key={tier.id} style={styles.tierCard}>
-            <View style={styles.tierHeader}>
-              <View style={styles.tierTitleGroup}>
-                <Text style={styles.tierTitle}>{tier.title}</Text>
-                <Text style={styles.tierMeta}>
-                  {tier.requiredStampCount} leima • {tier.rewardType.toLowerCase()}
-                </Text>
-              </View>
-              <StatusBadge label={getTierBadgeLabel(tier.state)} state={getTierBadgeState(tier.state)} />
+      {/* Stamp count — big number hero */}
+      <View style={styles.stampHero}>
+        <Text style={styles.stampNumber}>{event.stampCount}</Text>
+        <View style={styles.stampMeta}>
+          <Text style={styles.stampDivider}>/ {event.minimumStampsRequired}</Text>
+          <Text style={styles.stampUnit}>leimat</Text>
+          {hasClaimable ? (
+            <View style={styles.claimableBadge}>
+              <Text style={styles.claimableBadgeText}>READY</Text>
             </View>
-
-            <Text style={styles.bodyText}>{getTierPrimaryCopy(tier)}</Text>
-            <Text style={styles.secondaryText}>{getInventoryCopy(tier)}</Text>
-            {tier.description ? <Text style={styles.secondaryText}>{tier.description}</Text> : null}
-            {tier.claimInstructions ? <Text style={styles.secondaryText}>{tier.claimInstructions}</Text> : null}
-          </View>
-        ))}
+          ) : null}
+        </View>
       </View>
-    )}
 
-    {onOpenEvent ? (
-      <Pressable onPress={() => onOpenEvent(event.id)} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>Open event detail</Text>
-      </Pressable>
-    ) : null}
-  </InfoCard>
-);
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <View
+          style={[
+            styles.progressFill,
+            {
+              width: `${event.goalProgressRatio * 100}%`,
+              backgroundColor: hasClaimable ? mobileTheme.colors.lime : mobileTheme.colors.cyan,
+            },
+          ]}
+        />
+      </View>
+
+      {/* Summary */}
+      <Text style={styles.summaryText}>{getEventSummaryCopy(event)}</Text>
+
+      {/* Dates */}
+      <View style={styles.dateRow}>
+        <View style={styles.dateItem}>
+          <Text style={styles.dateLabel}>START</Text>
+          <Text style={styles.dateValue}>{formatDateTime(event.startAt)}</Text>
+        </View>
+        <View style={styles.dateSep} />
+        <View style={styles.dateItem}>
+          <Text style={styles.dateLabel}>END</Text>
+          <Text style={styles.dateValue}>{formatDateTime(event.endAt)}</Text>
+        </View>
+      </View>
+
+      {/* Memory tokens */}
+      {event.stampCount > 0 ? (
+        <View style={styles.memorySection}>
+          <Text style={styles.sectionLabel}>COLLECTED</Text>
+          <View style={styles.tokenStrip}>
+            {getMemoryItems(event.stampCount).map((item) =>
+              item.kind === "stamp" ? (
+                <View
+                  key={`${event.id}-s${item.index}`}
+                  style={[
+                    styles.token,
+                    {
+                      backgroundColor: hasClaimable
+                        ? mobileTheme.colors.limeSurface
+                        : mobileTheme.colors.cyanSurface,
+                      borderColor: hasClaimable
+                        ? mobileTheme.colors.limeBorder
+                        : mobileTheme.colors.cyanBorder,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.tokenMark, { color: hasClaimable ? mobileTheme.colors.lime : mobileTheme.colors.cyan }]}>
+                    ✦
+                  </Text>
+                </View>
+              ) : (
+                <View key={`${event.id}-ov`} style={[styles.token, styles.tokenOverflow]}>
+                  <Text style={styles.tokenOverflowText}>+{item.remainingCount}</Text>
+                </View>
+              )
+            )}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Tier list */}
+      {event.tiers.length > 0 ? (
+        <View style={styles.tierSection}>
+          <Text style={styles.sectionLabel}>REWARD TIERS</Text>
+          {event.tiers.map((tier) => (
+            <View
+              key={tier.id}
+              style={[
+                styles.tierRow,
+                tier.state === "CLAIMABLE" ? styles.tierRowClaimable : null,
+                tier.state === "CLAIMED" ? styles.tierRowClaimed : null,
+              ]}
+            >
+              <View style={styles.tierLeft}>
+                <View style={styles.tierHeader}>
+                  <Text style={styles.tierTitle}>{tier.title}</Text>
+                  <StatusBadge label={getTierBadgeLabel(tier.state)} state={getTierBadgeState(tier.state)} />
+                </View>
+                <Text style={styles.tierMeta}>
+                  {tier.requiredStampCount} leimat · {tier.rewardType.toLowerCase()}
+                </Text>
+                <Text style={styles.tierCopy}>{getTierCopy(tier)}</Text>
+                <Text style={styles.tierInventory}>{getInventoryCopy(tier)}</Text>
+                {tier.description ? <Text style={styles.tierCopy}>{tier.description}</Text> : null}
+                {tier.claimInstructions ? <Text style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {onOpenEvent ? (
+        <Pressable onPress={() => onOpenEvent(event.id)} style={styles.ghostButton}>
+          <Text style={styles.ghostButtonText}>Event details</Text>
+        </Pressable>
+      ) : null}
+    </InfoCard>
+  );
+};
 
 const styles = StyleSheet.create({
   badges: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
   },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  heroCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 26,
-    borderWidth: 1,
-    gap: 12,
-    overflow: "hidden",
-    padding: 18,
-    position: "relative",
-  },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.chromeTintWarm,
-    borderRadius: 90,
-    height: 132,
-    opacity: 0.45,
-    position: "absolute",
-    right: -32,
-    top: -36,
-    width: 132,
-  },
-  metaGroup: {
-    gap: 4,
-  },
-  memoryDot: {
-    borderRadius: 999,
-    height: 12,
-    width: 12,
-  },
-  memoryDotCollected: {
-    backgroundColor: mobileTheme.colors.accentMint,
-    borderColor: "rgba(255, 255, 255, 0.22)",
-    borderWidth: 1,
-  },
-  memoryOverflowText: {
-    color: mobileTheme.colors.accentGold,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  memoryOverflowToken: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.warningSurface,
-    borderColor: "rgba(255, 217, 138, 0.22)",
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 28,
-    justifyContent: "center",
-    minWidth: 40,
-    paddingHorizontal: 8,
-  },
-  memoryStrip: {
+
+  // --- Stamp hero ---
+  stampHero: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "flex-end",
+    gap: 10,
   },
-  memoryToken: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.035)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 28,
-    justifyContent: "center",
-    width: 28,
+  stampNumber: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 72,
+    fontWeight: "800",
+    lineHeight: 74,
+    letterSpacing: -2,
+    fontVariant: ["tabular-nums"],
   },
-  metaLine: {
-    color: mobileTheme.colors.textSoft,
-    fontSize: 13,
-    lineHeight: 18,
+  stampMeta: {
+    gap: 4,
+    paddingBottom: 10,
+    alignItems: "flex-start",
   },
-  progressCaption: {
-    color: mobileTheme.colors.accentGold,
-    fontSize: 11,
+  stampDivider: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: 0.8,
+    fontVariant: ["tabular-nums"],
+  },
+  stampUnit: {
+    color: mobileTheme.colors.textDim,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.6,
     textTransform: "uppercase",
   },
-  progressHeadlineRow: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    gap: 8,
+  claimableBadge: {
+    backgroundColor: mobileTheme.colors.lime,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginTop: 4,
   },
-  progressHeadline: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 48,
+  claimableBadgeText: {
+    color: "#08090E",
+    fontSize: 10,
     fontWeight: "800",
-    lineHeight: 50,
+    letterSpacing: 1.2,
   },
-  progressGoal: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 28,
-    paddingBottom: 4,
-  },
+
+  // --- Progress ---
   progressTrack: {
-    backgroundColor: mobileTheme.colors.progressTrack,
+    backgroundColor: mobileTheme.colors.borderDefault,
     borderRadius: 999,
-    height: 10,
+    height: 5,
     overflow: "hidden",
   },
   progressFill: {
-    backgroundColor: mobileTheme.colors.accentMint,
-    height: "100%",
+    borderRadius: 999,
+    height: 5,
   },
-  tierList: {
-    gap: 10,
+
+  // --- Summary ---
+  summaryText: {
+    color: mobileTheme.colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
   },
-  tierCard: {
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 22,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  tierHeader: {
-    alignItems: "flex-start",
+
+  // --- Dates ---
+  dateRow: {
     flexDirection: "row",
-    gap: 8,
-    justifyContent: "space-between",
+    alignItems: "stretch",
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
+    borderWidth: 1,
+    overflow: "hidden",
   },
-  tierTitleGroup: {
+  dateItem: {
     flex: 1,
     gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dateSep: {
+    width: 1,
+    backgroundColor: mobileTheme.colors.borderDefault,
+  },
+  dateLabel: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  dateValue: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  // --- Memory tokens ---
+  memorySection: {
+    gap: 10,
+  },
+  sectionLabel: {
+    color: mobileTheme.colors.textDim,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+  tokenStrip: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  token: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tokenMark: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  tokenOverflow: {
+    backgroundColor: mobileTheme.colors.surfaceL3,
+    borderColor: mobileTheme.colors.borderDefault,
+    minWidth: 44,
+    paddingHorizontal: 8,
+  },
+  tokenOverflowText: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // --- Tiers ---
+  tierSection: {
+    gap: 10,
+  },
+  tierRow: {
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
+    borderWidth: 1,
+    gap: 8,
+    padding: 14,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    ...interactiveSurfaceShadowStyle,
+  },
+  tierRowClaimable: {
+    borderColor: mobileTheme.colors.limeBorder,
+    backgroundColor: mobileTheme.colors.limeSurface,
+  },
+  tierRowClaimed: {
+    borderColor: mobileTheme.colors.successBorder,
+    backgroundColor: mobileTheme.colors.successSurface,
+  },
+  tierLeft: {
+    gap: 6,
+  },
+  tierHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
   tierTitle: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
+    flex: 1,
   },
   tierMeta: {
-    color: mobileTheme.colors.accentBlue,
+    color: mobileTheme.colors.cyan,
     fontSize: 12,
     fontWeight: "600",
+    letterSpacing: 0.3,
     textTransform: "uppercase",
   },
-  secondaryText: {
-    color: mobileTheme.colors.textSoft,
+  tierCopy: {
+    color: mobileTheme.colors.textSecondary,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
+  tierInventory: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+  },
+
+  // --- Button ---
+  ghostButton: {
+    alignSelf: "flex-start",
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
   },
-  secondaryButtonText: {
+  ghostButtonText: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

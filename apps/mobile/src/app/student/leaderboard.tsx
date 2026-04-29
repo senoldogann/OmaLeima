@@ -222,9 +222,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   eventChip: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 18,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.card,
     borderWidth: 1,
     gap: 4,
     minWidth: 120,
@@ -233,9 +233,10 @@ const styles = StyleSheet.create({
     ...interactiveSurfaceShadowStyle,
   },
   eventChipMeta: {
-    color: mobileTheme.colors.accentBlue,
-    fontSize: 12,
-    fontWeight: "600",
+    color: mobileTheme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   eventChipTitle: {
@@ -258,8 +259,8 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignSelf: "flex-start",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
     paddingHorizontal: 14,
@@ -272,8 +273,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   selectedEventChip: {
-    borderColor: "rgba(94, 181, 255, 0.4)",
-    backgroundColor: "rgba(94, 181, 255, 0.1)",
+    borderColor: mobileTheme.colors.limeBorder,
+    backgroundColor: mobileTheme.colors.limeSurface,
   },
   selectedEventSummary: {
     gap: 8,

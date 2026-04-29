@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
 import { Link, useLocalSearchParams } from "expo-router";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { mobileTheme } from "@/features/foundation/theme";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type { ScannerAttemptResult } from "@/features/scanner/types";
 import { useSession } from "@/providers/session-provider";
@@ -26,26 +26,44 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
 
 const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
 
-const toneStyles: Record<ScannerAttemptResult["tone"], { eyebrow: string; borderColor: string; backgroundColor: string }> = {
+// Tone config: STARK colors for each scan result tone
+const toneConfig: Record<
+  ScannerAttemptResult["tone"],
+  {
+    eyebrow: string;
+    bg: string;
+    border: string;
+    accentColor: string;
+    icon: string;
+  }
+> = {
   success: {
-    eyebrow: "Success",
-    borderColor: "#166534",
-    backgroundColor: "#052E16",
+    eyebrow: "SUCCESS",
+    bg: mobileTheme.colors.successSurface,
+    border: mobileTheme.colors.successBorder,
+    accentColor: mobileTheme.colors.success,
+    icon: "✓",
   },
   warning: {
-    eyebrow: "Warning",
-    borderColor: "#92400E",
-    backgroundColor: "#451A03",
+    eyebrow: "WARNING",
+    bg: mobileTheme.colors.warningSurface,
+    border: mobileTheme.colors.warningBorder,
+    accentColor: mobileTheme.colors.warning,
+    icon: "⚠",
   },
   danger: {
-    eyebrow: "Error",
-    borderColor: "#991B1B",
-    backgroundColor: "#450A0A",
+    eyebrow: "ERROR",
+    bg: mobileTheme.colors.dangerSurface,
+    border: mobileTheme.colors.dangerBorder,
+    accentColor: mobileTheme.colors.danger,
+    icon: "✕",
   },
   neutral: {
-    eyebrow: "Result",
-    borderColor: "#475569",
-    backgroundColor: "#0F172A",
+    eyebrow: "RESULT",
+    bg: mobileTheme.colors.surfaceL3,
+    border: mobileTheme.colors.borderDefault,
+    accentColor: mobileTheme.colors.textMuted,
+    icon: "·",
   },
 };
 
@@ -85,6 +103,37 @@ const scanResultDetails: Record<ScannerAttemptResult["status"], string> = {
   NETWORK_TIMEOUT: "No response arrived within 4 seconds. Retry or use manual fallback when the connection settles.",
 };
 
+// Scan result appearance animation hook
+const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
+  const scale = useRef(new Animated.Value(0.95)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (result === null) {
+      scale.setValue(0.95);
+      opacity.setValue(0);
+      return;
+    }
+
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        damping: 20,
+        stiffness: 200,
+        mass: 0.9,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [result, scale, opacity]);
+
+  return { scale, opacity };
+};
+
 export default function BusinessScannerScreen() {
   const params = useLocalSearchParams<{ eventVenueId?: string }>();
   const { session } = useSession();
@@ -101,6 +150,8 @@ export default function BusinessScannerScreen() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
+
+  const { scale: resultScale, opacity: resultOpacity } = useScanResultAnimation(lastResult);
 
   const activeJoinedEvents = useMemo(
     () => homeOverviewQuery.data?.joinedActiveEvents ?? [],
@@ -186,44 +237,36 @@ export default function BusinessScannerScreen() {
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Scanner" title="QR scanner">
-        <View style={styles.heroCard}>
-          <View style={styles.heroGlow} />
-          <Text selectable style={styles.heroEyebrow}>Event-day mode</Text>
-          <Text selectable style={styles.heroTitle}>
-            Keep the scanner focused, fast, and obvious even when the bar gets crowded.
-          </Text>
-          <Text selectable style={styles.bodyText}>
-            Active joined events can scan now. The scanner locks after a read and waits for a result or timeout before staff can explicitly scan again.
-          </Text>
-        </View>
-      </InfoCard>
-
+      {/* Loading */}
       {homeOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening scanner">
-          <Text selectable style={styles.bodyText}>
-            Loading active joined events before camera and scan controls open.
-          </Text>
+        <InfoCard eyebrow="LOADING" title="Opening scanner">
+          <Text style={styles.bodyText}>Loading active joined events before camera opens.</Text>
         </InfoCard>
       ) : null}
 
+      {/* Error */}
       {homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load scanner context">
-          <Text selectable style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
-          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+        <InfoCard eyebrow="ERROR" title="Could not load scanner context">
+          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.ghostButton}>
+            <Text style={styles.ghostButtonText}>Retry</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
+      {/* Event selector */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="Event" title="Selected active event">
+        <InfoCard
+          eyebrow="CONTEXT"
+          title={activeJoinedEvents.length === 0 ? "No active events" : "Select event"}
+          variant={activeJoinedEvents.length > 0 ? "scene" : "card"}
+        >
           {activeJoinedEvents.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No joined event is active right now. Join or wait for an upcoming event to become live before scanning.
+            <Text style={styles.bodyText}>
+              No joined event is active right now. Join or wait for an upcoming event to become live.
             </Text>
           ) : (
-            <View style={styles.stack}>
+            <View style={styles.eventSelectorStack}>
               {activeJoinedEvents.map((event) => {
                 const isSelected = selectedEventVenueId === event.eventVenueId;
 
@@ -231,15 +274,23 @@ export default function BusinessScannerScreen() {
                   <Pressable
                     key={event.eventVenueId}
                     onPress={() => setSelectedEventVenueId(event.eventVenueId)}
-                    style={[styles.eventSelectorCard, isSelected ? styles.eventSelectorCardSelected : null]}
+                    style={[
+                      styles.eventSelectorCard,
+                      isSelected ? styles.eventSelectorCardSelected : null,
+                    ]}
                   >
-                    <Text selectable style={styles.cardTitle}>
-                      {event.eventName}
-                    </Text>
-                    <Text selectable style={styles.metaText}>
+                    <View style={styles.eventSelectorHeader}>
+                      <Text style={styles.eventSelectorTitle}>{event.eventName}</Text>
+                      {isSelected ? (
+                        <View style={styles.selectedBadge}>
+                          <Text style={styles.selectedBadgeText}>SELECTED</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.eventSelectorMeta}>
                       {event.businessName} · {event.city}
                     </Text>
-                    <Text selectable style={styles.metaText}>
+                    <Text style={styles.eventSelectorMeta}>
                       Ends {formatDateTime(event.endAt)}
                       {event.stampLabel ? ` · ${event.stampLabel}` : ""}
                     </Text>
@@ -251,31 +302,50 @@ export default function BusinessScannerScreen() {
         </InfoCard>
       ) : null}
 
+      {/* Live camera */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedEvent !== null ? (
-        <InfoCard eyebrow="Camera" title="Live camera scanner">
+        <InfoCard eyebrow="CAMERA" title={isScannerLocked ? "Scanner locked" : "Aim and scan"}>
           {permission === null ? (
-            <Text selectable style={styles.bodyText}>Camera permission state is loading.</Text>
+            <Text style={styles.bodyText}>Camera permission state is loading.</Text>
           ) : permission.granted ? (
-            <View style={styles.stack}>
-              <View style={styles.cameraFrame}>
+            <View style={styles.cameraStack}>
+              <View style={[styles.cameraOuter, isScannerLocked ? styles.cameraOuterLocked : null]}>
+                {/* STARK scan brackets: thin cyan lines */}
+                {!isScannerLocked && (
+                  <>
+                    <View style={[styles.scanBracket, styles.scanBracketTL]} />
+                    <View style={[styles.scanBracket, styles.scanBracketTR]} />
+                    <View style={[styles.scanBracket, styles.scanBracketBL]} />
+                    <View style={[styles.scanBracket, styles.scanBracketBR]} />
+                  </>
+                )}
+
                 <CameraView
                   active={!isScannerLocked}
                   barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
                   onBarcodeScanned={isScannerLocked ? undefined : handleBarcodeScanned}
                   style={styles.cameraView}
                 />
+
+                {/* Locked overlay */}
+                {isScannerLocked ? (
+                  <View style={styles.lockedOverlay}>
+                    <Text style={styles.lockedOverlayText}>
+                      {isSubmitting ? "PROCESSING" : "REVIEW"}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-              <Text selectable style={styles.metaText}>
+
+              <Text style={styles.cameraHint}>
                 {isScannerLocked
-                  ? "Scanner is locked until you review the latest result or manually unlock it."
-                  : "Aim at the student QR. The scanner locks immediately after one read."}
+                  ? "Review result below."
+                  : "Aim at QR. Locks after one read."}
               </Text>
             </View>
           ) : (
-            <View style={styles.stack}>
-              <Text selectable style={styles.bodyText}>
-                Camera permission is not granted on this device yet.
-              </Text>
+            <View style={styles.cameraStack}>
+              <Text style={styles.bodyText}>Camera permission is not granted.</Text>
               <Pressable onPress={() => void requestPermission()} style={styles.primaryButton}>
                 <Text style={styles.primaryButtonText}>Grant camera access</Text>
               </Pressable>
@@ -284,225 +354,312 @@ export default function BusinessScannerScreen() {
         </InfoCard>
       ) : null}
 
+      {/* Scan result */}
+      {lastResult !== null ? (
+        <Animated.View style={{ transform: [{ scale: resultScale }], opacity: resultOpacity }}>
+          <InfoCard
+            eyebrow={toneConfig[lastResult.tone].eyebrow}
+            title={scanResultTitles[lastResult.status]}
+          >
+            <View
+              style={[
+                styles.resultHeroCard,
+                {
+                  backgroundColor: toneConfig[lastResult.tone].bg,
+                  borderColor: toneConfig[lastResult.tone].border,
+                },
+              ]}
+            >
+              <Text style={[styles.resultIcon, { color: toneConfig[lastResult.tone].accentColor }]}>
+                {toneConfig[lastResult.tone].icon}
+              </Text>
+
+              {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
+                <View style={styles.stampCountBlock}>
+                  <Text style={[styles.stampCountNumber, { color: toneConfig[lastResult.tone].accentColor }]}>
+                    {lastResult.stampCount}
+                  </Text>
+                  <Text style={styles.stampCountLabel}>STAMPS</Text>
+                </View>
+              ) : null}
+
+              <Text style={[styles.resultMessage, { color: toneConfig[lastResult.tone].accentColor }]}>
+                {lastResult.message}
+              </Text>
+            </View>
+
+            <Text style={styles.bodyText}>{scanResultDetails[lastResult.status]}</Text>
+            <Text style={styles.metaText}>CODE: {lastResult.status}</Text>
+
+            <View style={styles.actionRow}>
+              <Pressable onPress={resetScanner} style={[styles.primaryButton, styles.actionFlex]}>
+                <Text style={styles.primaryButtonText}>Scan again</Text>
+              </Pressable>
+              <Link href="/business/history" asChild>
+                <Pressable style={[styles.ghostButton, styles.actionFlex]}>
+                  <Text style={styles.ghostButtonText}>History</Text>
+                </Pressable>
+              </Link>
+            </View>
+          </InfoCard>
+        </Animated.View>
+      ) : null}
+
+      {/* Submit error */}
+      {submitError !== null ? (
+        <InfoCard eyebrow="ERROR" title="Request failed">
+          <Text style={styles.bodyText}>{submitError}</Text>
+        </InfoCard>
+      ) : null}
+
+      {/* Manual fallback */}
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedEvent !== null ? (
-        <InfoCard eyebrow="Fallback" title="Manual QR token scan">
-          <Text selectable style={styles.bodyText}>
-            Web preview and event-day fallback can still hit the real `scan-qr` path by pasting a student token here.
-          </Text>
-          {__DEV__ ? (
-            <Text selectable style={styles.metaText}>
-              Same-device hosted smoke: sign in as a student first, copy the active token from My QR, then sign back in here with the current hosted scanner account and paste it below.
-            </Text>
-          ) : null}
+        <InfoCard eyebrow="FALLBACK" title="Manual entry">
+          <Text style={styles.bodyText}>Paste a student token here.</Text>
           <TextInput
             editable={!isSubmitting}
             multiline
             onChangeText={setManualToken}
-            placeholder="Paste a LEIMA_STAMP_QR JWT token"
-            placeholderTextColor="#64748B"
+            placeholder="Paste LEIMA_STAMP_QR token"
+            placeholderTextColor={mobileTheme.colors.textDim}
             style={styles.textArea}
             value={manualToken}
           />
           <Pressable
             disabled={manualToken.trim().length === 0 || isSubmitting || isScannerLocked}
             onPress={() => void submitScanAsync(manualToken.trim())}
-            style={[styles.primaryButton, manualToken.trim().length === 0 || isSubmitting || isScannerLocked ? styles.disabledButton : null]}
-          >
-            <Text style={styles.primaryButtonText}>{isSubmitting ? "Scanning..." : "Scan pasted token"}</Text>
-          </Pressable>
-        </InfoCard>
-      ) : null}
-
-      {submitError !== null ? (
-        <InfoCard eyebrow="Scanner" title="Request failed">
-          <Text selectable style={styles.bodyText}>{submitError}</Text>
-        </InfoCard>
-      ) : null}
-
-      {lastResult !== null ? (
-        <InfoCard eyebrow={toneStyles[lastResult.tone].eyebrow} title={scanResultTitles[lastResult.status]}>
-          <View
             style={[
-              styles.resultCard,
-              {
-                backgroundColor: toneStyles[lastResult.tone].backgroundColor,
-                borderColor: toneStyles[lastResult.tone].borderColor,
-              },
+              styles.primaryButton,
+              manualToken.trim().length === 0 || isSubmitting || isScannerLocked ? styles.disabledButton : null,
             ]}
           >
-            <Text selectable style={styles.cardTitle}>
-              {lastResult.message}
-            </Text>
-            <Text selectable style={styles.metaText}>Status code: {lastResult.status}</Text>
-            {typeof lastResult.stampCount === "number" ? (
-              <Text selectable style={styles.metaText}>
-                Student stamp count: {lastResult.stampCount}
-              </Text>
-            ) : null}
-            <Text selectable style={styles.metaText}>{scanResultDetails[lastResult.status]}</Text>
-          </View>
-          <View style={styles.actionRow}>
-            <Pressable onPress={resetScanner} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Scan again</Text>
-            </Pressable>
-            <Link href="/business/history" asChild>
-              <Pressable style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Open history</Text>
-              </Pressable>
-            </Link>
-          </View>
-        </InfoCard>
-      ) : null}
-
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow="History" title="Need a past scan?">
-          <Text selectable style={styles.bodyText}>
-            Recent scan outcomes are available in a separate route so staff can review them without keeping the camera open.
-          </Text>
-          <Link href="/business/history" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>View scan history</Text>
-            </Pressable>
-          </Link>
+            <Text style={styles.primaryButtonText}>{isSubmitting ? "Scanning…" : "Scan pasted token"}</Text>
+          </Pressable>
         </InfoCard>
       ) : null}
     </AppScreen>
   );
 }
 
+const BRACKET_SIZE = 24;
+const BRACKET_THICKNESS = 2;
+const BRACKET_COLOR = mobileTheme.colors.cyan;
+
 const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
   bodyText: {
     color: mobileTheme.colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
   },
-  cameraFrame: {
-    aspectRatio: 3 / 4,
-    backgroundColor: mobileTheme.colors.screenElevated,
-    borderColor: mobileTheme.colors.cardBorderStrong,
-    borderRadius: mobileTheme.radius.card,
+  metaText: {
+    color: mobileTheme.colors.textDim,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.0,
+  },
+
+  // --- Event selector ---
+  eventSelectorStack: {
+    gap: 8,
+  },
+  eventSelectorCard: {
+    backgroundColor: mobileTheme.colors.surfaceL1,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
     borderWidth: 1,
-    overflow: "hidden",
-    ...interactiveSurfaceShadowStyle,
+    padding: 14,
+    gap: 4,
   },
-  cameraView: {
-    flex: 1,
+  eventSelectorCardSelected: {
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.limeBorder,
   },
-  cardTitle: {
+  eventSelectorHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  eventSelectorTitle: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 15,
     fontWeight: "700",
   },
-  disabledButton: {
-    opacity: 0.7,
+  selectedBadge: {
+    backgroundColor: mobileTheme.colors.lime,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  eventSelectorCard: {
-    backgroundColor: mobileTheme.colors.cardBackgroundSoft,
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-    ...interactiveSurfaceShadowStyle,
+  selectedBadgeText: {
+    color: "#08090E",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.0,
   },
-  eventSelectorCardSelected: {
-    borderColor: mobileTheme.colors.accentBlue,
-    backgroundColor: "rgba(105, 189, 255, 0.12)",
+  eventSelectorMeta: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
   },
-  heroCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.045)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 28,
-    borderWidth: 1,
+
+  // --- Camera ---
+  cameraStack: {
     gap: 12,
-    overflow: "hidden",
-    padding: 18,
-    position: "relative",
   },
-  heroEyebrow: {
-    color: mobileTheme.colors.accentBlue,
+  cameraOuter: {
+    aspectRatio: 3 / 4,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: mobileTheme.colors.screenBase,
+  },
+  cameraOuterLocked: {
+    borderColor: mobileTheme.colors.borderMuted,
+  },
+  cameraView: {
+    flex: 1,
+  },
+
+  scanBracket: {
+    position: "absolute",
+    width: BRACKET_SIZE,
+    height: BRACKET_SIZE,
+    zIndex: 10,
+  },
+  scanBracketTL: {
+    top: 16,
+    left: 16,
+    borderTopWidth: BRACKET_THICKNESS,
+    borderLeftWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+  },
+  scanBracketTR: {
+    top: 16,
+    right: 16,
+    borderTopWidth: BRACKET_THICKNESS,
+    borderRightWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+  },
+  scanBracketBL: {
+    bottom: 16,
+    left: 16,
+    borderBottomWidth: BRACKET_THICKNESS,
+    borderLeftWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+  },
+  scanBracketBR: {
+    bottom: 16,
+    right: 16,
+    borderBottomWidth: BRACKET_THICKNESS,
+    borderRightWidth: BRACKET_THICKNESS,
+    borderColor: BRACKET_COLOR,
+  },
+
+  lockedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8, 9, 14, 0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 5,
+  },
+  lockedOverlayText: {
+    color: mobileTheme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 2.0,
+  },
+  cameraHint: {
+    color: mobileTheme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // --- Scan result card ---
+  resultHeroCard: {
+    borderRadius: mobileTheme.radius.inner,
+    borderWidth: 1,
+    gap: 10,
+    alignItems: "center",
+    padding: 24,
+  },
+  resultIcon: {
+    fontSize: 42,
+    fontWeight: "800",
+    lineHeight: 48,
+  },
+  stampCountBlock: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  stampCountNumber: {
+    fontSize: 48,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
+  stampCountLabel: {
+    color: mobileTheme.colors.textMuted,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+    letterSpacing: 1.5,
   },
-  heroGlow: {
-    backgroundColor: mobileTheme.colors.chromeTint,
-    borderRadius: 140,
-    height: 152,
-    opacity: 0.48,
-    position: "absolute",
-    right: -44,
-    top: -60,
-    width: 152,
-  },
-  heroTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 24,
+  resultMessage: {
+    fontSize: 16,
     fontWeight: "700",
-    lineHeight: 30,
+    textAlign: "center",
+    lineHeight: 22,
   },
-  metaText: {
-    color: mobileTheme.colors.textSoft,
-    fontSize: 13,
-    lineHeight: 18,
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
   },
+  actionFlex: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // --- Buttons ---
   primaryButton: {
     alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionBlueStrong,
+    backgroundColor: mobileTheme.colors.lime,
     borderRadius: mobileTheme.radius.button,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   primaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
+    color: "#08090E",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
-  resultCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
-    ...interactiveSurfaceShadowStyle,
-  },
-  stack: {
-    gap: 12,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
+  ghostButton: {
+    alignSelf: "flex-start",
+    borderColor: mobileTheme.colors.borderStrong,
     borderRadius: mobileTheme.radius.button,
     borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  secondaryButtonText: {
+  ghostButtonText: {
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
   },
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  // --- Misc ---
   textArea: {
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
-    borderRadius: 24,
+    backgroundColor: mobileTheme.colors.surfaceL2,
+    borderColor: mobileTheme.colors.borderDefault,
+    borderRadius: mobileTheme.radius.inner,
     borderWidth: 1,
     color: mobileTheme.colors.textPrimary,
     fontSize: 14,
-    minHeight: 120,
+    minHeight: 100,
     paddingHorizontal: 14,
     paddingVertical: 12,
     textAlignVertical: "top",
