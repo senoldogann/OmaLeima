@@ -258,6 +258,37 @@ Current readiness matrix:
 
 - iPhone student Google login: passed on a physical development build
 - iPhone remote push receipt and open response: passed on a physical development build
+
+## Mobile store/public-launch readiness
+
+Run from repo root:
+
+```bash
+npm run qa:mobile-store-release-readiness
+```
+
+The direct local command is:
+
+```bash
+npm --prefix apps/mobile run audit:store-release-readiness
+```
+
+This gate checks repo-owned broader-launch prerequisites only:
+
+- app identity wiring in `app.config.ts`
+- iOS bundle identifier and Android package name
+- store-facing build assets and splash/icon references
+- native policy fields like camera permission text and `ITSAppUsesNonExemptEncryption`
+- Expo notifications and EAS project wiring
+- explicit EAS build environments for development, preview, and production
+- owner-facing store/public-launch checklist documentation
+
+This gate does **not** prove App Store Connect or Google Play Console state. It also does **not** prove:
+
+- screenshots or listing copy
+- privacy-policy or support URLs configured in store consoles
+- Apple or Google account setup
+- EAS Submit credentials or app IDs stored outside the repo
 - Android emulator business email/password flow: passed
 - Android emulator student Google login in Expo Go: not treated as a reliable proof
 - Android remote push: still requires a real Android device

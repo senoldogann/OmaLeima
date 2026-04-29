@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-29
-- **Branch:** `feature/pilot-secret-hygiene-audit`
-- **Scope:** Add a repo-owned secret and password hygiene gate for the current hosted pilot credential set.
+- **Branch:** `feature/store-release-readiness`
+- **Scope:** Add a repo-owned store/public-launch readiness gate for the Expo mobile app and document the remaining owner steps.
 
 ## Affected Files
 
@@ -17,39 +17,37 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `README.md`
 - `docs/LAUNCH_RUNBOOK.md`
 - `docs/TESTING.md`
-- `apps/admin/package.json`
-- `apps/admin/README.md`
-- `apps/admin/scripts/_shared/hosted-project-admin.ts`
-- `apps/admin/scripts/_shared/pilot-operator-credentials.ts`
-- `apps/admin/scripts/audit-pilot-secret-hygiene.ts`
-- `apps/admin/scripts/smoke-pilot-secret-hygiene-audit.ts`
-- `apps/admin/scripts/run-pilot-final-dry-run.ts`
-- `package.json`
-- `tests/run-pilot-secret-hygiene.mjs`
+- `apps/mobile/README.md`
+- `apps/mobile/app.config.ts`
+- `apps/mobile/eas.json`
+- `apps/mobile/package.json`
+- `apps/mobile/scripts/audit-store-release-readiness.mjs`
+- `tests/run-mobile-store-release-readiness.mjs`
 
 ## Risks
 
-- The Desktop credential file is secret material. The audit must inspect it without copying secrets into repo files or logs.
-- GitHub Actions secret values are not readable, so the audit can only prove presence, not exact value equality.
-- A false-green hygiene gate would be worse than none; failures must be explicit about file permissions, weak passwords, or missing secret names.
+- Store submission details change over time, so only repo-owned checks should be automated; account-only items must stay explicit in docs.
+- A false-green store gate would be misleading if it pretended to prove App Store Connect or Play Console state.
+- EAS build and submit config should stay minimal; we should not hardcode sensitive or owner-specific store identifiers into the repo.
 
 ## Dependencies
 
-- The local Desktop operator credential file at `/Users/dogan/Desktop/OmaLeima-pilot-operator-credentials.txt`
-- GitHub CLI auth to inspect repo secret names
+- Current Expo app config in `apps/mobile/app.config.ts`
+- Current EAS config in `apps/mobile/eas.json`
 - Current launch guidance in `README.md`, `docs/LAUNCH_RUNBOOK.md`, and `docs/TESTING.md`
+- Official Expo documentation for EAS Build, EAS Submit, app versions, and permissions
 
 ## Existing Logic Checked
 
-- The hosted final dry-run is now green, so the next useful gate is whether the current local credential file still looks safe enough for a pilot handoff.
-- The project already has a Desktop credential file as the current source of truth for operator passwords.
-- Current docs mention moving the file somewhere safer, but there is no repeatable audit for permissions, weak passwords, or missing GitHub secret names.
+- The project already has working iOS dev-build proof, Android emulator fallback, and pilot operator hygiene gates.
+- The remaining broader-launch gap is not product logic; it is whether the mobile app repo is shaped correctly for store builds and later submissions.
+- `apps/mobile/app.config.ts` already contains bundle/package identifiers, icons, notifications, camera permission text, and EAS project wiring.
+- `apps/mobile/eas.json` currently has build profiles but does not yet expose an explicit repo-owned store-readiness gate.
 
 ## Review Outcome
 
-Ship a narrow secret-hygiene follow-up that:
+Ship a narrow store-readiness follow-up that:
 
-- reuses the Desktop credential parser in one shared helper
-- audits credential-file permissions, password quality, and duplicate passwords
-- audits the required GitHub secret names for the pilot path
-- exposes the result through a repeatable root command and owner-facing docs
+- adds one local audit for Expo config and EAS build/release wiring
+- keeps store-account and listing work clearly documented as owner-owned tasks
+- avoids hardcoding App Store Connect or Google Play account identifiers into the repo
