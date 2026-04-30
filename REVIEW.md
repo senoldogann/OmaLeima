@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Fix the next visible student-surface issues: light-mode reward card readability, tighter leima metric spacing, a cleaner event-detail meta area, and dropdown-style theme/language controls without redundant settings copy.
+- **Scope:** Reduce repeated copy across student surfaces, especially event discovery cards, while keeping the important event information easier to scan.
 
 ## Affected Files
 
@@ -14,36 +14,34 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
-- `apps/mobile/src/components/app-icon.tsx`
-- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `apps/mobile/src/app/student/rewards.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
 
 ## Risks
 
-- The reward event cards still used theme-dependent text and badges over photography, which made light mode look muddy.
-- Event detail still showed its date/place/time as loose pills instead of a proper information block.
-- Profile settings had the right controls, but chip toggles plus helper paragraphs still made the card feel busier than needed.
+- Event cards repeated city and descriptive context in too many places, which made the list feel noisy.
+- Rewards still repeated the same section language in both the page header and hero card.
+- Upcoming QR state reused the city again even though the hero above already carried the event context.
 
 ## Dependencies
 
-- Existing light/dark + `fi/en` mobile infrastructure on this branch
-- Existing event cover pattern built on `CoverImageSurface`
-- Existing profile modal pattern already used for department tags
+- Existing student event discovery hero and event-card visual language
+- Existing reward-page hero already communicates the reward context on its own
+- Existing active-event hero already carries the city and event identity
 
 ## Existing Logic Checked
 
-- Rewards already had the right data and structure; the issue was presentation on top of imagery.
-- Event detail already kept the hero clean, so the next fix belonged in the first content card.
-- Profile already had one settings card and one modal pattern, so dropdown-like selection could be added without introducing a new navigation path.
+- Event discovery already had the right data, but the card content duplicated location and context across eyebrow, image copy, body text, and metadata.
+- Rewards and QR pages already had strong hero surfaces, so the next cleanup could safely remove redundant section labels without losing clarity.
+- The request is presentation-only; no query, mutation, or routing logic needs to change.
 
 ## Review Outcome
 
 Do a focused UI polish pass:
 
-- make reward-card hero text and claimable state image-safe in light mode
-- tighten the leima metric spacing inside reward cards
-- replace the event-detail meta pills with a dedicated place/date/time block
-- turn theme and language selection into dropdown-style controls
-- strip redundant helper copy from settings actions
+- simplify event cards by removing duplicated location and descriptive copy
+- keep the key facts in a smaller, more scannable order
+- remove redundant section labels where the surrounding hero already says the same thing
+- rerun mobile validation and record the slice honestly
 - rerun mobile validation and record the slice honestly

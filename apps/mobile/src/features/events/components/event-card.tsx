@@ -53,21 +53,6 @@ const getRegistrationBadge = (
   return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
-const formatSupportLine = (
-  event: StudentEventSummary,
-  language: "fi" | "en",
-  formatter: Intl.DateTimeFormat
-): string => {
-  const joinDeadlineLabel = language === "fi" ? "ilmoittautuminen" : "join before";
-  const capLabel = language === "fi" ? "henkeä" : "cap";
-
-  if (event.maxParticipants === null) {
-    return `${joinDeadlineLabel} ${formatter.format(new Date(event.joinDeadlineAt))}`;
-  }
-
-  return `${event.maxParticipants} ${capLabel} • ${joinDeadlineLabel} ${formatter.format(new Date(event.joinDeadlineAt))}`;
-};
-
 export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
@@ -81,7 +66,7 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
       onPress={onPress}
       style={({ pressed }) => [styles.pressable, pressed ? styles.pressablePressed : null]}
     >
-      <InfoCard eyebrow={event.city} motionIndex={motionIndex} title={event.name}>
+      <InfoCard motionIndex={motionIndex} title={event.name}>
         <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
           <View style={styles.heroOverlay} />
           <View style={styles.heroContent}>
@@ -91,22 +76,25 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
             </View>
 
             <View style={styles.heroCopy}>
-              <Text style={styles.heroKicker}>{event.country}</Text>
               <Text style={styles.heroTimeline}>{timeFormatter.format(new Date(event.startAt))}</Text>
             </View>
           </View>
         </CoverImageSurface>
 
-        <Text style={styles.description}>
-          {event.description ??
-            (language === "fi"
-              ? "Järjestäjä lisää tapahtuman kuvauksen myöhemmin."
-              : "Event description will be added by the organizer.")}
-        </Text>
-
         <View style={styles.metaGroup}>
-          <Text style={styles.metaLine}>{event.city}</Text>
-          <Text style={styles.metaLine}>{formatSupportLine(event, language, timeFormatter)}</Text>
+          <Text style={styles.metaLine}>
+            {event.city}
+            {event.country.length > 0 ? ` · ${event.country}` : ""}
+          </Text>
+          <Text style={styles.metaLine}>
+            {language === "fi" ? "Ilmoittautuminen" : "Join before"}{" "}
+            {timeFormatter.format(new Date(event.joinDeadlineAt))}
+            {event.maxParticipants === null
+              ? ""
+              : language === "fi"
+                ? ` · ${event.maxParticipants} henkeä`
+                : ` · cap ${event.maxParticipants}`}
+          </Text>
           {event.minimumStampsRequired > 0 ? (
             <Text style={styles.metaLine}>
               {language === "fi"
@@ -118,9 +106,6 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
         <View style={styles.actionRow}>
           <Text style={styles.actionText}>{language === "fi" ? "Avaa tapahtuma" : "Open event"}</Text>
-          <Text style={styles.actionMeta}>
-            {language === "fi" ? "Reitti, pisteet ja palkintopolku." : "Route, venues, and reward path."}
-          </Text>
         </View>
       </InfoCard>
     </Pressable>
@@ -129,14 +114,8 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-  actionMeta: {
-    color: theme.colors.textMuted,
-    fontFamily: theme.typography.families.regular,
-    fontSize: 12,
-    lineHeight: 17,
-  },
   actionRow: {
-    gap: 4,
+    gap: 0,
   },
   actionText: {
     color: theme.colors.lime,
@@ -148,12 +127,6 @@ const createStyles = (theme: MobileTheme) =>
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-  },
-  description: {
-    color: theme.colors.textSecondary,
-    fontFamily: theme.typography.families.regular,
-    fontSize: 14,
-    lineHeight: 20,
   },
   heroBand: {
     borderRadius: theme.radius.scene,
@@ -167,17 +140,10 @@ const createStyles = (theme: MobileTheme) =>
     padding: 18,
   },
   heroCopy: {
-    gap: 6,
+    gap: 0,
   },
   heroImage: {
     borderRadius: theme.radius.scene,
-  },
-  heroKicker: {
-    color: "rgba(248, 250, 245, 0.8)",
-    fontFamily: theme.typography.families.semibold,
-    fontSize: 11,
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,

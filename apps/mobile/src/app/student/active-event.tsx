@@ -189,7 +189,7 @@ export default function StudentActiveEventScreen() {
       ) : null}
 
       {selectedEvent?.viewState === "UPCOMING" ? (
-        <InfoCard eyebrow={selectedEvent.city} motionIndex={1} title={selectedEvent.name} variant="scene">
+        <InfoCard motionIndex={1} title={selectedEvent.name} variant="scene">
           <View style={styles.badges}>
             <StatusBadge label={language === "fi" ? "liitytty" : "registered"} state="ready" />
             <StatusBadge label={language === "fi" ? "tulossa" : "upcoming"} state="pending" />

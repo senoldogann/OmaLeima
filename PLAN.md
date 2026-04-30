@@ -6,39 +6,36 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Close the next visible student polish gaps without starting a new branch: readable reward cards in light mode, a cleaner event-detail info block, and calmer settings controls.
+- **Goal:** Remove repeated copy and repeated variables across the student surfaces so the UI says less but says it more clearly.
 
 ## Architectural Decisions
 
-- Keep text on top of photography image-safe: dark overlay plus white foreground regardless of active theme.
-- Keep reward-card claimability readable by using a dedicated overlay pill instead of reusing the generic surface badge over imagery.
-- Replace loose event-detail meta pills with a dedicated three-cell information block.
-- Treat theme and language as dropdown-style settings rows that open a lightweight modal, instead of showing multiple chips inline.
-- Remove helper prose under familiar settings actions unless the state itself adds new information.
+- Treat event cards as quick-scan surfaces: one strong image, one title, and one compact metadata stack.
+- Prefer combining location context into one line instead of repeating city in multiple regions.
+- Let page-level hero sections carry section identity, and avoid repeating the same label again directly below.
+- Keep this slice presentation-only so behavior, routing, and backend assumptions stay untouched.
 
 ## Alternatives Considered
 
-- Keep using the generic `StatusBadge` on reward imagery:
-  - rejected because its surface colors are tuned for cards, not for photo overlays in light mode
-- Leave event-detail metadata as wraparound pills:
-  - rejected because it still reads like temporary chrome instead of structured event info
-- Keep theme/language as inline chips:
-  - rejected because the settings card already feels dense and the user explicitly asked for a neater dropdown treatment
+- Keep the description preview in every event card:
+  - rejected because it duplicates the detail page and makes the event list too tall
+- Keep the city both as eyebrow and metadata:
+  - rejected because the user already called out that duplication directly
+- Leave rewards and QR section labels as-is:
+  - rejected because they repeat information the hero already communicates visually
 
 ## Edge Cases
 
-- The dropdown modal must not interfere with the existing department-tag modal.
-- Notification status still needs to surface errors or registration results, even after removing generic helper copy.
-- Event-detail place/date/time should stay readable in both compact phones and wider layouts.
+- Event cards still need enough information to decide whether to open the detail page.
+- Removing copy from rewards and QR must not hide functional state like claimability or event timing.
+- The compacted copy should still read naturally in both Finnish and English.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this student polish slice.
-- Make reward-card overlay text and claimable state readable in light mode.
-- Tighten reward-card number/unit spacing.
-- Replace event-detail meta pills with a dedicated place/date/time block.
-- Convert theme and language controls into dropdown-style selectors.
-- Remove redundant helper copy from settings actions.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this text-density cleanup slice.
+- Remove duplicate city/description treatment from event cards.
+- Tighten the event facts into a smaller, clearer order.
+- Remove redundant section labels where the surrounding layout already carries the meaning.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

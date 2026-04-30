@@ -74,7 +74,6 @@ export default function StudentRewardsScreen() {
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
-        <Text style={styles.screenEyebrow}>{copy.student.rewardTrail}</Text>
         <Text style={styles.screenTitle}>{copy.common.rewards}</Text>
         <Text style={styles.metaText}>{copy.student.rewardsMeta}</Text>
         {__DEV__ ? (
@@ -305,14 +304,6 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
-    },
-    screenEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.1,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
     },
     screenHeader: {
       gap: 6,

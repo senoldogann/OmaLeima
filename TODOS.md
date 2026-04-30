@@ -27,13 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Reward + Settings Polish)
+## Current Todos (Text Density Cleanup)
 
 - [x] Re-audit the remaining light-mode glare/contrast issues.
-- [x] Make reward-card image text and claimable state readable in light mode.
-- [x] Tighten the reward-card leima metric spacing.
-- [x] Replace event-detail meta pills with a cleaner info block.
-- [x] Turn theme and language controls into dropdown-style selectors.
-- [x] Remove redundant helper copy from settings actions.
+- [x] Simplify the event cards and remove repeated city/description treatment.
+- [x] Reduce repeated section labels on rewards and QR where the hero already carries context.
+- [x] Keep only the key event facts in a smaller, clearer order.
 - [x] Re-run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the polish handoff note.
