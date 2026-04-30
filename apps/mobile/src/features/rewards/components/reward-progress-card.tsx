@@ -178,7 +178,11 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
               label={event.timelineState === "ACTIVE" ? (language === "fi" ? "käynnissä" : "active") : event.timelineState === "UPCOMING" ? (language === "fi" ? "tulossa" : "upcoming") : language === "fi" ? "päättynyt" : "completed"}
               state={getTimelineBadgeState(event.timelineState)}
             />
-            {hasClaimable ? <StatusBadge label={language === "fi" ? "valmis" : "claimable"} state="ready" /> : null}
+            {hasClaimable ? (
+              <View style={styles.heroReadyPill}>
+                <Text style={styles.heroReadyPillText}>{language === "fi" ? "VALMIS" : "READY"}</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={styles.heroDate}>
             {formatter.format(new Date(event.startAt))} - {formatter.format(new Date(event.endAt))}
@@ -298,7 +302,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     heroDate: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
@@ -308,7 +312,22 @@ const createStyles = (theme: MobileTheme) =>
     },
     heroOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.52)" : "rgba(10, 12, 10, 0.3)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.52)" : "rgba(7, 10, 7, 0.5)",
+    },
+    heroReadyPill: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(8, 10, 8, 0.74)",
+      borderColor: "rgba(248, 250, 245, 0.14)",
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    heroReadyPillText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
     },
     progressFill: {
       backgroundColor: theme.colors.lime,
@@ -329,13 +348,14 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     stampHero: {
-      alignItems: "flex-end",
+      alignItems: "center",
       flexDirection: "row",
-      gap: 12,
+      gap: 8,
     },
     stampMeta: {
-      gap: 8,
-      paddingBottom: 8,
+      gap: 3,
+      justifyContent: "center",
+      marginBottom: 2,
     },
     stampNumber: {
       color: theme.colors.textPrimary,

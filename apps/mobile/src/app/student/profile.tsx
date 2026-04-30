@@ -20,6 +20,8 @@ import { useRegisterPushDeviceMutation, type PushDeviceRegistrationResult } from
 import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import { useSession } from "@/providers/session-provider";
 
+type PreferenceSheet = "language" | "theme" | null;
+
 const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
   if (language === "fi") {
     if (count === 0) {
@@ -107,6 +109,7 @@ export default function StudentProfileScreen() {
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
   const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
+  const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -144,6 +147,8 @@ export default function StudentProfileScreen() {
       setPrimaryTagMutation.error?.message,
     ]
   );
+  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
+  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
 
   const handleRegisterPushPress = async (): Promise<void> => {
     const result = await registerPushMutation.mutateAsync({
@@ -274,65 +279,35 @@ export default function StudentProfileScreen() {
         title={language === "fi" ? "Profiilin asetukset" : "Profile settings"}
       >
         <View style={styles.preferenceSection}>
-          <View style={styles.preferenceHeader}>
+          <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceSelectRow}>
             <View style={styles.preferenceIconWrap}>
               <AppIcon color={theme.colors.lime} name="palette" size={16} />
             </View>
             <View style={styles.preferenceHeaderCopy}>
               <Text selectable style={styles.preferenceTitle}>{copy.common.theme}</Text>
-              <Text selectable style={styles.metaText}>{copy.preferences.appearanceBody}</Text>
             </View>
-          </View>
-          <View style={styles.preferenceRow}>
-            <Pressable
-              onPress={() => void setThemeMode("dark")}
-              style={[styles.preferenceChip, themeMode === "dark" ? styles.preferenceChipActive : null]}
-            >
-              <Text style={[styles.preferenceChipText, themeMode === "dark" ? styles.preferenceChipTextActive : null]}>
-                {copy.common.darkMode}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void setThemeMode("light")}
-              style={[styles.preferenceChip, themeMode === "light" ? styles.preferenceChipActive : null]}
-            >
-              <Text style={[styles.preferenceChipText, themeMode === "light" ? styles.preferenceChipTextActive : null]}>
-                {copy.common.lightMode}
-              </Text>
-            </Pressable>
-          </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>{selectedThemeLabel}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.preferenceDivider} />
 
         <View style={styles.preferenceSection}>
-          <View style={styles.preferenceHeader}>
+          <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceSelectRow}>
             <View style={styles.preferenceIconWrap}>
               <AppIcon color={theme.colors.lime} name="globe" size={16} />
             </View>
             <View style={styles.preferenceHeaderCopy}>
               <Text selectable style={styles.preferenceTitle}>{copy.common.language}</Text>
-              <Text selectable style={styles.metaText}>{copy.preferences.languageBody}</Text>
             </View>
-          </View>
-          <View style={styles.preferenceRow}>
-            <Pressable
-              onPress={() => void setLanguage("fi")}
-              style={[styles.preferenceChip, language === "fi" ? styles.preferenceChipActive : null]}
-            >
-              <Text style={[styles.preferenceChipText, language === "fi" ? styles.preferenceChipTextActive : null]}>
-                {copy.common.finnish}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => void setLanguage("en")}
-              style={[styles.preferenceChip, language === "en" ? styles.preferenceChipActive : null]}
-            >
-              <Text style={[styles.preferenceChipText, language === "en" ? styles.preferenceChipTextActive : null]}>
-                {copy.common.english}
-              </Text>
-            </Pressable>
-          </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>{selectedLanguageLabel}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -344,7 +319,6 @@ export default function StudentProfileScreen() {
             </View>
             <View style={styles.preferenceHeaderCopy}>
               <Text selectable style={styles.preferenceTitle}>{copy.common.notifications}</Text>
-              <Text selectable style={styles.metaText}>{copy.student.notificationsMeta}</Text>
               <Text selectable style={styles.metaText}>
                 {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
               </Text>
@@ -381,16 +355,80 @@ export default function StudentProfileScreen() {
             </View>
             <View style={styles.preferenceHeaderCopy}>
               <Text selectable style={styles.preferenceTitle}>{copy.common.signOut}</Text>
-              <Text selectable style={styles.metaText}>
-                {language === "fi"
-                  ? "Poistu tältä laitteelta turvallisesti."
-                  : "Sign out from this device safely."}
-              </Text>
             </View>
           </View>
           <SignOutButton />
         </View>
       </InfoCard>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setPreferenceSheet(null)}
+        transparent
+        visible={preferenceSheet !== null}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.preferenceModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
+                <Text style={styles.modalTitle}>
+                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
+                </Text>
+              </View>
+              <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.preferenceOptionList}>
+              {preferenceSheet === "theme" ? (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      void setThemeMode("dark");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      void setThemeMode("light");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      void setLanguage("fi");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      void setLanguage("en");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         animationType="slide"
@@ -632,6 +670,37 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       gap: 2,
     },
+    preferenceModalCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 16,
+      marginHorizontal: 20,
+      padding: 18,
+    },
+    preferenceOption: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    preferenceOptionActive: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    preferenceOptionList: {
+      gap: 10,
+    },
+    preferenceOptionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
     preferenceIconWrap: {
       alignItems: "center",
       backgroundColor: theme.colors.limeSurface,
@@ -640,13 +709,25 @@ const createStyles = (theme: MobileTheme) =>
       justifyContent: "center",
       width: 32,
     },
-    preferenceRow: {
-      flexDirection: "row",
-      gap: 10,
-      flexWrap: "wrap",
-    },
     preferenceSection: {
       gap: 12,
+    },
+    preferenceSelectRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    preferenceSelectValue: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    preferenceSelectValueText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     preferenceTitle: {
       color: theme.colors.textPrimary,

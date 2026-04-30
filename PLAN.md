@@ -6,37 +6,39 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Close the next visible light-mode and settings polish gaps without starting a new redesign branch: auth hero glare, discovery hero title contrast, rewards hero alignment, and fragmented profile settings.
+- **Goal:** Close the next visible student polish gaps without starting a new branch: readable reward cards in light mode, a cleaner event-detail info block, and calmer settings controls.
 
 ## Architectural Decisions
 
-- Keep image-based surfaces on a consistent rule: dark overlay plus white foreground, even in light mode.
-- Use one explicit content wrapper inside the rewards hero so the stamp number and copy align deterministically.
-- Collapse profile preferences, notifications, and sign-out into one main settings card instead of several adjacent cards.
-- Push the light card language through `GlassPanel` so app-wide boxes converge toward the same white + subtle-border treatment.
+- Keep text on top of photography image-safe: dark overlay plus white foreground regardless of active theme.
+- Keep reward-card claimability readable by using a dedicated overlay pill instead of reusing the generic surface badge over imagery.
+- Replace loose event-detail meta pills with a dedicated three-cell information block.
+- Treat theme and language as dropdown-style settings rows that open a lightweight modal, instead of showing multiple chips inline.
+- Remove helper prose under familiar settings actions unless the state itself adds new information.
 
 ## Alternatives Considered
 
-- Leave the login hero shimmer in place and only adjust copy colors:
-  - rejected because the overlay itself is what makes the image feel washed out in light mode
-- Fix rewards hero alignment with ad hoc margins:
-  - rejected because the real issue is the missing shared layout wrapper
-- Keep notifications and sign-out outside the settings card:
-  - rejected because the user explicitly asked for one consolidated settings surface when possible
+- Keep using the generic `StatusBadge` on reward imagery:
+  - rejected because its surface colors are tuned for cards, not for photo overlays in light mode
+- Leave event-detail metadata as wraparound pills:
+  - rejected because it still reads like temporary chrome instead of structured event info
+- Keep theme/language as inline chips:
+  - rejected because the settings card already feels dense and the user explicitly asked for a neater dropdown treatment
 
 ## Edge Cases
 
-- Changing `GlassPanel` affects many screens at once, so the light-mode border/background shift must stay subtle.
-- The consolidated settings card must remain readable even with button states and push registration feedback inside it.
+- The dropdown modal must not interfere with the existing department-tag modal.
+- Notification status still needs to surface errors or registration results, even after removing generic helper copy.
+- Event-detail place/date/time should stay readable in both compact phones and wider layouts.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this light-mode/settings polish slice.
-- Remove the light-mode glare from the login hero.
-- Force the events discovery hero title into image-safe white foreground.
-- Add a proper layout container to the rewards summary hero.
-- Merge notifications and sign-out into the main profile settings card.
-- Normalize light-mode card surfaces through `GlassPanel`.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this student polish slice.
+- Make reward-card overlay text and claimable state readable in light mode.
+- Tighten reward-card number/unit spacing.
+- Replace event-detail meta pills with a dedicated place/date/time block.
+- Convert theme and language controls into dropdown-style selectors.
+- Remove redundant helper copy from settings actions.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

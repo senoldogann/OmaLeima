@@ -27,12 +27,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Light-Mode Settings Polish)
+## Current Todos (Reward + Settings Polish)
 
 - [x] Re-audit the remaining light-mode glare/contrast issues.
-- [x] Remove the login hero glare and fix discovery hero title contrast.
-- [x] Fix the rewards hero layout alignment.
-- [x] Move notifications and sign-out into the main settings card.
-- [x] Normalize light-mode card backgrounds through `GlassPanel`.
+- [x] Make reward-card image text and claimable state readable in light mode.
+- [x] Tighten the reward-card leima metric spacing.
+- [x] Replace event-detail meta pills with a cleaner info block.
+- [x] Turn theme and language controls into dropdown-style selectors.
+- [x] Remove redundant helper copy from settings actions.
 - [x] Re-run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the polish handoff note.

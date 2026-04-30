@@ -48,6 +48,19 @@ const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
     minute: "2-digit",
   });
 
+const createDateFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
+const createTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 const formatRuleValue = (value: EventRuleValue): string => {
   if (
     typeof value === "string" ||
@@ -257,6 +270,8 @@ export default function StudentEventDetailScreen() {
   });
   const trackedEventIds = useMemo(() => (eventId === null ? [] : [eventId]), [eventId]);
   const formatter = useMemo(() => createDateTimeFormatter(localeTag), [localeTag]);
+  const dateFormatter = useMemo(() => createDateFormatter(localeTag), [localeTag]);
+  const timeFormatter = useMemo(() => createTimeFormatter(localeTag), [localeTag]);
 
   useStudentRewardInventoryRealtime({
     trackedEventIds,
@@ -357,18 +372,19 @@ export default function StudentEventDetailScreen() {
               ) : null}
             </View>
 
-            <View style={themeStyles.metaStrip}>
-              <View style={themeStyles.metaPill}>
-                <Text style={themeStyles.metaPillValue}>{event.city}</Text>
+            <View style={themeStyles.metaGrid}>
+              <View style={themeStyles.metaCard}>
+                <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Paikka" : "Place"}</Text>
+                <Text style={themeStyles.metaCardValue}>{event.city}</Text>
               </View>
-              <View style={themeStyles.metaPill}>
-                <Text style={themeStyles.metaPillValue}>
-                  {language === "fi" ? "Alkaa" : "Starts"} {formatter.format(new Date(event.startAt))}
-                </Text>
+              <View style={themeStyles.metaCard}>
+                <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
+                <Text style={themeStyles.metaCardValue}>{dateFormatter.format(new Date(event.startAt))}</Text>
               </View>
-              <View style={themeStyles.metaPill}>
-                <Text style={themeStyles.metaPillValue}>
-                  {language === "fi" ? "Ilmoittautuminen" : "Join before"} {formatter.format(new Date(event.joinDeadlineAt))}
+              <View style={themeStyles.metaCard}>
+                <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Aika" : "Time"}</Text>
+                <Text style={themeStyles.metaCardValue}>
+                  {timeFormatter.format(new Date(event.startAt))} - {timeFormatter.format(new Date(event.endAt))}
                 </Text>
               </View>
             </View>
@@ -556,21 +572,35 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    metaPill: {
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.42)" : "rgba(255, 255, 255, 0.82)",
-      borderRadius: 999,
+    metaCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      flex: 1,
+      gap: 4,
+      minWidth: 92,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
     },
-    metaPillValue: {
+    metaCardLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    metaCardValue: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.medium,
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    metaStrip: {
+    metaGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 10,
     },
     metaText: {
       color: theme.colors.textMuted,

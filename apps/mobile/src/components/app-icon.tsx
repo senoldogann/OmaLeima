@@ -12,7 +12,8 @@ type AppIconName =
   | "palette"
   | "globe"
   | "chevron-left"
-  | "chevron-right";
+  | "chevron-right"
+  | "chevron-down";
 
 type AppIconProps = {
   name: AppIconName;
@@ -205,6 +206,19 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
         <Svg height={size} viewBox="0 0 24 24" width={size}>
           <Path
             d="m15 6-6 6 6 6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </Svg>
+      );
+    case "chevron-down":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="m6 9 6 6 6-6"
             fill="none"
             stroke={color}
             strokeLinecap="round"
