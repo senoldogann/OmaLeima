@@ -120,8 +120,7 @@ export default function StudentActiveEventScreen() {
       qrTokenQuery.data.qrPayload.token.length > 0,
   });
 
-  const refreshAfterSeconds = qrTokenQuery.data?.refreshAfterSeconds ?? null;
-  const countdownSeconds = useQrCountdown(refreshAfterSeconds, qrTokenQuery.dataUpdatedAt, shouldRefreshQr);
+  const countdownSeconds = useQrCountdown(qrTokenQuery.data?.expiresAt ?? null, shouldRefreshQr);
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
   const showProtectionNotice = protection.status === "ERROR";
   const eventCoverSource = useMemo(

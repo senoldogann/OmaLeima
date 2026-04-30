@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-05-01
 - **Branch:** `feature/push-diagnostics-polish`
-- **Scope:** Remove the confusing dev-only push diagnostics exposure from the normal student settings flow, improve its presentation for QA users, and fix light-mode primary action contrast across the mobile app.
+- **Scope:** Finish the support/settings polish slice: keep support inputs visible above the keyboard, move recent support requests into a cleaner secondary menu, add a lightweight send animation, center and verify the QA diagnostics clear action, and stop the student QR timer from resetting early on quick tab switches.
 
 ## Affected Files
 
@@ -14,43 +14,43 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `REVIEW.md`
-- `PLAN.md`
-- `TODOS.md`
-- `PROGRESS.md`
 - `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/business/profile.tsx`
+- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/components/app-screen.tsx`
 - `apps/mobile/src/components/app-icon.tsx`
-- `apps/mobile/src/features/foundation/theme.ts`
-- `apps/mobile/src/features/i18n/translations.ts`
-- primary-action mobile surfaces that currently render lime buttons
+- `apps/mobile/src/features/qr/student-qr.ts`
+- `apps/mobile/src/features/support/components/support-request-sheet.tsx`
 
 ## Risks
 
-- `Push diagnostics` is a QA-only tool, but it currently reads like a user-facing feature inside profile preferences.
-- Light-mode lime actions currently reuse a dark-theme text token, so button contrast is weak in exactly the screens users tap most.
-- This pass touches shared theme tokens, so a sloppy change can ripple through many mobile routes.
+- The support modal currently bypasses most of the shared keyboard handling, so iOS can hide the subject/message fields under the software keyboard.
+- The inline `Viimeisimmät pyynnöt` list bloats the support sheet and steals vertical space from the form itself.
+- QR countdown currently keys off local query refresh time instead of the actual token expiry, which can make the timer restart even while the token is still valid.
+- This pass touches shared mobile primitives and modal behavior, so sloppy changes can ripple through multiple routes.
 
 ## Dependencies
 
 - Existing `UiPreferencesProvider` still owns language/theme state and should keep driving both student and business settings.
-- The dev-only push diagnostics modal should stay available for QA, but it should be visually demoted and clearly separated from user settings.
-- Existing mobile/admin validation commands remain the minimum merge gate.
+- The dev-only push diagnostics modal should stay available for QA, but it should remain visually demoted and clearly separated from user settings.
+- `useGenerateQrTokenQuery` already returns `expiresAt`; the countdown should respect that server timestamp instead of local refresh timestamps.
+- Existing mobile validation commands remain the minimum merge gate.
 
 ## Existing Logic Checked
 
-- The latest `main` already contains the support migration, shared support mobile layer, and business profile route.
-- The working tree is clean apart from the known untracked `.idea/` folder that must stay untouched.
-- The current student profile shows a dev-only `Push diagnostics` button directly under notifications, which is technically gated by `__DEV__` but still visually noisy.
-- Multiple primary-action buttons still use `theme.colors.screenBase` for labels/icons, which washes out on the light-mode lime background.
+- The latest remote Supabase now has `support_requests`; the current issues are UI/interaction problems, not missing backend state.
+- `SupportRequestSheet` currently renders latest requests inline in the same scroll flow as the form, which is why the typing surface feels cramped.
+- `AppScreen` already uses `KeyboardAvoidingView`, but the support modal is outside that shell and needs its own keyboard-aware layer.
+- Student QR countdown uses `dataUpdatedAt + refreshAfterSeconds`, so a remount can make the 30-second window look like it restarted.
 
 ## Review Outcome
 
 Do a focused polish pass:
 
-- refresh the working docs so branch and scope are truthful
-- move `Push diagnostics` into a cleaner dev-only QA settings row
-- fix primary-action foreground contrast in light mode with a shared theme token
-- keep the change minimal and product-facing
+- refresh the working docs so branch and scope stay truthful
+- make the support sheet keyboard-safe on iPhone
+- move latest support requests behind a cleaner secondary history menu
+- add a lightweight sent animation that does not require backend changes
+- center the QA clear button and make its state change visible
+- fix QR countdown to respect real token expiry across quick tab switches
 - rerun the relevant mobile validation gates
 - record the outcome before merging back to `main`

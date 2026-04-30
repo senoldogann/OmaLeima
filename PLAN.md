@@ -6,36 +6,41 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-05-01
 - **Branch:** `feature/push-diagnostics-polish`
-- **Goal:** Make the dev-only push diagnostics surface feel intentional instead of user-facing, and fix light-mode lime action contrast across the mobile app.
+- **Goal:** Finish the support/settings polish with better keyboard behavior, a cleaner support history flow, a lightweight send animation, a more intentional QA clear action, and QR countdown behavior that respects the actual token lifetime.
 
 ## Architectural Decisions
 
-- Keep the push diagnostics surface dev-only, but present it as a QA tool row instead of a random secondary button under notifications.
-- Add one shared theme token for primary-action foreground color instead of ad hoc per-screen overrides.
-- Reuse the existing student/business settings cards and app icon system instead of inventing new settings shells.
-- Preserve the working-doc discipline even though this is a small product polish slice.
+- Keep support request creation and support history inside the existing `SupportRequestSheet`, but split the history list into a secondary modal so the form stays lighter.
+- Use `KeyboardAvoidingView` plus `ScrollView` keyboard insets inside the support modal instead of inventing a separate custom bottom-sheet system.
+- Use a lightweight local `Animated` paper-plane motion for send confirmation instead of introducing a new animation dependency.
+- Drive QR countdown and refresh timing from `expiresAt` so the token lifetime stays stable across fast tab hops.
+- Keep the QA diagnostics surface dev-only and centered, but do not move it out of profile in this slice.
 
 ## Alternatives Considered
 
-- Hide push diagnostics completely:
-  - rejected because QA still uses it in dev builds
-- Patch button text colors screen by screen with hardcoded black:
-  - rejected because a shared theme token is safer and cleaner
-- Leave business/profile wording inconsistent:
-  - rejected because settings labels should stay shared once we already have shared copy
+- Create a whole new support route just for request history:
+  - rejected because it is too large for this polish slice and adds navigation overhead
+- Keep the latest requests list inline and only tweak spacing:
+  - rejected because the keyboard problem is partly a vertical space problem, not only spacing
+- Add a heavier animation system for send success:
+  - rejected because React Native `Animated` is enough for a small support confirmation cue
+- Force-refresh the QR token on every tab return:
+  - rejected because it shortens the apparent lifetime of still-valid QR codes
 
 ## Edge Cases
 
-- The QA tool row must stay hidden in production while still being easy to find in dev builds.
-- The new primary-action text token must not accidentally affect non-button lime surfaces like avatars or decorative highlights.
+- Business support still needs an active business membership before submission is allowed.
+- The support modal must keep working in both student and business contexts with the same component.
+- The send animation must not block the form or trap the user in a loading-like state.
+- The QR countdown should hit zero and refresh when expired, but should not visually restart early just because the screen remounted.
 - Validation must ignore the known untracked `.idea/` folder and not try to clean it up.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this polish slice.
-- Move the push diagnostics entry into a cleaner dev-only QA row.
-- Add a shared primary-action foreground token and apply it to mobile lime buttons.
-- Normalize the business support row copy to shared translations.
+- Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the expanded support/QR polish scope.
+- Make the support sheet keyboard-safe and move recent requests behind a separate history menu.
+- Add the lightweight send animation and the centered QA clear action.
+- Update QR countdown behavior to use real token expiry.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

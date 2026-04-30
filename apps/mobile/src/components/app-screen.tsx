@@ -16,6 +16,7 @@ export const AppScreen = ({ children }: PropsWithChildren) => {
         style={styles.keyboardAvoidingView}
       >
         <ScrollView
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.content}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"

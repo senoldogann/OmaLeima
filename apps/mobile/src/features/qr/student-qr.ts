@@ -268,6 +268,9 @@ export const useGenerateQrTokenQuery = ({
     queryKey: studentGenerateQrTokenQueryKey(eventId, accessToken),
     queryFn: async () => fetchGenerateQrTokenAsync(accessToken, eventId),
     enabled: isEnabled,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
     refetchInterval: (query) => {
       const result = query.state.data as GenerateQrTokenResponse | undefined;
 
@@ -275,8 +278,15 @@ export const useGenerateQrTokenQuery = ({
         return false;
       }
 
-        return result.refreshAfterSeconds * 1000;
-      },
+      const expiresAtMs = new Date(result.expiresAt).getTime();
+      const remainingMs = expiresAtMs - Date.now();
+
+      if (remainingMs <= 0) {
+        return 0;
+      }
+
+      return remainingMs;
+    },
   });
 
 export const useQrSvgQuery = ({
@@ -373,22 +383,21 @@ export const useQrScreenProtection = (): QrProtectionState => {
 };
 
 export const useQrCountdown = (
-  refreshAfterSeconds: number | null,
-  dataUpdatedAt: number,
+  expiresAt: string | null,
   isEnabled: boolean
 ): number => {
   const now = useCurrentTime(isEnabled);
 
   return useMemo(() => {
-    if (refreshAfterSeconds === null) {
+    if (expiresAt === null) {
       return 0;
     }
 
-    const nextRefreshAt = dataUpdatedAt + refreshAfterSeconds * 1000;
+    const nextRefreshAt = new Date(expiresAt).getTime();
     const remainingMs = Math.max(nextRefreshAt - now, 0);
 
     return Math.ceil(remainingMs / 1000);
-  }, [dataUpdatedAt, now, refreshAfterSeconds]);
+  }, [expiresAt, now]);
 };
 
 export const useCurrentTime = (isEnabled: boolean): number => {

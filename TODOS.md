@@ -33,5 +33,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Move the push diagnostics entry into a cleaner dev-only QA row.
 - [x] Add a shared primary-action foreground token and apply it to lime buttons.
 - [x] Normalize the business support row copy to shared translations.
+- [x] Push the missing `support_requests` migration to remote Supabase.
+- [x] Make the support request sheet keyboard-safe on iPhone.
+- [x] Move latest support requests into a cleaner secondary history menu.
+- [x] Add a lightweight support-send animation.
+- [x] Center the QA diagnostics clear action and make its state update visible.
+- [x] Stop QR countdown from restarting early on quick tab switches.
 - [x] Rerun mobile validation gates.
-- [x] Update `PROGRESS.md` with the polish outcome and merge note.
+- [x] Update `PROGRESS.md` with the expanded polish outcome and merge note.

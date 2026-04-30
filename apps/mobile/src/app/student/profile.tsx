@@ -178,6 +178,7 @@ export default function StudentProfileScreen() {
 
   const handleClearPushDiagnosticsPress = (): void => {
     clearCapturedPushActivity();
+    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -478,7 +479,7 @@ export default function StudentProfileScreen() {
                   {isPushDiagnosticsRefreshing ? "Refreshing..." : "Refresh push diagnostics"}
                 </Text>
               </Pressable>
-              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.secondaryButton}>
+              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.qaSecondaryButton}>
                 <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
               </Pressable>
             </View>
@@ -949,6 +950,16 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
+    },
+    qaSecondaryButton: {
+      alignItems: "center",
+      alignSelf: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      minWidth: 220,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
     },
     stack: {
       gap: 12,
