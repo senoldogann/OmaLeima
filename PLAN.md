@@ -6,36 +6,31 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Close the last obvious light-mode visual regressions by fixing image-hero contrast, reducing dirty outer shadows, and simplifying the profile preferences block.
+- **Goal:** Continue the redesign polish by turning the event detail hero into a clean cover image and moving event identity/description into the content stack where it belongs.
 
 ## Architectural Decisions
 
-- Keep the current light/dark theme system as-is and solve readability at the surface level with stronger image overlays plus image-specific text colors.
-- Apply the same light-mode contrast fix to all student image surfaces together so the app keeps one coherent rule instead of screen-by-screen exceptions.
-- Merge theme and language selectors into one shared settings card rather than adding a new route or modal.
-- Soften shared shadow tokens globally enough to reduce the light-mode haze without starting another full redesign wave.
+- Treat the event detail hero as pure visual atmosphere, not as a text container.
+- Keep the back button over the image for navigation speed, but move all semantic event information below the cover.
+- Reuse the first detail card for title, badges, schedule, and description instead of adding another new section.
 
 ## Alternatives Considered
 
-- Change the whole light palette again:
-  - rejected for now because the primary problem is contrast on photography, not the base neutral palette
-- Keep using theme text colors on image heroes and only darken the images:
-  - rejected because image surfaces need their own stable foreground rule
-- Add separate “appearance” and “language” cards with new icons:
-  - rejected because the user explicitly wants less visual noise
+- Keep title and metadata on top of the event image and only tweak spacing:
+  - rejected because the user explicitly wants the image itself to stay clean
+- Add a second summary card between image and description:
+  - rejected because the screen should get simpler, not longer
 
 ## Edge Cases
 
-- The same event image can appear in full-bleed hero and smaller event card contexts, so overlay opacity must still leave the photo readable without hiding all detail.
-- Global shadow token softening must not make dark mode feel flat or break pressable depth entirely.
-- The merged preferences card still needs enough copy for first-time users without turning back into a dense settings panel.
+- The detail page still needs to remain scannable after removing hero text, so badges and schedule cannot become buried in long prose.
+- The cover image must still visually connect to the content below even without overlaid typography.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this light-mode polish slice.
-- Fix hero overlays/text on `student/events`, `student/events/[eventId]`, `student/rewards`, `student/active-event`, and `EventCard`.
-- Merge profile theme/language controls into one card and add missing icons.
-- Soften shared shadow constants and rerun:
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this event-detail polish slice.
+- Remove event-detail text from the cover image and restructure the first detail card.
+- Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run export:web`

@@ -343,40 +343,37 @@ export default function StudentEventDetailScreen() {
       {event ? (
         <>
           <CoverImageSurface imageStyle={themeStyles.heroImage} source={coverSource} style={themeStyles.heroCard}>
-            <View style={themeStyles.heroOverlay} />
-            <View style={themeStyles.heroContent}>
-              <View style={themeStyles.heroHeading}>
-                <Text style={themeStyles.heroEyebrow}>{copy.common.eventDetails}</Text>
-                <Text style={themeStyles.heroTitle}>{event.name}</Text>
-                <Text style={themeStyles.heroSummary}>{event.city}</Text>
-              </View>
-
-              <View style={themeStyles.badges}>
-                <StatusBadge
-                  label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
-                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
-                />
-                {registrationBadge ? (
-                  <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-                ) : null}
-              </View>
-
-              <View style={themeStyles.metaStrip}>
-                <View style={themeStyles.metaPill}>
-                  <Text style={themeStyles.metaPillValue}>
-                    {language === "fi" ? "Alkaa" : "Starts"} {formatter.format(new Date(event.startAt))}
-                  </Text>
-                </View>
-                <View style={themeStyles.metaPill}>
-                  <Text style={themeStyles.metaPillValue}>
-                    {language === "fi" ? "Ilmoittautuminen" : "Join before"} {formatter.format(new Date(event.joinDeadlineAt))}
-                  </Text>
-                </View>
-              </View>
-            </View>
+            <View style={themeStyles.heroEdgeFade} />
           </CoverImageSurface>
 
-          <InfoCard eyebrow={copy.student.eventDescription} title={copy.common.eventDetails}>
+          <InfoCard eyebrow={copy.common.eventDetails} title={event.name}>
+            <View style={themeStyles.badges}>
+              <StatusBadge
+                label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
+                state={event.status === "PUBLISHED" ? "ready" : "warning"}
+              />
+              {registrationBadge ? (
+                <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+              ) : null}
+            </View>
+
+            <View style={themeStyles.metaStrip}>
+              <View style={themeStyles.metaPill}>
+                <Text style={themeStyles.metaPillValue}>{event.city}</Text>
+              </View>
+              <View style={themeStyles.metaPill}>
+                <Text style={themeStyles.metaPillValue}>
+                  {language === "fi" ? "Alkaa" : "Starts"} {formatter.format(new Date(event.startAt))}
+                </Text>
+              </View>
+              <View style={themeStyles.metaPill}>
+                <Text style={themeStyles.metaPillValue}>
+                  {language === "fi" ? "Ilmoittautuminen" : "Join before"} {formatter.format(new Date(event.joinDeadlineAt))}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={themeStyles.sectionLead}>{copy.student.eventDescription}</Text>
             <Text style={themeStyles.bodyText}>
               {event.description ?? copy.student.eventDescriptionFallback}
             </Text>
@@ -527,43 +524,12 @@ const createStyles = (theme: MobileTheme) => {
       overflow: "hidden",
       position: "relative",
     },
-    heroContent: {
-      flex: 1,
-      gap: 18,
-      justifyContent: "space-between",
-      padding: 18,
-      paddingTop: 72,
-    },
-    heroEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.2,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
-    },
-    heroHeading: {
-      gap: 6,
+    heroEdgeFade: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "transparent",
     },
     heroImage: {
       borderRadius: 0,
-    },
-    heroOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(7, 10, 7, 0.52)",
-    },
-    heroSummary: {
-      color: "rgba(248, 250, 245, 0.84)",
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-    },
-    heroTitle: {
-      color: "#F8FAF5",
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      letterSpacing: -0.5,
-      lineHeight: theme.typography.lineHeights.title,
     },
     inlineStatusRow: {
       gap: 8,
@@ -643,6 +609,12 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.eyebrow,
       textTransform: "uppercase",
+    },
+    sectionLead: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     rulesGroup: {
       gap: 10,

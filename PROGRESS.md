@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Student event detail sayfasi bir tur daha sadeleştirildi. `apps/mobile/src/app/student/events/[eventId].tsx` icindeki cover hero artik metin tasimiyor; ustte yalnizca temiz gorsel ve geri butonu kaliyor. Etkinlik kimligi, durum badge'leri, sehir/zaman pill'leri ve description ayni ilk icerik kartinda toplandi; boylece fotograf dekoratif kaliyor, asil bilgi akisi ise okunabilir bir stack'e tasiniyor.
+- **Neden yapıldı:** Kullanici event detail resminin ustundeki yazilarin kaldirilmasini, cover alaninin temiz kalmasini ve description dahil tum icerigin asagidaki akista olmasini istedi. Mevcut hero hem fotograf hem de ana bilgi tasidigi icin fazla kalabalik gorunuyordu.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da `student/events/[eventId]` ve `student/profile` bir kez daha kontrol edilmeli. Sonrasinda admin/club web shell icin ayni sadelik ve theme/i18n disiplini uygulanmasi en dogru buyuk slice.
+- **Açık risk/blokaj:** Bu tur local validation ile temiz. Browser-based visual smoke plugin transport kapali oldugu icin goruntu teyidi yine fiziksel cihazdan alinmali. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Light-mode polish slice kosuldu. Student tarafindaki fotografli hero yuzeylerde (`apps/mobile/src/app/student/events/index.tsx`, `apps/mobile/src/app/student/events/[eventId].tsx`, `apps/mobile/src/app/student/rewards.tsx`, `apps/mobile/src/app/student/active-event.tsx`, `apps/mobile/src/features/events/components/event-card.tsx`) image ustu metinler artik theme text tokenlarina bagli degil; acik modda da net gorunsun diye daha koyu overlay ve sabit acik foreground kullaniliyor. `apps/mobile/src/features/foundation/theme.ts` icindeki global shadow tokenlari yumusatildi; acik modda yuzeylerin etrafindaki kirli dis golge hissi azaldi. `apps/mobile/src/app/student/profile.tsx` icinde tema ve dil secimi iki ayri karttan cikartilip tek bir “Ulkoasu ja kieli” kartinda toplandi; `apps/mobile/src/components/app-icon.tsx` icine `palette` ve `globe` SVG ikonlari eklendi.
 - **Neden yapıldı:** Kullanici acik modda rewards, my qr, events discovery ve coming-up event fotografilarinin ustundeki yazi kontrastinin yetersiz oldugunu, bazi yuzeylerde gereksiz dis golge kaldigini ve dil/tema seciminin tek bir daha temiz kutuda toplanmasini istedigini belirtti.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.

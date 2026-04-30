@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Fix the remaining light-mode readability issues on image heroes, soften the visible outer shadow language, and merge language/theme controls into a single cleaner settings surface.
+- **Scope:** Keep polishing the student redesign by making the event detail hero image clean (no text on the photo) and moving event identity/description into the content flow below it.
 
 ## Affected Files
 
@@ -26,9 +26,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Risks
 
-- Light mode image heroes can technically render but still fail visually if overlay opacity and text color stay tied to generic theme text tokens.
-- The shared shadow constants are global; if they are too strong in light mode the whole app keeps a “floating card” haze even after individual screen cleanups.
-- Profile preferences were split across two cards, which kept the screen busier than needed and worked against the current simplification direction.
+- Event detail was still mixing two jobs in one hero: decorative photography and primary content. That made the cover busy and fought against the cleaner direction the user wants.
+- Moving title/meta/description below the image must not make the detail page feel disconnected or lose fast-scanning context.
 
 ## Dependencies
 
@@ -38,15 +37,13 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- Student image hero surfaces already exist in `events`, `event detail`, `rewards`, and `my qr`; the issue is contrast and shadow polish, not missing structure.
-- `EventCard` also uses image overlays, so the “coming up” readability issue should be fixed there instead of only in the top discovery hero.
-- `profile.tsx` already has working theme and language mutations; this slice only needs to reorganize the presentation into one cleaner surface.
+- The remaining obvious design mismatch is `student/events/[eventId]`: the image is used as a hero but still carries too much copy directly on top of the photo.
+- The surrounding cards already have enough structure to carry title, badges, schedule, and description cleanly below the image.
 
 ## Review Outcome
 
 Do a focused UI polish pass:
 
-- force strong, image-safe text contrast on all student hero/photo surfaces in light mode
-- remove or soften the visible outer shadow language that looks dirty in light mode
-- merge theme and language preferences into one compact settings card with icons
+- make the event detail cover image clean and decorative
+- move event identity and description into the content stack below the hero
 - rerun mobile validation and record the slice honestly
