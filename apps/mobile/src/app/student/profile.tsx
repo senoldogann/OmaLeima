@@ -501,7 +501,7 @@ export default function StudentProfileScreen() {
         transparent
         visible={preferenceSheet !== null}
       >
-        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
+        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.preferenceModalBackdrop}>
           <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
@@ -801,6 +801,12 @@ const createStyles = (theme: MobileTheme) =>
       gap: 16,
       marginHorizontal: 20,
       padding: 18,
+    },
+    preferenceModalBackdrop: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 20,
     },
     preferenceOption: {
       alignItems: "center",

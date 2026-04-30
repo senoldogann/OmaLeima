@@ -27,17 +27,19 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Push Diagnostics Polish)
+## Current Todos (Business/Admin Polish)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/push-diagnostics-polish`.
-- [x] Move the push diagnostics entry into a cleaner dev-only QA row.
-- [x] Add a shared primary-action foreground token and apply it to lime buttons.
-- [x] Normalize the business support row copy to shared translations.
-- [x] Push the missing `support_requests` migration to remote Supabase.
-- [x] Make the support request sheet keyboard-safe on iPhone.
-- [x] Move latest support requests into a cleaner secondary history menu.
-- [x] Add a lightweight support-send animation.
-- [x] Center the QA diagnostics clear action and make its state update visible.
-- [x] Stop QR countdown from restarting early on quick tab switches.
-- [x] Rerun mobile validation gates.
-- [x] Update `PROGRESS.md` with the expanded polish outcome and merge note.
+- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the expanded business/admin polish scope.
+- [x] Add business profile metadata columns and manager-only RLS.
+- [x] Push the business profile migration to hosted Supabase.
+- [x] Expose business logo, cover, Y-tunnus, contact person, opening hours, and announcements in the mobile business overview query.
+- [x] Add a typed business profile update mutation.
+- [x] Make support sheet subject/message focus stay above the keyboard.
+- [x] Fix admin web password login and anonymous proxy session handling.
+- [x] Simplify business home, remove the email card, and replace the home sign-out button with a small icon action.
+- [x] Add back actions to business profile, scanner, events, and history surfaces.
+- [x] Center student theme/language modals.
+- [x] Rebuild business profile with editable company details, media URLs, support, preferences, and sign-out.
+- [x] Show dynamic business cover/logo/announcement context in scanner.
+- [x] Rerun full mobile/admin validation gates.
+- [x] Update `PROGRESS.md` with the expanded business/admin polish handoff.

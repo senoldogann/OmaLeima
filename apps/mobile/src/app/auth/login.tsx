@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -26,7 +26,18 @@ export default function LoginScreen() {
     isEnabled: isAuthenticated && session !== null,
   });
   const [mode, setMode] = useState<LoginMode>("student");
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
   const isResolvingAccess = !isLoading && isAuthenticated && accessQuery.isLoading;
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true));
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   if (!isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
     return <Redirect href={accessQuery.data.homeHref} />;
@@ -46,7 +57,7 @@ export default function LoginScreen() {
 
   return (
     <AppScreen>
-      <LoginHero />
+      {mode === "business" && isKeyboardVisible ? null : <LoginHero />}
 
       <InfoCard
         eyebrow={copy.auth.continueEyebrow}

@@ -1,12 +1,11 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
 export const AdminLoginPanel = () => {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState<string>("");
@@ -31,9 +30,7 @@ export const AdminLoginPanel = () => {
       return;
     }
 
-    router.replace("/");
-    router.refresh();
-    setIsPasswordPending(false);
+    window.location.assign("/");
   };
 
   const handleGoogleSignIn = async (): Promise<void> => {

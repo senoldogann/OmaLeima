@@ -6,43 +6,50 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-05-01
 - **Branch:** `feature/push-diagnostics-polish`
-- **Goal:** Finish the support/settings polish with better keyboard behavior, a cleaner support history flow, a lightweight send animation, a more intentional QA clear action, and QR countdown behavior that respects the actual token lifetime.
+- **Goal:** Finish the business/mobile stability slice: keyboard-safe support/login inputs, repaired admin/organizer web login, cleaner business navigation, and a real editable business profile surface with cover/logo and Finnish company details.
 
 ## Architectural Decisions
 
-- Keep support request creation and support history inside the existing `SupportRequestSheet`, but split the history list into a secondary modal so the form stays lighter.
-- Use `KeyboardAvoidingView` plus `ScrollView` keyboard insets inside the support modal instead of inventing a separate custom bottom-sheet system.
-- Use a lightweight local `Animated` paper-plane motion for send confirmation instead of introducing a new animation dependency.
-- Drive QR countdown and refresh timing from `expiresAt` so the token lifetime stays stable across fast tab hops.
-- Keep the QA diagnostics surface dev-only and centered, but do not move it out of profile in this slice.
+- Keep business profile data on `public.businesses`; add only the missing fields rather than creating a separate profile table.
+- Restrict business profile writes to platform admins plus OWNER/MANAGER staff through a new `is_business_manager_for()` RLS helper.
+- Continue using `useBusinessHomeOverviewQuery` as the shared mobile business context so home, profile, events, scanner, and support stay consistent.
+- Store cover and logo as URL fields for now; a later storage upload flow can write URLs into the same columns without changing scanner/profile rendering.
+- Show dynamic cover/logo/announcement in scanner as context only; scanning remains driven by `event_venues` and the atomic scanner RPC.
+- Fix admin login by letting anonymous proxy refresh pass through and doing a full navigation after password sign-in so SSR cookies are present.
 
 ## Alternatives Considered
 
-- Create a whole new support route just for request history:
-  - rejected because it is too large for this polish slice and adds navigation overhead
-- Keep the latest requests list inline and only tweak spacing:
-  - rejected because the keyboard problem is partly a vertical space problem, not only spacing
-- Add a heavier animation system for send success:
-  - rejected because React Native `Animated` is enough for a small support confirmation cue
-- Force-refresh the QR token on every tab return:
-  - rejected because it shortens the apparent lifetime of still-valid QR codes
+- Create a separate `business_profiles` table:
+  - rejected because current business identity already lives in `businesses`, and splitting would add joins without solving a current problem
+- Let SCANNER role edit business profile fields:
+  - rejected because event-day scanner accounts should not be able to change legal/contact/media metadata
+- Add image upload storage in the same slice:
+  - rejected because URL-backed media unblocks dynamic UI safely; storage UI and moderation can be a later owner/admin feature
+- Keep business home sign-out as a large button:
+  - rejected because the user asked for a smaller icon action next to profile and less clutter on the home surface
 
 ## Edge Cases
 
-- Business support still needs an active business membership before submission is allowed.
-- The support modal must keep working in both student and business contexts with the same component.
-- The send animation must not block the form or trap the user in a loading-like state.
-- The QR countdown should hit zero and refresh when expired, but should not visually restart early just because the screen remounted.
+- Missing cover/logo URLs must render a stable fallback, not break the scanner or profile.
+- Scanner accounts can read profile data but cannot save edits.
+- Multiple business memberships must be selectable without losing the edited draft for the active selected business.
+- Admin `/login` must render without a session and protected routes must still enforce role checks after login.
+- Support sheet subject/message fields must remain visible when the keyboard opens from student or business profile.
 - Validation must ignore the known untracked `.idea/` folder and not try to clean it up.
 
 ## Validation Plan
 
-- Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the expanded support/QR polish scope.
-- Make the support sheet keyboard-safe and move recent requests behind a separate history menu.
-- Add the lightweight send animation and the centered QA clear action.
-- Update QR countdown behavior to use real token expiry.
+- Update working docs for the expanded business/admin scope.
+- Add and push the Supabase migration for business profile details.
+- Update business overview types/query mapping and profile update mutation.
+- Rebuild business profile UI and scanner context UI around dynamic business metadata.
+- Simplify business home and add back buttons to business subroutes.
+- Fix admin login handoff and anonymous proxy behavior.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run export:web`
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run build`
 - Document the exact outcome in `PROGRESS.md`.

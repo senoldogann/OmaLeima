@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-05-01
 - **Branch:** `feature/push-diagnostics-polish`
-- **Scope:** Finish the support/settings polish slice: keep support inputs visible above the keyboard, move recent support requests into a cleaner secondary menu, add a lightweight send animation, center and verify the QA diagnostics clear action, and stop the student QR timer from resetting early on quick tab switches.
+- **Scope:** Finish the post-QA business/mobile polish slice: keep support/login inputs visible above the keyboard, fix the admin/organizer web login bounce, simplify business home, add safer back navigation, center student preference modals, and add full-stack editable business profile details for cover/logo/event-day metadata.
 
 ## Affected Files
 
@@ -14,43 +14,55 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
+- `supabase/migrations/20260501093000_business_profile_details.sql`
+- `apps/admin/src/features/auth/components/admin-login-panel.tsx`
+- `apps/admin/src/lib/supabase/proxy.ts`
+- `apps/mobile/src/app/auth/login.tsx`
+- `apps/mobile/src/app/business/events.tsx`
+- `apps/mobile/src/app/business/history.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/profile.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
 - `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/components/app-screen.tsx`
-- `apps/mobile/src/components/app-icon.tsx`
-- `apps/mobile/src/features/qr/student-qr.ts`
+- `apps/mobile/src/features/business/business-home.ts`
+- `apps/mobile/src/features/business/business-profile.ts`
+- `apps/mobile/src/features/business/types.ts`
 - `apps/mobile/src/features/support/components/support-request-sheet.tsx`
 
 ## Risks
 
-- The support modal currently bypasses most of the shared keyboard handling, so iOS can hide the subject/message fields under the software keyboard.
-- The inline `Viimeisimmät pyynnöt` list bloats the support sheet and steals vertical space from the form itself.
-- QR countdown currently keys off local query refresh time instead of the actual token expiry, which can make the timer restart even while the token is still valid.
-- This pass touches shared mobile primitives and modal behavior, so sloppy changes can ripple through multiple routes.
+- Admin web auth proxy must not throw on anonymous users, but it still must fail loudly on real unexpected Supabase auth refresh errors.
+- Business profile update permissions must be stricter than the previous broad `business_staff` policy; scanner accounts should not edit official venue data.
+- Adding new business columns requires remote Supabase migration before the mobile app queries `cover_image_url`, `y_tunnus`, `opening_hours`, and `announcement`.
+- Mobile profile and support forms contain many inputs; keyboard behavior must stay usable on physical iPhone without hiding focused fields.
+- Business scanner should show dynamic logo/cover context without blocking the core scan path if image URLs are missing.
 
 ## Dependencies
 
-- Existing `UiPreferencesProvider` still owns language/theme state and should keep driving both student and business settings.
-- The dev-only push diagnostics modal should stay available for QA, but it should remain visually demoted and clearly separated from user settings.
-- `useGenerateQrTokenQuery` already returns `expiresAt`; the countdown should respect that server timestamp instead of local refresh timestamps.
-- Existing mobile validation commands remain the minimum merge gate.
+- Existing `business_staff` roles remain the authority for OWNER/MANAGER/SCANNER permissions.
+- `useBusinessHomeOverviewQuery` remains the shared source for business profile, home, events, scanner, and support context.
+- `CoverImageSurface` already handles remote image caching and fallback rendering.
+- Existing Supabase RLS helpers such as `is_platform_admin()` are reused for the new manager-only profile policy.
+- Mobile/admin validation commands remain the merge gate.
 
 ## Existing Logic Checked
 
-- The latest remote Supabase now has `support_requests`; the current issues are UI/interaction problems, not missing backend state.
-- `SupportRequestSheet` currently renders latest requests inline in the same scroll flow as the form, which is why the typing surface feels cramped.
-- `AppScreen` already uses `KeyboardAvoidingView`, but the support modal is outside that shell and needs its own keyboard-aware layer.
-- Student QR countdown uses `dataUpdatedAt + refreshAfterSeconds`, so a remount can make the 30-second window look like it restarted.
+- `businesses` already had `phone`, `website_url`, `instagram_url`, and `logo_url`; it lacked cover image, Y-tunnus, responsible person, opening hours, and announcement fields.
+- The old `business staff can update own business` RLS policy allowed all active staff roles to update business rows; the new profile editor needs manager/owner-only writes.
+- `AdminLoginPanel` was doing a client route replace immediately after password sign-in, which can race the SSR cookie handoff.
+- `proxy.ts` used `getClaims()` and threw on missing anonymous sessions, which can break public `/login` render paths.
+- `SupportRequestSheet` already uses keyboard insets, but it did not scroll to the focused input reliably.
 
 ## Review Outcome
 
-Do a focused polish pass:
+Do a focused full-stack polish pass:
 
-- refresh the working docs so branch and scope stay truthful
-- make the support sheet keyboard-safe on iPhone
-- move latest support requests behind a cleaner secondary history menu
-- add a lightweight sent animation that does not require backend changes
-- center the QA clear button and make its state change visible
-- fix QR countdown to respect real token expiry across quick tab switches
-- rerun the relevant mobile validation gates
-- record the outcome before merging back to `main`
+- add manager-owned business profile fields and RLS
+- apply the migration to hosted Supabase
+- expose the new fields in business overview data
+- rebuild business profile around editable company details and media URLs
+- show dynamic business cover/logo/announcement in the scanner context
+- simplify business home and fix small scanner/history label issues
+- fix admin password login handoff and anonymous proxy behavior
+- make support/business login inputs safer around the keyboard
+- rerun mobile/admin validation gates and record the handoff

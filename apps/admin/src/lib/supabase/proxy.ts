@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { publicEnv } from "@/lib/env";
 
+const isMissingSessionError = (message: string): boolean =>
+  message.toLowerCase().includes("auth session missing") ||
+  message.toLowerCase().includes("session_not_found");
+
 export const updateSession = async (request: NextRequest): Promise<NextResponse> => {
   let response = NextResponse.next({
     request,
@@ -36,6 +40,10 @@ export const updateSession = async (request: NextRequest): Promise<NextResponse>
   const claimsResult = await supabase.auth.getClaims();
 
   if (claimsResult.error !== null) {
+    if (isMissingSessionError(claimsResult.error.message)) {
+      return response;
+    }
+
     throw new Error(`Failed to refresh Supabase auth claims in proxy: ${claimsResult.error.message}`);
   }
 

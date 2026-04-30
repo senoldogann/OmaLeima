@@ -8,7 +8,9 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
@@ -365,9 +367,14 @@ export default function BusinessScannerScreen() {
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
-        <Text style={styles.metaText}>{copy.business.scannerMeta}</Text>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
+          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
+        </Pressable>
+        <View style={styles.topBarCopy}>
+          <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
+          <Text style={styles.metaText}>{copy.business.scannerMeta}</Text>
+        </View>
       </View>
 
       {homeOverviewQuery.isLoading ? (
@@ -414,6 +421,41 @@ export default function BusinessScannerScreen() {
                   );
                 })}
               </View>
+
+              {selectedEvent ? (
+                <CoverImageSurface
+                  source={
+                    selectedEvent.businessCoverImageUrl
+                      ? { uri: selectedEvent.businessCoverImageUrl }
+                      : null
+                  }
+                  style={styles.businessHero}
+                >
+                  <View style={styles.businessHeroOverlay} />
+                  <View style={styles.businessHeroContent}>
+                    <CoverImageSurface
+                      source={
+                        selectedEvent.businessLogoUrl
+                          ? { uri: selectedEvent.businessLogoUrl }
+                          : null
+                      }
+                      style={styles.businessLogo}
+                    >
+                      {selectedEvent.businessLogoUrl === null ? (
+                        <AppIcon color={theme.colors.textPrimary} name="business" size={22} />
+                      ) : null}
+                    </CoverImageSurface>
+                    <View style={styles.businessHeroCopy}>
+                      <Text numberOfLines={1} style={styles.businessHeroTitle}>
+                        {selectedEvent.businessName}
+                      </Text>
+                      <Text numberOfLines={2} style={styles.businessHeroMeta}>
+                        {selectedEvent.businessAnnouncement ?? selectedEvent.city}
+                      </Text>
+                    </View>
+                  </View>
+                </CoverImageSurface>
+              ) : null}
 
               {selectedEvent ? (
                 <View style={styles.selectedMetaRow}>
@@ -596,6 +638,65 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    backButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
+    businessHero: {
+      borderRadius: theme.radius.inner,
+      minHeight: 128,
+      overflow: "hidden",
+      position: "relative",
+    },
+    businessHeroContent: {
+      alignItems: "flex-end",
+      bottom: 14,
+      flexDirection: "row",
+      gap: 10,
+      left: 14,
+      position: "absolute",
+      right: 14,
+      zIndex: 2,
+    },
+    businessHeroCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    businessHeroMeta: {
+      color: "rgba(255, 255, 255, 0.78)",
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    businessHeroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.42)",
+      zIndex: 1,
+    },
+    businessHeroTitle: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    businessLogo: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: "rgba(255, 255, 255, 0.52)",
+      borderRadius: 14,
+      borderWidth: 1,
+      height: 50,
+      justifyContent: "center",
+      overflow: "hidden",
+      position: "relative",
+      width: 50,
+    },
     cameraHint: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
@@ -745,15 +846,21 @@ const createStyles = (theme: MobileTheme) => {
       right: 16,
       top: 16,
     },
-    screenHeader: {
-      gap: 6,
-      marginBottom: 4,
-    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
+    },
+    topBar: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 4,
+    },
+    topBarCopy: {
+      flex: 1,
+      gap: 6,
     },
     secondaryButton: {
       alignItems: "center",

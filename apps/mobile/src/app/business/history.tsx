@@ -56,6 +56,7 @@ export default function BusinessHistoryScreen() {
           : "No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.",
       scannedAt: language === "fi" ? "Skannattu" : "Scanned",
       studentReference: language === "fi" ? "Opiskelijaviite" : "Student reference",
+      screenTitle: language === "fi" ? "Historia" : "History",
     }),
     [language]
   );
@@ -102,9 +103,14 @@ export default function BusinessHistoryScreen() {
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.business.history}</Text>
-        <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
+          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
+        </Pressable>
+        <View style={styles.topBarCopy}>
+          <Text style={styles.screenTitle}>{labels.screenTitle}</Text>
+          <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
+        </View>
       </View>
 
       <View style={styles.actionRow}>
@@ -188,6 +194,16 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    backButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
     cardTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
@@ -232,10 +248,6 @@ const createStyles = (theme: MobileTheme) =>
       gap: 5,
       padding: 14,
     },
-    screenHeader: {
-      gap: 6,
-      marginBottom: 4,
-    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
@@ -262,5 +274,15 @@ const createStyles = (theme: MobileTheme) =>
     },
     stack: {
       gap: 12,
+    },
+    topBar: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 4,
+    },
+    topBarCopy: {
+      flex: 1,
+      gap: 6,
     },
   });

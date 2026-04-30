@@ -18,7 +18,18 @@ type BusinessMembershipRow = {
 type BusinessRow = {
   id: string;
   name: string;
+  address: string;
   city: string;
+  contact_email: string;
+  phone: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  y_tunnus: string | null;
+  contact_person_name: string | null;
+  opening_hours: string | null;
+  announcement: string | null;
 };
 
 type EventVenueRow = {
@@ -84,7 +95,9 @@ const fetchBusinessesAsync = async (businessIds: string[]): Promise<BusinessRow[
 
   const { data, error } = await supabase
     .from("businesses")
-    .select("id,name,city")
+    .select(
+      "id,name,address,city,contact_email,phone,website_url,instagram_url,logo_url,cover_image_url,y_tunnus,contact_person_name,opening_hours,announcement"
+    )
     .in("id", businessIds)
     .returns<BusinessRow[]>();
 
@@ -173,7 +186,18 @@ const mapMemberships = (
       {
         businessId: membership.business_id,
         businessName: business.name,
+        address: business.address,
         city: business.city,
+        contactEmail: business.contact_email,
+        phone: business.phone,
+        websiteUrl: business.website_url,
+        instagramUrl: business.instagram_url,
+        logoUrl: business.logo_url,
+        coverImageUrl: business.cover_image_url,
+        yTunnus: business.y_tunnus,
+        contactPersonName: business.contact_person_name,
+        openingHours: business.opening_hours,
+        announcement: business.announcement,
         role: membership.role,
       },
     ];
@@ -203,6 +227,9 @@ const mapJoinedEvents = (
         eventId: eventVenue.event_id,
         businessId: eventVenue.business_id,
         businessName: business.name,
+        businessLogoUrl: business.logo_url,
+        businessCoverImageUrl: business.cover_image_url,
+        businessAnnouncement: business.announcement,
         eventName: event.name,
         city: event.city,
         startAt: event.start_at,

@@ -47,6 +47,10 @@ const createAnonymousAccess = (): AdminAccess => ({
   profileStatus: null,
 });
 
+const isMissingSessionError = (message: string): boolean =>
+  message.toLowerCase().includes("auth session missing") ||
+  message.toLowerCase().includes("session_not_found");
+
 const mapUnsupportedAccess = (
   profile: ProfileRow | null,
   clubMembershipCount: number,
@@ -171,6 +175,10 @@ export const resolveAdminAccessAsync = async (supabase: SupabaseClient): Promise
   const claimsResult = await supabase.auth.getClaims();
 
   if (claimsResult.error !== null) {
+    if (isMissingSessionError(claimsResult.error.message)) {
+      return createAnonymousAccess();
+    }
+
     throw new Error(`Failed to resolve admin claims: ${claimsResult.error.message}`);
   }
 
