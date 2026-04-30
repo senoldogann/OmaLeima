@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-30
-- **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Run a branch-wide review before merging the redesign to `main`, fix any remaining correctness/product issues, and remove the awkward `READY` placement from reward cards.
+- **Branch:** `feature/final-project-audit`
+- **Scope:** Run a final repository-wide audit, fix the broken readiness gates, add secure support surfaces to student and business profile flows, and finish the remaining business settings polish before merging to `main`.
 
 ## Affected Files
 
@@ -14,27 +14,50 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
+- `apps/mobile/src/app/student/profile.tsx`
+- `apps/mobile/src/app/business/_layout.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/profile.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
+- `apps/mobile/src/features/business/types.ts`
+- `apps/mobile/src/features/i18n/translations.ts`
+- `apps/mobile/src/features/support/support-requests.ts`
+- `apps/mobile/src/components/app-icon.tsx`
+- `apps/mobile/scripts/audit-native-push-device-readiness.mjs`
+- `apps/mobile/scripts/audit-hosted-business-scan-readiness.mjs`
+- `apps/mobile/README.md`
+- `docs/TESTING.md`
+- `supabase/migrations/*support_requests*.sql`
 
 ## Risks
 
-- The redesign branch is broad, so the final pass must re-check both mobile and admin validation before merge.
-- `READY` appeared twice in the same reward card and made the metric block noisier than needed.
+- The current audit branch already carries in-progress profile changes, so typecheck can drift red until the diagnostics surface is fully aligned.
+- A new support flow touches database schema, mobile UI, and auth-bound RLS; the table must be safe for both students and business staff from day one.
+- Business settings need to stay simple enough for scanner staff while still exposing language/theme/support cleanly.
+- Repo-owned QA scripts have drifted behind the redesign; if they are not realigned, the branch can look clean in runtime while gates stay red.
 
 ## Dependencies
 
-- Existing reward-card hero pill already communicates claimable status.
-- Existing mobile/admin validation commands are the minimum merge gate.
+- Existing `profiles`, `business_staff`, and `is_business_staff_for(...)` RLS helpers should be reused instead of inventing new auth paths.
+- Existing `UiPreferencesProvider` already owns language/theme state and should stay the single source of truth for both student and business surfaces.
+- Existing mobile/admin validation commands plus the repo-owned readiness audits are the minimum merge gate.
 
 ## Existing Logic Checked
 
-- Reward cards already show a claimable state in the image hero, so the second `READY` label next to `LEIMAT` was redundant.
-- The branch is otherwise clean at the working-tree level except for the known untracked `.idea/` folder that should stay untouched.
+- Student profile already owns the cleanest preference surface, so support should extend that flow instead of creating a second settings area.
+- Business home already knows the operator memberships and active event context, so business profile/support should build on that query rather than re-fetching from scratch in multiple places.
+- The native push diagnostics audit is stale against the redesigned profile route and needs to match the current dev-only diagnostics modal.
+- The hosted business scan readiness audit is stale against the redesign and should validate the real remaining fallback path instead of removed helper copy.
+- The working tree is otherwise clean apart from the known untracked `.idea/` folder that must stay untouched.
 
 ## Review Outcome
 
-Do a merge-prep review pass:
+Do a real final audit pass:
 
-- remove the duplicate `READY` label from the reward metric block
-- rerun mobile and admin validations
-- record the exact branch-wide review outcome before merging
+- refresh the working docs so branch and scope are truthful
+- fix the mobile typecheck and stale readiness audits
+- add a secure support-request backend slice with correct RLS
+- add student and business support surfaces plus business profile/settings polish
+- rerun mobile/admin validations and the relevant readiness gates
+- record the exact audit outcome before merging

@@ -456,7 +456,7 @@ The audit is intentionally read-only. It verifies the current mobile repository 
 - provider-owned notification diagnostics are wired through `apps/mobile/src/providers/app-providers.tsx`
 - the runtime label recognizes the current physical-device dev client as a development build instead of falling back to `bare`
 - the diagnostics module captures the last received notification and the last notification response
-- the student profile route exposes the manual smoke surface for runtime mode, permission state, and captured push activity
+- the student profile route exposes a dev-only `Push diagnostics` modal for runtime mode, permission state, and captured push activity
 - the same profile route records `Last diagnostics refresh` so manual refresh now has visible UI feedback
 - docs still describe the physical-device requirement honestly
 
@@ -473,7 +473,7 @@ This audit does not claim that a notification was really delivered on a device. 
 2. sign in as a student on that build
 3. enable notifications from the profile route
 4. trigger a real remote push path such as reward unlock delivery
-5. confirm the profile diagnostics surface records the received notification and, after opening it, the notification response
+5. confirm the profile diagnostics modal records the received notification and, after opening it, the notification response
 6. confirm those captured rows show a remote source, not only local foreground notification activity
 
 ## Mobile hosted business scan readiness
@@ -491,24 +491,23 @@ This focused audit currently does four things in order:
 3. `npm --prefix apps/mobile run export:web`
 4. `npm --prefix apps/mobile run audit:hosted-business-scan-readiness`
 
-The audit is intentionally read-only. It verifies the current repository state still supports the hosted fallback path we used on the physical iPhone:
+The audit is intentionally read-only. It verifies the current repository state still supports the hosted scanner smoke path:
 
-- the active student event screen has a development-only `Hosted scanner smoke token` surface
-- that token helper stays scoped to `__DEV__`
-- the business scanner still explains the same-device manual fallback path
-- the business password sign-in helper text stays aligned with the current hosted scanner credential guidance
-- the docs still describe the same physical iPhone flow honestly
+- the active student event screen still ships the live QR scene
+- the business scanner still ships the manual token fallback surface
+- the business password sign-in flow still exposes the operator login path needed to reach that scanner
+- the docs still describe the current hosted smoke flow honestly
 
-The intended manual smoke sequence is:
+The preferred manual smoke sequence is:
 
 1. sign in as the student on the physical iPhone
 2. open `My QR`
-3. copy the development-only token from `Hosted scanner smoke token`
-4. sign out and switch into the current hosted scanner account from the local operator credential file
+3. show the live QR to the scanner flow
+4. sign in as the scanner account
 5. open `Business > Scanner`
-6. paste the token into the manual fallback box and submit it
+6. scan the QR or, if needed, use the manual token surface
 
-That path still exercises the real hosted `scan-qr` backend and is the supported fallback when we only have one same physical iPhone available for scanner smoke.
+That path still exercises the real hosted `scan-qr` backend. The manual token area remains a fallback for operator or repo-owned smoke when camera scanning is not practical.
 
 ## Mobile native simulator and emulator wiring
 

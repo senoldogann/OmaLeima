@@ -18,9 +18,12 @@ import {
 import type { DepartmentTagSuggestion, StudentProfileTag } from "@/features/profile/types";
 import { useRegisterPushDeviceMutation, type PushDeviceRegistrationResult } from "@/features/push/device-registration";
 import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
+import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import { useSession } from "@/providers/session-provider";
 
 type PreferenceSheet = "language" | "theme" | null;
+
+const createDiagnosticsValue = (value: string | null | undefined): string => value ?? "—";
 
 const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
   if (language === "fi") {
@@ -104,12 +107,16 @@ export default function StudentProfileScreen() {
   const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
-  const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
+  const { clearCapturedPushActivity, diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
   const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
+  const [isPushDiagnosticsVisible, setIsPushDiagnosticsVisible] = useState<boolean>(false);
+  const [isPushDiagnosticsRefreshing, setIsPushDiagnosticsRefreshing] = useState<boolean>(false);
+  const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [lastPushDiagnosticsRefreshAt, setLastPushDiagnosticsRefreshAt] = useState<string | null>(null);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -156,6 +163,21 @@ export default function StudentProfileScreen() {
     });
     setPushState(result);
     await refreshPushPermissionStateAsync();
+  };
+
+  const handleRefreshPushDiagnosticsPress = async (): Promise<void> => {
+    setIsPushDiagnosticsRefreshing(true);
+
+    try {
+      await refreshPushPermissionStateAsync();
+      setLastPushDiagnosticsRefreshAt(new Date().toISOString());
+    } finally {
+      setIsPushDiagnosticsRefreshing(false);
+    }
+  };
+
+  const handleClearPushDiagnosticsPress = (): void => {
+    clearCapturedPushActivity();
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -347,6 +369,30 @@ export default function StudentProfileScreen() {
                   : "Enable notifications"}
             </Text>
           </Pressable>
+          {__DEV__ ? (
+            <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Push diagnostics</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
+          <Pressable onPress={() => setIsSupportVisible(true)} style={styles.preferenceSelectRow}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="support" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.support}</Text>
+            </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>
+                {language === "fi" ? "Avaa" : "Open"}
+              </Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -355,6 +401,83 @@ export default function StudentProfileScreen() {
           <SignOutButton />
         </View>
       </InfoCard>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsPushDiagnosticsVisible(false)}
+        transparent
+        visible={isPushDiagnosticsVisible}
+      >
+        <Pressable onPress={() => setIsPushDiagnosticsVisible(false)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>QA</Text>
+                <Text style={styles.modalTitle}>Native push diagnostics</Text>
+              </View>
+              <Pressable onPress={() => setIsPushDiagnosticsVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.preferenceOptionList}>
+              <View style={styles.diagnosticsRow}>
+                <Text style={styles.preferenceTitle}>Runtime</Text>
+                <Text style={styles.preferenceSelectValueText}>{diagnostics.runtime}</Text>
+              </View>
+              <View style={styles.diagnosticsRow}>
+                <Text style={styles.preferenceTitle}>Permission</Text>
+                <Text style={styles.preferenceSelectValueText}>{diagnostics.permissionState}</Text>
+              </View>
+              <View style={styles.diagnosticsRow}>
+                <Text style={styles.preferenceTitle}>Project ID</Text>
+                <Text style={styles.preferenceSelectValueText}>
+                  {createDiagnosticsValue(diagnostics.projectId)}
+                </Text>
+              </View>
+              <View style={styles.diagnosticsBlock}>
+                <Text style={styles.preferenceTitle}>Last diagnostics refresh</Text>
+                <Text style={styles.preferenceSummaryText}>{createDiagnosticsValue(lastPushDiagnosticsRefreshAt)}</Text>
+              </View>
+              <View style={styles.diagnosticsBlock}>
+                <Text style={styles.preferenceTitle}>Last received notification</Text>
+                <Text style={styles.preferenceSummaryText}>
+                  {createDiagnosticsValue(diagnostics.lastNotification?.source)}
+                </Text>
+              </View>
+              <View style={styles.diagnosticsBlock}>
+                <Text style={styles.preferenceTitle}>Last notification response</Text>
+                <Text style={styles.preferenceSummaryText}>
+                  {createDiagnosticsValue(diagnostics.lastNotificationResponse?.source)}
+                </Text>
+              </View>
+              <Text style={styles.preferenceSummaryText}>
+                Local notification activity does not prove remote APNs or FCM delivery yet.
+              </Text>
+              <Pressable
+                disabled={isPushDiagnosticsRefreshing}
+                onPress={handleRefreshPushDiagnosticsPress}
+                style={[styles.primaryButton, isPushDiagnosticsRefreshing ? styles.disabledButton : null]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isPushDiagnosticsRefreshing ? "Refreshing..." : "Refresh push diagnostics"}
+                </Text>
+              </Pressable>
+              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <SupportRequestSheet
+        area="STUDENT"
+        businessOptions={[]}
+        isVisible={isSupportVisible}
+        onClose={() => setIsSupportVisible(false)}
+        userId={studentId}
+      />
 
       <Modal
         animationType="fade"
@@ -552,6 +675,15 @@ const createStyles = (theme: MobileTheme) =>
     },
     createGroup: {
       gap: 10,
+    },
+    diagnosticsBlock: {
+      gap: 4,
+    },
+    diagnosticsRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
     },
     disabledButton: {
       opacity: 0.6,

@@ -81,6 +81,7 @@ export default function BusinessLayout() {
       <Stack.Screen name="home" />
       <Stack.Screen name="events" />
       <Stack.Screen name="history" />
+      <Stack.Screen name="profile" />
       <Stack.Screen name="scanner" />
     </Stack>
   );

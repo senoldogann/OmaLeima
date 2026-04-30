@@ -91,9 +91,15 @@ export default function BusinessHomeScreen() {
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.common.business}</Text>
-        <Text style={styles.metaText}>{copy.business.homeMeta}</Text>
+      <View style={styles.screenHeaderRow}>
+        <View style={styles.screenHeaderCopy}>
+          <Text style={styles.screenTitle}>{copy.common.business}</Text>
+          <Text style={styles.metaText}>{copy.business.homeMeta}</Text>
+        </View>
+        <Pressable onPress={() => router.push("/business/profile")} style={styles.headerButton}>
+          <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
+          <Text style={styles.headerButtonText}>{copy.business.profileButton}</Text>
+        </Pressable>
       </View>
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
@@ -309,6 +315,35 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    headerButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      minHeight: 42,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    headerButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    screenHeaderCopy: {
+      flex: 1,
+      gap: 6,
+    },
+    screenHeaderRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 4,
     },
     screenHeader: {
       gap: 6,

@@ -48,40 +48,38 @@ const main = async () => {
   ]);
 
   const packageWired = packageJsonSource.includes('"audit:hosted-business-scan-readiness"');
-  const studentDiagnosticsPresent =
-    studentActiveEventSource.includes("Hosted scanner smoke token") &&
-    studentActiveEventSource.includes("showHostedSmokeCard") &&
-    studentActiveEventSource.includes("__DEV__") &&
-    studentActiveEventSource.includes("current hosted scanner account") &&
-    studentActiveEventSource.includes("raw QR JWT should never be exposed");
+  const studentQrScenePresent =
+    studentActiveEventSource.includes("Show at the venue desk") &&
+    studentActiveEventSource.includes("Active leima pass") &&
+    studentActiveEventSource.includes("Preview leima");
   const scannerFallbackGuidancePresent =
-    businessScannerSource.includes("Same-device hosted smoke") &&
-    businessScannerSource.includes("copy the active token from My QR") &&
-    businessScannerSource.includes("current hosted scanner account");
-  const businessSignInCopyAligned =
-    businessPasswordSignInSource.includes("current scanner credential from the local operator file") &&
-    businessPasswordSignInSource.includes("__DEV__");
+    businessScannerSource.includes("Manual token scan") &&
+    businessScannerSource.includes("Paste LEIMA_STAMP_QR token") &&
+    businessScannerSource.includes("scanPastedToken");
+  const businessSignInFlowPresent =
+    businessPasswordSignInSource.includes("businessCheckingAccess") &&
+    businessPasswordSignInSource.includes("returnKeyType=\"done\"");
 
   const normalizedReadme = readmeSource.toLowerCase();
   const normalizedTestingDoc = testingDocSource.toLowerCase();
   const docsAligned =
-    normalizedReadme.includes("hosted same-device scanner smoke") &&
-    normalizedReadme.includes("hosted scanner smoke token") &&
+    normalizedReadme.includes("hosted scanner smoke") &&
+    normalizedReadme.includes("manual token scan") &&
     normalizedTestingDoc.includes("mobile hosted business scan readiness") &&
-    normalizedTestingDoc.includes("same physical iphone");
+    normalizedTestingDoc.includes("manual token scan");
 
   if (
     !packageWired ||
-    !studentDiagnosticsPresent ||
+    !studentQrScenePresent ||
     !scannerFallbackGuidancePresent ||
-    !businessSignInCopyAligned ||
+    !businessSignInFlowPresent ||
     !docsAligned
   ) {
     fail("mobile-hosted-business-scan-readiness:failed", [
       `packageWired=${packageWired}`,
-      `studentDiagnosticsPresent=${studentDiagnosticsPresent}`,
+      `studentQrScenePresent=${studentQrScenePresent}`,
       `scannerFallbackGuidancePresent=${scannerFallbackGuidancePresent}`,
-      `businessSignInCopyAligned=${businessSignInCopyAligned}`,
+      `businessSignInFlowPresent=${businessSignInFlowPresent}`,
       `docsAligned=${docsAligned}`,
     ]);
   }
@@ -89,9 +87,9 @@ const main = async () => {
   console.log(
     [
       "mobile-hosted-business-scan:repo-wired",
-      "student-qr-dev-surface:present",
+      "student-qr-scene:present",
       "scanner-manual-fallback:aligned",
-      "hosted-scanner-account-copy:aligned",
+      "business-sign-in-flow:aligned",
       "docs:aligned",
     ].join("|")
   );
