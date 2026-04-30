@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-04-30
-- **Branch:** `feature/final-project-audit`
-- **Scope:** Run a final repository-wide audit, fix the broken readiness gates, add secure support surfaces to student and business profile flows, and finish the remaining business settings polish before merging to `main`.
+- **Branch:** `feature/deep-project-review`
+- **Scope:** Run one more repository-wide code-review pass on top of `main`, verify the recent support/settings slice did not leave product drift behind, fix any real defects, and merge the remaining quality gaps cleanly.
 
 ## Affected Files
 
@@ -14,50 +14,34 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/business/_layout.tsx`
-- `apps/mobile/src/app/business/home.tsx`
-- `apps/mobile/src/app/business/profile.tsx`
-- `apps/mobile/src/app/business/scanner.tsx`
-- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
-- `apps/mobile/src/features/business/types.ts`
-- `apps/mobile/src/features/i18n/translations.ts`
-- `apps/mobile/src/features/support/support-requests.ts`
-- `apps/mobile/src/components/app-icon.tsx`
-- `apps/mobile/scripts/audit-native-push-device-readiness.mjs`
-- `apps/mobile/scripts/audit-hosted-business-scan-readiness.mjs`
-- `apps/mobile/README.md`
-- `docs/TESTING.md`
-- `supabase/migrations/*support_requests*.sql`
+- final-fix files discovered during this pass, if any
 
 ## Risks
 
-- The current audit branch already carries in-progress profile changes, so typecheck can drift red until the diagnostics surface is fully aligned.
-- A new support flow touches database schema, mobile UI, and auth-bound RLS; the table must be safe for both students and business staff from day one.
-- Business settings need to stay simple enough for scanner staff while still exposing language/theme/support cleanly.
-- Repo-owned QA scripts have drifted behind the redesign; if they are not realigned, the branch can look clean in runtime while gates stay red.
+- The new support flow spans database schema, mobile profile UX, and RLS; small auth mistakes could leak or reject legitimate requests.
+- Main branch can look green while repo-owned audits silently drift from the current product surface.
+- The redesigned mobile routes still carry a lot of recent visual and copy work, so route-level regressions or repeated text can hide in less-used screens.
+- Final review should not mutate unrelated areas or “polish everything”; only real defects and current-plan gaps should be touched.
 
 ## Dependencies
 
-- Existing `profiles`, `business_staff`, and `is_business_staff_for(...)` RLS helpers should be reused instead of inventing new auth paths.
-- Existing `UiPreferencesProvider` already owns language/theme state and should stay the single source of truth for both student and business surfaces.
-- Existing mobile/admin validation commands plus the repo-owned readiness audits are the minimum merge gate.
+- Existing Supabase auth/RLS helpers remain the source of truth for support access control.
+- Existing `UiPreferencesProvider` still owns mobile language/theme state; review should verify business routes stayed consistent.
+- Existing mobile/admin validation commands plus the repo-owned readiness audits remain the minimum merge gate.
 
 ## Existing Logic Checked
 
-- Student profile already owns the cleanest preference surface, so support should extend that flow instead of creating a second settings area.
-- Business home already knows the operator memberships and active event context, so business profile/support should build on that query rather than re-fetching from scratch in multiple places.
-- The native push diagnostics audit is stale against the redesigned profile route and needs to match the current dev-only diagnostics modal.
-- The hosted business scan readiness audit is stale against the redesign and should validate the real remaining fallback path instead of removed helper copy.
-- The working tree is otherwise clean apart from the known untracked `.idea/` folder that must stay untouched.
+- The latest `main` already contains the support migration, shared support mobile layer, and business profile route.
+- The working tree is clean apart from the known untracked `.idea/` folder that must stay untouched.
+- Prior review already confirmed no merge blockers in the final support slice, so this pass should focus on residual drift and real defects, not re-litigate merged work.
 
 ## Review Outcome
 
-Do a real final audit pass:
+Do a true post-merge quality pass:
 
 - refresh the working docs so branch and scope are truthful
-- fix the mobile typecheck and stale readiness audits
-- add a secure support-request backend slice with correct RLS
-- add student and business support surfaces plus business profile/settings polish
-- rerun mobile/admin validations and the relevant readiness gates
-- record the exact audit outcome before merging
+- review recent mobile/admin/support changes for correctness, product fit, and drift
+- use a reviewer subagent for an extra set of eyes
+- fix only real defects or current-plan gaps
+- rerun the relevant validation/audit gates
+- record the final audit outcome before merging back to `main`
