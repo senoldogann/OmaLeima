@@ -350,12 +350,12 @@ const createStyles = (theme: MobileTheme) =>
     stampHero: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
     },
     stampMeta: {
-      gap: 1,
+      gap: 0,
       justifyContent: "center",
-      marginBottom: 2,
+      marginBottom: 0,
     },
     stampNumber: {
       color: theme.colors.textPrimary,

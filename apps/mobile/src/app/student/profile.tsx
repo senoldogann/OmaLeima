@@ -269,13 +269,11 @@ export default function StudentProfileScreen() {
                 </View>
                 <View style={styles.preferenceHeaderCopy}>
                   <Text selectable style={styles.preferenceTitle}>{copy.student.departmentTags}</Text>
-                </View>
-                <View style={styles.preferenceSelectValue}>
-                  <Text numberOfLines={1} selectable style={styles.preferenceSelectValueText}>
+                  <Text numberOfLines={1} selectable style={styles.preferenceSummaryText}>
                     {createTagSummary(language, selectedTags.length, remainingTagSlots)}
                   </Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
                 </View>
+                <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
               </Pressable>
             </View>
 
@@ -708,6 +706,12 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
       textAlign: "right",
+    },
+    preferenceSummaryText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     preferenceTitle: {
       color: theme.colors.textPrimary,

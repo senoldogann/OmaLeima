@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Settings polish slice bir tur daha rafine edildi. `apps/mobile/src/app/student/profile.tsx` icinde department tag ozeti sag kolonda sikisan bir etiket olmaktan cikarildi; artik ayarlar satirinda basligin altinda tek satirlik daha sakin bir summary olarak akiyor, saga yalnizca yon oku kaliyor. Preference/tag modal’lari dis bosluk tiklamasi ile kapanmaya devam ediyor. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icinde `Tapahtumapalkinnot` slider kartlarindaki buyuk sayi ile `leimaa/leimat` etiketi bir kez daha birbirine yaklastirildi; gap ve alt offset daha da sikildi.
+- **Neden yapıldı:** Kullanici department tags ozetinin ayarlar alanina sigmadigini ve kotu gorundugunu, daha sessiz bicimde soldan saga akmasi gerektigini belirtti. Ayrica `0 LEIMAA` metrigindeki `LEIMAA` etiketinin hala yeterince yakin olmadigini acikca soyledi.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da `student/profile` icindeki department tags satiri ve `student/rewards` icindeki reward rail kartlari hizli gorsel smoke alinmali. Sonra ayni davranis/polish seviyesi business ayarlarina ve admin/club shell’e tasinabilir.
+- **Açık risk/blokaj:** Local validation temiz. Runtime gorsel teyit yine fiziksel cihazdan alinmali. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Settings polish slice tamamlandi. `apps/mobile/src/app/student/profile.tsx` icinde tema/dil preference modal’lari ve department tag modal’i dis bosluga tiklaninca kapanacak sekilde guncellendi. Department tags ayri bloktan alinip ana preferences kartina tasindi; artik profil yonetimi tek kutu icinde toplu hissediyor. Sign-out ust basligi kaldirildi, sadece buton birakildi. Ayni dosyada preference secim satirlarinin sag tarafi uzun tag ozetini daha iyi tasiyabilsin diye hizalama genisletildi. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icinde `LEIMAT` etiketi sayiya daha yakin cekildi; gap ve line-height sikilastirildi.
 - **Neden yapıldı:** Kullanici dropdown/modallerin bos alana tiklayinca kapanmasini, department tags’in preferences icine duzgunce alinmasini, sign-out ust basliginin kaldirilmasini ve rewards kartindaki `LEIMAT` etiketinin sayiya daha yakin durmasini istedi.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
