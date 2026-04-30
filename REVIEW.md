@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-05-01
 - **Branch:** `feature/push-diagnostics-polish`
-- **Scope:** Finish the post-QA business/mobile polish slice: keep support/login inputs visible above the keyboard, fix the admin/organizer web login bounce, simplify business home, add safer back navigation, center student preference modals, and add full-stack editable business profile details for cover/logo/event-day metadata.
+- **Scope:** Finish the post-QA business/mobile polish slice: keep support/login inputs visible above the keyboard, fix the admin/organizer web login bounce, simplify business home, add safer back navigation, center student preference modals, add full-stack editable business profile details for cover/logo/event-day metadata, and make scanner accounts see that venue context during scans.
 
 ## Affected Files
 
@@ -15,6 +15,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `TODOS.md`
 - `PROGRESS.md`
 - `supabase/migrations/20260501093000_business_profile_details.sql`
+- `apps/admin/src/app/auth/password-session/route.ts`
+- `apps/admin/src/features/auth/access.ts`
 - `apps/admin/src/features/auth/components/admin-login-panel.tsx`
 - `apps/admin/src/lib/supabase/proxy.ts`
 - `apps/mobile/src/app/auth/login.tsx`
@@ -32,6 +34,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Risks
 
 - Admin web auth proxy must not throw on anonymous users, but it still must fail loudly on real unexpected Supabase auth refresh errors.
+- Password login must persist the Supabase session into SSR cookies before redirecting; otherwise admin/organizer accounts can appear signed in briefly and then land back on `/login`.
 - Business profile update permissions must be stricter than the previous broad `business_staff` policy; scanner accounts should not edit official venue data.
 - Adding new business columns requires remote Supabase migration before the mobile app queries `cover_image_url`, `y_tunnus`, `opening_hours`, and `announcement`.
 - Mobile profile and support forms contain many inputs; keyboard behavior must stay usable on physical iPhone without hiding focused fields.
@@ -49,7 +52,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - `businesses` already had `phone`, `website_url`, `instagram_url`, and `logo_url`; it lacked cover image, Y-tunnus, responsible person, opening hours, and announcement fields.
 - The old `business staff can update own business` RLS policy allowed all active staff roles to update business rows; the new profile editor needs manager/owner-only writes.
-- `AdminLoginPanel` was doing a client route replace immediately after password sign-in, which can race the SSR cookie handoff.
+- `AdminLoginPanel` was doing a client route replace immediately after password sign-in, which can race the SSR cookie handoff; the fix needs a route handler that calls `setSession()` server-side.
 - `proxy.ts` used `getClaims()` and threw on missing anonymous sessions, which can break public `/login` render paths.
 - `SupportRequestSheet` already uses keyboard insets, but it did not scroll to the focused input reliably.
 
@@ -63,6 +66,7 @@ Do a focused full-stack polish pass:
 - rebuild business profile around editable company details and media URLs
 - show dynamic business cover/logo/announcement in the scanner context
 - simplify business home and fix small scanner/history label issues
-- fix admin password login handoff and anonymous proxy behavior
+- fix admin password login handoff with a server-side password session route and anonymous proxy behavior
+- show venue address, phone, and opening hours to scanner accounts during event-day scanning
 - make support/business login inputs safer around the keyboard
 - rerun mobile/admin validation gates and record the handoff

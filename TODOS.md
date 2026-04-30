@@ -36,10 +36,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Add a typed business profile update mutation.
 - [x] Make support sheet subject/message focus stay above the keyboard.
 - [x] Fix admin web password login and anonymous proxy session handling.
+- [x] Persist admin password sessions through a server route before redirecting.
 - [x] Simplify business home, remove the email card, and replace the home sign-out button with a small icon action.
 - [x] Add back actions to business profile, scanner, events, and history surfaces.
 - [x] Center student theme/language modals.
 - [x] Rebuild business profile with editable company details, media URLs, support, preferences, and sign-out.
-- [x] Show dynamic business cover/logo/announcement context in scanner.
+- [x] Show dynamic business cover/logo/announcement/address/phone/opening-hours context in scanner.
 - [x] Rerun full mobile/admin validation gates.
 - [x] Update `PROGRESS.md` with the expanded business/admin polish handoff.

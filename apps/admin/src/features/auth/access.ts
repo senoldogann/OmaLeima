@@ -172,17 +172,17 @@ export const resolveAdminAccessByUserIdAsync = async (
 };
 
 export const resolveAdminAccessAsync = async (supabase: SupabaseClient): Promise<AdminAccess> => {
-  const claimsResult = await supabase.auth.getClaims();
+  const userResult = await supabase.auth.getUser();
 
-  if (claimsResult.error !== null) {
-    if (isMissingSessionError(claimsResult.error.message)) {
+  if (userResult.error !== null) {
+    if (isMissingSessionError(userResult.error.message)) {
       return createAnonymousAccess();
     }
 
-    throw new Error(`Failed to resolve admin claims: ${claimsResult.error.message}`);
+    throw new Error(`Failed to resolve admin user: ${userResult.error.message}`);
   }
 
-  const userId = claimsResult.data?.claims?.sub;
+  const userId = userResult.data.user?.id;
 
   if (typeof userId !== "string") {
     return createAnonymousAccess();

@@ -26,6 +26,9 @@ export type BusinessJoinedEventSummary = {
   businessLogoUrl: string | null;
   businessCoverImageUrl: string | null;
   businessAnnouncement: string | null;
+  businessAddress: string;
+  businessPhone: string | null;
+  businessOpeningHours: string | null;
   eventName: string;
   city: string;
   startAt: string;

@@ -313,6 +313,17 @@ export default function BusinessScannerScreen() {
       activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ?? null,
     [activeJoinedEvents, selectedEventVenueId]
   );
+  const selectedBusinessDetails = useMemo(() => {
+    if (selectedEvent === null) {
+      return [];
+    }
+
+    return [
+      selectedEvent.businessAddress,
+      selectedEvent.businessOpeningHours,
+      selectedEvent.businessPhone,
+    ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  }, [selectedEvent]);
 
   const resetScanner = (): void => {
     setIsScannerLocked(false);
@@ -455,6 +466,16 @@ export default function BusinessScannerScreen() {
                     </View>
                   </View>
                 </CoverImageSurface>
+              ) : null}
+
+              {selectedBusinessDetails.length > 0 ? (
+                <View style={styles.businessDetailStack}>
+                  {selectedBusinessDetails.map((detail) => (
+                    <Text key={detail} numberOfLines={2} style={styles.businessDetailText}>
+                      {detail}
+                    </Text>
+                  ))}
+                </View>
               ) : null}
 
               {selectedEvent ? (
@@ -696,6 +717,20 @@ const createStyles = (theme: MobileTheme) => {
       overflow: "hidden",
       position: "relative",
       width: 50,
+    },
+    businessDetailStack: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 5,
+      padding: 12,
+    },
+    businessDetailText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     cameraHint: {
       color: theme.colors.textMuted,

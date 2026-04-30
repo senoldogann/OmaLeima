@@ -37,14 +37,14 @@ export const updateSession = async (request: NextRequest): Promise<NextResponse>
     }
   );
 
-  const claimsResult = await supabase.auth.getClaims();
+  const userResult = await supabase.auth.getUser();
 
-  if (claimsResult.error !== null) {
-    if (isMissingSessionError(claimsResult.error.message)) {
+  if (userResult.error !== null) {
+    if (isMissingSessionError(userResult.error.message)) {
       return response;
     }
 
-    throw new Error(`Failed to refresh Supabase auth claims in proxy: ${claimsResult.error.message}`);
+    throw new Error(`Failed to refresh Supabase auth user in proxy: ${userResult.error.message}`);
   }
 
   return response;

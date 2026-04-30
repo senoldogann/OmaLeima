@@ -5,6 +5,20 @@ import { useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
+type PasswordSessionResponseBody =
+  | {
+      homeHref: string;
+    }
+  | {
+      error: string;
+    };
+
+const isPasswordSessionResponseBody = (value: unknown): value is PasswordSessionResponseBody =>
+  typeof value === "object" &&
+  value !== null &&
+  (("homeHref" in value && typeof value.homeHref === "string") ||
+    ("error" in value && typeof value.error === "string"));
+
 export const AdminLoginPanel = () => {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
@@ -30,7 +44,39 @@ export const AdminLoginPanel = () => {
       return;
     }
 
-    window.location.assign("/");
+    const session = signInResult.data.session;
+
+    if (session === null) {
+      setErrorMessage("Password sign-in returned without a session.");
+      setIsPasswordPending(false);
+      return;
+    }
+
+    const sessionResponse = await fetch("/auth/password-session", {
+      body: JSON.stringify({
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const responseBody: unknown = await sessionResponse.json();
+
+    if (!isPasswordSessionResponseBody(responseBody)) {
+      setErrorMessage("Password session response had an unexpected shape.");
+      setIsPasswordPending(false);
+      return;
+    }
+
+    if (!sessionResponse.ok || "error" in responseBody) {
+      setErrorMessage("error" in responseBody ? responseBody.error : "Password session could not be persisted.");
+      setIsPasswordPending(false);
+      return;
+    }
+
+    window.location.assign(responseBody.homeHref);
   };
 
   const handleGoogleSignIn = async (): Promise<void> => {
