@@ -283,7 +283,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingRight: 0,
     },
     heroTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       letterSpacing: -0.5,

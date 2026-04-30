@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Keep polishing the student redesign by making the event detail hero image clean (no text on the photo) and moving event identity/description into the content flow below it.
+- **Scope:** Polish the remaining visible light-mode issues: remove the bright login shimmer, make the discovery hero title image-safe, keep rewards hero metrics aligned, and collapse profile settings into one cleaner card.
 
 ## Affected Files
 
@@ -17,17 +17,20 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/app/student/events/index.tsx`
 - `apps/mobile/src/app/student/events/[eventId].tsx`
+- `apps/mobile/src/features/auth/components/login-hero.tsx`
 - `apps/mobile/src/app/student/rewards.tsx`
 - `apps/mobile/src/app/student/active-event.tsx`
 - `apps/mobile/src/components/cover-image-surface.tsx`
 - `apps/mobile/src/components/app-icon.tsx`
 - `apps/mobile/src/features/events/components/event-card.tsx`
 - `apps/mobile/src/features/foundation/theme.ts`
+- `apps/mobile/src/features/foundation/components/glass-panel.tsx`
 
 ## Risks
 
-- Event detail was still mixing two jobs in one hero: decorative photography and primary content. That made the cover busy and fought against the cleaner direction the user wants.
-- Moving title/meta/description below the image must not make the detail page feel disconnected or lose fast-scanning context.
+- The login hero still had a light-mode white glaze that washed the photography out.
+- The rewards hero count block was visually drifting because the image card lacked one explicit layout container.
+- Profile settings were cleaner than before, but notifications and sign-out still sat outside the main settings card.
 
 ## Dependencies
 
@@ -37,13 +40,15 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- The remaining obvious design mismatch is `student/events/[eventId]`: the image is used as a hero but still carries too much copy directly on top of the photo.
-- The surrounding cards already have enough structure to carry title, badges, schedule, and description cleanly below the image.
+- The remaining visible mismatch after the last pass lived in the auth hero, events discovery hero, rewards hero alignment, and the fragmented profile settings surface.
+- `GlassPanel` already controls the card look for most screens, so making its light-mode surfaces whiter is the lowest-friction way to normalize box backgrounds app-wide.
 
 ## Review Outcome
 
 Do a focused UI polish pass:
 
-- make the event detail cover image clean and decorative
-- move event identity and description into the content stack below the hero
+- remove the bright light-mode shimmer on the login hero
+- force image-safe title contrast on the discovery hero
+- align the rewards hero count/text properly
+- move notifications and sign-out into the same profile settings card
 - rerun mobile validation and record the slice honestly

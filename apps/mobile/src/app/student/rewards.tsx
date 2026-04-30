@@ -88,17 +88,19 @@ export default function StudentRewardsScreen() {
 
       <CoverImageSurface imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
         <View style={styles.summaryHeroOverlay} />
-        <View style={styles.summaryLead}>
-          <Text style={styles.summaryEyebrow}>{copy.student.rewardTrail}</Text>
-          <Text style={styles.summaryTitle}>
-            {featuredEvent?.name ?? (language === "fi" ? "Seuraava avaus alkaa tästä" : "Your next unlock starts here")}
-          </Text>
-          <Text style={styles.summaryLabel}>{summaryLabel}</Text>
-        </View>
+        <View style={styles.summaryHeroContent}>
+          <View style={styles.summaryLead}>
+            <Text style={styles.summaryEyebrow}>{copy.student.rewardTrail}</Text>
+            <Text style={styles.summaryTitle}>
+              {featuredEvent?.name ?? (language === "fi" ? "Seuraava avaus alkaa tästä" : "Your next unlock starts here")}
+            </Text>
+            <Text style={styles.summaryLabel}>{summaryLabel}</Text>
+          </View>
 
-        <View style={styles.summaryCountWrap}>
-          <Text style={styles.summaryNumber}>{totalStamps}</Text>
-          <Text style={styles.summaryCountLabel}>{language === "fi" ? "leimaa" : "leimat"}</Text>
+          <View style={styles.summaryCountWrap}>
+            <Text style={styles.summaryNumber}>{totalStamps}</Text>
+            <Text style={styles.summaryCountLabel}>{language === "fi" ? "leimaa" : "leimat"}</Text>
+          </View>
         </View>
       </CoverImageSurface>
 
@@ -344,6 +346,14 @@ const createStyles = (theme: MobileTheme) =>
       minHeight: 232,
       overflow: "hidden",
       position: "relative",
+    },
+    summaryHeroContent: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 16,
+      padding: 20,
+      alignItems: "flex-end",
     },
     summaryHeroImage: {
       borderRadius: theme.radius.scene,

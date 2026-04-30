@@ -6,30 +6,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Continue the redesign polish by turning the event detail hero into a clean cover image and moving event identity/description into the content stack where it belongs.
+- **Goal:** Close the next visible light-mode and settings polish gaps without starting a new redesign branch: auth hero glare, discovery hero title contrast, rewards hero alignment, and fragmented profile settings.
 
 ## Architectural Decisions
 
-- Treat the event detail hero as pure visual atmosphere, not as a text container.
-- Keep the back button over the image for navigation speed, but move all semantic event information below the cover.
-- Reuse the first detail card for title, badges, schedule, and description instead of adding another new section.
+- Keep image-based surfaces on a consistent rule: dark overlay plus white foreground, even in light mode.
+- Use one explicit content wrapper inside the rewards hero so the stamp number and copy align deterministically.
+- Collapse profile preferences, notifications, and sign-out into one main settings card instead of several adjacent cards.
+- Push the light card language through `GlassPanel` so app-wide boxes converge toward the same white + subtle-border treatment.
 
 ## Alternatives Considered
 
-- Keep title and metadata on top of the event image and only tweak spacing:
-  - rejected because the user explicitly wants the image itself to stay clean
-- Add a second summary card between image and description:
-  - rejected because the screen should get simpler, not longer
+- Leave the login hero shimmer in place and only adjust copy colors:
+  - rejected because the overlay itself is what makes the image feel washed out in light mode
+- Fix rewards hero alignment with ad hoc margins:
+  - rejected because the real issue is the missing shared layout wrapper
+- Keep notifications and sign-out outside the settings card:
+  - rejected because the user explicitly asked for one consolidated settings surface when possible
 
 ## Edge Cases
 
-- The detail page still needs to remain scannable after removing hero text, so badges and schedule cannot become buried in long prose.
-- The cover image must still visually connect to the content below even without overlaid typography.
+- Changing `GlassPanel` affects many screens at once, so the light-mode border/background shift must stay subtle.
+- The consolidated settings card must remain readable even with button states and push registration feedback inside it.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this event-detail polish slice.
-- Remove event-detail text from the cover image and restructure the first detail card.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this light-mode/settings polish slice.
+- Remove the light-mode glare from the login hero.
+- Force the events discovery hero title into image-safe white foreground.
+- Add a proper layout container to the rewards summary hero.
+- Merge notifications and sign-out into the main profile settings card.
+- Normalize light-mode card surfaces through `GlassPanel`.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

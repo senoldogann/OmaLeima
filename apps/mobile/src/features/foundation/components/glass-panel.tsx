@@ -37,9 +37,9 @@ type VariantConfig = {
 
 const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, VariantConfig> => ({
   scene: {
-    bg: theme.colors.surfaceL2,
-    borderColor: theme.colors.borderSubtle,
-    borderWidth: 0,
+    bg: theme.mode === "light" ? theme.colors.surfaceL1 : theme.colors.surfaceL2,
+    borderColor: theme.mode === "light" ? theme.colors.borderDefault : theme.colors.borderSubtle,
+    borderWidth: theme.mode === "light" ? 1 : 0,
     radius: theme.radius.scene,
     topAccentColor: theme.colors.lime,
     contentPadding: theme.spacing.scenePadding,
@@ -49,7 +49,7 @@ const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, Vari
   card: {
     bg: theme.colors.surfaceL1,
     borderColor: theme.colors.borderDefault,
-    borderWidth: 0,
+    borderWidth: theme.mode === "light" ? 1 : 0,
     radius: theme.radius.card,
     topAccentColor: null,
     contentPadding: theme.spacing.cardPadding,
@@ -57,9 +57,9 @@ const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, Vari
     shadow: surfaceShadowStyle,
   },
   subtle: {
-    bg: theme.colors.screenBase,
-    borderColor: theme.colors.borderSubtle,
-    borderWidth: 0,
+    bg: theme.mode === "light" ? theme.colors.surfaceL1 : theme.colors.screenBase,
+    borderColor: theme.mode === "light" ? theme.colors.borderDefault : theme.colors.borderSubtle,
+    borderWidth: theme.mode === "light" ? 1 : 0,
     radius: theme.radius.inner,
     topAccentColor: null,
     contentPadding: 16,

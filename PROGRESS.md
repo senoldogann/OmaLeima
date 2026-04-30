@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Light-mode/settings polish passi genisletildi. `apps/mobile/src/features/auth/components/login-hero.tsx` icindeki acik mod beyaz parilti koyu overlay ile degistirildi; onboarding gorselleri artik yikanmiyor. `apps/mobile/src/app/student/events/index.tsx` icindeki discovery hero basligi beyaz image-foreground'e sabitlendi. `apps/mobile/src/app/student/rewards.tsx` summary hero’su yeni `summaryHeroContent` wrapper ile hizalandi; sayi ve metin bloklari artik kaymiyor. `apps/mobile/src/app/student/profile.tsx` icinde notifications ve sign-out ayni ana ayarlar kartina alindi; tema, dil, bildirim ve cikis artik tek ayar yuzeyinde. `apps/mobile/src/features/foundation/components/glass-panel.tsx` acik modda scene/card/subtle varyantlarini beyaz ve hafif kenarlikli yuzeylere yaklastirdi; boylece kutu dili events ekranindaki daha temiz beyaz kartlara yaklasti.
+- **Neden yapıldı:** Kullanici acik modda login hero’daki pariltidan, discovery hero’daki siyah basliktan, rewards ust kartindaki kayik sayi/metinlerden ve profile ayarlarinin halen parcalanmis hissettirmesinden rahatsizdi. Ayrica kutularin acik modda daha ortak bir beyaz + hafif kenar cizgisi diline gelmesini istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da acik modda `auth/login`, `student/events`, `student/rewards`, `student/profile` hizli gorsel smoke alinmali. Bundan sonra en mantikli buyuk slice admin/club web shell’in ayni sadelik ve theme/i18n cizgisine tasinmasi.
+- **Açık risk/blokaj:** Local validation temiz. Browser-side gorsel smoke bu turda da fiziksel cihaz yerine alinmadi; son gorsel teyit iPhone’dan alinmali. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Student event detail sayfasi bir tur daha sadeleştirildi. `apps/mobile/src/app/student/events/[eventId].tsx` icindeki cover hero artik metin tasimiyor; ustte yalnizca temiz gorsel ve geri butonu kaliyor. Etkinlik kimligi, durum badge'leri, sehir/zaman pill'leri ve description ayni ilk icerik kartinda toplandi; boylece fotograf dekoratif kaliyor, asil bilgi akisi ise okunabilir bir stack'e tasiniyor.
 - **Neden yapıldı:** Kullanici event detail resminin ustundeki yazilarin kaldirilmasini, cover alaninin temiz kalmasini ve description dahil tum icerigin asagidaki akista olmasini istedi. Mevcut hero hem fotograf hem de ana bilgi tasidigi icin fazla kalabalik gorunuyordu.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.

@@ -271,7 +271,7 @@ export default function StudentProfileScreen() {
 
       <InfoCard
         eyebrow={language === "fi" ? "Asetukset" : "Preferences"}
-        title={language === "fi" ? "Ulkoasu ja kieli" : "Appearance and language"}
+        title={language === "fi" ? "Profiilin asetukset" : "Profile settings"}
       >
         <View style={styles.preferenceSection}>
           <View style={styles.preferenceHeader}>
@@ -334,36 +334,63 @@ export default function StudentProfileScreen() {
             </Pressable>
           </View>
         </View>
-      </InfoCard>
 
-      <InfoCard eyebrow={copy.common.notifications} title={copy.common.notifications}>
-        <Text selectable style={styles.bodyText}>{copy.student.notificationsMeta}</Text>
-        <Text selectable style={styles.metaText}>
-          {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
-        </Text>
-        {pushState !== null ? (
-          <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
-            {pushState.detail}
-          </Text>
-        ) : null}
-        <Pressable
-          disabled={registerPushMutation.isPending}
-          onPress={handleRegisterPushPress}
-          style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
-        >
-          <Text style={styles.primaryButtonText}>
-            {registerPushMutation.isPending
-              ? language === "fi"
-                ? "Otetaan ilmoitukset käyttöön..."
-                : "Enabling notifications..."
-              : language === "fi"
-                ? "Ota ilmoitukset käyttöön"
-                : "Enable notifications"}
-          </Text>
-        </Pressable>
-      </InfoCard>
+        <View style={styles.preferenceDivider} />
 
-      <SignOutButton />
+        <View style={styles.preferenceSection}>
+          <View style={styles.preferenceHeader}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="bell" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.notifications}</Text>
+              <Text selectable style={styles.metaText}>{copy.student.notificationsMeta}</Text>
+              <Text selectable style={styles.metaText}>
+                {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
+              </Text>
+              {pushState !== null ? (
+                <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
+                  {pushState.detail}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <Pressable
+            disabled={registerPushMutation.isPending}
+            onPress={handleRegisterPushPress}
+            style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {registerPushMutation.isPending
+                ? language === "fi"
+                  ? "Otetaan ilmoitukset käyttöön..."
+                  : "Enabling notifications..."
+                : language === "fi"
+                  ? "Ota ilmoitukset käyttöön"
+                  : "Enable notifications"}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
+          <View style={styles.preferenceHeader}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="logout" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.signOut}</Text>
+              <Text selectable style={styles.metaText}>
+                {language === "fi"
+                  ? "Poistu tältä laitteelta turvallisesti."
+                  : "Sign out from this device safely."}
+              </Text>
+            </View>
+          </View>
+          <SignOutButton />
+        </View>
+      </InfoCard>
 
       <Modal
         animationType="slide"

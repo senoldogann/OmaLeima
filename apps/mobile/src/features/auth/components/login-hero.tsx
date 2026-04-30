@@ -111,7 +111,7 @@ const createStyles = (theme: MobileTheme) =>
     slideFooter: {
       alignItems: "center",
       alignSelf: "flex-start",
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.28)" : "rgba(255, 255, 255, 0.32)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.28)" : "rgba(7, 10, 7, 0.34)",
       borderRadius: 999,
       flexDirection: "row",
       gap: 4,
@@ -119,7 +119,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 6,
     },
     slideFooterText: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.84)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
@@ -129,17 +129,17 @@ const createStyles = (theme: MobileTheme) =>
     },
     slideOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.54)" : "rgba(255, 255, 255, 0.42)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.54)" : "rgba(7, 10, 7, 0.52)",
     },
     subtitle: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.84)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
       maxWidth: 280,
     },
     title: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: 28,
       letterSpacing: -0.7,

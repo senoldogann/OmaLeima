@@ -27,10 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Event Detail Polish)
+## Current Todos (Light-Mode Settings Polish)
 
-- [x] Re-audit the remaining student detail screen for content-on-image clutter.
-- [x] Remove event text from the detail cover image.
-- [x] Move the event identity, badges, schedule, and description into the first content card.
+- [x] Re-audit the remaining light-mode glare/contrast issues.
+- [x] Remove the login hero glare and fix discovery hero title contrast.
+- [x] Fix the rewards hero layout alignment.
+- [x] Move notifications and sign-out into the main settings card.
+- [x] Normalize light-mode card backgrounds through `GlassPanel`.
 - [x] Re-run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the polish handoff note.
