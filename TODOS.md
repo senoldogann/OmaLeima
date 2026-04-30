@@ -2,13 +2,35 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
-## Current Todos
+## Completed Todos (Previous Waves)
 
-- [x] Create `feature/store-readiness-hardening` branch.
-- [x] Update `REVIEW.md` for the hardening slice.
+- [x] Create `feature/full-ui-redesign-foundation` branch.
+- [x] Update `REVIEW.md` for the redesign foundation slice.
 - [x] Update `PLAN.md` for the same slice.
-- [x] Harden the mobile store/public-launch audit for remote EAS env names and asset existence.
-- [x] Clean the contradictory Android wording in `docs/TESTING.md`.
-- [x] Run focused validation for the hardened store-readiness gate.
-- [x] Update docs with the stronger gate scope and EAS auth expectation.
-- [x] Update `PROGRESS.md` with the hardening handoff note.
+- [x] Redesign the shared mobile theme and foundation components.
+- [x] Apply the new visual language to the key student surfaces.
+- [x] Run static mobile validation for the redesign slice.
+- [x] Update `PROGRESS.md` with the redesign handoff note and next visual wave.
+- [x] Update the working docs for the second redesign wave.
+- [x] Restyle student event detail, rewards, and profile around the new foundation.
+- [x] Restyle business home, events, and scanner around the same foundation.
+- [x] Run static mobile validation for the second redesign wave.
+- [x] Update `PROGRESS.md` with the second-wave redesign handoff note and next visual wave.
+- [x] Update the working docs for the runtime-proof slice.
+- [x] Run signed-in runtime visual smoke for redesigned business surfaces on local web.
+- [x] Fix any runtime-only layout or interaction regression found during the smoke.
+- [x] Narrow the remaining student runtime proof gap honestly in docs and handoff.
+- [x] Update `PROGRESS.md` with the runtime-proof handoff note and next visual wave.
+- [x] Update the working docs for the design-handoff slice.
+- [x] Create a repo-owned redesign handoff document with references and file inventory.
+- [x] Group redesign files by mobile foundation, student routes, business routes, and admin web routes.
+- [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
+- [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
+
+## Current Todos (Final Review and Merge Pass)
+
+- [x] Re-audit the branch for remaining product/UI regressions before merge.
+- [x] Remove the duplicate `READY` label from reward cards.
+- [x] Re-run mobile lint, typecheck, and export.
+- [x] Re-run admin lint, typecheck, and build.
+- [x] Verify merge readiness and update `PROGRESS.md`.

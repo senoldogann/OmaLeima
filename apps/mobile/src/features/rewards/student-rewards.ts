@@ -19,6 +19,7 @@ type EventRow = {
   id: string;
   name: string;
   city: string;
+  cover_image_url: string | null;
   start_at: string;
   end_at: string;
   status: "PUBLISHED" | "ACTIVE" | "COMPLETED";
@@ -198,6 +199,7 @@ const toRewardEventProgress = (
     id: event.id,
     name: event.name,
     city: event.city,
+    coverImageUrl: event.cover_image_url,
     startAt: event.start_at,
     endAt: event.end_at,
     status: event.status,
@@ -235,7 +237,7 @@ const fetchRewardEventsAsync = async (eventIds: string[]): Promise<EventRow[]> =
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,city,start_at,end_at,status,minimum_stamps_required")
+    .select("id,name,city,cover_image_url,start_at,end_at,status,minimum_stamps_required")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
     .eq("visibility", "PUBLIC")

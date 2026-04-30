@@ -5,9 +5,13 @@ import { AppScreen } from "@/components/app-screen";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { InfoCard } from "@/components/info-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 export default function IndexRoute() {
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -17,9 +21,9 @@ export default function IndexRoute() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Auth" title="Restoring session">
+        <InfoCard eyebrow={copy.auth.accessEyebrow} title={copy.auth.opening}>
           <Text selectable style={styles.bodyText}>
-            Reading the persisted Supabase session before choosing the correct mobile area.
+            {copy.auth.openingMessage}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -33,9 +37,9 @@ export default function IndexRoute() {
   if (accessQuery.isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Routing" title="Resolving access">
+        <InfoCard eyebrow={copy.auth.accessEyebrow} title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            Checking whether this authenticated user belongs in the student or business mobile flow.
+            {copy.student.accessResolving}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -46,9 +50,9 @@ export default function IndexRoute() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="Access check failed"
+          title={copy.student.accessChecking}
           detail={accessQuery.error.message}
-          retryLabel="Retry access check"
+          retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />
       </AppScreen>
@@ -59,8 +63,8 @@ export default function IndexRoute() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="This account is not allowed here"
-          detail="The current authenticated account does not have an active student or business mobile role. Sign out and use a supported account."
+          title={copy.student.accessMissing}
+          detail="The current authenticated account does not have an active student or business mobile role."
           retryLabel={null}
           onRetry={null}
         />
@@ -71,10 +75,11 @@ export default function IndexRoute() {
   return <Redirect href={accessQuery.data.homeHref} />;
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

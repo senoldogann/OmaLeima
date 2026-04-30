@@ -1,76 +1,49 @@
 import type { PropsWithChildren } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { mobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
-export const AppScreen = ({ children }: PropsWithChildren) => (
-  <SafeAreaView style={styles.safeArea}>
-    <View pointerEvents="none" style={styles.backgroundLayer}>
-      <View style={[styles.ambientPanel, styles.topPanel]} />
-      <View style={[styles.ambientPanel, styles.middlePanel]} />
-      <View style={[styles.ambientPanel, styles.bottomPanel]} />
-      <View style={styles.glowLine} />
-    </View>
-    <ScrollView contentContainerStyle={styles.content} style={styles.scrollView}>
-      {children}
-    </ScrollView>
-  </SafeAreaView>
-);
+// AppScreen: pure black base with no decorative overlays.
+export const AppScreen = ({ children }: PropsWithChildren) => {
+  const styles = useThemeStyles(createStyles);
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: mobileTheme.colors.screenBase,
-  },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: "hidden",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    gap: 18,
-    paddingHorizontal: mobileTheme.spacing.screenHorizontal,
-    paddingTop: mobileTheme.spacing.screenVertical,
-    paddingBottom: 144,
-  },
-  ambientPanel: {
-    position: "absolute",
-    borderRadius: 32,
-  },
-  topPanel: {
-    backgroundColor: mobileTheme.colors.chromeTint,
-    height: 188,
-    left: -36,
-    right: 88,
-    top: 28,
-    transform: [{ rotate: "-8deg" }],
-  },
-  middlePanel: {
-    backgroundColor: mobileTheme.colors.chromeTintWarm,
-    height: 152,
-    right: -24,
-    top: 248,
-    width: 236,
-    transform: [{ rotate: "12deg" }],
-  },
-  bottomPanel: {
-    backgroundColor: mobileTheme.colors.chromeTintRose,
-    bottom: 132,
-    height: 164,
-    left: 16,
-    width: 208,
-    transform: [{ rotate: "-14deg" }],
-  },
-  glowLine: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderRadius: 999,
-    height: 1,
-    left: 28,
-    position: "absolute",
-    right: 28,
-    top: 108,
-  },
-});
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          style={styles.scrollView}
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.colors.screenBase,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      gap: theme.spacing.sectionGap,
+      paddingHorizontal: theme.spacing.screenHorizontal,
+      paddingTop: theme.spacing.screenVertical,
+      paddingBottom: 144,
+    },
+  });

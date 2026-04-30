@@ -1,6 +1,8 @@
 export type StudentLeaderboardTimelineState = "ACTIVE" | "UPCOMING" | "COMPLETED";
 
 export type RegisteredLeaderboardEvent = {
+  coverImageUrl: string | null;
+  country: string;
   id: string;
   name: string;
   city: string;

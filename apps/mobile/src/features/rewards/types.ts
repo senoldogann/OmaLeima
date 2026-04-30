@@ -28,6 +28,7 @@ export type StudentRewardEventProgress = {
   id: string;
   name: string;
   city: string;
+  coverImageUrl: string | null;
   startAt: string;
   endAt: string;
   status: "PUBLISHED" | "ACTIVE" | "COMPLETED";

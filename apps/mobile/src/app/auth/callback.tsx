@@ -4,7 +4,8 @@ import { StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
@@ -16,6 +17,8 @@ type CallbackState = {
 
 export default function AuthCallbackScreen() {
   const router = useRouter();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
   const params = useLocalSearchParams<{
     code?: string | string[];
     error?: string | string[];
@@ -24,7 +27,7 @@ export default function AuthCallbackScreen() {
   const { isAuthenticated } = useSession();
   const [callbackState, setCallbackState] = useState<CallbackState>({
     status: "loading",
-    detail: "Waiting for the Supabase OAuth callback.",
+    detail: copy.auth.callbackWaiting,
   });
 
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function AuthCallbackScreen() {
     if (typeof code !== "string" || code.length === 0) {
       setCallbackState({
         status: "warning",
-        detail: "OAuth callback returned without an authorization code.",
+        detail: copy.auth.callbackMissingCode,
       });
       return;
     }
@@ -75,7 +78,7 @@ export default function AuthCallbackScreen() {
 
       setCallbackState({
         status: "ready",
-        detail: "OAuth sign-in completed. Redirecting to the correct mobile area.",
+        detail: copy.auth.callbackRedirecting,
       });
       router.replace("/");
     };
@@ -85,35 +88,45 @@ export default function AuthCallbackScreen() {
     return () => {
       isActive = false;
     };
-  }, [params.code, params.error, params.error_description, router]);
+  }, [
+    copy.auth.callbackMissingCode,
+    copy.auth.callbackRedirecting,
+    params.code,
+    params.error,
+    params.error_description,
+    router,
+  ]);
 
   return (
     <AppScreen>
-      <InfoCard eyebrow="Auth" title="Completing sign-in">
+      <InfoCard eyebrow={copy.auth.accessEyebrow} title={createCallbackTitle(callbackState.status, copy)}>
         <Text selectable style={styles.bodyText}>
-          OmaLeima is exchanging the returned OAuth code for a Supabase session and then resolving the correct mobile area.
+          {callbackState.detail}
         </Text>
       </InfoCard>
-
-      <FoundationStatusCard
-        eyebrow="Callback"
-        title="OAuth callback status"
-        items={[
-          {
-            label: "Result",
-            value: callbackState.detail,
-            state: callbackState.status,
-          },
-        ]}
-      />
     </AppScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createCallbackTitle = (status: AppReadinessState, copy: ReturnType<typeof useUiPreferences>["copy"]): string => {
+  switch (status) {
+    case "error":
+      return copy.auth.callbackErrorTitle;
+    case "warning":
+      return copy.auth.callbackWarningTitle;
+    case "ready":
+      return copy.auth.callbackReadyTitle;
+    case "loading":
+    case "pending":
+      return copy.auth.callbackLoadingTitle;
+  }
+};
+
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

@@ -1,8 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { interactiveSurfaceShadowStyle, mobileTheme } from "@/features/foundation/theme";
+import { getEventCoverSource } from "@/features/events/event-visuals";
+import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import type { AppReadinessState } from "@/types/app";
 
 import type {
@@ -17,18 +20,17 @@ type RewardProgressCardProps = {
   onOpenEvent?: (eventId: string) => void;
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-FI", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const formatDateTime = (value: string): string => dateTimeFormatter.format(new Date(value));
-
-const getTimelineBadgeState = (timelineState: StudentRewardTimelineState): AppReadinessState => {
-  switch (timelineState) {
+const getTimelineBadgeState = (state: StudentRewardTimelineState): AppReadinessState => {
+  switch (state) {
     case "ACTIVE":
       return "ready";
     case "UPCOMING":
@@ -41,226 +43,371 @@ const getTimelineBadgeState = (timelineState: StudentRewardTimelineState): AppRe
 const getTierBadgeState = (state: StudentRewardTierState): AppReadinessState => {
   switch (state) {
     case "CLAIMED":
-      return "ready";
     case "CLAIMABLE":
       return "ready";
     case "MORE_NEEDED":
       return "pending";
     case "OUT_OF_STOCK":
-      return "warning";
     case "REVOKED":
       return "warning";
   }
 };
 
-const getTierBadgeLabel = (state: StudentRewardTierState): string => {
+const getTierBadgeLabel = (state: StudentRewardTierState, language: "fi" | "en"): string => {
   switch (state) {
     case "CLAIMED":
-      return "claimed";
+      return language === "fi" ? "lunastettu" : "claimed";
     case "CLAIMABLE":
-      return "claimable now";
+      return language === "fi" ? "valmis" : "claimable";
     case "MORE_NEEDED":
-      return "more needed";
+      return language === "fi" ? "puuttuu" : "more needed";
     case "OUT_OF_STOCK":
-      return "out of stock";
+      return language === "fi" ? "loppu" : "out of stock";
     case "REVOKED":
-      return "revoked";
+      return language === "fi" ? "peruttu" : "revoked";
   }
 };
 
-const getTierPrimaryCopy = (tier: StudentRewardTierProgress): string => {
+const getTierCopy = (
+  tier: StudentRewardTierProgress,
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat
+): string => {
   switch (tier.state) {
     case "CLAIMED":
-      return tier.claimedAt === null ? "Already claimed." : `Claimed on ${formatDateTime(tier.claimedAt)}.`;
+      return tier.claimedAt === null
+        ? language === "fi"
+          ? "Jo lunastettu."
+          : "Already claimed."
+        : language === "fi"
+          ? `Lunastettu ${formatter.format(new Date(tier.claimedAt))}.`
+          : `Claimed ${formatter.format(new Date(tier.claimedAt))}.`;
     case "CLAIMABLE":
-      return "Ready for club handoff once staff confirms the reward.";
+      return language === "fi" ? "Valmis noudettavaksi henkilökunnalta." : "Ready for staff handoff.";
     case "MORE_NEEDED":
-      return `${tier.missingStampCount} more leima needed.`;
+      return language === "fi"
+        ? `${tier.missingStampCount} leimaa vielä.`
+        : `${tier.missingStampCount} more leimat needed.`;
     case "OUT_OF_STOCK":
-      return "This reward is currently out of stock.";
+      return language === "fi" ? "Tällä hetkellä loppu." : "Currently out of stock.";
     case "REVOKED":
-      return "This reward claim was revoked. Check with club staff before expecting another handoff.";
+      return language === "fi" ? "Peruttu. Tarkista henkilökunnalta." : "Revoked. Check with staff.";
   }
 };
 
-const getInventoryCopy = (tier: StudentRewardTierProgress): string => {
+const getInventoryCopy = (tier: StudentRewardTierProgress, language: "fi" | "en"): string => {
   if (tier.inventoryTotal === null) {
-    return "Unlimited stock";
+    return language === "fi" ? "Rajoittamaton määrä" : "Unlimited stock";
   }
 
   if (tier.remainingInventory === null || tier.remainingInventory <= 0) {
-    return "No stock left";
+    return language === "fi" ? "Ei varastoa jäljellä" : "No stock left";
   }
 
   if (tier.remainingInventory === 1) {
-    return "1 reward left";
+    return language === "fi" ? "1 palkinto jäljellä" : "1 reward left";
   }
 
-  return `${tier.remainingInventory} rewards left`;
+  return language === "fi"
+    ? `${tier.remainingInventory} palkintoa jäljellä`
+    : `${tier.remainingInventory} rewards left`;
 };
 
-const getEventSummaryCopy = (event: StudentRewardEventProgress): string => {
-  if (event.tiers.length === 0) {
-    return "No reward tiers published for this event yet.";
-  }
-
+const getEventHeroCopy = (event: StudentRewardEventProgress, language: "fi" | "en"): string => {
   if (event.claimableTierCount > 0) {
-    const claimableCopy = `${event.claimableTierCount} reward tier${event.claimableTierCount === 1 ? "" : "s"} can be claimed with staff handoff.`;
-
-    if (event.revokedTierCount > 0) {
-      return `${claimableCopy} ${event.revokedTierCount} tier${event.revokedTierCount === 1 ? "" : "s"} also needs staff review after a revoked claim.`;
-    }
-
-    return claimableCopy;
+    return language === "fi"
+      ? `${event.claimableTierCount} palkintoa valmiina.`
+      : `${event.claimableTierCount} reward${event.claimableTierCount === 1 ? "" : "s"} ready for claim.`;
   }
 
-  if (event.revokedTierCount > 0) {
-    return `${event.revokedTierCount} reward tier${event.revokedTierCount === 1 ? "" : "s"} was revoked and now needs staff review.`;
+  const nearestLockedTier = event.tiers.find((tier) => tier.state === "MORE_NEEDED") ?? null;
+
+  if (nearestLockedTier !== null) {
+    return language === "fi"
+      ? `${nearestLockedTier.missingStampCount} leimaa seuraavaan avaukseen.`
+      : `${nearestLockedTier.missingStampCount} leima left to the next unlock.`;
   }
 
   if (event.claimedTierCount > 0) {
-    return `${event.claimedTierCount} reward tier${event.claimedTierCount === 1 ? "" : "s"} already claimed for this event.`;
+    return language === "fi"
+      ? `${event.claimedTierCount} palkintoa jo lunastettu.`
+      : `${event.claimedTierCount} reward${event.claimedTierCount === 1 ? "" : "s"} already claimed.`;
   }
 
-  return "Keep collecting leima to unlock the next reward tier.";
+  return language === "fi"
+    ? "Kerää leimoja, niin palkinnot avautuvat."
+    : "Collect leimas to open the reward path.";
 };
 
-export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => (
-  <InfoCard eyebrow={event.city} title={event.name}>
-    <View style={styles.badges}>
-      <StatusBadge label={event.timelineState.toLowerCase()} state={getTimelineBadgeState(event.timelineState)} />
-      {event.claimableTierCount > 0 ? <StatusBadge label="claimable" state="ready" /> : null}
-      {event.claimedTierCount > 0 ? <StatusBadge label="claimed" state="ready" /> : null}
-      {event.revokedTierCount > 0 ? <StatusBadge label="revoked" state="warning" /> : null}
-    </View>
+const getEventSummaryCopy = (event: StudentRewardEventProgress, language: "fi" | "en"): string => {
+  if (event.tiers.length === 0) {
+    return language === "fi" ? "Palkintotasoja ei ole vielä julkaistu." : "No reward tiers published yet.";
+  }
 
-    <Text style={styles.bodyText}>{getEventSummaryCopy(event)}</Text>
+  if (event.claimableTierCount > 0) {
+    return language === "fi"
+      ? `${event.claimableTierCount} tasoa valmiina noudettavaksi.`
+      : `${event.claimableTierCount} tier${event.claimableTierCount === 1 ? "" : "s"} ready for handoff.`;
+  }
 
-    <View style={styles.metaGroup}>
-      <Text style={styles.metaLine}>Starts {formatDateTime(event.startAt)}</Text>
-      <Text style={styles.metaLine}>Ends {formatDateTime(event.endAt)}</Text>
-      <Text style={styles.metaLine}>
-        Progress target: {event.stampCount} / {event.minimumStampsRequired} leima
-      </Text>
-    </View>
+  if (event.claimedTierCount > 0) {
+    return language === "fi"
+      ? `${event.claimedTierCount} tasoa jo lunastettu.`
+      : `${event.claimedTierCount} tier${event.claimedTierCount === 1 ? "" : "s"} claimed.`;
+  }
 
-    <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${event.goalProgressRatio * 100}%` }]} />
-    </View>
+  return language === "fi"
+    ? "Pidä kierros liikkeessä ja seuraa montako leimaa vielä puuttuu."
+    : "Keep collecting leimas to unlock rewards.";
+};
 
-    {event.tiers.length === 0 ? (
-      <Text style={styles.secondaryText}>The organizer has not published reward tiers for this event yet.</Text>
-    ) : (
-      <View style={styles.tierList}>
-        {event.tiers.map((tier) => (
-          <View key={tier.id} style={styles.tierCard}>
-            <View style={styles.tierHeader}>
-              <View style={styles.tierTitleGroup}>
-                <Text style={styles.tierTitle}>{tier.title}</Text>
-                <Text style={styles.tierMeta}>
-                  {tier.requiredStampCount} leima • {tier.rewardType.toLowerCase()}
-                </Text>
+export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => {
+  const { language, localeTag } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+  const formatter = createDateTimeFormatter(localeTag);
+  const hasClaimable = event.claimableTierCount > 0;
+  const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
+
+  return (
+    <InfoCard eyebrow={event.city} title={event.name} variant={hasClaimable ? "scene" : "card"}>
+      <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
+        <View style={styles.heroOverlay} />
+        <View style={styles.heroContent}>
+          <View style={styles.badges}>
+            <StatusBadge
+              label={event.timelineState === "ACTIVE" ? (language === "fi" ? "käynnissä" : "active") : event.timelineState === "UPCOMING" ? (language === "fi" ? "tulossa" : "upcoming") : language === "fi" ? "päättynyt" : "completed"}
+              state={getTimelineBadgeState(event.timelineState)}
+            />
+            {hasClaimable ? (
+              <View style={styles.heroReadyPill}>
+                <Text style={styles.heroReadyPillText}>{language === "fi" ? "VALMIS" : "READY"}</Text>
               </View>
-              <StatusBadge label={getTierBadgeLabel(tier.state)} state={getTierBadgeState(tier.state)} />
-            </View>
-
-            <Text style={styles.bodyText}>{getTierPrimaryCopy(tier)}</Text>
-            <Text style={styles.secondaryText}>{getInventoryCopy(tier)}</Text>
-            {tier.description ? <Text style={styles.secondaryText}>{tier.description}</Text> : null}
-            {tier.claimInstructions ? <Text style={styles.secondaryText}>{tier.claimInstructions}</Text> : null}
+            ) : null}
           </View>
-        ))}
+          <Text style={styles.heroDate}>
+            {formatter.format(new Date(event.startAt))} - {formatter.format(new Date(event.endAt))}
+          </Text>
+        </View>
+      </CoverImageSurface>
+
+      <View style={styles.stampHero}>
+        <Text style={styles.stampNumber}>{event.stampCount}</Text>
+        <View style={styles.stampMeta}>
+          <Text style={styles.stampUnit}>{language === "fi" ? "leimaa" : "leimat"}</Text>
+        </View>
       </View>
-    )}
 
-    {onOpenEvent ? (
-      <Pressable onPress={() => onOpenEvent(event.id)} style={styles.secondaryButton}>
-        <Text style={styles.secondaryButtonText}>Open event detail</Text>
-      </Pressable>
-    ) : null}
-  </InfoCard>
-);
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${event.goalProgressRatio * 100}%` }]} />
+      </View>
 
-const styles = StyleSheet.create({
-  badges: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  metaGroup: {
-    gap: 4,
-  },
-  metaLine: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  progressTrack: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 999,
-    height: 10,
-    overflow: "hidden",
-  },
-  progressFill: {
-    backgroundColor: mobileTheme.colors.accentMint,
-    height: "100%",
-  },
-  tierList: {
-    gap: 10,
-  },
-  tierCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 8,
-    padding: 14,
-    ...interactiveSurfaceShadowStyle,
-  },
-  tierHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "space-between",
-  },
-  tierTitleGroup: {
-    flex: 1,
-    gap: 4,
-  },
-  tierTitle: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  tierMeta: {
-    color: mobileTheme.colors.accentBlue,
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-  },
-  secondaryText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: mobileTheme.colors.actionNeutral,
-    borderColor: mobileTheme.colors.actionNeutralBorder,
-    borderRadius: mobileTheme.radius.button,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...interactiveSurfaceShadowStyle,
-  },
-  secondaryButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-});
+      <Text style={styles.heroCopy}>{getEventHeroCopy(event, language)}</Text>
+      <Text style={styles.summaryText}>{getEventSummaryCopy(event, language)}</Text>
+
+      {event.tiers.length > 0 ? (
+        <View style={styles.tierSection}>
+          <Text style={styles.sectionLabel}>{language === "fi" ? "PALKINTOTASOT" : "REWARD TIERS"}</Text>
+          {event.tiers.map((tier) => (
+            <View
+              key={tier.id}
+              style={[
+                styles.tierRow,
+                tier.state === "CLAIMABLE" ? styles.tierRowClaimable : null,
+                tier.state === "CLAIMED" ? styles.tierRowClaimed : null,
+              ]}
+            >
+              <View style={styles.tierHeader}>
+                <Text style={styles.tierTitle}>{tier.title}</Text>
+                <StatusBadge label={getTierBadgeLabel(tier.state, language)} state={getTierBadgeState(tier.state)} />
+              </View>
+              <Text style={styles.tierMeta}>
+                {tier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"} · {tier.rewardType.toLowerCase()}
+              </Text>
+              <Text style={styles.tierCopy}>{getTierCopy(tier, language, formatter)}</Text>
+              <Text style={styles.tierInventory}>{getInventoryCopy(tier, language)}</Text>
+              {tier.description ? <Text style={styles.tierCopy}>{tier.description}</Text> : null}
+              {tier.claimInstructions ? <Text style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {onOpenEvent ? (
+        <Pressable onPress={() => onOpenEvent(event.id)} style={styles.ghostButton}>
+          <Text style={styles.ghostButtonText}>
+            {language === "fi" ? "Tapahtuman tiedot" : "Event details"}
+          </Text>
+        </Pressable>
+      ) : null}
+    </InfoCard>
+  );
+};
+
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    badges: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    ghostButton: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    ghostButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    heroBand: {
+      borderRadius: theme.radius.scene,
+      minHeight: 172,
+      overflow: "hidden",
+      position: "relative",
+    },
+    heroContent: {
+      flex: 1,
+      justifyContent: "space-between",
+      padding: 18,
+    },
+    heroCopy: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    heroDate: {
+      color: "#F8FAF5",
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    heroImage: {
+      borderRadius: theme.radius.scene,
+    },
+    heroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.52)" : "rgba(7, 10, 7, 0.5)",
+    },
+    heroReadyPill: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(8, 10, 8, 0.74)",
+      borderColor: "rgba(248, 250, 245, 0.14)",
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    heroReadyPillText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+    },
+    progressFill: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: "100%",
+    },
+    progressTrack: {
+      backgroundColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      height: 8,
+      overflow: "hidden",
+    },
+    sectionLabel: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    stampHero: {
+      alignItems: "flex-end",
+      flexDirection: "row",
+      gap: 2,
+    },
+    stampMeta: {
+      alignItems: "flex-start",
+      gap: 0,
+      justifyContent: "center",
+      marginBottom: 4,
+      marginLeft: -2,
+    },
+    stampNumber: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 52,
+      lineHeight: 56,
+      minWidth: 0,
+    },
+    stampUnit: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: 14,
+      textTransform: "uppercase",
+    },
+    summaryText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    tierCopy: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    tierHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+    },
+    tierInventory: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    tierMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    tierRow: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 8,
+      padding: 14,
+      ...interactiveSurfaceShadowStyle,
+    },
+    tierRowClaimable: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    tierRowClaimed: {
+      backgroundColor: theme.colors.successSurface,
+      borderColor: theme.colors.successBorder,
+    },
+    tierSection: {
+      gap: 10,
+    },
+    tierTitle: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+  });

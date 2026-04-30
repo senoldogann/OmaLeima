@@ -2,67 +2,57 @@ import { useState } from "react";
 import { Redirect } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
 import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
-import { mobileTheme } from "@/features/foundation/theme";
 import { LoginHero } from "@/features/auth/components/login-hero";
-import { createGoogleRedirectUri } from "@/lib/auth";
-import { publicEnv } from "@/lib/env";
-import { useSession } from "@/providers/session-provider";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useSession } from "@/providers/session-provider";
 
 type LoginMode = "student" | "business";
 
 export default function LoginScreen() {
-  const { bootstrapError, isAuthenticated, isLoading, session } = useSession();
+  const theme = useAppTheme();
+  const { copy } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+  const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
     isEnabled: isAuthenticated && session !== null,
   });
   const [mode, setMode] = useState<LoginMode>("student");
+  const isResolvingAccess = !isLoading && isAuthenticated && accessQuery.isLoading;
 
   if (!isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
     return <Redirect href={accessQuery.data.homeHref} />;
+  }
+
+  if (isLoading || isResolvingAccess) {
+    return (
+      <AppScreen>
+        <LoginHero />
+        <AuthLoadingPanel
+          message={copy.auth.openingMessage}
+          title={copy.auth.opening}
+        />
+      </AppScreen>
+    );
   }
 
   return (
     <AppScreen>
       <LoginHero />
 
-      <FoundationStatusCard
-        eyebrow="Auth"
-        title="Access status"
-        items={[
-          {
-            label: "Supabase URL",
-            value: publicEnv.EXPO_PUBLIC_SUPABASE_URL,
-            state: "ready",
-          },
-          {
-            label: "Session bootstrap",
-            value: bootstrapError ?? (isLoading ? "Reading persisted session state." : "Ready for auth integration."),
-            state: bootstrapError ? "error" : isLoading ? "loading" : "ready",
-          },
-          {
-            label: "Student redirect URI",
-            value: createGoogleRedirectUri(),
-            state: "pending",
-          },
-          {
-            label: "Authenticated route",
-            value:
-              accessQuery.isLoading
-                ? "Resolving whether the current user belongs in the student or business flow."
-                : accessQuery.data?.homeHref ?? "No authenticated home route yet.",
-            state: accessQuery.isLoading ? "loading" : accessQuery.data?.homeHref ? "ready" : "pending",
-          },
-        ]}
-      />
-
-      <InfoCard eyebrow="Sign in" motionIndex={1} title="Choose your mode">
+      <InfoCard
+        eyebrow={copy.auth.continueEyebrow}
+        motionIndex={1}
+        title={mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
+      >
         <View style={styles.modeSelector}>
           <Pressable
             onPress={() => setMode("student")}
@@ -72,8 +62,10 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <Text style={styles.modeButtonText}>Student</Text>
-            <Text style={styles.modeButtonMeta}>Google sign-in</Text>
+            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="google" size={18} />
+            <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
+              {copy.common.student}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => setMode("business")}
@@ -83,80 +75,58 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <Text style={styles.modeButtonText}>Business staff</Text>
-            <Text style={styles.modeButtonMeta}>Email and password</Text>
+            <AppIcon color={mode === "business" ? theme.colors.screenBase : theme.colors.textPrimary} name="business" size={18} />
+            <Text style={[styles.modeButtonText, mode === "business" ? styles.modeButtonTextActive : null]}>
+              {copy.common.business}
+            </Text>
           </Pressable>
         </View>
 
-        {mode === "student" ? (
-          <>
-            <Text selectable style={styles.bodyText}>
-              Student sign-in stays on Google OAuth. After the callback completes, the app route guard sends the user into the student area automatically.
-            </Text>
-            <GoogleSignInButton />
-          </>
-        ) : (
-          <>
-            <Text selectable style={styles.bodyText}>
-              Business staff sign in with email and password. Active business membership is checked immediately after auth before the business home route opens.
-            </Text>
-            <BusinessPasswordSignIn />
-          </>
-        )}
-      </InfoCard>
-
-      <View style={styles.footer}>
-        <Text selectable style={styles.footerText}>
-          Preview web keeps the same visual language even before the full native scanner path is active.
+        <Text style={styles.helperText}>
+          {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
         </Text>
-      </View>
+        {mode === "student" ? <GoogleSignInButton /> : <BusinessPasswordSignIn />}
+      </InfoCard>
     </AppScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  bodyText: {
-    color: mobileTheme.colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  footer: {
-    paddingBottom: 8,
-  },
-  footerText: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 12,
-  },
-  modeButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderColor: mobileTheme.colors.cardBorder,
-    borderRadius: 20,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  modeButtonActive: {
-    borderColor: "rgba(94, 181, 255, 0.46)",
-    backgroundColor: "rgba(94, 181, 255, 0.1)",
-  },
-  modeButtonMeta: {
-    color: mobileTheme.colors.textMuted,
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  modeButtonPressed: {
-    transform: [{ translateY: 1 }, { scale: 0.992 }],
-  },
-  modeButtonText: {
-    color: mobileTheme.colors.textPrimary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  modeSelector: {
-    flexDirection: "row",
-    gap: 10,
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    helperText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    modeButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+    },
+    modeButtonActive: {
+      backgroundColor: theme.colors.lime,
+    },
+    modeButtonPressed: {
+      transform: [{ translateY: 1 }, { scale: 0.992 }],
+    },
+    modeButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    modeButtonTextActive: {
+      color: theme.colors.screenBase,
+    },
+    modeSelector: {
+      flexDirection: "row",
+      gap: 10,
+    },
+  });

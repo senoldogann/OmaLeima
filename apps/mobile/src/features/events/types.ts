@@ -29,6 +29,7 @@ export type StudentEventSummary = {
   description: string | null;
   city: string;
   country: string;
+  coverImageUrl: string | null;
   startAt: string;
   endAt: string;
   joinDeadlineAt: string;

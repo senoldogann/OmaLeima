@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
-import { FoundationStatusCard } from "@/features/foundation/components/foundation-status-card";
+import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
-import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import {
   useAttachDepartmentTagMutation,
   useCreateCustomDepartmentTagMutation,
@@ -16,50 +16,40 @@ import {
   useStudentProfileOverviewQuery,
 } from "@/features/profile/student-profile";
 import type { DepartmentTagSuggestion, StudentProfileTag } from "@/features/profile/types";
-import {
-  useRegisterPushDeviceMutation,
-  type PushDeviceRegistrationResult,
-} from "@/features/push/device-registration";
+import { useRegisterPushDeviceMutation, type PushDeviceRegistrationResult } from "@/features/push/device-registration";
+import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostics";
 import { useSession } from "@/providers/session-provider";
-import type { AppReadinessState, PushNotificationCapture } from "@/types/app";
 
-const diagnosticsRefreshFormatter = new Intl.DateTimeFormat("en-FI", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
+type PreferenceSheet = "language" | "theme" | null;
 
-const mapPushResultState = (state: PushDeviceRegistrationResult["state"]): AppReadinessState => {
-  switch (state) {
-    case "registered":
-      return "ready";
-    case "denied":
-      return "warning";
-    case "misconfigured":
-      return "error";
-    case "error":
-      return "error";
-    case "granted":
-      return "ready";
-    case "unavailable":
-      return "pending";
+const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
+  if (language === "fi") {
+    if (count === 0) {
+      return "Valitse tähän omat tagisi.";
+    }
+
+    if (remainingTagSlots === 0) {
+      return "Kaikki kolme tagipaikkaa ovat käytössä.";
+    }
+
+    return `${count} tagia valittu, ${remainingTagSlots} paikkaa jäljellä.`;
   }
-};
 
-const createTagSummary = (count: number, remainingTagSlots: number): string => {
   if (count === 0) {
     return "No department tags selected yet.";
   }
 
   if (remainingTagSlots === 0) {
-    return `All 3 profile tag slots are in use.`;
+    return "All three tag slots are in use.";
   }
 
-  return `${count} tag${count === 1 ? "" : "s"} selected, ${remainingTagSlots} slot${remainingTagSlots === 1 ? "" : "s"} left.`;
+  return `${count} tags selected, ${remainingTagSlots} slots left.`;
 };
 
 const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
-  const locationParts = [tag.universityName, tag.city].filter((part): part is string => part !== null && part.length > 0);
+  const locationParts = [tag.universityName, tag.city].filter(
+    (part): part is string => part !== null && part.length > 0
+  );
 
   if (locationParts.length === 0) {
     return tag.slug;
@@ -71,69 +61,31 @@ const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
 const createMutationError = (errors: (string | null)[]): string | null =>
   errors.find((error): error is string => error !== null) ?? null;
 
-const mapPushRuntimeState = (
-  runtime: "web" | "expo-go" | "development-build" | "standalone" | "bare",
-  isPhysicalDevice: boolean
-): AppReadinessState => {
-  if (runtime === "development-build" && isPhysicalDevice) {
-    return "ready";
-  }
-
-  if (runtime === "standalone" && isPhysicalDevice) {
-    return "ready";
-  }
-
-  if (runtime === "expo-go") {
-    return "warning";
-  }
-
-  if (runtime === "web") {
-    return "pending";
-  }
-
-  return "warning";
-};
-
-const createPushRuntimeDetail = (
-  runtime: "web" | "expo-go" | "development-build" | "standalone" | "bare",
-  isPhysicalDevice: boolean
+const createPushPreferenceSummary = (
+  language: "fi" | "en",
+  permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable",
+  pushState: PushDeviceRegistrationResult | null
 ): string => {
-  const deviceDetail = isPhysicalDevice ? "physical device" : "simulator or desktop runtime";
-
-  switch (runtime) {
-    case "development-build":
-      return `Development build on ${deviceDetail}.`;
-    case "standalone":
-      return `Standalone build on ${deviceDetail}.`;
-    case "expo-go":
-      return `Expo Go on ${deviceDetail}; remote push smoke still needs a development build.`;
-    case "web":
-      return "Web preview cannot receive native remote push notifications.";
-    case "bare":
-      return `Bare runtime on ${deviceDetail}.`;
+  if (pushState?.state === "registered") {
+    return language === "fi" ? "Ilmoitukset ovat käytössä tällä laitteella." : "Notifications are active on this device.";
   }
-};
 
-const mapPushPermissionState = (
-  state: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
-): AppReadinessState => {
-  switch (state) {
-    case "granted":
-    case "provisional":
-      return "ready";
-    case "denied":
-      return "warning";
-    case "undetermined":
-      return "pending";
-    case "unavailable":
-      return "pending";
+  if (language === "fi") {
+    switch (permissionState) {
+      case "granted":
+        return "Ilmoituslupa on myönnetty.";
+      case "provisional":
+        return "Ilmoituslupa on iOS-laitteessa väliaikaisesti myönnetty.";
+      case "denied":
+        return "Ilmoituslupa on estetty tällä laitteella.";
+      case "undetermined":
+        return "Ilmoituslupaa ei ole vielä myönnetty tässä istunnossa.";
+      case "unavailable":
+        return "Ilmoitukset eivät ole käytettävissä tässä ympäristössä.";
+    }
   }
-};
 
-const createPushPermissionDetail = (
-  state: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
-): string => {
-  switch (state) {
+  switch (permissionState) {
     case "granted":
       return "Notification permission is granted.";
     case "provisional":
@@ -147,72 +99,17 @@ const createPushPermissionDetail = (
   }
 };
 
-const createNotificationCaptureDetail = (
-  capture: PushNotificationCapture | null,
-  emptyDetail: string
-): string => {
-  if (capture === null) {
-    return emptyDetail;
-  }
-
-  const summaryParts = [
-    capture.title ?? "Untitled notification",
-    `${capture.source} / ${capture.triggerType}`,
-    capture.dataType,
-    capture.eventId,
-    capture.rewardTierId,
-    capture.actionIdentifier,
-    capture.capturedAt,
-  ].filter((part): part is string => part !== null && part.length > 0);
-
-  return summaryParts.join(" · ");
-};
-
-const mapNotificationCaptureState = (capture: PushNotificationCapture | null): AppReadinessState => {
-  if (capture === null) {
-    return "pending";
-  }
-
-  if (capture.source === "remote") {
-    return "ready";
-  }
-
-  return "warning";
-};
-
-const createNotificationCaptureStatusDetail = (
-  capture: PushNotificationCapture | null,
-  emptyDetail: string
-): string => {
-  const detail = createNotificationCaptureDetail(capture, emptyDetail);
-
-  if (capture === null || capture.source === "remote") {
-    return detail;
-  }
-
-  return `${detail} · Local notification activity does not prove remote APNs or FCM delivery yet.`;
-};
-
-const createDiagnosticsRefreshDetail = (value: string | null): string => {
-  if (value === null) {
-    return "No manual diagnostics refresh has been recorded in this app session yet.";
-  }
-
-  return `Last refreshed at ${diagnosticsRefreshFormatter.format(new Date(value))}.`;
-};
-
 export default function StudentProfileScreen() {
-  const { bootstrapError, session } = useSession();
-  const {
-    clearCapturedPushActivity,
-    diagnostics,
-    refreshPushPermissionStateAsync,
-  } = useNativePushDiagnostics();
+  const theme = useAppTheme();
+  const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+  const { session } = useSession();
+  const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
-  const [isRefreshingPushDiagnostics, setIsRefreshingPushDiagnostics] = useState<boolean>(false);
-  const [lastPushDiagnosticsRefreshAt, setLastPushDiagnosticsRefreshAt] = useState<string | null>(null);
+  const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
+  const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -226,6 +123,7 @@ export default function StudentProfileScreen() {
 
   const profileOverview = profileOverviewQuery.data ?? null;
   const selectedTags = profileOverview?.selectedTags ?? [];
+  const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
   const suggestedTags = profileOverview?.suggestedTags ?? [];
   const remainingTagSlots = profileOverview?.remainingTagSlots ?? 3;
   const isTagMutationPending =
@@ -249,6 +147,8 @@ export default function StudentProfileScreen() {
       setPrimaryTagMutation.error?.message,
     ]
   );
+  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
+  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
 
   const handleRegisterPushPress = async (): Promise<void> => {
     const result = await registerPushMutation.mutateAsync({
@@ -256,18 +156,6 @@ export default function StudentProfileScreen() {
     });
     setPushState(result);
     await refreshPushPermissionStateAsync();
-    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
-  };
-
-  const handleRefreshPushDiagnosticsPress = async (): Promise<void> => {
-    setIsRefreshingPushDiagnostics(true);
-
-    try {
-      await refreshPushPermissionStateAsync();
-      setLastPushDiagnosticsRefreshAt(new Date().toISOString());
-    } finally {
-      setIsRefreshingPushDiagnostics(false);
-    }
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -318,388 +206,623 @@ export default function StudentProfileScreen() {
     });
   };
 
-  const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
-  const hasCapturedPushActivity =
-    diagnostics.lastNotification !== null || diagnostics.lastNotificationResponse !== null;
-
   return (
     <AppScreen>
-      <InfoCard eyebrow="Student" title="Profile">
-        <Text selectable style={styles.bodyText}>
-          Manage the study or department labels that describe this student profile. Official tags appear first, custom tags can still be created when the right label is missing, and one selected tag can stay primary for public display later.
-        </Text>
-      </InfoCard>
-
-      <FoundationStatusCard
-        eyebrow="Session"
-        title="Profile state"
-        items={[
-          {
-            label: "Persisted session",
-            value: session?.user.email ?? bootstrapError ?? "No user session yet.",
-            state: session ? "ready" : bootstrapError ? "error" : "pending",
-          },
-          {
-            label: "Department tags",
-            value:
-              profileOverviewQuery.isLoading
-                ? "Loading selected and suggested department tags."
-                : profileOverviewQuery.error?.message ?? createTagSummary(selectedTags.length, remainingTagSlots),
-            state: profileOverviewQuery.isLoading ? "loading" : profileOverviewQuery.error ? "error" : "ready",
-          },
-          {
-            label: "Push backend",
-            value: "register-device-token stays available for this student profile route.",
-            state: "ready",
-          },
-        ]}
-      />
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>{copy.common.profile}</Text>
+        <Text style={styles.metaText}>{copy.student.profileMeta}</Text>
+      </View>
 
       {profileOverviewQuery.isLoading ? (
-        <InfoCard eyebrow="Loading" title="Opening profile">
+        <InfoCard eyebrow={copy.common.loading} title={copy.common.profile}>
           <Text selectable style={styles.bodyText}>
-            Loading profile identity, current department tags, and active tag suggestions.
+            {language === "fi"
+              ? "Ladataan profiili, tagit ja ehdotukset."
+              : "Loading profile identity, tags, and suggestions."}
           </Text>
         </InfoCard>
       ) : null}
 
       {profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Error" title="Could not load profile">
+        <InfoCard eyebrow={copy.common.error} title={copy.common.profile}>
           <Text selectable style={styles.bodyText}>{profileOverviewQuery.error.message}</Text>
           <Pressable onPress={() => void profileOverviewQuery.refetch()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+            <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
         </InfoCard>
       ) : null}
 
       {profileOverview ? (
-        <InfoCard eyebrow="Account" title={profileOverview.displayName ?? "Student profile"}>
-          <View style={styles.badgeRow}>
-            <StatusBadge label={profileOverview.primaryRole.toLowerCase()} state="ready" />
-            <StatusBadge label={profileOverview.status.toLowerCase()} state="ready" />
-            {primaryTag ? <StatusBadge label={`primary: ${primaryTag.title}`} state="loading" /> : null}
+        <View style={styles.profileStage}>
+          <View style={styles.profileHero}>
+            <View style={styles.avatarShell}>
+              <View style={styles.avatarCore}>
+                <AppIcon color={theme.colors.screenBase} name="user" size={34} />
+              </View>
+            </View>
+
+            <View style={styles.profileCopy}>
+              <Text selectable style={styles.profileName}>
+                {profileOverview.displayName ?? (language === "fi" ? "Opiskelijaprofiili" : "Student profile")}
+              </Text>
+              <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
+              <Text selectable style={styles.roleLine}>
+                {primaryTag?.title ?? (language === "fi" ? "Opiskelija" : "Student")}
+              </Text>
+            </View>
           </View>
-          <Text selectable style={styles.bodyText}>
-            {profileOverview.email}
-          </Text>
-          <Text selectable style={styles.metaText}>{createTagSummary(selectedTags.length, remainingTagSlots)}</Text>
-        </InfoCard>
+        </View>
       ) : null}
 
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Tags" title="Selected department tags">
-          {selectedTags.length === 0 ? (
-            <Text selectable style={styles.bodyText}>
-              No tags selected yet. Pick an official suggestion first or create a custom tag if your study label is still missing.
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {selectedTags.map((tag) => (
-                <ProfileTagCard
-                  key={tag.linkId}
-                  tag={tag}
-                  isBusy={isTagMutationPending}
-                  onSetPrimary={handleSetPrimaryTagPress}
-                  onRemove={handleRemoveTagPress}
-                />
-              ))}
-            </View>
-          )}
+      {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
-          {latestTagMutationError ? (
-            <Text selectable style={styles.errorText}>
-              {latestTagMutationError}
-            </Text>
-          ) : null}
-        </InfoCard>
-      ) : null}
-
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Suggestions" title="Suggested department tags">
-          <Text selectable style={styles.bodyText}>
-            Official tags are shown first so students can reuse the community’s canonical labels before creating a new one.
-          </Text>
-
-          {suggestedTags.length === 0 ? (
-            <Text selectable style={styles.metaText}>
-              {selectedTags.length >= 3
-                ? "All available slots are already in use."
-                : "No extra active suggestions are available right now."}
-            </Text>
-          ) : (
-            <View style={styles.stack}>
-              {suggestedTags.map((tag) => (
-                <View key={tag.id} style={styles.suggestionCard}>
-                  <View style={styles.suggestionHeader}>
-                    <View style={styles.suggestionCopy}>
-                      <Text selectable style={styles.suggestionTitle}>
-                        {tag.title}
-                      </Text>
-                      <Text selectable style={styles.metaText}>
-                        {createSuggestionMeta(tag)}
-                      </Text>
-                    </View>
-                    <StatusBadge label={tag.isOfficial ? "official" : "custom"} state={tag.isOfficial ? "loading" : "pending"} />
-                  </View>
-                  <Pressable
-                    disabled={isTagMutationPending || remainingTagSlots === 0}
-                    onPress={() => void handleAttachSuggestedTagPress(tag)}
-                    style={[
-                      styles.secondaryButton,
-                      isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
-                    ]}
-                  >
-                    <Text style={styles.secondaryButtonText}>
-                      {remainingTagSlots === 0 ? "Tag limit reached" : "Add tag"}
-                    </Text>
-                  </Pressable>
+      <InfoCard
+        eyebrow={language === "fi" ? "Asetukset" : "Preferences"}
+        title={language === "fi" ? "Profiilin asetukset" : "Profile settings"}
+      >
+        {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
+          <>
+            <View style={styles.preferenceSection}>
+              <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.tagsPreferenceRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="user" size={16} />
                 </View>
-              ))}
+                <View style={styles.preferenceHeaderCopy}>
+                  <Text selectable style={styles.preferenceTitle}>{copy.student.departmentTags}</Text>
+                  <Text numberOfLines={1} selectable style={styles.preferenceSummaryText}>
+                    {createTagSummary(language, selectedTags.length, remainingTagSlots)}
+                  </Text>
+                </View>
+                <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+              </Pressable>
             </View>
-          )}
-        </InfoCard>
-      ) : null}
 
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <InfoCard eyebrow="Custom" title="Create custom tag">
-          <Text selectable style={styles.bodyText}>
-            Use this only when the right label does not already exist above. Matching active tags are reused automatically when possible.
-          </Text>
-          <TextInput
-            autoCapitalize="words"
-            editable={!isTagMutationPending && remainingTagSlots > 0}
-            onChangeText={setCustomTitle}
-            placeholder="Example: Tieto- ja viestintatekniikka"
-            placeholderTextColor="#64748B"
-            style={styles.input}
-            value={customTitle}
-          />
+            <View style={styles.preferenceDivider} />
+          </>
+        ) : null}
+
+        <View style={styles.preferenceSection}>
+          <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceSelectRow}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="palette" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.theme}</Text>
+            </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>{selectedThemeLabel}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
+          <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceSelectRow}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="globe" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.language}</Text>
+            </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>{selectedLanguageLabel}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
+          <View style={styles.preferenceHeader}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="bell" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.notifications}</Text>
+              <Text selectable style={styles.metaText}>
+                {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
+              </Text>
+              {pushState !== null ? (
+                <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
+                  {pushState.detail}
+                </Text>
+              ) : null}
+            </View>
+          </View>
           <Pressable
-            disabled={isTagMutationPending || remainingTagSlots === 0 || customTitle.trim().length === 0}
-            onPress={() => void handleCreateCustomTagPress()}
-            style={[
-              styles.primaryButton,
-              isTagMutationPending || remainingTagSlots === 0 || customTitle.trim().length === 0 ? styles.disabledButton : null,
-            ]}
+            disabled={registerPushMutation.isPending}
+            onPress={handleRegisterPushPress}
+            style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
           >
             <Text style={styles.primaryButtonText}>
-              {remainingTagSlots === 0 ? "Tag limit reached" : "Create and add custom tag"}
+              {registerPushMutation.isPending
+                ? language === "fi"
+                  ? "Otetaan ilmoitukset käyttöön..."
+                  : "Enabling notifications..."
+                : language === "fi"
+                  ? "Ota ilmoitukset käyttöön"
+                  : "Enable notifications"}
             </Text>
           </Pressable>
-        </InfoCard>
-      ) : null}
+        </View>
 
-      <InfoCard eyebrow="Push" title="Notification readiness">
-        <Text selectable style={styles.bodyText}>
-          Enable notifications on a physical device to request permission, obtain the Expo push token, and register it with the backend for this signed-in student.
-        </Text>
-        <Text selectable style={styles.metaText}>
-          Expo Go is not enough for remote push testing on SDK 53 and later. Use a development build on a physical device for the full path.
-        </Text>
-        <Pressable
-          style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
-          onPress={handleRegisterPushPress}
-          disabled={registerPushMutation.isPending}
-        >
-          <Text style={styles.primaryButtonText}>
-            {registerPushMutation.isPending ? "Enabling notifications..." : "Enable notifications on this device"}
-          </Text>
-        </Pressable>
-      </InfoCard>
+        <View style={styles.preferenceDivider} />
 
-      {pushState ? (
-        <FoundationStatusCard
-          eyebrow="Result"
-          title="Last notification registration result"
-          items={[
-            {
-              label: "Device state",
-              value: pushState.detail,
-              state: mapPushResultState(pushState.state),
-            },
-            {
-              label: "Expo token",
-              value: pushState.expoPushToken ?? "No token produced in this run.",
-              state: pushState.expoPushToken ? "ready" : "pending",
-            },
-            {
-              label: "Backend registration",
-              value:
-                pushState.backendDeviceTokenId === null
-                  ? pushState.backendStatus ?? "Token was not registered with the backend in this run."
-                  : `Device token stored as ${pushState.backendDeviceTokenId}.`,
-              state: pushState.backendDeviceTokenId === null ? mapPushResultState(pushState.state) : "ready",
-            },
-          ]}
-        />
-      ) : null}
-
-      <FoundationStatusCard
-        eyebrow="Diagnostics"
-        title="Native push device smoke"
-        items={[
-          {
-            label: "Runtime path",
-            value: createPushRuntimeDetail(diagnostics.runtime, diagnostics.isPhysicalDevice),
-            state: mapPushRuntimeState(diagnostics.runtime, diagnostics.isPhysicalDevice),
-          },
-          {
-            label: "EAS project id",
-            value: diagnostics.projectId ?? "Project id is missing from the app config.",
-            state: diagnostics.projectId === null ? "error" : "ready",
-          },
-          {
-            label: "Last diagnostics refresh",
-            value: createDiagnosticsRefreshDetail(lastPushDiagnosticsRefreshAt),
-            state: lastPushDiagnosticsRefreshAt === null ? "pending" : "ready",
-          },
-          {
-            label: "Permission snapshot",
-            value: createPushPermissionDetail(diagnostics.permissionState),
-            state: mapPushPermissionState(diagnostics.permissionState),
-          },
-          {
-            label: "Last received notification",
-            value: createNotificationCaptureStatusDetail(
-              diagnostics.lastNotification,
-              "No notification has been captured in this app session yet."
-            ),
-            state: mapNotificationCaptureState(diagnostics.lastNotification),
-          },
-          {
-            label: "Last notification response",
-            value: createNotificationCaptureStatusDetail(
-              diagnostics.lastNotificationResponse,
-              "No notification open or action response has been captured yet."
-            ),
-            state: mapNotificationCaptureState(diagnostics.lastNotificationResponse),
-          },
-        ]}
-      />
-
-      <InfoCard eyebrow="Smoke" title="Manual device verification">
-        <Text selectable style={styles.bodyText}>
-          After installing a development build on a physical iPhone or Android device, use this profile route to confirm runtime mode, permission state, and the last remote push that reached or opened the app.
-        </Text>
-        <Text selectable style={styles.metaText}>
-          Local foreground reward notifications can still appear here, but only rows marked from a remote source prove APNs or FCM-backed delivery.
-        </Text>
-        <View style={styles.actionRow}>
-          <Pressable
-            disabled={isRefreshingPushDiagnostics}
-            onPress={() => void handleRefreshPushDiagnosticsPress()}
-            style={[styles.secondaryButton, isRefreshingPushDiagnostics ? styles.disabledButton : null]}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isRefreshingPushDiagnostics ? "Refreshing..." : "Refresh push diagnostics"}
-            </Text>
-          </Pressable>
-          {hasCapturedPushActivity ? (
-            <Pressable onPress={clearCapturedPushActivity} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
-            </Pressable>
-          ) : null}
+        <View style={styles.preferenceSection}>
+          <SignOutButton />
         </View>
       </InfoCard>
 
-      <InfoCard eyebrow="Account" title="Session actions">
-        <Text selectable style={styles.bodyText}>
-          Signing out should clear the local Supabase session and return the app to the Google login screen through the student route guard.
-        </Text>
-        <SignOutButton />
-      </InfoCard>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setPreferenceSheet(null)}
+        transparent
+        visible={preferenceSheet !== null}
+      >
+        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
+                <Text style={styles.modalTitle}>
+                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
+                </Text>
+              </View>
+              <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.preferenceOptionList}>
+              {preferenceSheet === "theme" ? (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      void setThemeMode("dark");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      void setThemeMode("light");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      void setLanguage("fi");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      void setLanguage("en");
+                      setPreferenceSheet(null);
+                    }}
+                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsTagModalVisible(false)}
+        transparent
+        visible={isTagModalVisible}
+      >
+        <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => {}} style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
+                <Text style={styles.modalTitle}>
+                  {language === "fi" ? "Hallitse tageja" : "Manage tags"}
+                </Text>
+              </View>
+              <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              {selectedTags.length > 0 ? (
+                <View style={styles.stack}>
+                  {selectedTags.map((tag) => (
+                    <ProfileTagCard
+                      key={tag.linkId}
+                      isBusy={isTagMutationPending}
+                      onRemove={handleRemoveTagPress}
+                      onSetPrimary={handleSetPrimaryTagPress}
+                      tag={tag}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Text selectable style={styles.bodyText}>
+                  {language === "fi" ? "Tagit näkyvät täällä, kun valitset ensimmäisen." : "Tags appear here after your first selection."}
+                </Text>
+              )}
+
+              {suggestedTags.length > 0 ? (
+                <View style={styles.suggestionGroup}>
+                  <Text style={styles.sectionLabel}>{language === "fi" ? "Ehdotukset" : "Suggestions"}</Text>
+                  <View style={styles.suggestionList}>
+                    {suggestedTags.map((tag) => (
+                      <Pressable
+                        key={tag.id}
+                        disabled={isTagMutationPending || remainingTagSlots === 0}
+                        onPress={() => void handleAttachSuggestedTagPress(tag)}
+                        style={[
+                          styles.suggestionChip,
+                          isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
+                        ]}
+                      >
+                        <Text style={styles.suggestionTitle}>{tag.title}</Text>
+                        <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {remainingTagSlots > 0 ? (
+                <View style={styles.createGroup}>
+                  <Text style={styles.sectionLabel}>{language === "fi" ? "Luo oma tagi" : "Create a custom tag"}</Text>
+                  <TextInput
+                    autoCapitalize="words"
+                    editable={!isTagMutationPending}
+                    onChangeText={setCustomTitle}
+                    placeholder={language === "fi" ? "Esim. Tieto- ja viestintätekniikka" : "Example: Information technology"}
+                    placeholderTextColor={theme.colors.textDim}
+                    style={styles.input}
+                    value={customTitle}
+                  />
+                  <Pressable
+                    disabled={isTagMutationPending || customTitle.trim().length === 0}
+                    onPress={() => void handleCreateCustomTagPress()}
+                    style={[
+                      styles.secondaryButton,
+                      isTagMutationPending || customTitle.trim().length === 0 ? styles.disabledButton : null,
+                    ]}
+                  >
+                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Luo tagi" : "Create tag"}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  actionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  bodyText: {
-    color: "#CBD5E1",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  errorText: {
-    color: "#FCA5A5",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  input: {
-    backgroundColor: "#0F172A",
-    borderColor: "#334155",
-    borderRadius: 8,
-    borderWidth: 1,
-    color: "#F8FAFC",
-    fontSize: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  metaText: {
-    color: "#94A3B8",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: "#1D4ED8",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  primaryButtonText: {
-    color: "#F8FAFC",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    borderColor: "#334155",
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  secondaryButtonText: {
-    color: "#F8FAFC",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  stack: {
-    gap: 12,
-  },
-  suggestionCard: {
-    backgroundColor: "#0F172A",
-    borderColor: "#1E293B",
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    padding: 14,
-  },
-  suggestionCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  suggestionHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  suggestionTitle: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-});
+const createStyles = (theme: MobileTheme) =>
+  StyleSheet.create({
+    accountEmail: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    avatarCore: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 72,
+      justifyContent: "center",
+      width: 72,
+    },
+    avatarShell: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 88,
+      justifyContent: "center",
+      width: 88,
+    },
+    bodyText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    createGroup: {
+      gap: 10,
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+    errorText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    input: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    metaText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    modalBackdrop: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    modalCloseButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderRadius: 999,
+      justifyContent: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    modalCloseText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    modalEyebrow: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    modalHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    modalHeaderCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    modalScrollContent: {
+      gap: 16,
+      paddingBottom: 20,
+    },
+    modalSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      gap: 16,
+      maxHeight: "82%",
+      paddingBottom: 28,
+      paddingHorizontal: 20,
+      paddingTop: 18,
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    preferenceDivider: {
+      backgroundColor: theme.colors.borderSubtle,
+      height: 1,
+    },
+    preferenceHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+    },
+    preferenceHeaderCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    preferenceModalCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 16,
+      marginHorizontal: 20,
+      padding: 18,
+    },
+    preferenceOption: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    preferenceOptionActive: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    preferenceOptionList: {
+      gap: 10,
+    },
+    preferenceOptionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    preferenceIconWrap: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 32,
+      justifyContent: "center",
+      width: 32,
+    },
+    preferenceSection: {
+      gap: 12,
+    },
+    preferenceSelectRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    preferenceSelectValue: {
+      alignItems: "center",
+      flexDirection: "row",
+      flex: 1,
+      gap: 8,
+      justifyContent: "flex-end",
+    },
+    preferenceSelectValueText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "right",
+    },
+    preferenceSummaryText: {
+      color: theme.colors.textMuted,
+      flexShrink: 1,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    preferenceTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    tagsPreferenceRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    primaryButtonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    profileCopy: {
+      flex: 1,
+      gap: 6,
+    },
+    profileHero: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 14,
+    },
+    profileName: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    profileStage: {
+      gap: 14,
+      paddingBottom: 4,
+    },
+    roleLine: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      letterSpacing: 0.8,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    screenHeader: {
+      gap: 6,
+      marginBottom: 4,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    sectionLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    secondaryButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    secondaryButtonRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+    },
+    stack: {
+      gap: 12,
+    },
+    suggestionChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      gap: 4,
+      padding: 14,
+      ...interactiveSurfaceShadowStyle,
+    },
+    suggestionGroup: {
+      gap: 10,
+    },
+    suggestionList: {
+      gap: 8,
+    },
+    suggestionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+  });

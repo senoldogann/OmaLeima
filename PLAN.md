@@ -4,39 +4,39 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 ## Current Plan
 
-- **Date:** 2026-04-29
-- **Branch:** `feature/store-readiness-hardening`
-- **Goal:** Remove the false-green paths from the mobile store/public-launch readiness gate.
+- **Date:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
+- **Goal:** Finish the redesign branch with a real review-and-merge pass instead of one more isolated UI tweak.
 
 ## Architectural Decisions
 
-- Extend the existing audit instead of adding a second store gate.
-- Check Expo-hosted env-name presence with `eas env:list`, but never print sensitive values.
-- Keep the audit read-only: do not mutate EAS config during the check.
-- Verify asset-file existence on disk in addition to config string anchors.
-- Fix the docs wording directly where the contradictory bullets currently live.
+- Prefer removing duplicate UI signals over adding new copy.
+- Treat mobile and admin validations as the hard merge gate.
+- Merge only after the branch is clean apart from the known ignored/untracked local IDE folder.
 
 ## Alternatives Considered
 
-- Leaving remote EAS envs as a manual checklist item:
-  - rejected because the gate was already claiming broader launch readiness and should prove the hosted env-name surface
-- Creating a separate EAS-only audit:
-  - rejected because one gate is easier to understand and less likely to drift
-- Checking sensitive env values directly:
-  - rejected because env-name presence is enough for this gate and keeps secrets out of logs
+- Keep the duplicate `READY` label in the reward metric:
+  - rejected because the hero already communicates claimable state
+- Merge without re-running admin validation:
+  - rejected because this branch touched both mobile and admin surfaces
 
 ## Edge Cases
 
-- `eas env:list` can fail when Expo CLI auth is missing; the audit should fail clearly.
-- Sensitive envs show masked values in CLI output; the parser must only require names.
-- The iOS icon path is a directory asset set, not a `.png`, so file existence must support both files and directories.
+- The reward card still needs to read clearly when a tier is claimable even after removing the duplicate label.
+- Branch-wide validation must ignore the known untracked `.idea/` folder and not try to clean it up.
 
 ## Validation Plan
 
-- Update the working docs.
-- Harden the store-release audit for remote EAS env names and asset existence.
-- Run `npm --prefix apps/mobile run lint`.
-- Run `npm --prefix apps/mobile run typecheck`.
-- Run `npm --prefix apps/mobile run export:web`.
-- Run the real `audit:store-release-readiness` and `qa:mobile-store-release-readiness`.
-- Update docs and handoff notes with the stronger proof surface.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this final review/merge slice.
+- Remove the duplicate reward-card `READY` label near `LEIMAT`.
+- Rerun:
+  - `npm --prefix apps/mobile run lint`
+  - `npm --prefix apps/mobile run typecheck`
+  - `npm --prefix apps/mobile run export:web`
+- Rerun:
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run build`
+- Check `git status --short` before merge.
+- Update `PROGRESS.md` with the exact outcome and next remaining gap.

@@ -101,6 +101,12 @@ npm run audit:store-release-readiness
 - This gate does not prove App Store Connect or Google Play Console state by itself.
 - Store listing metadata, screenshots, privacy/support URLs, and final submission credentials remain owner-owned work for the broader public launch phase.
 
+## Redesign runtime note
+
+- The redesigned business mobile surfaces now have a real signed-in local web proof path through business email/password auth.
+- Business home, events, and scanner have already been checked in runtime instead of only through static export.
+- Student redesign proof on local web is still intentionally left open because the deterministic local sign-in path is weaker there than on the physically validated iPhone flow.
+
 ## OAuth setup notes
 
 - Enable Google as an Auth provider in Supabase.

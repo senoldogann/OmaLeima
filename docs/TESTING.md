@@ -213,6 +213,23 @@ Expected success output today:
 
 If a future slice changes which screens own Realtime freshness or replaces invalidation with direct cache patching, this audit should be updated in the same change.
 
+## Mobile redesign runtime proof
+
+The current full mobile redesign has now cleared one real signed-in runtime proof path on local web:
+
+- business email/password sign-in
+- redesigned business home
+- redesigned business events
+- redesigned business scanner
+
+This proof was captured through the local Expo web runtime instead of relying on static export alone.
+
+What is still intentionally open:
+
+- local student Google-linked runtime proof on web
+
+That remaining gap is documented on purpose. Student-facing redesign work is already physically validated on iPhone for the real auth, QR, scanner, stamp, and reward-unlock flow, but the local web redesign proof should not claim a Google-linked path that is still awkward in Expo web or Expo Go.
+
 ## Android emulator fallback
 
 When no physical Android phone is available, use the Android emulator as a partial smoke path instead of blocking the whole roadmap.
