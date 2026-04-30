@@ -27,10 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Final Rewards/Profile Micro-Polish)
+## Current Todos (Leaderboard Event Context Pass)
 
-- [x] Re-audit the department-tag summary placement inside preferences.
-- [x] Keep the department-tag summary under the heading instead of in the trailing value slot.
-- [x] Tighten the reward-card number/unit spacing until the metric reads as one compact block.
+- [x] Re-audit the leaderboard event selector and hero for missing event context.
+- [x] Extend leaderboard event data with cover image and location fields.
+- [x] Rebuild the selected-event hero as a real event surface.
+- [x] Rework event chips so completed events show when they ended.
 - [x] Re-run mobile lint, typecheck, and export.
-- [x] Update `PROGRESS.md` with the micro-polish handoff note.
+- [x] Update `PROGRESS.md` with the leaderboard handoff note.

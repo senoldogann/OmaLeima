@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Leaderboard event context pass tamamlandi. `apps/mobile/src/features/leaderboard/types.ts` ve `student-leaderboard.ts` genisletildi; leaderboard event’leri artik `cover_image_url` ve `country` bilgisi de tasiyor. `apps/mobile/src/app/student/leaderboard.tsx` icinde secili etkinlik hero’su cover-backed bir event bandina donusturuldu; canli/done durumuna gore `starts/live until/ended` copy’si ve event gorseli artik ustte gorunuyor. `Choose event` rail’i de text-only chip olmaktan cikti; her kart artik etkinlik kapagi, durum badge’i ve gercek tarih/location metasi gosteriyor. Tamamlanan etkinlikler yalnizca `completed` demek yerine ne zaman bittigini de yaziyor.
+- **Neden yapıldı:** Kullanici leaderboard’da event gorsellerinin neden gorunmedigini ve ozellikle tamamlanmis etkinliklerde sadece `completed` yerine ne zaman oldugunun da gosterilmesinin daha mantikli olacagini belirtti. Ayrica genel olarak ogrenci tarafinda ayni bilgiyi tekrar tekrar gostermeden amaca uygun hale getirmemizi istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da `student/leaderboard` hizli gorsel smoke alinmali. Sonrasinda kalan buyuk polish alani admin/club web shell ve business operasyon ekranlarinin ayni i18n/theme kalitesine tasinmasi.
+- **Açık risk/blokaj:** Local validation temiz. Leaderboard hero ve selector kartlarinin runtime gorsel temposu fiziksel cihazda gorulmeli. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Final rewards/profile micro-polish tamamlandi. `apps/mobile/src/app/student/profile.tsx` icindeki department tags ozeti artik sagdaki dar value alanina sikismiyor; basligin altinda daha sakin bir ozet satiri olarak akiyor ve saga yalnizca yon oku kaliyor. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icindeki `Tapahtumapalkinnot` slider kartlarinda buyuk sayi ile `leimaa/leimat` etiketi bir kez daha birbirine yaklastirildi; gap daraltildi, sayinin minimum genisligi kaldirildi ve etiket blogu sayiya daha yakin oturtuldu.
 - **Neden yapıldı:** Kullanici hem department tags satirinin ayarlar kutusu icinde kotu gorundugunu hem de rewards kartlarindaki `0 LEIMAA` metriginde unit etiketinin hala fazla uzakta kaldigini acikca belirtti.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.

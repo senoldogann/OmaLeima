@@ -15,6 +15,8 @@ type RegistrationRow = {
 };
 
 type EventRow = {
+  cover_image_url: string | null;
+  country: string;
   id: string;
   name: string;
   city: string;
@@ -94,6 +96,8 @@ const compareRegisteredEvents = (
 };
 
 const mapRegisteredEvent = (event: EventRow, now: number): RegisteredLeaderboardEvent => ({
+  coverImageUrl: event.cover_image_url,
+  country: event.country,
   id: event.id,
   name: event.name,
   city: event.city,
@@ -154,7 +158,7 @@ const fetchVisibleLeaderboardEventsAsync = async (eventIds: string[]): Promise<E
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,city,start_at,end_at,status")
+    .select("id,name,city,country,cover_image_url,start_at,end_at,status")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
     .eq("visibility", "PUBLIC")

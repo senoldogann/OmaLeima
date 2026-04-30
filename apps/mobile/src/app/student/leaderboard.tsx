@@ -4,19 +4,19 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppScreen } from "@/components/app-screen";
-import { AppIcon } from "@/components/app-icon";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import {
   hydrateRegisteredLeaderboardEvents,
   selectDefaultLeaderboardEvent,
   useEventLeaderboardQuery,
   useStudentLeaderboardOverviewQuery,
 } from "@/features/leaderboard/student-leaderboard";
-import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useStudentEventLeaderboardRealtime } from "@/features/realtime/student-realtime";
 import { useSession } from "@/providers/session-provider";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
@@ -28,6 +28,13 @@ const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+  });
+
+const createDateFormatter = (localeTag: string): Intl.DateTimeFormat =>
+  new Intl.DateTimeFormat(localeTag, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
   });
 
 const getFreshnessBadge = (
@@ -88,14 +95,63 @@ const createLeaderboardHeroLabel = (
     : `${selectedEventName} top 10 is live now.`;
 };
 
+const createTimelineMetaLabel = (
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat,
+  selectedEvent: {
+    endAt: string;
+    startAt: string;
+    timelineState: "ACTIVE" | "UPCOMING" | "COMPLETED";
+  }
+): string => {
+  if (selectedEvent.timelineState === "ACTIVE") {
+    return language === "fi"
+      ? `Auki ${formatter.format(new Date(selectedEvent.endAt))} asti`
+      : `Live until ${formatter.format(new Date(selectedEvent.endAt))}`;
+  }
+
+  if (selectedEvent.timelineState === "UPCOMING") {
+    return language === "fi"
+      ? `Alkaa ${formatter.format(new Date(selectedEvent.startAt))}`
+      : `Starts ${formatter.format(new Date(selectedEvent.startAt))}`;
+  }
+
+  return language === "fi"
+    ? `Päättyi ${formatter.format(new Date(selectedEvent.endAt))}`
+    : `Ended ${formatter.format(new Date(selectedEvent.endAt))}`;
+};
+
+const createEventChipMeta = (
+  language: "fi" | "en",
+  dateFormatter: Intl.DateTimeFormat,
+  timeFormatter: Intl.DateTimeFormat,
+  event: {
+    city: string;
+    country: string;
+    endAt: string;
+    startAt: string;
+    timelineState: "ACTIVE" | "UPCOMING" | "COMPLETED";
+  }
+): string => {
+  const location = event.country.length > 0 ? `${event.city} · ${event.country}` : event.city;
+
+  if (event.timelineState === "COMPLETED") {
+    return language === "fi"
+      ? `${location} · päättyi ${dateFormatter.format(new Date(event.endAt))}`
+      : `${location} · ended ${dateFormatter.format(new Date(event.endAt))}`;
+  }
+
+  return `${location} · ${timeFormatter.format(new Date(event.startAt))}`;
+};
+
 export default function StudentLeaderboardScreen() {
   const isFocused = useIsFocused();
   const isAppActive = useActiveAppState();
   const { session } = useSession();
   const { copy, language, localeTag } = useUiPreferences();
-  const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const formatter = useMemo(() => createDateTimeFormatter(localeTag), [localeTag]);
+  const dateFormatter = useMemo(() => createDateFormatter(localeTag), [localeTag]);
   const now = useCurrentTime(isFocused && isAppActive);
   const studentId = session?.user.id ?? null;
   const overviewQuery = useStudentLeaderboardOverviewQuery({
@@ -144,6 +200,11 @@ export default function StudentLeaderboardScreen() {
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const freshness = getFreshnessBadge(leaderboardRefreshedAt, language);
   const heroLabel = createLeaderboardHeroLabel(selectedEvent?.name ?? null, top10.length, currentUser?.rank ?? null, language);
+  const selectedEventCover = selectedEvent
+    ? getEventCoverSource(selectedEvent.coverImageUrl, `${selectedEvent.id}:${selectedEvent.name}`)
+    : null;
+  const selectedEventTimelineLabel =
+    selectedEvent === null ? null : createTimelineMetaLabel(language, formatter, selectedEvent);
 
   const overviewState = overviewQuery.error
     ? "error"
@@ -211,41 +272,47 @@ export default function StudentLeaderboardScreen() {
 
       {events.length > 0 ? (
         <>
-          <View style={styles.heroBand}>
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroEyebrow}>{copy.student.liveStandings}</Text>
-              <Text style={styles.heroTitle}>{selectedEvent?.name ?? copy.common.leaderboard}</Text>
-              <Text style={styles.heroMeta}>{heroLabel}</Text>
-            </View>
+          {selectedEventCover ? (
+            <CoverImageSurface imageStyle={styles.heroImage} source={selectedEventCover} style={styles.heroBand}>
+              <View style={styles.heroOverlay} />
+              <View style={styles.heroContent}>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroEyebrow}>{copy.student.liveStandings}</Text>
+                  <Text style={styles.heroTitle}>{selectedEvent?.name ?? copy.common.leaderboard}</Text>
+                  <Text style={styles.heroMeta}>{heroLabel}</Text>
+                  {selectedEventTimelineLabel ? <Text style={styles.heroTimeline}>{selectedEventTimelineLabel}</Text> : null}
+                </View>
 
-            <View style={styles.badges}>
-              {selectedEvent ? (
-                <StatusBadge
-                  label={
-                    selectedEvent.timelineState === "ACTIVE"
-                      ? language === "fi"
-                        ? "käynnissä"
-                        : "active"
-                      : selectedEvent.timelineState === "UPCOMING"
-                        ? language === "fi"
-                          ? "tulossa"
-                          : "upcoming"
-                        : language === "fi"
-                          ? "päättynyt"
-                          : "completed"
-                  }
-                  state={
-                    selectedEvent.timelineState === "ACTIVE"
-                      ? "ready"
-                      : selectedEvent.timelineState === "UPCOMING"
-                        ? "pending"
-                        : "warning"
-                  }
-                />
-              ) : null}
-              <StatusBadge label={freshness.label} state={freshness.state} />
-            </View>
-          </View>
+                <View style={styles.badges}>
+                  {selectedEvent ? (
+                    <StatusBadge
+                      label={
+                        selectedEvent.timelineState === "ACTIVE"
+                          ? language === "fi"
+                            ? "käynnissä"
+                            : "active"
+                          : selectedEvent.timelineState === "UPCOMING"
+                            ? language === "fi"
+                              ? "tulossa"
+                              : "upcoming"
+                            : language === "fi"
+                              ? "päättynyt"
+                              : "completed"
+                      }
+                      state={
+                        selectedEvent.timelineState === "ACTIVE"
+                          ? "ready"
+                          : selectedEvent.timelineState === "UPCOMING"
+                            ? "pending"
+                            : "warning"
+                      }
+                    />
+                  ) : null}
+                  <StatusBadge label={freshness.label} state={freshness.state} />
+                </View>
+              </View>
+            </CoverImageSurface>
+          ) : null}
 
           <View style={styles.eventSelectorSection}>
             <View style={styles.eventSelectorHeader}>
@@ -271,23 +338,43 @@ export default function StudentLeaderboardScreen() {
                     selectedEvent?.id === event.id ? styles.selectedEventChip : null,
                   ]}
                 >
-                  <Text style={styles.eventChipTitle}>{event.name}</Text>
-                  <View style={styles.eventChipRow}>
-                    <Text style={styles.eventChipMeta}>
-                      {event.timelineState === "ACTIVE"
-                        ? language === "fi"
-                          ? "käynnissä"
-                          : "active"
-                        : event.timelineState === "UPCOMING"
-                          ? language === "fi"
-                            ? "tulossa"
-                            : "upcoming"
-                          : language === "fi"
-                            ? "päättynyt"
-                            : "completed"}
-                    </Text>
-                    <AppIcon color={theme.colors.textMuted} name="chevron-right" size={14} />
-                  </View>
+                  <CoverImageSurface
+                    imageStyle={styles.eventChipImage}
+                    source={getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`)}
+                    style={styles.eventChipVisual}
+                  >
+                    <View style={styles.eventChipOverlay} />
+                    <View style={styles.eventChipContent}>
+                      <StatusBadge
+                        label={
+                          event.timelineState === "ACTIVE"
+                            ? language === "fi"
+                              ? "käynnissä"
+                              : "active"
+                            : event.timelineState === "UPCOMING"
+                              ? language === "fi"
+                                ? "tulossa"
+                                : "upcoming"
+                              : language === "fi"
+                                ? "päättynyt"
+                                : "completed"
+                        }
+                        state={
+                          event.timelineState === "ACTIVE"
+                            ? "ready"
+                            : event.timelineState === "UPCOMING"
+                              ? "pending"
+                              : "warning"
+                        }
+                      />
+                      <View style={styles.eventChipFooter}>
+                        <Text numberOfLines={2} style={styles.eventChipTitle}>{event.name}</Text>
+                        <Text style={styles.eventChipMeta}>
+                          {createEventChipMeta(language, dateFormatter, formatter, event)}
+                        </Text>
+                      </View>
+                    </View>
+                  </CoverImageSurface>
                 </Pressable>
               ))}
             </ScrollView>
@@ -404,30 +491,43 @@ const createStyles = (theme: MobileTheme) =>
       gap: 10,
     },
     eventChip: {
-      backgroundColor: theme.colors.surfaceL2,
+      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.card,
       borderWidth: 1,
-      gap: 8,
-      minWidth: 180,
+      minWidth: 228,
+      overflow: "hidden",
+    },
+    eventChipContent: {
+      flex: 1,
+      justifyContent: "space-between",
       padding: 14,
     },
+    eventChipFooter: {
+      gap: 4,
+    },
+    eventChipImage: {
+      borderRadius: theme.radius.card,
+    },
     eventChipMeta: {
-      color: theme.colors.textMuted,
+      color: "#E6ECE0",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
     },
-    eventChipRow: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 6,
+    eventChipOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(3, 7, 4, 0.52)" : "rgba(4, 8, 5, 0.46)",
     },
     eventChipTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    eventChipVisual: {
+      minHeight: 164,
+      position: "relative",
     },
     eventSelector: {
       gap: 10,
@@ -446,16 +546,18 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
     },
     heroBand: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.scene,
-      borderWidth: 1,
-      gap: 14,
-      padding: 18,
-      ...interactiveSurfaceShadowStyle,
+      minHeight: 220,
+      overflow: "hidden",
+      position: "relative",
     },
     heroCopy: {
       gap: 6,
+    },
+    heroContent: {
+      flex: 1,
+      justifyContent: "space-between",
+      padding: 20,
     },
     heroEyebrow: {
       color: theme.colors.lime,
@@ -466,13 +568,26 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     heroMeta: {
-      color: theme.colors.textSecondary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    heroImage: {
+      borderRadius: theme.radius.scene,
+    },
+    heroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(2, 7, 4, 0.6)" : "rgba(5, 9, 5, 0.56)",
+    },
+    heroTimeline: {
+      color: "#D6E1D2",
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     heroTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
@@ -573,7 +688,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     selectedEventChip: {
       borderColor: theme.colors.limeBorder,
-      backgroundColor: theme.colors.limeSurface,
+      transform: [{ translateY: -1 }],
     },
     standingsBlock: {
       gap: 10,
