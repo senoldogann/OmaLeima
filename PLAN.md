@@ -6,36 +6,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Remove repeated copy and repeated variables across the student surfaces so the UI says less but says it more clearly.
+- **Goal:** Make the profile settings feel like one coherent control surface and tighten the last visible reward-card spacing issue.
 
 ## Architectural Decisions
 
-- Treat event cards as quick-scan surfaces: one strong image, one title, and one compact metadata stack.
-- Prefer combining location context into one line instead of repeating city in multiple regions.
-- Let page-level hero sections carry section identity, and avoid repeating the same label again directly below.
-- Keep this slice presentation-only so behavior, routing, and backend assumptions stay untouched.
+- Treat department tags as a preference item, not as a separate page block.
+- Use outside-tap dismissal on both lightweight preference sheets and the tag-management modal.
+- Remove headings when the action control itself is already self-explanatory.
+- Keep the reward metric visually stacked as one compact unit.
 
 ## Alternatives Considered
 
-- Keep the description preview in every event card:
-  - rejected because it duplicates the detail page and makes the event list too tall
-- Keep the city both as eyebrow and metadata:
-  - rejected because the user already called out that duplication directly
-- Leave rewards and QR section labels as-is:
-  - rejected because they repeat information the hero already communicates visually
+- Leave tags outside the settings card:
+  - rejected because profile management still feels split across separate blocks
+- Keep modal dismissal only on the done button:
+  - rejected because it is slower and feels unfinished for lightweight selectors
+- Keep the sign-out label above the button:
+  - rejected because the button text already says exactly what the action does
 
 ## Edge Cases
 
-- Event cards still need enough information to decide whether to open the detail page.
-- Removing copy from rewards and QR must not hide functional state like claimability or event timing.
-- The compacted copy should still read naturally in both Finnish and English.
+- Tapping inside the modal content must not close the modal accidentally.
+- The profile settings card must still read clearly even when tags are long and the summary wraps.
+- Tightening the reward metric spacing must not cause clipping in light or dark mode.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this text-density cleanup slice.
-- Remove duplicate city/description treatment from event cards.
-- Tighten the event facts into a smaller, clearer order.
-- Remove redundant section labels where the surrounding layout already carries the meaning.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this settings/spacing polish slice.
+- Make preference sheets and tag modal dismiss on outside tap.
+- Move department tags into the settings card.
+- Remove the extra sign-out heading.
+- Tighten the reward-card number/unit spacing.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`

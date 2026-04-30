@@ -254,30 +254,35 @@ export default function StudentProfileScreen() {
         </View>
       ) : null}
 
-      {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
-        <View style={styles.tagsEntrySection}>
-          <View style={styles.tagsEntryCopy}>
-            <Text selectable style={styles.tagsEntryTitle}>{copy.student.departmentTags}</Text>
-            <Text selectable style={styles.metaText}>
-              {createTagSummary(language, selectedTags.length, remainingTagSlots)}
-            </Text>
-          </View>
-
-          <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.secondaryButton}>
-            <View style={styles.secondaryButtonRow}>
-              <Text style={styles.secondaryButtonText}>{copy.common.manage}</Text>
-              <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
-            </View>
-          </Pressable>
-        </View>
-      ) : null}
-
       {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
       <InfoCard
         eyebrow={language === "fi" ? "Asetukset" : "Preferences"}
         title={language === "fi" ? "Profiilin asetukset" : "Profile settings"}
       >
+        {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
+          <>
+            <View style={styles.preferenceSection}>
+              <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.preferenceSelectRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="user" size={16} />
+                </View>
+                <View style={styles.preferenceHeaderCopy}>
+                  <Text selectable style={styles.preferenceTitle}>{copy.student.departmentTags}</Text>
+                </View>
+                <View style={styles.preferenceSelectValue}>
+                  <Text numberOfLines={1} selectable style={styles.preferenceSelectValueText}>
+                    {createTagSummary(language, selectedTags.length, remainingTagSlots)}
+                  </Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+            </View>
+
+            <View style={styles.preferenceDivider} />
+          </>
+        ) : null}
+
         <View style={styles.preferenceSection}>
           <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceSelectRow}>
             <View style={styles.preferenceIconWrap}>
@@ -349,14 +354,6 @@ export default function StudentProfileScreen() {
         <View style={styles.preferenceDivider} />
 
         <View style={styles.preferenceSection}>
-          <View style={styles.preferenceHeader}>
-            <View style={styles.preferenceIconWrap}>
-              <AppIcon color={theme.colors.lime} name="logout" size={16} />
-            </View>
-            <View style={styles.preferenceHeaderCopy}>
-              <Text selectable style={styles.preferenceTitle}>{copy.common.signOut}</Text>
-            </View>
-          </View>
           <SignOutButton />
         </View>
       </InfoCard>
@@ -367,8 +364,8 @@ export default function StudentProfileScreen() {
         transparent
         visible={preferenceSheet !== null}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.preferenceModalCard}>
+        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
@@ -426,8 +423,8 @@ export default function StudentProfileScreen() {
                 </>
               )}
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <Modal
@@ -436,8 +433,8 @@ export default function StudentProfileScreen() {
         transparent
         visible={isTagModalVisible}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
+        <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => {}} style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
@@ -516,8 +513,8 @@ export default function StudentProfileScreen() {
                 </View>
               ) : null}
             </ScrollView>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </AppScreen>
   );
@@ -637,26 +634,6 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
     },
-    preferenceChip: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: 1,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-    },
-    preferenceChipActive: {
-      backgroundColor: theme.colors.lime,
-      borderColor: theme.colors.limeBorder,
-    },
-    preferenceChipText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.bodySmall,
-    },
-    preferenceChipTextActive: {
-      color: theme.colors.screenBase,
-    },
     preferenceDivider: {
       backgroundColor: theme.colors.borderSubtle,
       height: 1,
@@ -721,13 +698,16 @@ const createStyles = (theme: MobileTheme) =>
     preferenceSelectValue: {
       alignItems: "center",
       flexDirection: "row",
+      flex: 1,
       gap: 8,
+      justifyContent: "flex-end",
     },
     preferenceSelectValueText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "right",
     },
     preferenceTitle: {
       color: theme.colors.textPrimary,
@@ -833,21 +813,5 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
-    },
-    tagsEntryCopy: {
-      flex: 1,
-      gap: 4,
-    },
-    tagsEntrySection: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 14,
-      justifyContent: "space-between",
-    },
-    tagsEntryTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
     },
   });

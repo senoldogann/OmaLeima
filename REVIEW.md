@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Scope:** Reduce repeated copy across student surfaces, especially event discovery cards, while keeping the important event information easier to scan.
+- **Scope:** Tighten profile settings behavior and spacing: dismiss preference sheets on outside tap, move department tags inside preferences, remove the extra sign-out heading, and pull the `LEIMAT` label closer to the stamp number.
 
 ## Affected Files
 
@@ -14,34 +14,33 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/events/components/event-card.tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/app/student/active-event.tsx`
+- `apps/mobile/src/app/student/profile.tsx`
+- `apps/mobile/src/features/rewards/components/reward-progress-card.tsx`
 
 ## Risks
 
-- Event cards repeated city and descriptive context in too many places, which made the list feel noisy.
-- Rewards still repeated the same section language in both the page header and hero card.
-- Upcoming QR state reused the city again even though the hero above already carried the event context.
+- The new preference sheets stayed open unless the user hit the done button, which felt clumsy.
+- Department tags still lived outside the main settings surface, so the profile page felt split into two management zones.
+- The reward-card metric still had slightly too much air between the number and the unit label.
 
 ## Dependencies
 
-- Existing student event discovery hero and event-card visual language
-- Existing reward-page hero already communicates the reward context on its own
-- Existing active-event hero already carries the city and event identity
+- Existing profile settings card and tag-management modal
+- Existing reward-card metric layout inside `RewardProgressCard`
+- Existing modal/backdrop styling already used across profile surfaces
 
 ## Existing Logic Checked
 
-- Event discovery already had the right data, but the card content duplicated location and context across eyebrow, image copy, body text, and metadata.
-- Rewards and QR pages already had strong hero surfaces, so the next cleanup could safely remove redundant section labels without losing clarity.
-- The request is presentation-only; no query, mutation, or routing logic needs to change.
+- Profile already had modal-based patterns, so outside-tap dismiss can reuse the same backdrop instead of adding a new navigation state.
+- Department tags already have a dedicated management flow, so the right move is relocation into preferences rather than inventing another tag screen.
+- The sign-out button already communicates its purpose clearly, so the extra heading can go without harming discoverability.
 
 ## Review Outcome
 
 Do a focused UI polish pass:
 
-- simplify event cards by removing duplicated location and descriptive copy
-- keep the key facts in a smaller, more scannable order
-- remove redundant section labels where the surrounding hero already says the same thing
-- rerun mobile validation and record the slice honestly
+- make preference sheets and tag modal dismiss when the user taps outside
+- move department tags into the preferences card
+- remove the extra sign-out heading
+- tighten the reward-card number/unit spacing
 - rerun mobile validation and record the slice honestly

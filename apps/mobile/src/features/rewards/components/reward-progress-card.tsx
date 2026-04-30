@@ -353,7 +353,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 8,
     },
     stampMeta: {
-      gap: 3,
+      gap: 1,
       justifyContent: "center",
       marginBottom: 2,
     },
@@ -368,7 +368,7 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
+      lineHeight: 14,
       textTransform: "uppercase",
     },
     summaryText: {

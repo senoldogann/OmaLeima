@@ -27,11 +27,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Text Density Cleanup)
+## Current Todos (Settings Polish)
 
 - [x] Re-audit the remaining light-mode glare/contrast issues.
-- [x] Simplify the event cards and remove repeated city/description treatment.
-- [x] Reduce repeated section labels on rewards and QR where the hero already carries context.
-- [x] Keep only the key event facts in a smaller, clearer order.
+- [x] Make preference sheets and tag modal dismiss on outside tap.
+- [x] Move department tags into the settings card.
+- [x] Remove the extra sign-out heading.
+- [x] Tighten the reward-card number/unit spacing.
 - [x] Re-run mobile lint, typecheck, and export.
 - [x] Update `PROGRESS.md` with the polish handoff note.
