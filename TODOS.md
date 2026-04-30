@@ -4,43 +4,28 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Completed Todos (Previous Waves)
 
-- [x] Create `feature/full-ui-redesign-foundation` branch.
-- [x] Update `REVIEW.md` for the redesign foundation slice.
-- [x] Update `PLAN.md` for the same slice.
-- [x] Redesign the shared mobile theme and foundation components.
-- [x] Apply the new visual language to the key student surfaces.
-- [x] Run static mobile validation for the redesign slice.
-- [x] Update `PROGRESS.md` with the redesign handoff note and next visual wave.
-- [x] Update the working docs for the second redesign wave.
-- [x] Restyle student event detail, rewards, and profile around the new foundation.
-- [x] Restyle business home, events, and scanner around the same foundation.
-- [x] Run static mobile validation for the second redesign wave.
-- [x] Update `PROGRESS.md` with the second-wave redesign handoff note and next visual wave.
-- [x] Update the working docs for the runtime-proof slice.
-- [x] Run signed-in runtime visual smoke for redesigned business surfaces on local web.
-- [x] Fix any runtime-only layout or interaction regression found during the smoke.
-- [x] Narrow the remaining student runtime proof gap honestly in docs and handoff.
-- [x] Update `PROGRESS.md` with the runtime-proof handoff note and next visual wave.
-- [x] Update the working docs for the design-handoff slice.
-- [x] Create a repo-owned redesign handoff document with references and file inventory.
-- [x] Group redesign files by mobile foundation, student routes, business routes, and admin web routes.
-- [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
-- [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
+- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, and redesign foundation slices recorded in `PROGRESS.md`.
+- [x] Add business profile metadata fields and manager-only business profile edits.
+- [x] Add business support, profile preferences, scanner venue context, and admin password session hardening.
 
-## Current Todos (Business/Admin Polish)
+## Current Todos (Business Media Upload + Appro Research)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the expanded business/admin polish scope.
-- [x] Add business profile metadata columns and manager-only RLS.
-- [x] Push the business profile migration to hosted Supabase.
-- [x] Expose business logo, cover, Y-tunnus, contact person, opening hours, and announcements in the mobile business overview query.
-- [x] Add a typed business profile update mutation.
-- [x] Make support sheet subject/message focus stay above the keyboard.
-- [x] Fix admin web password login and anonymous proxy session handling.
-- [x] Persist admin password sessions through a server route before redirecting.
-- [x] Simplify business home, remove the email card, and replace the home sign-out button with a small icon action.
-- [x] Add back actions to business profile, scanner, events, and history surfaces.
-- [x] Center student theme/language modals.
-- [x] Rebuild business profile with editable company details, media URLs, support, preferences, and sign-out.
-- [x] Show dynamic business cover/logo/announcement/address/phone/opening-hours context in scanner.
-- [x] Rerun full mobile/admin validation gates.
-- [x] Update `PROGRESS.md` with the expanded business/admin polish handoff.
+- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the storage-backed media slice.
+- [x] Research Supabase Storage RLS and Expo ImagePicker official behavior.
+- [x] Research Finnish appro/leima examples and capture product implications.
+- [x] Add a manager-owned `business-media` Storage bucket migration.
+- [x] Push the Storage migration to hosted Supabase.
+- [x] Install `expo-image-picker` in the mobile project.
+- [x] Add native image picker permission config.
+- [x] Add typed business media picker/upload helper.
+- [x] Replace business logo/cover URL inputs with gallery upload actions.
+- [x] Run final mobile lint and web export validation.
+- [x] Update `PROGRESS.md` with final verification and next-step handoff.
+- [x] Stage, commit, and push `feature/business-media-upload`.
+
+## Next Product Backlog Candidates
+
+- [ ] Add an event-rule model for configurable degree tiers and per-venue stamp limits.
+- [ ] Add venue offer/opening-hours/checkpoint-task fields for appro event detail.
+- [ ] Add reward claim desk/operator flow for haalarimerkki and limited inventory handoff.
+- [ ] Add map/order support for official suorituspaikat and flexible checkpoint routes.

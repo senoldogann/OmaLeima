@@ -8,6 +8,11 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import {
+  type BusinessMediaKind,
+  pickBusinessMediaAsync,
+  uploadBusinessMediaAsync,
+} from "@/features/business/business-media";
+import {
   canManageBusinessProfile,
   createBusinessProfileDraft,
   useUpdateBusinessProfileMutation,
@@ -31,8 +36,6 @@ type BusinessProfileDraftField = keyof Pick<
   | "city"
   | "websiteUrl"
   | "instagramUrl"
-  | "logoUrl"
-  | "coverImageUrl"
   | "yTunnus"
   | "contactPersonName"
   | "openingHours"
@@ -113,18 +116,6 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
         : "Short event-day message for staff.",
   },
   {
-    field: "coverImageUrl",
-    label: language === "fi" ? "Kansikuva URL" : "Cover photo URL",
-    multiline: false,
-    placeholder: "https://...",
-  },
-  {
-    field: "logoUrl",
-    label: language === "fi" ? "Logo URL" : "Logo URL",
-    multiline: false,
-    placeholder: "https://...",
-  },
-  {
     field: "websiteUrl",
     label: language === "fi" ? "Verkkosivu" : "Website",
     multiline: false,
@@ -148,6 +139,8 @@ export default function BusinessProfileScreen() {
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BusinessProfileDraft | null>(null);
+  const [uploadingMediaKind, setUploadingMediaKind] = useState<BusinessMediaKind | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const updateBusinessProfileMutation = useUpdateBusinessProfileMutation();
 
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
@@ -214,6 +207,41 @@ export default function BusinessProfileScreen() {
     await updateBusinessProfileMutation.mutateAsync(draft);
   };
 
+  const handleMediaPress = async (kind: BusinessMediaKind): Promise<void> => {
+    if (draft === null || !canEditSelectedMembership || uploadingMediaKind !== null) {
+      return;
+    }
+
+    setUploadingMediaKind(kind);
+    setMediaError(null);
+
+    try {
+      const asset = await pickBusinessMediaAsync({ kind });
+
+      if (asset === null) {
+        setUploadingMediaKind(null);
+        return;
+      }
+
+      const uploadedMedia = await uploadBusinessMediaAsync({
+        asset,
+        businessId: draft.businessId,
+        kind,
+      });
+      const nextDraft: BusinessProfileDraft =
+        kind === "cover"
+          ? { ...draft, coverImageUrl: uploadedMedia.publicUrl }
+          : { ...draft, logoUrl: uploadedMedia.publicUrl };
+
+      setDraft(nextDraft);
+      await updateBusinessProfileMutation.mutateAsync(nextDraft);
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Unknown business media upload error.");
+    } finally {
+      setUploadingMediaKind(null);
+    }
+  };
+
   return (
     <AppScreen>
       <View style={styles.topBar}>
@@ -269,6 +297,42 @@ export default function BusinessProfileScreen() {
               </View>
             </View>
           </CoverImageSurface>
+
+          {canEditSelectedMembership ? (
+            <View style={styles.mediaActionRow}>
+              <Pressable
+                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                onPress={() => void handleMediaPress("cover")}
+                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
+              >
+                <Text style={styles.mediaButtonText}>
+                  {uploadingMediaKind === "cover"
+                    ? language === "fi"
+                      ? "Ladataan..."
+                      : "Uploading..."
+                    : language === "fi"
+                      ? "Vaihda kansikuva"
+                      : "Change cover"}
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                onPress={() => void handleMediaPress("logo")}
+                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
+              >
+                <Text style={styles.mediaButtonText}>
+                  {uploadingMediaKind === "logo"
+                    ? language === "fi"
+                      ? "Ladataan..."
+                      : "Uploading..."
+                    : language === "fi"
+                      ? "Vaihda logo"
+                      : "Change logo"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {mediaError ? <Text style={styles.errorText}>{mediaError}</Text> : null}
 
           {memberships.length > 1 ? (
             <View style={styles.businessSwitchRow}>
@@ -607,6 +671,29 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    mediaActionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    mediaButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flex: 1,
+      justifyContent: "center",
+      minHeight: 44,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    mediaButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
     },
     modalBackdrop: {
       backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
