@@ -194,11 +194,6 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
         <Text style={styles.stampNumber}>{event.stampCount}</Text>
         <View style={styles.stampMeta}>
           <Text style={styles.stampUnit}>{language === "fi" ? "leimaa" : "leimat"}</Text>
-          {hasClaimable ? (
-            <View style={styles.claimableBadge}>
-              <Text style={styles.claimableBadgeText}>{language === "fi" ? "VALMIS" : "READY"}</Text>
-            </View>
-          ) : null}
         </View>
       </View>
 
@@ -254,21 +249,6 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
-    },
-    claimableBadge: {
-      alignSelf: "flex-start",
-      backgroundColor: theme.colors.limeSurface,
-      borderColor: theme.colors.limeBorder,
-      borderRadius: 999,
-      borderWidth: 1,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    claimableBadgeText: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      lineHeight: theme.typography.lineHeights.eyebrow,
     },
     ghostButton: {
       alignSelf: "flex-start",

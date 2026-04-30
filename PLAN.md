@@ -6,35 +6,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
-- **Goal:** Make leaderboard feel like part of the event product, not a detached ranking utility, while keeping the student surfaces concise.
+- **Goal:** Finish the redesign branch with a real review-and-merge pass instead of one more isolated UI tweak.
 
 ## Architectural Decisions
 
-- Reuse the same cover-image language already used in events and rewards.
-- Extend leaderboard event data instead of hardcoding fallback card copy in the screen.
-- Show one strong event context surface in the hero and compact context in the selector cards, rather than repeating full details everywhere.
+- Prefer removing duplicate UI signals over adding new copy.
+- Treat mobile and admin validations as the hard merge gate.
+- Merge only after the branch is clean apart from the known ignored/untracked local IDE folder.
 
 ## Alternatives Considered
 
-- Keep leaderboard as text-only chips:
-  - rejected because users cannot visually parse events fast enough
-- Show long descriptions in leaderboard cards:
-  - rejected because it would overload a screen whose job is ranking and event selection
+- Keep the duplicate `READY` label in the reward metric:
+  - rejected because the hero already communicates claimable state
+- Merge without re-running admin validation:
+  - rejected because this branch touched both mobile and admin surfaces
 
 ## Edge Cases
 
-- Events with no remote image must still get a deterministic cover.
-- Completed events must show a useful ended date instead of a vague status-only label.
-- Added event context must not make leaderboard noisier than the main events list.
+- The reward card still needs to read clearly when a tier is claimable even after removing the duplicate label.
+- Branch-wide validation must ignore the known untracked `.idea/` folder and not try to clean it up.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this leaderboard/context slice.
-- Extend leaderboard event data with image/location fields.
-- Rebuild the leaderboard hero and event selector with real event context.
-- Replace vague completed copy with dated event context.
+- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this final review/merge slice.
+- Remove the duplicate reward-card `READY` label near `LEIMAT`.
 - Rerun:
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run export:web`
+- Rerun:
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run build`
+- Check `git status --short` before merge.
 - Update `PROGRESS.md` with the exact outcome and next remaining gap.

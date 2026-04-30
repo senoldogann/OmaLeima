@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Final review-and-merge pass tamamlandi. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icindeki duplicate `READY` etiketi metrik blogundan kaldirildi; claimable durum zaten hero bandinda gorundugu icin `LEIMAA/LEIMAT` yanindaki gorsel gurultu temizlendi. Branch tumu yeniden tarandi, working docs merge hazir hale getirildi ve mobile/admin validation gate’leri yeniden kosuldu.
+- **Neden yapıldı:** Kullanici hem branch’in bastan sona derinlemesine code-review’dan gecmesini hem de kalan son UI pürüzlerinin temizlenmesini istedi. Ozellikle rewards kartlarindaki `READY` yerlesimi kotu duruyordu ve merge oncesi tum ana validation’larin yeniden kosulmasi gerekiyordu.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run build` gecti.
+- **Sıradaki önerilen adım:** Bu branch artik `main`e merge edilmeye hazir. Merge sonrasi kullanicidan fiziksel iPhone uzerinde son gorsel smoke istenebilir; son buyuk polish alani admin/club web shell ve public launch oncesi owner-side rollout isleri.
+- **Açık risk/blokaj:** Kod tarafinda merge blocker gormuyorum. Runtime gorsel teyit fiziksel cihazda son kez alinabilir. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Leaderboard event context pass tamamlandi. `apps/mobile/src/features/leaderboard/types.ts` ve `student-leaderboard.ts` genisletildi; leaderboard event’leri artik `cover_image_url` ve `country` bilgisi de tasiyor. `apps/mobile/src/app/student/leaderboard.tsx` icinde secili etkinlik hero’su cover-backed bir event bandina donusturuldu; canli/done durumuna gore `starts/live until/ended` copy’si ve event gorseli artik ustte gorunuyor. `Choose event` rail’i de text-only chip olmaktan cikti; her kart artik etkinlik kapagi, durum badge’i ve gercek tarih/location metasi gosteriyor. Tamamlanan etkinlikler yalnizca `completed` demek yerine ne zaman bittigini de yaziyor.
 - **Neden yapıldı:** Kullanici leaderboard’da event gorsellerinin neden gorunmedigini ve ozellikle tamamlanmis etkinliklerde sadece `completed` yerine ne zaman oldugunun da gosterilmesinin daha mantikli olacagini belirtti. Ayrica genel olarak ogrenci tarafinda ayni bilgiyi tekrar tekrar gostermeden amaca uygun hale getirmemizi istedi.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.

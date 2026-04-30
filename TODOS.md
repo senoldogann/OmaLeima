@@ -27,11 +27,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Leaderboard Event Context Pass)
+## Current Todos (Final Review and Merge Pass)
 
-- [x] Re-audit the leaderboard event selector and hero for missing event context.
-- [x] Extend leaderboard event data with cover image and location fields.
-- [x] Rebuild the selected-event hero as a real event surface.
-- [x] Rework event chips so completed events show when they ended.
+- [x] Re-audit the branch for remaining product/UI regressions before merge.
+- [x] Remove the duplicate `READY` label from reward cards.
 - [x] Re-run mobile lint, typecheck, and export.
-- [x] Update `PROGRESS.md` with the leaderboard handoff note.
+- [x] Re-run admin lint, typecheck, and build.
+- [x] Verify merge readiness and update `PROGRESS.md`.
