@@ -27,16 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Final Audit and Support Hardening)
+## Current Todos (Deep Project Review)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/final-project-audit`.
-- [x] Fix the in-progress student profile diagnostics typecheck issue.
-- [x] Realign the native push readiness audit and its docs with the current dev-only modal surface.
-- [x] Add secure `support_requests` backend storage with correct RLS for student and business users.
-- [x] Add a shared mobile support-request feature layer.
-- [x] Add a student profile support surface without bloating the main settings flow.
-- [x] Add a business profile/settings route with theme, language, support, and sign-out.
-- [x] Realign the hosted business scan readiness audit/docs to the current supported flow.
-- [x] Run mobile lint, typecheck, export, and readiness audits.
-- [x] Run admin lint, typecheck, and build.
-- [x] Update `PROGRESS.md` with the audit handoff and merge outcome.
+- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/deep-project-review`.
+- [x] Run repository-wide inspection on current `main` state.
+- [x] Collect an extra reviewer subagent pass.
+- [x] Fix any real defects or process drift found during review.
+- [x] Rerun the relevant mobile/admin validation gates.
+- [x] Update `PROGRESS.md` with the review outcome and merge note.
