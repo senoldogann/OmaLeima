@@ -11,6 +11,7 @@ type CommonCopy = {
   manage: string;
   remove: string;
   notifications: string;
+  support: string;
   profile: string;
   events: string;
   rewards: string;
@@ -108,10 +109,12 @@ type BusinessCopy = {
   eventsMeta: string;
   historyMeta: string;
   scannerMeta: string;
+  profileMeta: string;
   live: string;
   upcoming: string;
   signedIn: string;
   openScanner: string;
+  profileButton: string;
   scanHistory: string;
   manageEvents: string;
   joinedEvents: string;
@@ -149,6 +152,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       manage: "Hallitse",
       remove: "Poista",
       notifications: "Ilmoitukset",
+      support: "Tuki",
       profile: "Profiili",
       events: "Tapahtumat",
       rewards: "Palkinnot",
@@ -269,10 +273,12 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       eventsMeta: "Liity tuleviin iltoihin ja avaa skanneri, kun tapahtuma menee liveksi.",
       historyMeta: "Katso viimeisimmät skannaukset nopeasti ilman kameraa.",
       scannerMeta: "Valitse käynnissä oleva tapahtuma, skannaa kerran ja jatka jonon mukana.",
+      profileMeta: "Pidä asetukset, kieli ja tukipyynnöt samassa paikassa.",
       live: "Käynnissä",
       upcoming: "Tulossa",
       signedIn: "kirjautunut sisään",
       openScanner: "Avaa skanneri",
+      profileButton: "Avaa profiili",
       scanHistory: "Skannaushistoria",
       manageEvents: "Hallitse tapahtumia",
       joinedEvents: "Liitytyt tapahtumat",
@@ -300,6 +306,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       manage: "Manage",
       remove: "Remove",
       notifications: "Notifications",
+      support: "Support",
       profile: "Profile",
       events: "Events",
       rewards: "Rewards",
@@ -420,10 +427,12 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       eventsMeta: "Join upcoming nights and open the scanner when one goes live.",
       historyMeta: "Review recent scans quickly without keeping the camera open.",
       scannerMeta: "Choose the live event, scan once, confirm, and keep the line moving.",
+      profileMeta: "Keep settings, language, and support in one place.",
       live: "Live",
       upcoming: "Upcoming",
       signedIn: "signed in",
       openScanner: "Open scanner",
+      profileButton: "Open profile",
       scanHistory: "Scan history",
       manageEvents: "Manage events",
       joinedEvents: "Joined events",

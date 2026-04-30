@@ -64,14 +64,15 @@ const main = async () => {
     diagnosticsSource.includes("lastNotificationResponse: responseCapture");
   const profileSurfacePresent =
     profileSource.includes("useNativePushDiagnostics") &&
-    profileSource.includes("diagnostics.lastNotification") &&
-    profileSource.includes("diagnostics.lastNotificationResponse") &&
     profileSource.includes("refreshPushPermissionStateAsync") &&
     profileSource.includes("lastPushDiagnosticsRefreshAt") &&
+    profileSource.includes("diagnostics.lastNotification?.source") &&
+    profileSource.includes("diagnostics.lastNotificationResponse?.source") &&
     profileSource.includes("Last diagnostics refresh") &&
     profileSource.includes("clearCapturedPushActivity") &&
     profileSource.includes("Local notification activity does not prove remote APNs or FCM delivery yet.") &&
-    profileSource.includes("Native push device smoke") &&
+    profileSource.includes("Push diagnostics") &&
+    profileSource.includes("Native push diagnostics") &&
     profileSource.includes("Refresh push diagnostics") &&
     profileSource.includes("Refreshing...") &&
     profileSource.includes("Clear captured push activity");
@@ -86,7 +87,7 @@ const main = async () => {
     normalizedReadmeSource.includes("remote source prove apns or fcm-backed delivery") &&
     normalizedTestingDocSource.includes("mobile native push device readiness") &&
     normalizedTestingDocSource.includes("physical-device requirement") &&
-    normalizedTestingDocSource.includes("last diagnostics refresh") &&
+    normalizedTestingDocSource.includes("push diagnostics") &&
     normalizedTestingDocSource.includes("show a remote source") &&
     normalizedMasterPlanSource.includes("native push diagnostics surface is shipped");
 

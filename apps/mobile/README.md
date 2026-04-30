@@ -53,10 +53,10 @@ The first dedicated mobile Realtime slice is now shipped:
 - the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
 - local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
-- the profile route now exposes native push diagnostics for runtime mode, permission state, last received notification, and last notification response during physical-device smoke
+- the student profile route now exposes a dev-only `Push diagnostics` modal for runtime mode, permission state, last received notification, and last notification response during physical-device smoke
 - the same profile route now records the last manual diagnostics refresh timestamp so the refresh button has visible feedback even when permission state does not change
 - local foreground notifications can still appear in that diagnostics surface, but only entries marked from a remote source prove APNs or FCM-backed delivery
-- the active student event screen now exposes a development-only hosted scanner smoke token so one physical iPhone can still exercise the real hosted `scan-qr` path through the business manual fallback
+- the active student event screen still exposes the live QR scene used in hosted scanner smoke, while the business scanner keeps a manual token-scan fallback for operator or repo-owned smoke
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 
@@ -124,17 +124,14 @@ npm run audit:store-release-readiness
 - The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response.
 - The runtime label now classifies the current physical-device dev client as a development build instead of `bare`.
 
-## Hosted same-device scanner smoke
+## Hosted scanner smoke
 
-- The hosted smoke fixture now depends on the current hosted scanner credential from the local operator file, plus an active event, a joined venue, and a student registration.
-- In development builds only, the active student event screen exposes a `Hosted scanner smoke token` card while a live QR token exists.
-- The intended one-phone flow is:
+- The hosted smoke fixture still depends on the current hosted scanner credential from the local operator file, plus an active event, a joined venue, and a student registration.
+- The preferred physical-device path is the real QR journey:
   1. sign in as the student and open `My QR`
-  2. copy the development-only token from that card
-  3. sign out and switch into the business scanner account
-  4. open `Business > Scanner`
-  5. paste the token into the manual fallback box
-- This still calls the real hosted `scan-qr` backend and is the current fallback path for physical-device smoke when only one iPhone is available.
+  2. show the rotating QR to the business scanner flow
+  3. scan it from `Business > Scanner`
+- The business scanner also keeps a `Manual token scan` fallback surface for operator or repo-owned smoke when camera-based scanning is not practical.
 
 ## Codex action note
 
