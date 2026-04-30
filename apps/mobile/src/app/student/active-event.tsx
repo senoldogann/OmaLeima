@@ -350,7 +350,7 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: 0,
     },
     eventHeroMeta: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.84)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
@@ -358,10 +358,10 @@ const createStyles = (theme: MobileTheme) =>
     },
     eventHeroOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(10, 12, 10, 0.32)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(7, 10, 7, 0.5)",
     },
     eventHeroTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,

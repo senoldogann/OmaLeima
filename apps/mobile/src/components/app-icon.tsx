@@ -9,6 +9,8 @@ type AppIconName =
   | "scan"
   | "history"
   | "calendar"
+  | "palette"
+  | "globe"
   | "chevron-left"
   | "chevron-right";
 
@@ -144,6 +146,45 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           <Circle cx="9" cy="13" fill={color} r="1" />
           <Circle cx="12" cy="13" fill={color} opacity={0.66} r="1" />
           <Circle cx="15" cy="13" fill={color} opacity={0.42} r="1" />
+        </Svg>
+      );
+    case "palette":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M12 3.5A8.5 8.5 0 1 0 12 20.5h1.45a1.8 1.8 0 0 0 0-3.6H12.8a1.55 1.55 0 0 1 0-3.1h2.05A5.65 5.65 0 0 0 20.5 8.2 4.7 4.7 0 0 0 15.8 3.5H12Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle cx="7.8" cy="11" fill={color} r="1.05" />
+          <Circle cx="10.2" cy="7.5" fill={color} opacity={0.82} r="1.05" />
+          <Circle cx="14.2" cy="7.5" fill={color} opacity={0.58} r="1.05" />
+        </Svg>
+      );
+    case "globe":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Path
+            d="M4.5 12h15M12 4c2.1 2.3 3.2 5 3.2 8S14.1 17.7 12 20M12 4c-2.1 2.3-3.2 5-3.2 8s1.1 5.7 3.2 8"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
         </Svg>
       );
     case "chevron-right":

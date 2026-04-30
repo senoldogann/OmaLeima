@@ -269,47 +269,70 @@ export default function StudentProfileScreen() {
 
       {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
 
-      <InfoCard eyebrow={copy.preferences.appearanceTitle} title={copy.common.theme}>
-        <Text selectable style={styles.bodyText}>{copy.preferences.appearanceBody}</Text>
-        <View style={styles.preferenceRow}>
-          <Pressable
-            onPress={() => void setThemeMode("dark")}
-            style={[styles.preferenceChip, themeMode === "dark" ? styles.preferenceChipActive : null]}
-          >
-            <Text style={[styles.preferenceChipText, themeMode === "dark" ? styles.preferenceChipTextActive : null]}>
-              {copy.common.darkMode}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void setThemeMode("light")}
-            style={[styles.preferenceChip, themeMode === "light" ? styles.preferenceChipActive : null]}
-          >
-            <Text style={[styles.preferenceChipText, themeMode === "light" ? styles.preferenceChipTextActive : null]}>
-              {copy.common.lightMode}
-            </Text>
-          </Pressable>
+      <InfoCard
+        eyebrow={language === "fi" ? "Asetukset" : "Preferences"}
+        title={language === "fi" ? "Ulkoasu ja kieli" : "Appearance and language"}
+      >
+        <View style={styles.preferenceSection}>
+          <View style={styles.preferenceHeader}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="palette" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.theme}</Text>
+              <Text selectable style={styles.metaText}>{copy.preferences.appearanceBody}</Text>
+            </View>
+          </View>
+          <View style={styles.preferenceRow}>
+            <Pressable
+              onPress={() => void setThemeMode("dark")}
+              style={[styles.preferenceChip, themeMode === "dark" ? styles.preferenceChipActive : null]}
+            >
+              <Text style={[styles.preferenceChipText, themeMode === "dark" ? styles.preferenceChipTextActive : null]}>
+                {copy.common.darkMode}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void setThemeMode("light")}
+              style={[styles.preferenceChip, themeMode === "light" ? styles.preferenceChipActive : null]}
+            >
+              <Text style={[styles.preferenceChipText, themeMode === "light" ? styles.preferenceChipTextActive : null]}>
+                {copy.common.lightMode}
+              </Text>
+            </Pressable>
+          </View>
         </View>
-      </InfoCard>
 
-      <InfoCard eyebrow={copy.preferences.languageTitle} title={copy.common.language}>
-        <Text selectable style={styles.bodyText}>{copy.preferences.languageBody}</Text>
-        <View style={styles.preferenceRow}>
-          <Pressable
-            onPress={() => void setLanguage("fi")}
-            style={[styles.preferenceChip, language === "fi" ? styles.preferenceChipActive : null]}
-          >
-            <Text style={[styles.preferenceChipText, language === "fi" ? styles.preferenceChipTextActive : null]}>
-              {copy.common.finnish}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void setLanguage("en")}
-            style={[styles.preferenceChip, language === "en" ? styles.preferenceChipActive : null]}
-          >
-            <Text style={[styles.preferenceChipText, language === "en" ? styles.preferenceChipTextActive : null]}>
-              {copy.common.english}
-            </Text>
-          </Pressable>
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
+          <View style={styles.preferenceHeader}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="globe" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>{copy.common.language}</Text>
+              <Text selectable style={styles.metaText}>{copy.preferences.languageBody}</Text>
+            </View>
+          </View>
+          <View style={styles.preferenceRow}>
+            <Pressable
+              onPress={() => void setLanguage("fi")}
+              style={[styles.preferenceChip, language === "fi" ? styles.preferenceChipActive : null]}
+            >
+              <Text style={[styles.preferenceChipText, language === "fi" ? styles.preferenceChipTextActive : null]}>
+                {copy.common.finnish}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void setLanguage("en")}
+              style={[styles.preferenceChip, language === "en" ? styles.preferenceChipActive : null]}
+            >
+              <Text style={[styles.preferenceChipText, language === "en" ? styles.preferenceChipTextActive : null]}>
+                {copy.common.english}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </InfoCard>
 
@@ -569,10 +592,40 @@ const createStyles = (theme: MobileTheme) =>
     preferenceChipTextActive: {
       color: theme.colors.screenBase,
     },
+    preferenceDivider: {
+      backgroundColor: theme.colors.borderSubtle,
+      height: 1,
+    },
+    preferenceHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+    },
+    preferenceHeaderCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    preferenceIconWrap: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 32,
+      justifyContent: "center",
+      width: 32,
+    },
     preferenceRow: {
       flexDirection: "row",
       gap: 10,
       flexWrap: "wrap",
+    },
+    preferenceSection: {
+      gap: 12,
+    },
+    preferenceTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     primaryButton: {
       alignItems: "center",

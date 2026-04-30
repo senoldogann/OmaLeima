@@ -11,7 +11,7 @@ import {
   prefetchEventCoverUrls,
 } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
-import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import type { MobileTheme } from "@/features/foundation/theme";
 import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -222,10 +222,9 @@ const createStyles = (theme: MobileTheme) =>
       minHeight: 248,
       position: "relative",
       width: "100%",
-      ...interactiveSurfaceShadowStyle,
     },
     heroCopy: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.86)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
@@ -267,14 +266,14 @@ const createStyles = (theme: MobileTheme) =>
       gap: 8,
     },
     heroMetaText: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.8)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
     heroOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(10, 12, 10, 0.34)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(7, 10, 7, 0.52)",
     },
     heroRail: {
       marginHorizontal: -theme.spacing.screenHorizontal,

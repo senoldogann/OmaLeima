@@ -322,7 +322,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.title,
     },
     summaryCountLabel: {
-      color: theme.colors.textMuted,
+      color: "rgba(248, 250, 245, 0.74)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
@@ -350,10 +350,10 @@ const createStyles = (theme: MobileTheme) =>
     },
     summaryHeroOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.56)" : "rgba(10, 12, 10, 0.3)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.56)" : "rgba(7, 10, 7, 0.5)",
     },
     summaryLabel: {
-      color: theme.colors.textSecondary,
+      color: "rgba(248, 250, 245, 0.84)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
@@ -363,13 +363,13 @@ const createStyles = (theme: MobileTheme) =>
       gap: 8,
     },
     summaryNumber: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: 52,
       lineHeight: 56,
     },
     summaryTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,

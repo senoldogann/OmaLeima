@@ -393,15 +393,15 @@ export const getMobileTheme = (mode: MobileThemeMode): MobileTheme =>
 export const mobileTheme = darkMobileTheme;
 
 export const surfaceShadowStyle: ViewStyle = {
-  boxShadow: "0px 16px 32px rgba(0, 0, 0, 0.18)",
+  boxShadow: "0px 10px 22px rgba(0, 0, 0, 0.08)",
 };
 
 export const interactiveSurfaceShadowStyle: ViewStyle = {
-  boxShadow: "0px 12px 24px rgba(0, 0, 0, 0.14)",
+  boxShadow: "0px 8px 18px rgba(0, 0, 0, 0.06)",
 };
 
 export const sceneShadowStyle: ViewStyle = {
-  boxShadow: "0px 18px 36px rgba(0, 0, 0, 0.2)",
+  boxShadow: "0px 12px 28px rgba(0, 0, 0, 0.08)",
 };
 
 export const limeBorderStyle: ViewStyle = {

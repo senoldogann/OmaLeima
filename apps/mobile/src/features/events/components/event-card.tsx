@@ -173,7 +173,7 @@ const createStyles = (theme: MobileTheme) =>
     borderRadius: theme.radius.scene,
   },
   heroKicker: {
-    color: "rgba(245, 247, 241, 0.72)",
+    color: "rgba(248, 250, 245, 0.8)",
     fontFamily: theme.typography.families.semibold,
     fontSize: 11,
     letterSpacing: 1.1,
@@ -181,10 +181,10 @@ const createStyles = (theme: MobileTheme) =>
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.52)",
+    backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.56)" : "rgba(7, 10, 7, 0.54)",
   },
   heroTimeline: {
-    color: theme.colors.textPrimary,
+    color: "#F8FAF5",
     fontFamily: theme.typography.families.bold,
     fontSize: 16,
     lineHeight: 22,

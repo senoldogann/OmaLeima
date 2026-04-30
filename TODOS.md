@@ -27,11 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Review Hardening)
+## Current Todos (Light-Mode Polish)
 
-- [x] Audit the redesign branch for remaining static dark-theme dependencies and English-only mobile screens.
-- [x] Convert the last shared helper components to runtime theme-aware styling.
-- [x] Translate and theme the remaining business routes (`home`, `events`, `history`, `scanner`).
+- [x] Audit the student hero/photo surfaces that still fail visually in light mode.
+- [x] Fix overlay and text contrast on `events`, `event detail`, `rewards`, `my qr`, and event cards.
+- [x] Merge theme and language controls into one cleaner profile settings card with icons.
+- [x] Soften the shared outer shadow tokens.
 - [x] Re-run mobile lint, typecheck, and export.
-- [x] Re-run admin lint and typecheck to ensure the review slice did not drift repo-wide.
-- [x] Update `PROGRESS.md` with the review handoff note.
+- [x] Update `PROGRESS.md` with the polish handoff note.

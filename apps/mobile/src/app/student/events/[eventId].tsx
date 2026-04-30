@@ -550,16 +550,16 @@ const createStyles = (theme: MobileTheme) => {
     },
     heroOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(10, 12, 10, 0.34)",
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(7, 10, 7, 0.52)",
     },
     heroSummary: {
-      color: theme.colors.textPrimary,
+      color: "rgba(248, 250, 245, 0.84)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
     heroTitle: {
-      color: theme.colors.textPrimary,
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       letterSpacing: -0.5,
