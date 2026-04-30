@@ -129,9 +129,7 @@ export default function BusinessProfileScreen() {
                 </View>
                 <Text style={styles.preferenceTitle}>{copy.common.support}</Text>
                 <View style={styles.preferenceValue}>
-                  <Text style={styles.preferenceValueText}>
-                    {language === "fi" ? "Avaa" : "Open"}
-                  </Text>
+                  <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
                   <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
                 </View>
               </Pressable>

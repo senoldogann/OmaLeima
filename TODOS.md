@@ -27,11 +27,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Deep Project Review)
+## Current Todos (Push Diagnostics Polish)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/deep-project-review`.
-- [x] Run repository-wide inspection on current `main` state.
-- [x] Collect an extra reviewer subagent pass.
-- [x] Fix any real defects or process drift found during review.
-- [x] Rerun the relevant mobile/admin validation gates.
-- [x] Update `PROGRESS.md` with the review outcome and merge note.
+- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/push-diagnostics-polish`.
+- [x] Move the push diagnostics entry into a cleaner dev-only QA row.
+- [x] Add a shared primary-action foreground token and apply it to lime buttons.
+- [x] Normalize the business support row copy to shared translations.
+- [x] Rerun mobile validation gates.
+- [x] Update `PROGRESS.md` with the polish outcome and merge note.

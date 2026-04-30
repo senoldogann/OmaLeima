@@ -118,8 +118,8 @@ export const BusinessPasswordSignIn = () => {
           pressed ? styles.buttonPressed : null,
         ]}
       >
-        {isLoading ? <ActivityIndicator color={theme.colors.screenBase} size="small" /> : null}
-        {isLoading ? null : <AppIcon color={theme.colors.screenBase} name="business" size={18} />}
+        {isLoading ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
+        {isLoading ? null : <AppIcon color={theme.colors.actionPrimaryText} name="business" size={18} />}
         <Text style={styles.buttonText}>{isLoading ? copy.auth.businessSigningIn : copy.auth.businessButton}</Text>
       </Pressable>
 
@@ -153,7 +153,7 @@ const createStyles = (theme: MobileTheme) =>
       transform: [{ translateY: 1 }, { scale: 0.992 }],
     },
     buttonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontSize: 14,
       fontWeight: "800",
     },

@@ -369,11 +369,6 @@ export default function StudentProfileScreen() {
                   : "Enable notifications"}
             </Text>
           </Pressable>
-          {__DEV__ ? (
-            <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Push diagnostics</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -387,13 +382,33 @@ export default function StudentProfileScreen() {
               <Text selectable style={styles.preferenceTitle}>{copy.common.support}</Text>
             </View>
             <View style={styles.preferenceSelectValue}>
-              <Text selectable style={styles.preferenceSelectValueText}>
-                {language === "fi" ? "Avaa" : "Open"}
-              </Text>
+              <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
               <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
             </View>
           </Pressable>
         </View>
+
+        {__DEV__ ? (
+          <>
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceSection}>
+              <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.preferenceSelectRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="tools" size={16} />
+                </View>
+                <View style={styles.preferenceHeaderCopy}>
+                  <Text selectable style={styles.preferenceTitle}>{copy.common.qaTools}</Text>
+                  <Text selectable style={styles.preferenceSummaryText}>Push diagnostics</Text>
+                </View>
+                <View style={styles.preferenceSelectValue}>
+                  <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.preferenceDivider} />
 
@@ -867,7 +882,7 @@ const createStyles = (theme: MobileTheme) =>
       ...interactiveSurfaceShadowStyle,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },

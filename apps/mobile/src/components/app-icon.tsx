@@ -12,6 +12,7 @@ type AppIconName =
   | "palette"
   | "globe"
   | "support"
+  | "tools"
   | "chevron-left"
   | "chevron-right"
   | "chevron-down";
@@ -204,6 +205,27 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           />
           <Path
             d="M8.2 14.4V11.8a3.8 3.8 0 0 1 7.6 0v2.6M8.2 11.9H6.8a1.8 1.8 0 0 0-1.8 1.8v.7a1.8 1.8 0 0 0 1.8 1.8h1.4M15.8 11.9h1.4a1.8 1.8 0 0 1 1.8 1.8v.7a1.8 1.8 0 0 1-1.8 1.8h-1.4M10.3 18.2c.42.38.98.6 1.57.6h.26c.59 0 1.15-.22 1.57-.6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "tools":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M14.6 5.4a3.1 3.1 0 0 0 3.95 3.95l-7.9 7.9a2.8 2.8 0 1 1-3.96-3.96l7.9-7.9Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Path
+            d="m13.8 4.6 1.6 1.6M17.8 8.6l1.6 1.6"
             fill="none"
             stroke={color}
             strokeLinecap="round"

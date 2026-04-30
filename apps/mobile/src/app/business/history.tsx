@@ -109,7 +109,7 @@ export default function BusinessHistoryScreen() {
 
       <View style={styles.actionRow}>
         <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
-          <AppIcon color={theme.colors.screenBase} name="scan" size={18} />
+          <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
           <Text style={styles.primaryButtonText}>{copy.business.scanner}</Text>
         </Pressable>
         <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
@@ -221,7 +221,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,

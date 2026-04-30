@@ -138,7 +138,7 @@ export default function StudentRewardsScreen() {
             <>
               <Text style={styles.bodyText}>{copy.student.noRewardProgress}</Text>
               <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
-                <AppIcon color={theme.colors.screenBase} name="calendar" size={18} />
+                <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={18} />
                 <Text style={styles.primaryButtonText}>{copy.student.browseEvents}</Text>
               </Pressable>
             </>
@@ -258,7 +258,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 14,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       letterSpacing: 0.3,

@@ -319,7 +319,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 10,
     },
     retryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },

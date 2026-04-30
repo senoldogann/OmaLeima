@@ -120,6 +120,7 @@ type ColorTokens = {
   actionNeutralBorder: string;
   actionPrimary: string;
   actionPrimaryStrong: string;
+  actionPrimaryText: string;
   successSurfaceLegacy: string;
   progressTrack: string;
   haloIndigo: string;
@@ -268,6 +269,7 @@ export const darkMobileTheme: MobileTheme = {
     actionNeutralBorder: "rgba(255, 255, 255, 0.00)",
     actionPrimary: "#C8FF47",
     actionPrimaryStrong: "#AEFF00",
+    actionPrimaryText: "#050705",
     successSurfaceLegacy: "rgba(200, 255, 71, 0.08)",
     progressTrack: "rgba(255, 255, 255, 0.045)",
     haloIndigo: "transparent",
@@ -362,6 +364,7 @@ export const lightMobileTheme: MobileTheme = {
     actionNeutralBorder: "rgba(8, 12, 8, 0)",
     actionPrimary: "#9DDC27",
     actionPrimaryStrong: "#7DB400",
+    actionPrimaryText: "#050705",
     successSurfaceLegacy: "rgba(157, 220, 39, 0.14)",
     progressTrack: "rgba(8, 12, 8, 0.08)",
     haloIndigo: "transparent",

@@ -123,7 +123,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     modeButtonTextActive: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
     },
     modeSelector: {
       flexDirection: "row",

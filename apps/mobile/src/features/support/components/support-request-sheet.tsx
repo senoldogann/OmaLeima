@@ -224,7 +224,7 @@ export const SupportRequestSheet = ({
               onPress={() => void handleSubmit()}
               style={[styles.primaryButton, !canSubmit ? styles.disabledButton : null]}
             >
-              <AppIcon color={theme.colors.screenBase} name="support" size={18} />
+              <AppIcon color={theme.colors.actionPrimaryText} name="support" size={18} />
               <Text style={styles.primaryButtonText}>
                 {createMutation.isPending
                   ? language === "fi"
@@ -464,7 +464,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,

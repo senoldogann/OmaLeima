@@ -4,6 +4,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ## Son Ajan Devri (Latest Agent Handoff)
 
+- **Tarih:** 2026-05-01
+- **Branch:** `feature/push-diagnostics-polish`
+- **Yapılan iş:** Support/profile polish slice tamamlandi. Remote Supabase'te eksik kalan `20260430004000_support_requests.sql` migration'i `supabase db push` ile uygulanip `support_requests` tablosu hosted schema'ya eklendi; bu sayede student/business support ekranlarindaki `public.support_requests` schema cache hatasi kapatildi. Mobile tarafta push diagnostics yuzeyi artik duz debug butonu olarak degil, student profile icindeki dev-only `QA-tyokalut / Push diagnostics` satiri olarak gosteriliyor. Acik moddaki lime aksiyonlarda kontrast duzeltildi; ortak `actionPrimaryText` token'i eklenip Google/business login, rewards, events, scanner, support ve diger ana butonlarda koyu on plan rengi kullanildi. Business profile support satiri da ortak `Avaa/Open` copy'sine hizalandi.
+- **Neden yapıldı:** Kullanici support ekraninda tablo bulunamadi hatasi aldi; ayni turda push diagnostics'in neden gorundugunu sordu ve acik moddaki acik yesil buton yazilarinin siyah olmasini, gerekiyorsa push diagnostics alaninin daha duzgun bir yerde gosterilmesini istedi.
+- **Doğrulama:** `supabase migration list`, `supabase db push`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Kullanici fiziksel iPhone'da student profile ekraninda yeni QA tools satirini ve acik moddaki lime buton kontrastini hizli bir smoke ile kontrol etmeli. Sonraki mantikli buyuk is admin/club web shell polish ya da launch rollout hazirligi.
+- **Açık risk/blokaj:** Push diagnostics hala bilerek dev-only gorunur; production kullanici yuzeyinin parcasi degil. Bu branch'te yeni blocker yok. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/deep-project-review`
 - **Yapılan iş:** `main` uzerinde bir derin review passi daha tamamlandi. Son support/profile/business-settings slice'i ve son mobile/admin yuzeyleri tekrar tarandi; ek reviewer subagent sonucu da yeni medium+ bulgu olmadigini dogruladi. Bu turda kod degistirmek yerine working docs guncellendi ve son kalite kapisi yeniden kosuldu.

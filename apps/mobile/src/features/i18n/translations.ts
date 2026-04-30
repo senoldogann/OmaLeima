@@ -25,6 +25,8 @@ type CommonCopy = {
   lightMode: string;
   language: string;
   theme: string;
+  open: string;
+  qaTools: string;
   finnish: string;
   english: string;
   active: string;
@@ -166,6 +168,8 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       lightMode: "Vaalea",
       language: "Kieli",
       theme: "Teema",
+      open: "Avaa",
+      qaTools: "QA-työkalut",
       finnish: "Suomi",
       english: "English",
       active: "Aktiivinen",
@@ -320,6 +324,8 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       lightMode: "Light",
       language: "Language",
       theme: "Theme",
+      open: "Open",
+      qaTools: "QA tools",
       finnish: "Finnish",
       english: "English",
       active: "Active",

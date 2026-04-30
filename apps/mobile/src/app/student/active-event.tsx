@@ -408,7 +408,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },
