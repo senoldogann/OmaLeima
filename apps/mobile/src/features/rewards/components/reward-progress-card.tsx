@@ -348,21 +348,23 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     stampHero: {
-      alignItems: "center",
+      alignItems: "flex-end",
       flexDirection: "row",
-      gap: 6,
+      gap: 2,
     },
     stampMeta: {
+      alignItems: "flex-start",
       gap: 0,
       justifyContent: "center",
-      marginBottom: 0,
+      marginBottom: 4,
+      marginLeft: -2,
     },
     stampNumber: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: 52,
       lineHeight: 56,
-      minWidth: 60,
+      minWidth: 0,
     },
     stampUnit: {
       color: theme.colors.textMuted,

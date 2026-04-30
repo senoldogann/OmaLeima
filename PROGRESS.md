@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-04-30
 - **Branch:** `feature/full-ui-redesign-foundation`
+- **Yapılan iş:** Final rewards/profile micro-polish tamamlandi. `apps/mobile/src/app/student/profile.tsx` icindeki department tags ozeti artik sagdaki dar value alanina sikismiyor; basligin altinda daha sakin bir ozet satiri olarak akiyor ve saga yalnizca yon oku kaliyor. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icindeki `Tapahtumapalkinnot` slider kartlarinda buyuk sayi ile `leimaa/leimat` etiketi bir kez daha birbirine yaklastirildi; gap daraltildi, sayinin minimum genisligi kaldirildi ve etiket blogu sayiya daha yakin oturtuldu.
+- **Neden yapıldı:** Kullanici hem department tags satirinin ayarlar kutusu icinde kotu gorundugunu hem de rewards kartlarindaki `0 LEIMAA` metriginde unit etiketinin hala fazla uzakta kaldigini acikca belirtti.
+- **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da `student/profile` icindeki department tags satiri ve `student/rewards` icindeki reward rail kartlari hizli gorsel smoke alinmali. Sonrasinda ayni duzeyde micro-polish kalan business/admin yuzeylerine tasinabilir.
+- **Açık risk/blokaj:** Local validation temiz. Runtime gorsel teyit fiziksel cihazdan alinmali. `apps/mobile/src/app/student/events/.idea/` untracked durumda ve yine dokunulmadi.
+
+- **Tarih:** 2026-04-30
+- **Branch:** `feature/full-ui-redesign-foundation`
 - **Yapılan iş:** Settings polish slice bir tur daha rafine edildi. `apps/mobile/src/app/student/profile.tsx` icinde department tag ozeti sag kolonda sikisan bir etiket olmaktan cikarildi; artik ayarlar satirinda basligin altinda tek satirlik daha sakin bir summary olarak akiyor, saga yalnizca yon oku kaliyor. Preference/tag modal’lari dis bosluk tiklamasi ile kapanmaya devam ediyor. `apps/mobile/src/features/rewards/components/reward-progress-card.tsx` icinde `Tapahtumapalkinnot` slider kartlarindaki buyuk sayi ile `leimaa/leimat` etiketi bir kez daha birbirine yaklastirildi; gap ve alt offset daha da sikildi.
 - **Neden yapıldı:** Kullanici department tags ozetinin ayarlar alanina sigmadigini ve kotu gorundugunu, daha sessiz bicimde soldan saga akmasi gerektigini belirtti. Ayrica `0 LEIMAA` metrigindeki `LEIMAA` etiketinin hala yeterince yakin olmadigini acikca soyledi.
 - **Doğrulama:** `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run export:web` gecti.

@@ -263,7 +263,7 @@ export default function StudentProfileScreen() {
         {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
           <>
             <View style={styles.preferenceSection}>
-              <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.preferenceSelectRow}>
+              <Pressable onPress={() => setIsTagModalVisible(true)} style={styles.tagsPreferenceRow}>
                 <View style={styles.preferenceIconWrap}>
                   <AppIcon color={theme.colors.lime} name="user" size={16} />
                 </View>
@@ -709,6 +709,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     preferenceSummaryText: {
       color: theme.colors.textMuted,
+      flexShrink: 1,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
@@ -718,6 +719,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    tagsPreferenceRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
     },
     primaryButton: {
       alignItems: "center",

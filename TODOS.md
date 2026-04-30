@@ -27,12 +27,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
 - [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
 
-## Current Todos (Settings Polish)
+## Current Todos (Final Rewards/Profile Micro-Polish)
 
-- [x] Re-audit the remaining light-mode glare/contrast issues.
-- [x] Make preference sheets and tag modal dismiss on outside tap.
-- [x] Move department tags into the settings card.
-- [x] Remove the extra sign-out heading.
-- [x] Tighten the reward-card number/unit spacing.
+- [x] Re-audit the department-tag summary placement inside preferences.
+- [x] Keep the department-tag summary under the heading instead of in the trailing value slot.
+- [x] Tighten the reward-card number/unit spacing until the metric reads as one compact block.
 - [x] Re-run mobile lint, typecheck, and export.
-- [x] Update `PROGRESS.md` with the polish handoff note.
+- [x] Update `PROGRESS.md` with the micro-polish handoff note.
