@@ -7,7 +7,7 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
@@ -36,9 +36,9 @@ export default function StudentRewardsScreen() {
   const totalStamps = events.reduce((accumulator, event) => accumulator + event.stampCount, 0);
   const railCardWidth = Math.max(Math.min(windowWidth - 52, 420), 286);
   const featuredEvent = events[0] ?? null;
-  const featuredHeroSource = getEventCoverSource(
+  const featuredHeroSource = getEventCoverSourceWithFallback(
     featuredEvent?.coverImageUrl ?? null,
-    featuredEvent?.id ?? "rewards-hero"
+    "rewards"
   );
 
   const summaryLabel =

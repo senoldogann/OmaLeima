@@ -19,7 +19,7 @@ import {
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
-import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import type { StudentRewardCelebrationCandidate } from "@/features/notifications/student-reward-notification-model";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -312,9 +312,9 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
   const coverSource =
     heroCandidate === null
       ? null
-      : getEventCoverSource(
+      : getEventCoverSourceWithFallback(
           heroCandidate.coverImageUrl,
-          `${heroCandidate.eventId}:${heroCandidate.eventName}`
+          "rewardCelebration"
         );
 
   useEffect(() => {
@@ -342,7 +342,7 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
             >
               <CoverImageSurface
                 imageStyle={styles.heroImage}
-                source={coverSource ?? getEventCoverSource(null, "celebration")}
+                source={coverSource ?? getEventCoverSourceWithFallback(null, "rewardCelebration")}
                 style={styles.card}
               >
                 <View style={styles.cardOverlay} />

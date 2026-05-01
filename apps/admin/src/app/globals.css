@@ -279,7 +279,7 @@ button {
   justify-content: flex-end;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.66) 42%, rgba(0, 0, 0, 0.22) 100%),
-    url("/images/omaleima-ops-hero.png") center / cover;
+    url("/images/omaleima-club-control.png") center / cover;
   border-color: rgba(200, 255, 71, 0.12);
 }
 

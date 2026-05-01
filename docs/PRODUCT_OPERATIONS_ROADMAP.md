@@ -153,3 +153,33 @@ The next backend slices should be small and explicit:
 9. Scanner device assignment and optional kiosk hardening
 
 This order keeps the pilot usable before adding broad communication and permission systems.
+
+## Current Project Review Snapshot
+
+The current MVP foundation is logically coherent:
+
+- student login, event discovery, QR, rewards, leaderboard, support, theme, and language are already present
+- business login, event joining, scanner, scan history, business profile media, and support are already present
+- admin/club web covers platform admin, organizer events, rewards, claims, tags, oversight, hosted audits, and smoke scripts
+- security-critical QR and stamp writes stay server-side through Edge Functions and atomic RPCs
+- RLS policies and restricted RPC grants exist for the high-risk tables reviewed in this pass
+
+No new immediate blocker was found during this review pass. The remaining gaps are product scope gaps, not small hidden bugs:
+
+- scanner flow is secure but needs event-day/kiosk ergonomics before real crowded usage
+- pure organizer mobile access needs `/club`, not business-screen reuse
+- platform and organizer announcements need schema, read state, targeting, and push consent
+- privileged roles need invitation and revocation flows before broad rollout
+- event rules need configurable stamp limits and reward tiers for broader Finnish appro formats
+- visual assets should keep using real uploaded event/business media first, then purpose-specific fallbacks
+
+Visual direction after the asset pass:
+
+- login onboarding uses general event-night imagery
+- event discovery uses appropassi, entry, and QR checkpoint imagery
+- My QR uses QR checkpoint imagery when no real event cover exists
+- rewards and celebration use leima/pass-focused imagery
+- leaderboard uses the main OmaLeima operation hero
+- business scanner uses club-control imagery when the venue has no uploaded cover
+- admin shell hero uses club-control imagery while login keeps the operation hero
+- dark/light gravity-line textures are shared through the mobile screen shell at low opacity

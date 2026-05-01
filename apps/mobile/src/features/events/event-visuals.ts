@@ -1,6 +1,16 @@
 import type { ImageSourcePropType } from "react-native";
 import { Image } from "react-native";
 
+export type FallbackCoverPurpose =
+  | "authOnboarding"
+  | "clubControl"
+  | "eventDiscovery"
+  | "eventDetail"
+  | "leaderboard"
+  | "qrPass"
+  | "rewardCelebration"
+  | "rewards";
+
 const fallbackCoverSources = [
   require("../../../assets/event-covers/omaleima-ops-hero.png"),
   require("../../../assets/event-covers/omaleima-leima-pass.png"),
@@ -11,6 +21,17 @@ const fallbackCoverSources = [
   require("../../../assets/event-covers/bar-friends.jpg"),
   require("../../../assets/event-covers/dj-night.jpg"),
 ] as const satisfies readonly ImageSourcePropType[];
+
+const fallbackCoverPurposeIndexes = {
+  authOnboarding: 5,
+  clubControl: 4,
+  eventDiscovery: 2,
+  eventDetail: 7,
+  leaderboard: 0,
+  qrPass: 3,
+  rewardCelebration: 1,
+  rewards: 6,
+} as const satisfies Record<FallbackCoverPurpose, number>;
 
 const createDeterministicIndex = (value: string, modulo: number): number => {
   let hash = 0;
@@ -34,11 +55,19 @@ const createFallbackCoverSource = (eventKey: string): ImageSourcePropType => {
   return fallbackCoverSources[index];
 };
 
+export const getFallbackCoverSource = (purpose: FallbackCoverPurpose): ImageSourcePropType =>
+  fallbackCoverSources[fallbackCoverPurposeIndexes[purpose]];
+
 export const getFallbackCoverSourceByIndex = (index: number): ImageSourcePropType => {
   const normalizedIndex = Math.abs(index) % fallbackCoverSources.length;
 
   return fallbackCoverSources[normalizedIndex];
 };
+
+export const getOffsetFallbackCoverSourceByIndex = (
+  index: number,
+  offset: number
+): ImageSourcePropType => getFallbackCoverSourceByIndex(index + offset);
 
 const createRemoteCoverSource = (coverImageUrl: string | null): ImageSourcePropType | null => {
   if (coverImageUrl === null) {
@@ -67,6 +96,19 @@ export const getEventCoverSource = (
   return createFallbackCoverSource(eventKey);
 };
 
+export const getEventCoverSourceWithFallback = (
+  coverImageUrl: string | null,
+  fallbackPurpose: FallbackCoverPurpose
+): ImageSourcePropType => {
+  const remoteCoverSource = createRemoteCoverSource(coverImageUrl);
+
+  if (remoteCoverSource !== null) {
+    return remoteCoverSource;
+  }
+
+  return getFallbackCoverSource(fallbackPurpose);
+};
+
 export const prefetchEventCoverUrls = async (
   coverImageUrls: readonly (string | null)[]
 ): Promise<void> => {
@@ -79,7 +121,8 @@ export const prefetchEventCoverUrls = async (
     uniqueUrls.map(async (url) => {
       try {
         await Image.prefetch(url);
-      } catch {
+      } catch (error: unknown) {
+        console.warn("Failed to prefetch event cover image.", { error, url });
         return false;
       }
 

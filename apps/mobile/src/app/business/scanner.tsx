@@ -14,6 +14,7 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
+import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type { ScannerAttemptResult } from "@/features/scanner/types";
@@ -438,7 +439,7 @@ export default function BusinessScannerScreen() {
                   source={
                     selectedEvent.businessCoverImageUrl
                       ? { uri: selectedEvent.businessCoverImageUrl }
-                      : null
+                      : getFallbackCoverSource("clubControl")
                   }
                   style={styles.businessHero}
                 >

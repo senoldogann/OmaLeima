@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
-import { getFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
+import { getOffsetFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -41,7 +41,7 @@ export const LoginHero = () => {
         renderItem={(slide: OnboardingSlide, index: number) => (
           <CoverImageSurface
             imageStyle={styles.slideImage}
-            source={getFallbackCoverSourceByIndex(index)}
+            source={getOffsetFallbackCoverSourceByIndex(index, 5)}
             style={styles.slide}
           >
             <View style={styles.slideOverlay} />

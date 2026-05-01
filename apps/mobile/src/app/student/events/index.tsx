@@ -7,7 +7,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { EventCard } from "@/features/events/components/event-card";
 import {
-  getFallbackCoverSourceByIndex,
+  getOffsetFallbackCoverSourceByIndex,
   prefetchEventCoverUrls,
 } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
@@ -106,7 +106,7 @@ export default function StudentEventsScreen() {
         renderItem={(slide: DiscoverySlide, index: number) => (
           <CoverImageSurface
             imageStyle={styles.heroImage}
-            source={getFallbackCoverSourceByIndex(index)}
+            source={getOffsetFallbackCoverSourceByIndex(index, 1)}
             style={styles.heroBand}
           >
             <View style={styles.heroOverlay} />

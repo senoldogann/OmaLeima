@@ -15,3 +15,9 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Add generated visuals to centralized mobile event fallback covers.
 - [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
+- [x] Review current image usage across mobile and admin surfaces.
+- [x] Generate dark/light gravity-line background textures with imagegen.
+- [x] Add gravity-line backgrounds to the shared mobile screen shell.
+- [x] Assign explicit fallback image purposes for login, discovery, QR, rewards, leaderboard, scanner, and admin shell.
+- [x] Run full mobile/admin validation after the visual distribution pass.
+- [x] Update `PROGRESS.md` with the second handoff.

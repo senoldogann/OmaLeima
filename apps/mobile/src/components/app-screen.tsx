@@ -2,15 +2,29 @@ import type { PropsWithChildren } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { MobileTheme } from "@/features/foundation/theme";
-import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
+import { Image as ExpoImage } from "expo-image";
 
-// AppScreen: pure black base with no decorative overlays.
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles } from "@/features/preferences/ui-preferences-provider";
+
+const darkBackgroundSource = require("../../assets/backgrounds/gravity-lines-dark.png");
+const lightBackgroundSource = require("../../assets/backgrounds/gravity-lines-light.png");
+
 export const AppScreen = ({ children }: PropsWithChildren) => {
+  const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const backgroundSource = theme.mode === "dark" ? darkBackgroundSource : lightBackgroundSource;
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <ExpoImage
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        pointerEvents="none"
+        source={backgroundSource}
+        style={styles.backgroundImage}
+        transition={180}
+      />
       <ScrollView
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
@@ -26,12 +40,17 @@ export const AppScreen = ({ children }: PropsWithChildren) => {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
+    backgroundImage: {
+      ...StyleSheet.absoluteFillObject,
+      opacity: theme.mode === "dark" ? 0.26 : 0.32,
+    },
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.screenBase,
     },
     scrollView: {
       flex: 1,
+      position: "relative",
     },
     content: {
       gap: theme.spacing.sectionGap,
