@@ -5,52 +5,45 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-02
-- **Branch:** `feature/deep-project-review-hardening`
-- **Goal:** Run a deep correctness/security review, remove the concrete auth inconsistency found in admin club mutation routes, bring admin web closer to the mobile visual system, and fix the student profile department-tag keyboard issue.
+- **Branch:** `feature/product-ops-roadmap-assets`
+- **Goal:** Decide the correct next product architecture for event-day scanning, organizer mobile, announcements, and security, then add more OmaLeima generated visuals to existing image surfaces.
 
 ## Architectural Decisions
 
-- Keep the review targeted: fix drift and update working docs instead of adding large roadmap features opportunistically.
-- Add a small route-level auth helper under admin auth features so all mutation routes can resolve actor user ids through `supabase.auth.getUser()`.
-- Replace duplicated `getClaims()` blocks in club mutation routes with the helper.
-- Preserve each route's existing guard and route-specific error copy.
-- Use imagegen for one repo-owned OmaLeima hero visual instead of relying only on abstract gradients or generic card backgrounds.
-- Use local Poppins font files in admin web so typography matches mobile without depending on a build-time Google font fetch.
-- Keep web polish broad at the design-system level first: global tokens, login, shell, nav, cards, buttons, forms, and shared hero usage.
-- Wrap the department-tag modal content in a `KeyboardAvoidingView` because the modal is not covered by the shared `AppScreen` keyboard-aware scroll view.
-- Do not fake organizer mobile access by routing club accounts into business screens. A real mobile organizer area needs its own navigation, read models, RLS-backed mutations, and event-day permissions.
+- Treat low-friction scanning as an operations problem, not just a camera component problem.
+- Keep QR security server-owned: short TTL, atomic RPC, event/venue limits, scanner identity, device identity, and audit logs stay mandatory.
+- Add future convenience through event-day scanner mode, trusted venue devices, optional staff PIN/device pairing, queue-optimized UI, NFC/static checkpoint options where appropriate, and manual recovery lanes.
+- Add `/club` mobile as its own role area for organizers and club staff. Do not route pure club accounts into `/business`.
+- Split announcement work into platform announcements and organizer announcements. Both need audience targeting, expiry, read receipts, and moderation; organizer push also needs explicit student subscription or event registration consent.
+- Use imagegen for additional repo-owned event/QR/reward visuals, then wire them only through the existing centralized event fallback image list in this slice.
+- Keep generated visuals free of readable text, QR codes, brand marks, and scannable data so they can safely appear behind localized UI copy.
 - Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
 
-- Leave `getClaims()` because builds pass:
-  - rejected because the project already standardized SSR auth on `getUser()` after hosted cookie/session issues
-- Replace every route guard with a new authorization layer:
-  - rejected as too broad for a review hardening pass
-- Start event-rule/venue-limit schema now:
-  - rejected for this branch because it needs new migrations, scanner RPC changes, admin UI, and physical-device smoke
-- Redesign every individual admin panel component in this branch:
-  - rejected because global shell/token alignment gives the biggest quality lift first and keeps this pass reviewable
-- Let pure `CLUB_ORGANIZER` accounts into `/business/home`:
+- Let pure `CLUB_ORGANIZER` accounts into `/business/home` immediately:
   - rejected because organizer accounts manage clubs/events, not business venue scanner profiles, unless they also have an active `business_staff` membership
+- Make businesses scan with a public static QR:
+  - rejected as the primary flow because it reverses trust and makes fraud/replay much easier unless paired with signed checkpoint sessions and server-side limits
+- Implement announcements immediately without docs:
+  - rejected because push/announcement systems are high-risk for spam, consent, and trust; the data model should be explicit first
+- Replace all event photos at once:
+  - rejected because existing event-cover rotation is already centralized and can absorb new assets safely without touching every UI component
 
 ## Edge Cases
 
-- Anonymous route requests must return each route's existing `AUTH_REQUIRED` response instead of a generic server error.
-- Club staff should still only access reward claim handoff, not organizer-only event/reward-tier/department-tag writes.
-- Platform admin behavior should remain governed by the existing access model.
-- Typecheck, lint, and build must stay green for both apps where affected.
+- Event-day flow must work when the venue is busy, staff changes mid-shift, or a scanner device loses connection.
+- Announcement popups must not block emergency app use forever; they need dismiss/read state and expiry.
+- Push announcements must respect user consent and event/organizer scope.
+- Typecheck, lint, and export/build must stay green for affected apps.
 - The generated hero asset must not contain readable text, logos, or external brand marks.
-- Admin web must still work on narrow browser widths after the shell/login visual changes.
-- Department tag creation input must remain visible when the native keyboard opens.
-- Admin accounts should remain web-first unless a specific admin mobile workflow is designed. Organizer mobile access is a valid next feature, not a one-line auth tweak.
+- Admin accounts can remain web-first. Organizer mobile access should be added only with its own screens and permission model.
 
 ## Validation Plan
 
 - Run:
-  - `npm --prefix apps/admin run typecheck`
-  - `npm --prefix apps/admin run lint`
-  - `npm --prefix apps/admin run build`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run export:web`
+- `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

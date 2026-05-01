@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-02
-- **Branch:** `feature/deep-project-review-hardening`
-- **Scope:** Continue the deep review pass, fix the concrete admin route auth drift already found, realign the web admin visual system with the mobile OmaLeima palette and generated brand imagery, and fix the student profile department-tag modal keyboard regression.
+- **Branch:** `feature/product-ops-roadmap-assets`
+- **Scope:** Product-level operations review for low-friction event-day scanning, organizer mobile access, platform/organizer announcements, security gates, and additional OmaLeima visual assets.
 
 ## Affected Files
 
@@ -14,44 +14,34 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/admin/src/app/api/club/**/*.ts`
-- `apps/admin/src/app/globals.css`
-- `apps/admin/src/app/layout.tsx`
-- `apps/admin/src/features/auth/components/admin-login-panel.tsx`
-- `apps/admin/src/features/dashboard/components/dashboard-shell.tsx`
-- `apps/admin/src/features/auth/*`
-- `apps/admin/public/fonts/*`
-- `apps/admin/public/images/omaleima-ops-hero.png`
-- `apps/mobile/assets/event-covers/omaleima-ops-hero.png`
+- `docs/PRODUCT_OPERATIONS_ROADMAP.md`
+- `docs/FINNISH_APPRO_PRODUCT_NOTES.md`
+- `apps/mobile/assets/event-covers/*`
 - `apps/mobile/src/features/events/event-visuals.ts`
-- `apps/mobile/src/app/student/profile.tsx`
 
 ## Risks
 
-- Admin API routes must resolve the authenticated actor the same way as SSR guards. Mixing `getClaims()` and `getUser()` can create subtle hosted/session drift.
-- Route-level auth helper changes must not loosen club organizer, reward tier, reward claim, or department tag permissions.
-- The review should not turn into a broad redesign. Only concrete correctness, security, or product-flow inconsistencies should be changed.
-- Web admin must not feel like a disconnected product from mobile. The same black/lime/Poppins visual language should be used without adding fragile layout complexity.
+- QR scanning cannot become so manual that venues ignore it during rush hour.
+- Low-friction scanning must not weaken the core anti-fraud invariant. Convenience should come from better operator modes, not from trusting clients.
+- Organizer mobile access should be a real `/club` mobile area, not a shortcut into business scanner screens.
+- Announcement systems need audience, consent, moderation, expiry, and delivery history before push is enabled broadly.
 - Generated imagery must live inside the repo before any code references it.
-- The department tag editor is a modal outside the shared `AppScreen` scroll view, so it needs its own keyboard avoidance.
-- Club organizer mobile access is currently not implemented; only student and business areas have mobile route surfaces. Admin can remain web-only, but organizer mobile is a valid follow-up product slice.
 - User-owned unstaged changes in `apps/mobile/package.json` and the untracked `.idea/` folder must stay untouched.
 
 ## Dependencies
 
-- `resolveAdminAccessAsync()` already uses `supabase.auth.getUser()` for SSR-protected admin and club pages.
-- Club mutation routes pass actor ids into atomic RPCs such as `create_club_event_atomic`, `create_reward_tier_atomic`, `update_reward_tier_atomic`, `claim_reward_atomic`, and `create_club_department_tag_atomic`.
-- Existing route-level access guards still decide whether the current session can reach each mutation.
+- Current QR flow already has short-lived QR tokens, single-use JTI, atomic scan RPC, scan history, reward unlock push, and manual token fallback.
+- Current push stack already has device registration, test push, promotion push, event reminders, notification rows, and Expo push transport.
+- Current mobile role access supports student and business roles. Pure club organizer/staff accounts are currently web-only.
+- Existing event-cover fallback images are centralized in `apps/mobile/src/features/events/event-visuals.ts`.
 
 ## Existing Logic Checked
 
-- The prior password-session fix aligned hosted login cookies, but several club mutation routes still read the user id via `supabase.auth.getClaims()`.
-- Product notes already identify the next major product gap: event-rule and venue-stamp-limit modeling. That is important but belongs in a dedicated schema/RPC feature branch, not this review pass.
-- Dev-only student leima preview controls are guarded by `__DEV__`, so they are not a production leakage issue.
-- Mobile already defines the target palette in `apps/mobile/src/features/foundation/theme.ts`: black base, lime primary, soft white text, restrained surfaces, Poppins typography.
-- Admin web was using the right general colors but still felt like a separate glass-dashboard skin because the login hero and shell relied mostly on generic panels and text.
-- `fetchSessionAccessAsync()` routes `STUDENT` accounts to student, active `business_staff` memberships to business, and leaves pure `CLUB_ORGANIZER` / `CLUB_STAFF` / `PLATFORM_ADMIN` accounts unsupported on mobile.
+- `docs/FINNISH_APPRO_PRODUCT_NOTES.md` already calls out venue-specific stamp limits, claim desk, event-day guidance, organizer announcements, and venue-logo stamp memories as missing roadmap items.
+- Current scanner requires a staff device to open the app and scan QR manually. That is secure, but it is too much friction for crowded bar moments unless the scanner surface gets an event-day mode.
+- Admin-wide announcements and organizer announcements are not currently modeled as first-class tables with read receipts, expiry, or push subscriptions.
+- Finnish appro references reinforce that checkpoints, appropassi, leima thresholds, venue limits, claim desks, and event-day information all vary by event. The product needs configurable event operations instead of hard-coded one-size-fits-all assumptions.
 
 ## Review Outcome
 
-Add one route auth helper that resolves the current admin route user through `getUser()`, then use it in club mutation routes that need an actor id. Also replace the admin web skin with a cleaner mobile-aligned shell, local Poppins fonts, SVG login icons, and an imagegen-created OmaLeima event/leima hero asset shared with mobile fallback covers. The student department-tag modal now gets a dedicated keyboard-aware wrapper so the custom tag input stays above the keyboard. Leave larger roadmap features as documented follow-ups unless the review finds a concrete bug with a safe fix.
+Document the next product architecture before implementing large behavior changes. Add more repo-owned OmaLeima generated visuals to the centralized mobile fallback image rotation. Leave QR flow, organizer mobile, announcements, subscriptions, and role-invite security as explicit feature slices because they require schema/RPC/UI/security work.

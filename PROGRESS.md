@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-02
+- **Branch:** `feature/product-ops-roadmap-assets`
+- **Yapılan iş:** Event-day operasyon yonu netlestirildi ve `docs/PRODUCT_OPERATIONS_ROADMAP.md` eklendi. Dokuman; isletme QR okutma isini kolaylastirmak icin scanner kiosk/event-day mode, ayri `/club` mobil alan, platform duyurulari, organizer duyurulari, push abonelikleri, davetli rol modeli, scanner device assignment, audit/fraud kontrolleri ve event/venue stamp rule siralamasini kapsiyor. Finnish appro notlari bu yeni operasyon dokumanina baglandi. `imagegen` ile dort yeni OmaLeima gorseli uretildi ve repo icine alindi: leima pass, night entry, QR checkpoint ve club control. Mobile event cover fallback rotasyonu bu gorselleri kullanacak sekilde genisletildi.
+- **Neden yapıldı:** Kullanici QR okutma operasyonunun isletmeler icin fazla zahmetli kalabilecegini, `/club` mobil alanin gerekli oldugunu, admin/organizer duyuru ve push sistemlerinin tasarlanmasi gerektigini, guvenlik modelinin iyi dusunulmesini ve uygulamada daha fazla proje-temali gorsel kullanilmasini istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Bir sonraki feature branch icin en dogru kod slice'i `event-day scanner mode`: staff'in event/venue'ye kilitli, kamera acik, tek aksiyonlu, haptic/sound feedback'li ve device context kaydeden scanner deneyimi. Bunun ardindan `/club` mobile read-only event dashboard ve reward claim queue gelmeli.
+- **Açık risk/blokaj:** Bu branch strateji ve asset slice'i; scanner kiosk, `/club` mobile, announcement schema veya yeni role-invite backend henuz uygulanmadi. `apps/mobile/package.json`, `RAPOR.md` ve `apps/mobile/src/app/student/events/.idea/` kullanici/yerel degisiklikleri dokunulmadan birakildi.
+
+- **Tarih:** 2026-05-02
 - **Branch:** `feature/deep-project-review-hardening`
 - **Yapılan iş:** Student profile icindeki department tags modalina ozel keyboard avoidance eklendi. Custom tag input'u artik ana `AppScreen` scroll'una guvenmiyor; modal kendi `KeyboardAvoidingView` ve keyboard-aware `ScrollView` davranisiyla klavye acikken input'u gorunur tutuyor. Ayrica admin/organizer mobil login davranisi yeniden incelendi: mevcut mobil auth modeli yalnizca `STUDENT` ve aktif `business_staff` uyeliklerini destekliyor; saf `CLUB_ORGANIZER`, `CLUB_STAFF` ve `PLATFORM_ADMIN` hesaplari bilincli olarak unsupported/web-panel akisine dusuyor.
 - **Neden yapıldı:** Kullanici profile > department tags icinde custom tag input'una basinca input'un klavyenin altinda kaldigini bildirdi. Ayni zamanda admin ve organizer hesaplarinin mobilde neden girmedigini ve organizer'in mobilde de islem yapabilmesi gerekip gerekmedigini sordu.

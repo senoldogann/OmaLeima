@@ -66,3 +66,7 @@ This document captures current product assumptions for OmaLeima after checking F
 4. Extend scanner RPCs to enforce the new limit model atomically.
 5. Add student-facing event details for venue rules, offers, alcohol-free options, and claim instructions.
 6. Add reward claim desk tooling after the tier model is stable.
+
+## Related Operations Plan
+
+The broader event-day operations, `/club` mobile, announcement, push subscription, and access-control roadmap now lives in `docs/PRODUCT_OPERATIONS_ROADMAP.md`.

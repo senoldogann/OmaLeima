@@ -3,6 +3,10 @@ import { Image } from "react-native";
 
 const fallbackCoverSources = [
   require("../../../assets/event-covers/omaleima-ops-hero.png"),
+  require("../../../assets/event-covers/omaleima-leima-pass.png"),
+  require("../../../assets/event-covers/omaleima-night-entry.png"),
+  require("../../../assets/event-covers/omaleima-qr-checkpoint.png"),
+  require("../../../assets/event-covers/omaleima-club-control.png"),
   require("../../../assets/event-covers/laser-crowd.jpg"),
   require("../../../assets/event-covers/bar-friends.jpg"),
   require("../../../assets/event-covers/dj-night.jpg"),
