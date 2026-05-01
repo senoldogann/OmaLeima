@@ -110,7 +110,6 @@ export const SupportRequestSheet = ({
   const planeScale = useRef(new Animated.Value(0.9)).current;
   const planeOpacity = useRef(new Animated.Value(0)).current;
   const sentCopyOpacity = useRef(new Animated.Value(0)).current;
-  const scrollViewRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
     if (area !== "BUSINESS") {
@@ -252,7 +251,7 @@ export const SupportRequestSheet = ({
         <Pressable onPress={onClose} style={styles.modalBackdrop} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
+          keyboardVerticalOffset={0}
           style={styles.keyboardSheetLayer}
         >
           <Pressable onPress={() => {}} style={styles.modalSheet}>
@@ -271,7 +270,6 @@ export const SupportRequestSheet = ({
               contentContainerStyle={styles.modalScrollContent}
               keyboardDismissMode="interactive"
               keyboardShouldPersistTaps="handled"
-              ref={scrollViewRef}
               showsVerticalScrollIndicator={false}
             >
             {area === "BUSINESS" ? (
@@ -304,7 +302,6 @@ export const SupportRequestSheet = ({
                 autoCapitalize="sentences"
                 editable={!createMutation.isPending}
                 onChangeText={setSubject}
-                onFocus={() => scrollViewRef.current?.scrollTo({ animated: true, y: area === "BUSINESS" ? 150 : 24 })}
                 placeholder={
                   language === "fi"
                     ? area === "BUSINESS"
@@ -327,7 +324,6 @@ export const SupportRequestSheet = ({
                 multiline
                 numberOfLines={6}
                 onChangeText={setMessage}
-                onFocus={() => scrollViewRef.current?.scrollTo({ animated: true, y: area === "BUSINESS" ? 250 : 120 })}
                 placeholder={
                   language === "fi"
                     ? "Kerro mitä tapahtui, missä näkymässä ja mitä odotit sovelluksen tekevän."

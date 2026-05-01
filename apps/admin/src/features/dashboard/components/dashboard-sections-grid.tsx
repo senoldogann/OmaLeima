@@ -17,7 +17,6 @@ export const DashboardSectionsGrid = ({ sections }: DashboardSectionsGridProps) 
             {section.items.map((item) => (
               <li key={item} className="list-item">
                 <span>{item}</span>
-                <span className="list-badge">Ready next</span>
               </li>
             ))}
           </ul>

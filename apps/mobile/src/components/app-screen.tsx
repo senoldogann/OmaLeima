@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -11,20 +11,15 @@ export const AppScreen = ({ children }: PropsWithChildren) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
-        style={styles.keyboardAvoidingView}
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.content}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        style={styles.scrollView}
       >
-        <ScrollView
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={styles.content}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          style={styles.scrollView}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {children}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -34,9 +29,6 @@ const createStyles = (theme: MobileTheme) =>
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.screenBase,
-    },
-    keyboardAvoidingView: {
-      flex: 1,
     },
     scrollView: {
       flex: 1,

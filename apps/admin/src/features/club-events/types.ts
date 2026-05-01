@@ -17,14 +17,19 @@ export type ClubEventRecord = {
   city: string;
   clubId: string;
   clubName: string;
+  coverImageUrl: string | null;
   createdAt: string;
   createdByEmail: string | null;
+  description: string | null;
   endAt: string;
   eventId: string;
   joinDeadlineAt: string;
+  joinedVenueCount: number;
   maxParticipants: number | null;
   minimumStampsRequired: number;
   name: string;
+  registeredParticipantCount: number;
+  rulesJson: string;
   slug: string;
   startAt: string;
   status: "ACTIVE" | "CANCELLED" | "COMPLETED" | "DRAFT" | "PUBLISHED";
@@ -58,6 +63,26 @@ export type ClubEventCreationPayload = {
   rulesJson: string;
   startAt: string;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
+};
+
+export type ClubEventUpdatePayload = {
+  city: string;
+  coverImageUrl: string;
+  description: string;
+  endAt: string;
+  eventId: string;
+  joinDeadlineAt: string;
+  maxParticipants: string;
+  minimumStampsRequired: string;
+  name: string;
+  rulesJson: string;
+  startAt: string;
+  status: "ACTIVE" | "DRAFT" | "PUBLISHED";
+  visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
+};
+
+export type ClubEventCancelPayload = {
+  eventId: string;
 };
 
 export type ClubEventMutationResponse = {

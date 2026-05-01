@@ -14,6 +14,11 @@ type CreateClubEventRpcPayload = {
   status?: string;
 };
 
+type UpdatedEventRow = {
+  id: string;
+  status: string;
+};
+
 const buildClubEventMessage = (status: string | null): string => {
   const messages: Record<string, string> = {
     ACTOR_NOT_ALLOWED: "The authenticated session does not match the organizer account.",
@@ -119,6 +124,117 @@ export const invokeCreateClubEventRpcAsync = async (
     response: {
       message: buildClubEventMessage(status),
       status,
+    },
+    status: 200,
+  };
+};
+
+export const updateClubEventAsync = async (
+  supabase: SupabaseClient,
+  payload: {
+    city: string;
+    coverImageUrl: string;
+    description: string;
+    endAtIso: string;
+    eventId: string;
+    joinDeadlineAtIso: string;
+    maxParticipants: number | null;
+    minimumStampsRequired: number;
+    name: string;
+    rules: EventRules;
+    startAtIso: string;
+    status: "ACTIVE" | "DRAFT" | "PUBLISHED";
+    visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
+  }
+): Promise<ClubEventTransportResult> => {
+  const { data, error } = await supabase
+    .from("events")
+    .update({
+      city: payload.city,
+      cover_image_url: payload.coverImageUrl.trim().length === 0 ? null : payload.coverImageUrl,
+      description: payload.description.trim().length === 0 ? null : payload.description,
+      end_at: payload.endAtIso,
+      join_deadline_at: payload.joinDeadlineAtIso,
+      max_participants: payload.maxParticipants,
+      minimum_stamps_required: payload.minimumStampsRequired,
+      name: payload.name,
+      rules: payload.rules,
+      start_at: payload.startAtIso,
+      status: payload.status,
+      visibility: payload.visibility,
+    })
+    .eq("id", payload.eventId)
+    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
+    .select("id,status")
+    .maybeSingle<UpdatedEventRow>();
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "UPDATE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (data === null) {
+    return {
+      response: {
+        message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
+        status: "EVENT_UPDATE_NOT_ALLOWED",
+      },
+      status: 403,
+    };
+  }
+
+  return {
+    response: {
+      message: "Event updated successfully.",
+      status: "SUCCESS",
+    },
+    status: 200,
+  };
+};
+
+export const cancelClubEventAsync = async (
+  supabase: SupabaseClient,
+  eventId: string
+): Promise<ClubEventTransportResult> => {
+  const { data, error } = await supabase
+    .from("events")
+    .update({
+      status: "CANCELLED",
+    })
+    .eq("id", eventId)
+    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
+    .select("id,status")
+    .maybeSingle<UpdatedEventRow>();
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "CANCEL_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (data === null) {
+    return {
+      response: {
+        message: "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account.",
+        status: "EVENT_CANCEL_NOT_ALLOWED",
+      },
+      status: 403,
+    };
+  }
+
+  return {
+    response: {
+      message: "Event cancelled without deleting operational history.",
+      status: "SUCCESS",
     },
     status: 200,
   };

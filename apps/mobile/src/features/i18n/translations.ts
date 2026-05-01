@@ -107,6 +107,7 @@ type BusinessCopy = {
   accessChecking: string;
   accessResolving: string;
   accessMissing: string;
+  webPanelRequired: string;
   homeMeta: string;
   eventsMeta: string;
   historyMeta: string;
@@ -273,6 +274,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       accessChecking: "Tarkistetaan yrityksen istunto.",
       accessResolving: "Varmistetaan henkilökunnan oikeudet yritysnäkymään.",
       accessMissing: "Tällä tilillä ei ole aktiivista yritysoikeutta.",
+      webPanelRequired: "Admin- ja järjestäjätilit käyttävät OmaLeiman web-paneelia. Avaa admin-paneeli selaimessa ja kirjaudu siellä sisään.",
       homeMeta: "Skanneri, liittyneet tapahtumat ja tapahtumapäivän tila samasta näkymästä.",
       eventsMeta: "Liity tuleviin iltoihin ja avaa skanneri, kun tapahtuma menee liveksi.",
       historyMeta: "Katso viimeisimmät skannaukset nopeasti ilman kameraa.",
@@ -429,6 +431,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       accessChecking: "Checking the business session.",
       accessResolving: "Confirming staff access for the business area.",
       accessMissing: "This account does not currently have active business access.",
+      webPanelRequired: "Admin and organizer accounts use the OmaLeima web panel. Open the admin panel in a browser and sign in there.",
       homeMeta: "Scanner, joined events, and event-day status in one place.",
       eventsMeta: "Join upcoming nights and open the scanner when one goes live.",
       historyMeta: "Review recent scans quickly without keeping the camera open.",

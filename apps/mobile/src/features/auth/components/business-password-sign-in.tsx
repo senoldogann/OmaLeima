@@ -4,13 +4,18 @@ import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
-import { fetchSessionAccessAsync } from "@/features/auth/session-access";
+import { fetchSessionAccessAsync, type SessionAccess } from "@/features/auth/session-access";
 import {
   interactiveSurfaceShadowStyle,
   type MobileTheme,
 } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
+
+const requiresWebPanel = (access: SessionAccess): boolean =>
+  access.primaryRole === "PLATFORM_ADMIN" ||
+  access.primaryRole === "CLUB_ORGANIZER" ||
+  access.primaryRole === "CLUB_STAFF";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
@@ -53,7 +58,7 @@ export const BusinessPasswordSignIn = () => {
       if (access.area !== "business" || access.homeHref === null) {
         await supabase.auth.signOut();
         setIsLoading(false);
-        setErrorMessage(copy.business.accessMissing);
+        setErrorMessage(requiresWebPanel(access) ? copy.business.webPanelRequired : copy.business.accessMissing);
         return;
       }
 

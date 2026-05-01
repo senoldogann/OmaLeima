@@ -5,38 +5,45 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-01
-- **Branch:** `bug/admin-password-session-cookies`
-- **Goal:** Stop admin and organizer password logins from bouncing back to `/login` by ensuring Supabase session cookies are returned by the password-session route itself.
+- **Branch:** `feature/admin-organizer-panel-polish`
+- **Goal:** Make native mobile auth behavior understandable for admin/organizer accounts, reduce keyboard jumps, and upgrade the club organizer web panel with practical event management.
 
 ## Architectural Decisions
 
-- Keep the existing client password form and `/auth/password-session` handoff.
-- Build a dedicated route-handler Supabase client in `password-session/route.ts` so cookie collection is visible in that route.
-- Mutate `request.cookies` inside `setAll()` before resolving access so the same request can immediately read the new session.
-- Attach every collected cookie to the final `NextResponse.json()` response.
-- Leave role mapping and dashboard redirects unchanged.
+- Keep native mobile focused on student and business-scanner workflows. Admin and club organizer accounts should open the hosted web panel, not enter native student/business tabs.
+- Replace the generic business access error with role-aware guidance when a password account is `PLATFORM_ADMIN`, `CLUB_ORGANIZER`, or `CLUB_STAFF`.
+- Let `ScrollView.automaticallyAdjustKeyboardInsets` handle most mobile keyboard spacing and remove global double-padding behavior.
+- Extend club event read models with registration and venue counts using batched queries for the visible event IDs.
+- Add safe organizer event update/cancel actions through route handlers. Cancellation updates `events.status = 'CANCELLED'`; it does not hard-delete rows.
+- Improve admin/club shell clarity with a cleaner black/lime surface, responsive navigation, and less “placeholder dashboard” language.
 
 ## Alternatives Considered
 
-- Redirect directly from the password-session route:
-  - rejected because the current client flow expects a JSON `{ homeHref }` response and already controls navigation
-- Store admin access in local storage:
-  - rejected because the admin app is SSR-protected and must use HTTP cookies
-- Bypass `resolveAdminAccessAsync` after password login:
-  - rejected because role routing must stay centralized and consistent with OAuth callback behavior
+- Add native admin and organizer tabs:
+  - rejected for this slice because the existing product architecture already has a Next.js admin/club panel and mobile operator tabs are built for venue scanners
+- Hard-delete events:
+  - rejected because event cascades would delete registrations, stamps, token uses, and reward history
+- Build new organizer account creation now:
+  - rejected for this slice because a secure implementation needs Supabase Auth Admin user creation, profile upsert, membership insert, and audit logging in one admin-only route
+- Keep current keyboard avoidance and tune offsets:
+  - rejected because the current double mechanism is the source of large layout jumps
 
 ## Edge Cases
 
-- Invalid token payload returns an explicit 400 or 401 without setting cookies.
-- Session set succeeds but role lookup returns unsupported: browser receives `/forbidden`, not `/login`.
-- Admin and organizer accounts should persist through the first protected SSR navigation after login.
-- Anonymous `/login` render should still work normally.
+- Admin/organizer password login inside the native app should sign out and show actionable copy, not silently return to an empty login.
+- Student and business-scanner login behavior must remain unchanged.
+- Event update must reject invalid dates, invalid visibility/status values, and attempts against events outside the organizer's clubs.
+- Cancelled events remain visible in organizer history and keep their operational history.
+- Empty organizer memberships and read-only staff sessions should still show a clear no-action state.
 
 ## Validation Plan
 
 - Run:
+  - `npm --prefix apps/mobile run typecheck`
+  - `npm --prefix apps/mobile run lint`
+  - `npm --prefix apps/mobile run export:web`
   - `npm --prefix apps/admin run typecheck`
   - `npm --prefix apps/admin run lint`
   - `npm --prefix apps/admin run build`
 - Record the handoff in `PROGRESS.md`.
-- After deploy, run browser smoke or manually test admin and organizer credentials against the deployed URL.
+- Leave `apps/mobile/package.json` user script changes unstaged unless explicitly requested.
