@@ -17,3 +17,6 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Rework admin web typography, login, shell, nav, cards, buttons, and image usage toward the mobile visual language.
 - [x] Run admin and mobile validation commands.
 - [x] Update `PROGRESS.md` with validation and handoff.
+- [x] Fix student profile department-tag modal keyboard avoidance.
+- [x] Run mobile validation for department-tag modal change.
+- [x] Update `PROGRESS.md` with keyboard fix and organizer mobile access handoff.

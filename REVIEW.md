@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-05-02
 - **Branch:** `feature/deep-project-review-hardening`
-- **Scope:** Continue the deep review pass, fix the concrete admin route auth drift already found, then realign the web admin visual system with the mobile OmaLeima palette and generated brand imagery.
+- **Scope:** Continue the deep review pass, fix the concrete admin route auth drift already found, realign the web admin visual system with the mobile OmaLeima palette and generated brand imagery, and fix the student profile department-tag modal keyboard regression.
 
 ## Affected Files
 
@@ -24,6 +24,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `apps/admin/public/images/omaleima-ops-hero.png`
 - `apps/mobile/assets/event-covers/omaleima-ops-hero.png`
 - `apps/mobile/src/features/events/event-visuals.ts`
+- `apps/mobile/src/app/student/profile.tsx`
 
 ## Risks
 
@@ -32,6 +33,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - The review should not turn into a broad redesign. Only concrete correctness, security, or product-flow inconsistencies should be changed.
 - Web admin must not feel like a disconnected product from mobile. The same black/lime/Poppins visual language should be used without adding fragile layout complexity.
 - Generated imagery must live inside the repo before any code references it.
+- The department tag editor is a modal outside the shared `AppScreen` scroll view, so it needs its own keyboard avoidance.
+- Club organizer mobile access is currently not implemented; only student and business areas have mobile route surfaces. Admin can remain web-only, but organizer mobile is a valid follow-up product slice.
 - User-owned unstaged changes in `apps/mobile/package.json` and the untracked `.idea/` folder must stay untouched.
 
 ## Dependencies
@@ -47,7 +50,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - Dev-only student leima preview controls are guarded by `__DEV__`, so they are not a production leakage issue.
 - Mobile already defines the target palette in `apps/mobile/src/features/foundation/theme.ts`: black base, lime primary, soft white text, restrained surfaces, Poppins typography.
 - Admin web was using the right general colors but still felt like a separate glass-dashboard skin because the login hero and shell relied mostly on generic panels and text.
+- `fetchSessionAccessAsync()` routes `STUDENT` accounts to student, active `business_staff` memberships to business, and leaves pure `CLUB_ORGANIZER` / `CLUB_STAFF` / `PLATFORM_ADMIN` accounts unsupported on mobile.
 
 ## Review Outcome
 
-Add one route auth helper that resolves the current admin route user through `getUser()`, then use it in club mutation routes that need an actor id. Also replace the admin web skin with a cleaner mobile-aligned shell, local Poppins fonts, SVG login icons, and an imagegen-created OmaLeima event/leima hero asset shared with mobile fallback covers. Leave larger roadmap features as documented follow-ups unless the review finds a concrete bug with a safe fix.
+Add one route auth helper that resolves the current admin route user through `getUser()`, then use it in club mutation routes that need an actor id. Also replace the admin web skin with a cleaner mobile-aligned shell, local Poppins fonts, SVG login icons, and an imagegen-created OmaLeima event/leima hero asset shared with mobile fallback covers. The student department-tag modal now gets a dedicated keyboard-aware wrapper so the custom tag input stays above the keyboard. Leave larger roadmap features as documented follow-ups unless the review finds a concrete bug with a safe fix.

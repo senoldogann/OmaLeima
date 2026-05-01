@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 - **Date:** 2026-05-02
 - **Branch:** `feature/deep-project-review-hardening`
-- **Goal:** Run a deep correctness/security review, remove the concrete auth inconsistency found in admin club mutation routes, and bring admin web closer to the mobile visual system.
+- **Goal:** Run a deep correctness/security review, remove the concrete auth inconsistency found in admin club mutation routes, bring admin web closer to the mobile visual system, and fix the student profile department-tag keyboard issue.
 
 ## Architectural Decisions
 
@@ -17,6 +17,8 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Use imagegen for one repo-owned OmaLeima hero visual instead of relying only on abstract gradients or generic card backgrounds.
 - Use local Poppins font files in admin web so typography matches mobile without depending on a build-time Google font fetch.
 - Keep web polish broad at the design-system level first: global tokens, login, shell, nav, cards, buttons, forms, and shared hero usage.
+- Wrap the department-tag modal content in a `KeyboardAvoidingView` because the modal is not covered by the shared `AppScreen` keyboard-aware scroll view.
+- Do not fake organizer mobile access by routing club accounts into business screens. A real mobile organizer area needs its own navigation, read models, RLS-backed mutations, and event-day permissions.
 - Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
@@ -29,6 +31,8 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - rejected for this branch because it needs new migrations, scanner RPC changes, admin UI, and physical-device smoke
 - Redesign every individual admin panel component in this branch:
   - rejected because global shell/token alignment gives the biggest quality lift first and keeps this pass reviewable
+- Let pure `CLUB_ORGANIZER` accounts into `/business/home`:
+  - rejected because organizer accounts manage clubs/events, not business venue scanner profiles, unless they also have an active `business_staff` membership
 
 ## Edge Cases
 
@@ -38,6 +42,8 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 - Typecheck, lint, and build must stay green for both apps where affected.
 - The generated hero asset must not contain readable text, logos, or external brand marks.
 - Admin web must still work on narrow browser widths after the shell/login visual changes.
+- Department tag creation input must remain visible when the native keyboard opens.
+- Admin accounts should remain web-first unless a specific admin mobile workflow is designed. Organizer mobile access is a valid next feature, not a one-line auth tweak.
 
 ## Validation Plan
 
