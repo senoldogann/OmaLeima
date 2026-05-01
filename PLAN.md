@@ -4,46 +4,47 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 ## Current Plan
 
-- **Date:** 2026-05-01
-- **Branch:** `feature/admin-organizer-panel-polish`
-- **Goal:** Make native mobile auth behavior understandable for admin/organizer accounts, reduce keyboard jumps, and upgrade the club organizer web panel with practical event management.
+- **Date:** 2026-05-02
+- **Branch:** `feature/deep-project-review-hardening`
+- **Goal:** Run a deep correctness/security review, remove the concrete auth inconsistency found in admin club mutation routes, and bring admin web closer to the mobile visual system.
 
 ## Architectural Decisions
 
-- Keep native mobile focused on student and business-scanner workflows. Admin and club organizer accounts should open the hosted web panel, not enter native student/business tabs.
-- Replace the generic business access error with role-aware guidance when a password account is `PLATFORM_ADMIN`, `CLUB_ORGANIZER`, or `CLUB_STAFF`.
-- Let `ScrollView.automaticallyAdjustKeyboardInsets` handle most mobile keyboard spacing and remove global double-padding behavior.
-- Extend club event read models with registration and venue counts using batched queries for the visible event IDs.
-- Add safe organizer event update/cancel actions through route handlers. Cancellation updates `events.status = 'CANCELLED'`; it does not hard-delete rows.
-- Improve admin/club shell clarity with a cleaner black/lime surface, responsive navigation, and less “placeholder dashboard” language.
+- Keep the review targeted: fix drift and update working docs instead of adding large roadmap features opportunistically.
+- Add a small route-level auth helper under admin auth features so all mutation routes can resolve actor user ids through `supabase.auth.getUser()`.
+- Replace duplicated `getClaims()` blocks in club mutation routes with the helper.
+- Preserve each route's existing guard and route-specific error copy.
+- Use imagegen for one repo-owned OmaLeima hero visual instead of relying only on abstract gradients or generic card backgrounds.
+- Use local Poppins font files in admin web so typography matches mobile without depending on a build-time Google font fetch.
+- Keep web polish broad at the design-system level first: global tokens, login, shell, nav, cards, buttons, forms, and shared hero usage.
+- Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
 
-- Add native admin and organizer tabs:
-  - rejected for this slice because the existing product architecture already has a Next.js admin/club panel and mobile operator tabs are built for venue scanners
-- Hard-delete events:
-  - rejected because event cascades would delete registrations, stamps, token uses, and reward history
-- Build new organizer account creation now:
-  - rejected for this slice because a secure implementation needs Supabase Auth Admin user creation, profile upsert, membership insert, and audit logging in one admin-only route
-- Keep current keyboard avoidance and tune offsets:
-  - rejected because the current double mechanism is the source of large layout jumps
+- Leave `getClaims()` because builds pass:
+  - rejected because the project already standardized SSR auth on `getUser()` after hosted cookie/session issues
+- Replace every route guard with a new authorization layer:
+  - rejected as too broad for a review hardening pass
+- Start event-rule/venue-limit schema now:
+  - rejected for this branch because it needs new migrations, scanner RPC changes, admin UI, and physical-device smoke
+- Redesign every individual admin panel component in this branch:
+  - rejected because global shell/token alignment gives the biggest quality lift first and keeps this pass reviewable
 
 ## Edge Cases
 
-- Admin/organizer password login inside the native app should sign out and show actionable copy, not silently return to an empty login.
-- Student and business-scanner login behavior must remain unchanged.
-- Event update must reject invalid dates, invalid visibility/status values, and attempts against events outside the organizer's clubs.
-- Cancelled events remain visible in organizer history and keep their operational history.
-- Empty organizer memberships and read-only staff sessions should still show a clear no-action state.
+- Anonymous route requests must return each route's existing `AUTH_REQUIRED` response instead of a generic server error.
+- Club staff should still only access reward claim handoff, not organizer-only event/reward-tier/department-tag writes.
+- Platform admin behavior should remain governed by the existing access model.
+- Typecheck, lint, and build must stay green for both apps where affected.
+- The generated hero asset must not contain readable text, logos, or external brand marks.
+- Admin web must still work on narrow browser widths after the shell/login visual changes.
 
 ## Validation Plan
 
 - Run:
-  - `npm --prefix apps/mobile run typecheck`
-  - `npm --prefix apps/mobile run lint`
-  - `npm --prefix apps/mobile run export:web`
   - `npm --prefix apps/admin run typecheck`
   - `npm --prefix apps/admin run lint`
   - `npm --prefix apps/admin run build`
+  - `npm --prefix apps/mobile run typecheck`
+  - `npm --prefix apps/mobile run lint`
 - Record the handoff in `PROGRESS.md`.
-- Leave `apps/mobile/package.json` user script changes unstaged unless explicitly requested.

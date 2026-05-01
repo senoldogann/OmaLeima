@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +19,33 @@ const isPasswordSessionResponseBody = (value: unknown): value is PasswordSession
   value !== null &&
   (("homeHref" in value && typeof value.homeHref === "string") ||
     ("error" in value && typeof value.error === "string"));
+
+const GoogleIcon = (): ReactElement => (
+  <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24">
+    <path
+      d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.37a4.58 4.58 0 0 1-1.99 3.01v2.5h3.22c1.88-1.73 3-4.28 3-7.5Z"
+      fill="#4285F4"
+    />
+    <path
+      d="M12 22c2.7 0 4.96-.9 6.6-2.43l-3.22-2.5c-.9.6-2.05.95-3.38.95-2.6 0-4.8-1.76-5.6-4.12H3.08v2.58A9.98 9.98 0 0 0 12 22Z"
+      fill="#34A853"
+    />
+    <path d="M6.4 13.9a6.01 6.01 0 0 1 0-3.8V7.52H3.08a10 10 0 0 0 0 8.96L6.4 13.9Z" fill="#FBBC05" />
+    <path
+      d="M12 5.98c1.47 0 2.8.5 3.84 1.5l2.86-2.86A9.6 9.6 0 0 0 12 2a9.98 9.98 0 0 0-8.92 5.52L6.4 10.1C7.2 7.74 9.4 5.98 12 5.98Z"
+      fill="#EA4335"
+    />
+  </svg>
+);
+
+const KeyIcon = (): ReactElement => (
+  <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24">
+    <path
+      d="M14.5 8.5a5 5 0 1 0-4.1 4.92l1.18 1.18h2.02v2.02h2.02v2.02H19v-3.38l-4.5-4.5a4.98 4.98 0 0 0 0-2.26Zm-7 1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"
+      fill="currentColor"
+    />
+  </svg>
+);
 
 export const AdminLoginPanel = () => {
   const searchParams = useSearchParams();
@@ -99,22 +127,18 @@ export const AdminLoginPanel = () => {
 
   return (
     <div className="auth-grid">
-      <section className="panel panel-hero">
-        <div className="eyebrow">OmaLeima</div>
-        <h1 className="panel-title">Admin and club operations</h1>
-        <p className="panel-copy">
-          Review business applications, manage event configuration, and open the role-specific dashboard tied to this
-          Supabase session.
-        </p>
-        <div className="stack-sm">
-          <div className="hero-metric">
-            <span className="hero-metric-label">Phase</span>
-            <span className="hero-metric-value">Admin foundation</span>
+      <section className="auth-visual" aria-label="OmaLeima operations">
+        <div className="auth-visual-copy">
+          <div className="brand-lockup">
+            <span className="brand-mark" aria-hidden="true">
+              OL
+            </span>
+            <div>
+              <div className="eyebrow">OmaLeima</div>
+              <h1 className="auth-title">Operations</h1>
+            </div>
           </div>
-          <div className="hero-metric">
-            <span className="hero-metric-label">Access</span>
-            <span className="hero-metric-value">Platform admin or club staff</span>
-          </div>
+          <p>Events, leimat and reward handoffs in one clean operator panel.</p>
         </div>
       </section>
 
@@ -122,8 +146,7 @@ export const AdminLoginPanel = () => {
         <div className="stack-md">
           <div className="stack-sm">
             <div className="eyebrow">Login</div>
-            <h2 className="section-title">Open the correct dashboard</h2>
-            <p className="muted-text">Use an allowed Supabase admin or club account. Google OAuth is ready for hosted auth.</p>
+            <h2 className="section-title">Open dashboard</h2>
           </div>
 
           <button
@@ -132,6 +155,7 @@ export const AdminLoginPanel = () => {
             onClick={() => void handleGoogleSignIn()}
             type="button"
           >
+            <GoogleIcon />
             {isGooglePending ? "Redirecting..." : "Continue with Google"}
           </button>
 
@@ -163,6 +187,7 @@ export const AdminLoginPanel = () => {
             </label>
 
             <button className="button button-primary" disabled={isPasswordPending || isGooglePending} type="submit">
+              <KeyIcon />
               {isPasswordPending ? "Signing in..." : "Sign in with password"}
             </button>
           </form>

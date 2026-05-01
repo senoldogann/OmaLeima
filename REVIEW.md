@@ -4,9 +4,9 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Current Review
 
-- **Date:** 2026-05-01
-- **Branch:** `feature/admin-organizer-panel-polish`
-- **Scope:** Remove the remaining admin/organizer confusion on native mobile, normalize keyboard behavior, and make the organizer event panel useful enough for pilot operations.
+- **Date:** 2026-05-02
+- **Branch:** `feature/deep-project-review-hardening`
+- **Scope:** Continue the deep review pass, fix the concrete admin route auth drift already found, then realign the web admin visual system with the mobile OmaLeima palette and generated brand imagery.
 
 ## Affected Files
 
@@ -14,37 +14,40 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/auth/login.tsx`
-- `apps/mobile/src/components/app-screen.tsx`
-- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
-- `apps/mobile/src/features/i18n/translations.ts`
-- `apps/admin/src/app/api/club/events/*`
+- `apps/admin/src/app/api/club/**/*.ts`
 - `apps/admin/src/app/globals.css`
-- `apps/admin/src/features/club-events/*`
-- `apps/admin/src/features/dashboard/*`
+- `apps/admin/src/app/layout.tsx`
+- `apps/admin/src/features/auth/components/admin-login-panel.tsx`
+- `apps/admin/src/features/dashboard/components/dashboard-shell.tsx`
+- `apps/admin/src/features/auth/*`
+- `apps/admin/public/fonts/*`
+- `apps/admin/public/images/omaleima-ops-hero.png`
+- `apps/mobile/assets/event-covers/omaleima-ops-hero.png`
+- `apps/mobile/src/features/events/event-visuals.ts`
 
 ## Risks
 
-- Native mobile admin/organizer password sign-in is not the same product surface as hosted web admin. The app must explain that clearly instead of looking like a broken bounce.
-- Keyboard fixes must reduce over-pushing without reintroducing hidden focused inputs in login and support forms.
-- Event delete should not hard-delete operational history because registrations, stamps, QR uses, and reward claims cascade from events. Safe cancellation is the correct pilot behavior.
-- Organizer event updates must stay protected by existing club OWNER/ORGANIZER RLS and route-level access checks.
-- Admin/club UI polish should improve scanning and action clarity without inventing unimplemented backend features.
+- Admin API routes must resolve the authenticated actor the same way as SSR guards. Mixing `getClaims()` and `getUser()` can create subtle hosted/session drift.
+- Route-level auth helper changes must not loosen club organizer, reward tier, reward claim, or department tag permissions.
+- The review should not turn into a broad redesign. Only concrete correctness, security, or product-flow inconsistencies should be changed.
+- Web admin must not feel like a disconnected product from mobile. The same black/lime/Poppins visual language should be used without adding fragile layout complexity.
+- Generated imagery must live inside the repo before any code references it.
+- User-owned unstaged changes in `apps/mobile/package.json` and the untracked `.idea/` folder must stay untouched.
 
 ## Dependencies
 
-- Mobile `fetchSessionAccessAsync` currently routes only `STUDENT` and active `business_staff` memberships into native app areas.
-- Admin web `resolveAdminAccessAsync` remains the role router for `/admin` and `/club`.
-- Existing `create_club_event_atomic` covers draft creation; update/cancel can use the strict `club organizers can manage own events` policy.
-- Event counts can be read from `event_registrations` and `event_venues` in one query per table for the visible event set.
+- `resolveAdminAccessAsync()` already uses `supabase.auth.getUser()` for SSR-protected admin and club pages.
+- Club mutation routes pass actor ids into atomic RPCs such as `create_club_event_atomic`, `create_reward_tier_atomic`, `update_reward_tier_atomic`, `claim_reward_atomic`, and `create_club_department_tag_atomic`.
+- Existing route-level access guards still decide whether the current session can reach each mutation.
 
 ## Existing Logic Checked
 
-- `BusinessPasswordSignIn` signs out every non-business session after password auth and displays a generic business access error.
-- `AppScreen` combines `KeyboardAvoidingView` padding with `ScrollView.automaticallyAdjustKeyboardInsets`, which can double-shift content.
-- `LoginScreen` hides the hero when the business keyboard opens, creating a large layout jump.
-- `ClubEventsPanel` can create draft events but cannot update, cancel, or show registrations/venues, making the organizer panel feel incomplete.
+- The prior password-session fix aligned hosted login cookies, but several club mutation routes still read the user id via `supabase.auth.getClaims()`.
+- Product notes already identify the next major product gap: event-rule and venue-stamp-limit modeling. That is important but belongs in a dedicated schema/RPC feature branch, not this review pass.
+- Dev-only student leima preview controls are guarded by `__DEV__`, so they are not a production leakage issue.
+- Mobile already defines the target palette in `apps/mobile/src/features/foundation/theme.ts`: black base, lime primary, soft white text, restrained surfaces, Poppins typography.
+- Admin web was using the right general colors but still felt like a separate glass-dashboard skin because the login hero and shell relied mostly on generic panels and text.
 
 ## Review Outcome
 
-Implement a focused polish slice: make native admin/organizer login produce an explicit web-panel message, simplify keyboard inset handling, add event operational counts, and add safe update/cancel actions to organizer-visible events. Keep new organizer account creation as a separate admin-only feature because it requires Auth Admin API handling and membership creation as one audited workflow.
+Add one route auth helper that resolves the current admin route user through `getUser()`, then use it in club mutation routes that need an actor id. Also replace the admin web skin with a cleaner mobile-aligned shell, local Poppins fonts, SVG login icons, and an imagegen-created OmaLeima event/leima hero asset shared with mobile fallback covers. Leave larger roadmap features as documented follow-ups unless the review finds a concrete bug with a safe fix.

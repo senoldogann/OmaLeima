@@ -9,6 +9,7 @@ import {
   parseClubEventCreationPayloadOrThrow,
   parseIsoDateTimeOrThrow,
 } from "@/features/club-events/validation";
+import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -22,15 +23,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const claimsResult = await supabase.auth.getClaims();
+    const userId = await resolveAuthenticatedRouteUserIdAsync(supabase);
 
-    if (claimsResult.error !== null) {
-      throw new Error(`Failed to resolve route claims: ${claimsResult.error.message}`);
-    }
-
-    const userId = claimsResult.data?.claims?.sub;
-
-    if (typeof userId !== "string") {
+    if (userId === null) {
       return NextResponse.json(
         {
           message: "Sign in again before creating an event.",

@@ -6,14 +6,14 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, and business media upload slices recorded in `PROGRESS.md`.
 
-## Current Todos (Admin / Organizer Panel Polish)
+## Current Todos (Deep Review Hardening)
 
 - [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the current branch.
-- [x] Inspect native auth routing, keyboard wrappers, admin shell, and club event management.
-- [x] Add role-aware native mobile guidance for admin/organizer password accounts.
-- [x] Normalize keyboard behavior on shared mobile screens and login.
-- [x] Add organizer event registration/venue counts without N+1 queries.
-- [x] Add safe event update and cancel route handlers.
-- [x] Polish the admin/club dashboard shell and club event panel layout.
-- [x] Run mobile and admin validation commands.
+- [x] Read current progress, master plan, Finnish appro product notes, and relevant Expo/Supabase skill guidance.
+- [x] Scan mobile/admin/Supabase code for debug leakage, auth drift, direct deletes, stale TODOs, and route/RLS risks.
+- [x] Add shared admin route user resolver based on `auth.getUser()`.
+- [x] Replace club mutation route `getClaims()` blocks with the shared resolver.
+- [x] Generate and persist an OmaLeima black/lime event hero visual with imagegen.
+- [x] Rework admin web typography, login, shell, nav, cards, buttons, and image usage toward the mobile visual language.
+- [x] Run admin and mobile validation commands.
 - [x] Update `PROGRESS.md` with validation and handoff.

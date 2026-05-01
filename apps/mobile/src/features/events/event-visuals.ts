@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from "react-native";
 import { Image } from "react-native";
 
 const fallbackCoverSources = [
+  require("../../../assets/event-covers/omaleima-ops-hero.png"),
   require("../../../assets/event-covers/laser-crowd.jpg"),
   require("../../../assets/event-covers/bar-friends.jpg"),
   require("../../../assets/event-covers/dj-night.jpg"),

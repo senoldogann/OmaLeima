@@ -26,12 +26,20 @@ export const DashboardShell = ({
 }: DashboardShellProps) => (
   <div className="shell">
     <aside className="sidebar">
-      <div className="stack-md">
-        <div className="eyebrow">OmaLeima</div>
-        <div className="stack-sm">
-          <h1 className="sidebar-title">{areaLabel}</h1>
-          <p className="muted-text">{userEmail ?? "Authenticated session"}</p>
-          <span className="status-pill">{roleLabel ?? "Unknown role"}</span>
+      <div className="stack-lg">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            OL
+          </span>
+          <div>
+            <div className="eyebrow">OmaLeima</div>
+            <h1 className="sidebar-title">{areaLabel}</h1>
+          </div>
+        </div>
+
+        <div className="session-strip">
+          <span>{roleLabel ?? "Unknown role"}</span>
+          <strong>{userEmail ?? "Authenticated session"}</strong>
         </div>
       </div>
 
@@ -42,6 +50,7 @@ export const DashboardShell = ({
             className={`nav-link ${item.href === activeHref ? "nav-link-active" : ""}`}
             href={item.href}
           >
+            <span className="nav-dot" aria-hidden="true" />
             {item.label}
           </Link>
         ))}
@@ -51,10 +60,12 @@ export const DashboardShell = ({
     </aside>
 
     <main className="content">
-      <header className="panel">
-        <div className="eyebrow">{areaLabel}</div>
-        <h2 className="panel-title">{title}</h2>
-        <p className="panel-copy">{subtitle}</p>
+      <header className="panel hero-banner">
+        <div className="hero-banner-content">
+          <div className="eyebrow">{areaLabel}</div>
+          <h2 className="panel-title">{title}</h2>
+          <p className="panel-copy">{subtitle}</p>
+        </div>
       </header>
 
       {children}
