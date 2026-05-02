@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/scanner-location-consent`
+- **Yapılan iş:** QR scan akisi yeniden dogrulandi ve kullanicinin tarif ettigi kontrol zinciri netlestirildi: dynamic signed QR, business staff auth, QR type/signature/expiry, active event, registered student, joined venue, active business staff, replay JTI ve same-business duplicate leima kontrolleri backend tarafinda mevcut. Kalan scanner location/fraud slice'i baslatildi: scanner transport artik optional `ScannerLocationPayload` tasiyor; business scanner ekranina acik opt-in `Sijaintitodiste / Location proof` paneli eklendi; web preview cihazlarda operator tikladiginda browser geolocation alinir ve camera/manual scan isteklerine eklenir; native tarafta dependency eklenmeden sessiz lokasyon toplanmaz ve durum acikca gosterilir. Backend tarafinda successful stamp insert sonrasinda scanner koordinati ve business koordinati varsa 300m ustu uzakliklar icin non-blocking `SCANNER_DISTANCE_ANOMALY` fraud signal olusturan trigger eklendi.
+- **Neden yapıldı:** Kullanici QR scan isleyisinin dogru anlasilip anlasilmadigini sordu ve kalan problemleri/eksiklikleri tamamlamaya devam etmemi istedi. Onceki rapor kuyruğundaki scanner location/fraud scoring maddesi, privacy-safe ve event-day'i bloklamayan sekilde ele alindi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti. `supabase db lint` lokal Postgres `127.0.0.1:54322` kapali oldugu icin calismadi; onceki denemede Docker daemon kapali oldugu icin Supabase local stack baslatilamamisti.
+- **Sıradaki önerilen adım:** Temiz bir dependency branch'inde `expo-location` eklenip native foreground location proof iOS/Android icin tamamlanmali. Sonra named scanner device/PIN, admin/club fraud review aksiyonlari, typed event rules builder ve announcement/push opt-in modeli gelmeli.
+- **Açık risk/blokaj:** Bu branch native GPS dependency'si eklemedi cunku `apps/mobile/package.json` icinde kullaniciya ait script degisiklikleri var ve dependency churn'u ayri branch'te daha temiz yapilmali. Native buildlerde location proof paneli lokasyon toplamaz; scan guvenligi mevcut server kontrolleriyle calismaya devam eder. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `bug/verify-technical-report-findings`
 - **Yapılan iş:** `RAPOR.md` bulgulari mevcut kodla tek tek karsilastirildi. Dogrulanan net bulgular icin fix eklendi: root mobile Stack'e `/club` kaydi eklendi; `qr_token_uses` icin platform admin, event manager ve ilgili business staff SELECT RLS policy'leri eklendi; mevcut private-pilot akisa gore `business_applications` insert policy'si authenticated kullanicilarla sinirlandi; `cancel_event_registration_atomic` RPC'si ve ogrenci event detail uzerinde kayit iptali aksiyonu eklendi; `register_event_atomic` profil satirini gereksiz `for update` kilitlemekten cikarildi; basarili scan sonrasinda leaderboard refresh tetiklendi; scan push delivery sayaci cihaz bazli basarili sonuc sayacak sekilde duzeltildi; scheduled leaderboard refresh dirty eventleri paralel islemeye tasindi; QR token query key parametre adi access-token cache anahtarini dogru anlatacak sekilde duzeltildi.
 - **Neden yapıldı:** Kullanici `RAPOR.md` icindeki bulgularin dogru olup olmadigini dogrulamami, dogru olanlari kok nedene uygun sekilde duzeltmemi ve siradaki adimlari kaybetmeden siraya almami istedi.
@@ -916,6 +924,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Scanner location consent ve distance anomaly fraud signal slice'i tamamlandi; web opt-in lokasyon payload'i eklendi, native dependency sonraki temiz branch'e birakildi.
 - *2026-05-03*: `RAPOR.md` teknik bulgu triage'i tamamlandi; dogrulanan root Stack, QR audit RLS, registration cancel, leaderboard freshness, push count ve scheduler parallelism fixleri eklendi.
 - *2026-05-03*: Palkinnot event cover ve slider layout fix tamamlandi; event-specific ogrenci yuzeyleri ayni deterministic cover secimine tasindi ve reward slider kartlari compact preview oldu.
 - *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
