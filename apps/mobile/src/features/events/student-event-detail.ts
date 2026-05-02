@@ -9,6 +9,7 @@ import type {
   EventRegistrationStatus,
   EventRules,
   EventVenueSummary,
+  CancelEventRegistrationResult,
   JoinEventResult,
   RewardTierSummary,
   StudentEventDetail,
@@ -68,6 +69,11 @@ type UseStudentEventDetailQueryParams = {
 };
 
 type JoinEventMutationParams = {
+  eventId: string;
+  studentId: string;
+};
+
+type CancelEventRegistrationMutationParams = {
   eventId: string;
   studentId: string;
 };
@@ -267,6 +273,44 @@ export const joinEventAsync = async ({ eventId, studentId }: JoinEventMutationPa
   return data as JoinEventResult;
 };
 
+const invalidateStudentEventQueriesAsync = async (
+  queryClient: ReturnType<typeof useQueryClient>,
+  eventId: string,
+  studentId: string
+): Promise<void> => {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: studentEventsQueryKey(studentId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: studentRewardOverviewQueryKey(studentId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: studentEventDetailQueryKey(eventId, studentId),
+    }),
+  ]);
+};
+
+export const cancelEventRegistrationAsync = async ({
+  eventId,
+  studentId,
+}: CancelEventRegistrationMutationParams): Promise<CancelEventRegistrationResult> => {
+  const { data, error } = await supabase.rpc("cancel_event_registration_atomic", {
+    p_event_id: eventId,
+    p_student_id: studentId,
+  });
+
+  if (error !== null) {
+    throw new Error(`Failed to cancel event registration ${eventId} for ${studentId}: ${error.message}`);
+  }
+
+  if (data === null) {
+    throw new Error(`Cancel event registration RPC returned no data for ${eventId}.`);
+  }
+
+  return data as CancelEventRegistrationResult;
+};
+
 export const useJoinEventMutation = (): UseMutationResult<JoinEventResult, Error, JoinEventMutationParams> => {
   const queryClient = useQueryClient();
 
@@ -277,17 +321,26 @@ export const useJoinEventMutation = (): UseMutationResult<JoinEventResult, Error
         return;
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: studentEventsQueryKey(variables.studentId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: studentRewardOverviewQueryKey(variables.studentId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: studentEventDetailQueryKey(variables.eventId, variables.studentId),
-        }),
-      ]);
+      await invalidateStudentEventQueriesAsync(queryClient, variables.eventId, variables.studentId);
+    },
+  });
+};
+
+export const useCancelEventRegistrationMutation = (): UseMutationResult<
+  CancelEventRegistrationResult,
+  Error,
+  CancelEventRegistrationMutationParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: cancelEventRegistrationAsync,
+    onSuccess: async (result, variables) => {
+      if (result.status !== "SUCCESS" && result.status !== "ALREADY_CANCELLED") {
+        return;
+      }
+
+      await invalidateStudentEventQueriesAsync(queryClient, variables.eventId, variables.studentId);
     },
   });
 };

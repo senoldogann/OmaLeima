@@ -69,6 +69,7 @@ const ThemedRootContent = () => {
         <Stack.Screen name="auth" />
         <Stack.Screen name="student" />
         <Stack.Screen name="business" />
+        <Stack.Screen name="club" />
       </Stack>
       <StatusBar style={theme.mode === "dark" ? "light" : "dark"} />
     </ThemeProvider>

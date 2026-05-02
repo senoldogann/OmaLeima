@@ -12,6 +12,7 @@ import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/e
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import {
+  useCancelEventRegistrationMutation,
   useJoinEventMutation,
   useStudentEventDetailQuery,
 } from "@/features/events/student-event-detail";
@@ -21,6 +22,7 @@ import { useActiveAppState } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
 import type {
+  CancelEventRegistrationResult,
   EventRegistrationState,
   EventRuleValue,
   JoinEventResult,
@@ -34,6 +36,13 @@ type EventDetailRouteParams = {
 
 type JoinAvailability = {
   canJoin: boolean;
+  label: string;
+  detail: string;
+  state: AppReadinessState;
+};
+
+type CancelAvailability = {
+  canCancel: boolean;
   label: string;
   detail: string;
   state: AppReadinessState;
@@ -226,6 +235,75 @@ const getJoinResultPresentation = (
   }
 };
 
+const getCancelAvailability = (
+  event: StudentEventDetail,
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat
+): CancelAvailability | null => {
+  if (event.registrationState !== "REGISTERED") {
+    return null;
+  }
+
+  if (Date.now() >= new Date(event.startAt).getTime() || event.status !== "PUBLISHED") {
+    return {
+      canCancel: false,
+      label: language === "fi" ? "Peruminen suljettu" : "Cancellation closed",
+      detail:
+        language === "fi"
+          ? `Osallistumista ei voi perua tapahtuman alettua (${formatter.format(new Date(event.startAt))}).`
+          : `You cannot cancel after the event starts (${formatter.format(new Date(event.startAt))}).`,
+      state: "warning",
+    };
+  }
+
+  return {
+    canCancel: true,
+    label: language === "fi" ? "Peru osallistuminen" : "Cancel registration",
+    detail:
+      language === "fi"
+        ? "Voit perua osallistumisen ennen tapahtuman alkua."
+        : "You can cancel before the event starts.",
+    state: "pending",
+  };
+};
+
+const getCancelResultPresentation = (
+  result: CancelEventRegistrationResult | undefined,
+  language: "fi" | "en"
+): { title: string; body: string; state: AppReadinessState } | null => {
+  if (typeof result === "undefined") {
+    return null;
+  }
+
+  switch (result.status) {
+    case "SUCCESS":
+    case "ALREADY_CANCELLED":
+      return {
+        title: language === "fi" ? "Osallistuminen peruttu" : "Registration cancelled",
+        body:
+          language === "fi"
+            ? "Et ole enää mukana tässä tapahtumassa."
+            : "You are no longer registered for this event.",
+        state: "ready",
+      };
+    case "EVENT_ALREADY_STARTED":
+      return {
+        title: language === "fi" ? "Peruminen suljettu" : "Cancellation closed",
+        body:
+          language === "fi"
+            ? "Tapahtuma on jo alkanut tai päättynyt."
+            : "The event has already started or ended.",
+        state: "warning",
+      };
+    default:
+      return {
+        title: language === "fi" ? "Peruminen epäonnistui" : "Cancellation failed",
+        body: language === "fi" ? `Palautuskoodi ${result.status}.` : `Cancellation RPC returned ${result.status}.`,
+        state: "error",
+      };
+  }
+};
+
 const getRewardInventoryCopy = (rewardTier: RewardTierSummary, language: "fi" | "en"): string => {
   if (rewardTier.inventoryTotal === null) {
     return language === "fi" ? "Rajoittamaton määrä" : "Unlimited reward stock";
@@ -281,6 +359,7 @@ export default function StudentEventDetailScreen() {
   });
 
   const joinMutation = useJoinEventMutation();
+  const cancelRegistrationMutation = useCancelEventRegistrationMutation();
 
   useEffect(() => {
     void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
@@ -303,7 +382,9 @@ export default function StudentEventDetailScreen() {
   const event = detailQuery.data ?? null;
   const registrationBadge = event ? getRegistrationBadge(event.registrationState, language) : null;
   const joinAvailability = event ? getJoinAvailability(event, language, formatter) : null;
+  const cancelAvailability = event ? getCancelAvailability(event, language, formatter) : null;
   const joinPresentation = getJoinResultPresentation(joinMutation.data, language);
+  const cancelPresentation = getCancelResultPresentation(cancelRegistrationMutation.data, language);
   const coverSource =
     event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
 
@@ -313,6 +394,17 @@ export default function StudentEventDetailScreen() {
     }
 
     await joinMutation.mutateAsync({
+      eventId: event.id,
+      studentId,
+    });
+  };
+
+  const handleCancelRegistrationPress = async (): Promise<void> => {
+    if (studentId === null || event === null) {
+      return;
+    }
+
+    await cancelRegistrationMutation.mutateAsync({
       eventId: event.id,
       studentId,
     });
@@ -403,6 +495,12 @@ export default function StudentEventDetailScreen() {
                 <Text style={themeStyles.metaText}>{joinPresentation.body}</Text>
               </View>
             ) : null}
+            {cancelPresentation ? (
+              <View style={themeStyles.inlineStatusRow}>
+                <StatusBadge label={cancelPresentation.state} state={cancelPresentation.state} />
+                <Text style={themeStyles.metaText}>{cancelPresentation.body}</Text>
+              </View>
+            ) : null}
             <Pressable
               disabled={!joinAvailability?.canJoin || joinMutation.isPending}
               onPress={() => void handleJoinPress()}
@@ -419,6 +517,27 @@ export default function StudentEventDetailScreen() {
                   : joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}
               </Text>
             </Pressable>
+            {cancelAvailability ? (
+              <>
+                <Text style={themeStyles.metaText}>{cancelAvailability.detail}</Text>
+                <Pressable
+                  disabled={!cancelAvailability.canCancel || cancelRegistrationMutation.isPending}
+                  onPress={() => void handleCancelRegistrationPress()}
+                  style={[
+                    themeStyles.secondaryButton,
+                    !cancelAvailability.canCancel || cancelRegistrationMutation.isPending ? themeStyles.disabledButton : null,
+                  ]}
+                >
+                  <Text style={themeStyles.secondaryButtonText}>
+                    {cancelRegistrationMutation.isPending
+                      ? language === "fi"
+                        ? "Perutaan..."
+                        : "Cancelling..."
+                      : cancelAvailability.label}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
           </InfoCard>
 
           <InfoCard eyebrow={language === "fi" ? "Pisteet" : "Venues"} title={language === "fi" ? "Pisteet ja palkinnot" : "Venues and rewards"}>
