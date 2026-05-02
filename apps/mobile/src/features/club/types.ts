@@ -54,3 +54,23 @@ export type ClubDashboardSnapshot = {
   memberships: ClubMembershipSummary[];
   summary: ClubDashboardSummary;
 };
+
+export type ClubEventVisibility = "PRIVATE" | "PUBLIC" | "UNLISTED";
+
+export type ClubEventEditableStatus = "ACTIVE" | "DRAFT" | "PUBLISHED";
+
+export type ClubEventFormDraft = {
+  city: string;
+  clubId: string;
+  coverImageUrl: string;
+  description: string;
+  endAt: string;
+  eventId: string | null;
+  joinDeadlineAt: string;
+  maxParticipants: string;
+  minimumStampsRequired: string;
+  name: string;
+  startAt: string;
+  status: ClubEventEditableStatus;
+  visibility: ClubEventVisibility;
+};

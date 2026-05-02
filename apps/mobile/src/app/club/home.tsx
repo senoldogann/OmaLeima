@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
@@ -57,6 +58,7 @@ const getTimelineBadge = (
 };
 
 export default function ClubHomeScreen() {
+  const router = useRouter();
   const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -158,16 +160,8 @@ export default function ClubHomeScreen() {
           <Text style={styles.screenTitle}>{labels.title}</Text>
           <Text style={styles.metaText}>{labels.subtitle}</Text>
         </View>
-        <Pressable
-          disabled={isSigningOut}
-          onPress={() => void handleSignOutPress()}
-          style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
-        >
-          {isSigningOut ? (
-            <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-          ) : (
-            <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
-          )}
+        <Pressable onPress={() => router.push("/club/profile")} style={styles.iconButton}>
+          <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
         </Pressable>
       </View>
 
@@ -213,6 +207,26 @@ export default function ClubHomeScreen() {
               <Text style={styles.summaryValue}>{dashboardQuery.data.summary.validStampCount}</Text>
               <Text style={styles.summaryLabel}>{labels.stamps}</Text>
             </View>
+          </View>
+
+          <View style={styles.quickActionRow}>
+            <Pressable onPress={() => router.push("/club/events")} style={styles.primaryButton}>
+              <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={18} />
+              <Text style={styles.primaryButtonText}>
+                {language === "fi" ? "Hallinnoi tapahtumia" : "Manage events"}
+              </Text>
+            </Pressable>
+            <Pressable
+              disabled={isSigningOut}
+              onPress={() => void handleSignOutPress()}
+              style={[styles.secondaryButton, styles.compactButton, isSigningOut ? styles.disabledButton : null]}
+            >
+              {isSigningOut ? (
+                <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+              ) : (
+                <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
+              )}
+            </Pressable>
           </View>
 
           {focusEvent !== null ? (
@@ -346,6 +360,10 @@ const createStyles = (theme: MobileTheme) =>
     clubRail: {
       gap: 10,
       paddingRight: 4,
+    },
+    compactButton: {
+      flex: 0,
+      minWidth: 54,
     },
     disabledButton: {
       opacity: 0.62,
@@ -492,6 +510,28 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: 20,
       lineHeight: 24,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      minHeight: 48,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    primaryButtonText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    quickActionRow: {
+      flexDirection: "row",
+      gap: 10,
     },
     screenTitle: {
       color: theme.colors.textPrimary,

@@ -4,6 +4,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ## Son Ajan Devri (Latest Agent Handoff)
 
+- **Tarih:** 2026-05-03
+- **Branch:** `feature/club-mobile-operations`
+- **Yapılan iş:** Organizer mobile icin ikinci operasyon slice'i eklendi. `/club/profile` rotasi artik tema degistirme, dil degistirme, club support ve sign-out aksiyonlarini tasiyor. Support sistemi Supabase tarafinda `CLUB` alani ve `club_id` ile genisletildi; RLS insert kontrolu `public.is_club_staff_for(club_id)` uzerinden calisiyor. `SupportRequestSheet` club hedeflerini de destekleyecek sekilde genellestirildi. `/club/events` rotasi eklendi: owner/organizer uyelikleri yeni event draft'i olusturabiliyor, mevcut DRAFT/PUBLISHED/ACTIVE eventleri duzenleyebiliyor ve hard-delete yerine CANCELLED durumuna cekebiliyor. `/club/home` uzerinden profile ve event management navigasyonu eklendi.
+- **Neden yapıldı:** Kullanici organizer mobil ekraninda tema/dil/destek alanlarinin olmadigini ve organizer'in event olusturma, duzenleme, duyuru paylasma ve web'de olan gerekli akislara mobilde de sirasiyla kavusmasini istedi.
+- **Doğrulama:** `supabase db push`, `supabase migration list`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone dev build'de organizer hesabi ile `/club/profile` tema/dil/support smoke edilmeli; `/club/events` icinde draft create, edit ve cancel akisi bir test event ile denenmeli. Sonraki feature slice'i organizer announcement sistemi olmali: announcement schema, audience targeting, expiry, moderation, in-app popup/read receipts ve push subscription consent.
+- **Açık risk/blokaj:** Duyuru/push sistemi bu branch'te bilincli olarak eklenmedi; form degil guvenlik/consent/push deliverability isi. Event cover icin bu slice URL input'u kullaniyor; organizer media upload/storage polish ayri bir branch gerektirir. `apps/mobile/package.json` kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` yerel dosyalari commit disinda birakildi.
+
 - **Tarih:** 2026-05-02
 - **Branch:** `feature/club-mobile-dashboard`
 - **Yapılan iş:** Native mobile icin ilk `/club` alani eklendi. Mobile session resolver artik aktif `club_members` + aktif `clubs` zincirini okuyarak organizer/club staff hesaplarini `/club/home` rotasina tasiyor; business membership varsa scanner operasyonu icin business alani oncelikli kaliyor. Password login artik platform admin'i web-first tutuyor ama aktif club organizer/staff hesaplarini native club dashboard'a sokuyor. `/club/_layout` route guard'i eklendi ve `/club/home` read-only event-day dashboard'u kuruldu: yonetilen kulüpler, live/upcoming event sayilari, kayitli ogrenci, katilan rasti, valid leima, reward tier ve teslim edilen reward ozetleri batch Supabase sorgulariyla gosteriliyor.
