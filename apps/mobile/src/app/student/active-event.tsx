@@ -9,7 +9,10 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import {
+  getEventCoverSource,
+  prefetchEventCoverUrls,
+} from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
@@ -127,7 +130,10 @@ export default function StudentActiveEventScreen() {
     () =>
       selectedEvent === null
         ? null
-        : getEventCoverSourceWithFallback(selectedRewardEvent?.coverImageUrl ?? null, "qrPass"),
+        : getEventCoverSource(
+            selectedRewardEvent?.coverImageUrl ?? null,
+            `${selectedEvent.id}:${selectedEvent.name}`
+          ),
     [selectedEvent, selectedRewardEvent?.coverImageUrl]
   );
 

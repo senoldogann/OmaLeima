@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `bug/reward-cover-slider-layout`
+- **Yapılan iş:** Palkinnot, Tapahtuma tiedot, My QR active event ve Leaderboard hero gibi event'e bagli ogrenci yuzeylerinde kapak gorseli ayni deterministic event anahtariyla secilecek sekilde duzeltildi. Remote `coverImageUrl` varsa her yerde ayni remote gorsel kullaniliyor; yoksa `${event.id}:${event.name}` fallback'i ayni etkinlik icin ayni asset'i donduruyor. Palkinnot slider kartlari compact preview haline getirildi: ilk iki reward tier gosteriliyor, kalan tier sayisi kisa bir satirla event detail'e yonlendiriliyor. Boylece tek uzun event karti carousel dot alanini gereksiz asagi itme davranisini artik tetiklemiyor.
+- **Neden yapıldı:** Kullanici Palkinnot sayfasindaki event fotografi ile Tapahtuma tiedot sayfasindaki fotograf ayni degil dedi ve Palkinnot slider indicator noktalarinin en uzun kart yuksekligine gore gereksiz asagida kalmasini duzeltmemizi istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone dev build'de Palkinnot > Tapahtumapalkinnot kartindan ayni etkinligin Tapahtuma tiedot sayfasina gecilip fotograf eslesmesi ve slider dot konumu gozle kontrol edilmeli.
+- **Açık risk/blokaj:** Bu branch data model degistirmedi; mevcut eventlerde remote cover URL yoksa deterministic fallback kullanilir. `apps/mobile/package.json` kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` yerel dosyalari commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/club-mobile-operations`
 - **Yapılan iş:** Organizer mobile icin ikinci operasyon slice'i eklendi. `/club/profile` rotasi artik tema degistirme, dil degistirme, club support ve sign-out aksiyonlarini tasiyor. Support sistemi Supabase tarafinda `CLUB` alani ve `club_id` ile genisletildi; RLS insert kontrolu `public.is_club_staff_for(club_id)` uzerinden calisiyor. `SupportRequestSheet` club hedeflerini de destekleyecek sekilde genellestirildi. `/club/events` rotasi eklendi: owner/organizer uyelikleri yeni event draft'i olusturabiliyor, mevcut DRAFT/PUBLISHED/ACTIVE eventleri duzenleyebiliyor ve hard-delete yerine CANCELLED durumuna cekebiliyor. `/club/home` uzerinden profile ve event management navigasyonu eklendi.
 - **Neden yapıldı:** Kullanici organizer mobil ekraninda tema/dil/destek alanlarinin olmadigini ve organizer'in event olusturma, duzenleme, duyuru paylasma ve web'de olan gerekli akislara mobilde de sirasiyla kavusmasini istedi.
@@ -900,6 +908,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Palkinnot event cover ve slider layout fix tamamlandi; event-specific ogrenci yuzeyleri ayni deterministic cover secimine tasindi ve reward slider kartlari compact preview oldu.
 - *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
 - *2026-04-28*: Faz 3 student reward progress tamamlandı; rewards tabı gerçek reward tier state gösteriyor ve active-event QR ekranı ile shared reward progress surface kullanıyor.
 - *2026-04-28*: Faz 3 student leaderboard tamamlandı; event-scoped Top 10 ve current-user rank görünürlüğü `student/leaderboard` tabına bağlandı.
