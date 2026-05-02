@@ -5,50 +5,34 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `bug/verify-technical-report-findings`
-- **Goal:** Confirm `RAPOR.md` findings, fix the verified correctness/security issues, and preserve deferred product/security work as ordered follow-up.
+- **Branch:** `feature/scanner-location-consent`
+- **Goal:** Make scanner location proof explicit and useful without silently collecting location or mixing user-owned package changes into this branch.
 
 ## Architectural Decisions
 
-- Add `/club` to the root mobile Stack instead of relying on implicit Expo Router behavior.
-- Add RLS SELECT policies for `qr_token_uses` covering platform admins, event managers, and the involved business staff.
-- Replace anonymous business application insert policy with authenticated insert for the current non-public application workflow.
-- Add `cancel_event_registration_atomic` with actor checks, status checks, row locking, and audit logging.
-- Wire student event detail to the cancel RPC and invalidate the same event/reward query families as join.
-- Remove the unnecessary `profiles for update` lock in `register_event_atomic`.
-- Refresh event leaderboard immediately after a successful scan and keep scheduled refresh as catch-up.
-- Run scheduled leaderboard refresh with `Promise.allSettled` so one slow event does not block all others.
-- Count successful push deliveries per device token, not as a boolean.
-- Rename the QR token query key argument so the access-token cache key is explicit.
-
-## Alternatives Considered
-
-- Add scanner GPS now:
-  - rejected because it needs permission copy, denial states, consent, privacy policy alignment, and platform QA.
-- Keep business applications anonymous:
-  - rejected for the current private pilot because there is no public application UX yet and anon insert creates spam exposure.
-- Remove future leaderboard scopes:
-  - rejected because the schema intentionally keeps future scopes and current reads filter EVENT.
-- Extend broadcast notification policy now:
-  - rejected because platform and organizer announcements need audience targeting, read receipts, and opt-in semantics.
+- Add a shared `ScannerLocationPayload` type and pass it through scanner UI -> scanner service -> scan transport.
+- Keep location optional; when absent, backend behavior remains unchanged.
+- Add a scanner UI panel that explains location proof and requires an operator tap before requesting browser geolocation.
+- On web, use `navigator.geolocation` when available. On native, show an explicit unavailable state until the next `expo-location` dependency slice.
+- Add backend fraud scoring only when both scanner coordinates and business coordinates are present.
+- Create `SCANNER_DISTANCE_ANOMALY` fraud signals instead of blocking scans, because event-day operations should keep moving while suspicious data goes to review.
+- Keep `apps/mobile/package.json` out of this branch because its current script changes are user-owned.
 
 ## Edge Cases
 
-- Cancel should only work for the owning student or service role.
-- Cancel should not work after the event starts or after the event becomes ACTIVE/COMPLETED/CANCELLED.
-- BANNED registrations must not be silently converted to CANCELLED.
-- Registering after cancellation should still reactivate the row through the existing register RPC.
-- QR audit reads must not expose rows to unrelated users.
-- Push persistence should mark notification SENT if at least one token succeeded, while storing all per-token results.
-- Typecheck, lint, export, and SQL migration validation must pass where available.
+- If the operator does not opt in, scans must still work and send null coordinates.
+- If location permission is denied, scans must still work and show a clear status.
+- If venue coordinates are missing, backend should not create distance fraud signals.
+- If distance is above threshold, the stamp should still be recorded and a fraud signal should be opened.
+- Manual token fallback should send the same optional location proof as camera scans.
 
 ## Ordered Follow-Up Queue
 
-1. Scanner location consent slice: permission UX, privacy copy, denied-state UI, and server-side fraud scoring.
-2. Public business application hardening if self-serve venue onboarding is opened: captcha, rate limit, email verification, and route-owned insert API.
-3. Announcement/broadcast model: platform and organizer announcements, audience targeting, read receipts, notification opt-in, and RLS.
-4. Event rules schema builder: typed JSON rules for leima quota, per-venue stamp limits, task/purchase requirements, and pass-return workflows.
-5. Performance cleanup: session access waterfall and admin helper-query optimization.
+1. Add `expo-location` in a clean dependency branch and enable native foreground location proof.
+2. Add scanner device identity/PIN so distance anomalies can be tied to a named device.
+3. Add admin/club fraud review actions for distance anomalies.
+4. Add typed event rule builder for per-venue stamp limits and leima quotas.
+5. Add announcement and push opt-in/read-receipt model.
 
 ## Validation Plan
 
@@ -56,8 +40,6 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
-  - `npm --prefix apps/admin run typecheck`
-  - `npm --prefix apps/admin run lint`
-  - `supabase db lint`
   - `git --no-pager diff --check`
+- Try `supabase db lint`; if Docker/local DB is still unavailable, record the blocker.
 - Record the handoff in `PROGRESS.md`.

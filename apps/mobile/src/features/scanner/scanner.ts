@@ -2,18 +2,20 @@ import { supabase } from "@/lib/supabase";
 import { publicEnv } from "@/lib/env";
 
 import { requestScanQrAsync, runScanWithTimeoutAsync } from "@/features/scanner/scan-transport";
-import type { ScannerAttemptResult } from "@/features/scanner/types";
+import type { ScannerAttemptResult, ScannerLocationPayload } from "@/features/scanner/types";
 
 type ScanQrRequestParams = {
   qrToken: string;
   businessId: string;
   scannerDeviceId: string | null;
+  scannerLocation: ScannerLocationPayload;
 };
 
 export const invokeScanQrAsync = async ({
   qrToken,
   businessId,
   scannerDeviceId,
+  scannerLocation,
 }: ScanQrRequestParams, signal: AbortSignal): Promise<ScannerAttemptResult> => {
   const sessionResult = await supabase.auth.getSession();
 
@@ -33,6 +35,7 @@ export const invokeScanQrAsync = async ({
     qrToken,
     businessId,
     scannerDeviceId,
+    scannerLocation,
     signal,
   });
 };

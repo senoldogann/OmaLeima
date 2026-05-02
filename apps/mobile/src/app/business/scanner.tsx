@@ -18,7 +18,7 @@ import { useBusinessHomeOverviewQuery } from "@/features/business/business-home"
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
-import type { ScannerAttemptResult } from "@/features/scanner/types";
+import type { ScannerAttemptResult, ScannerLocationPayload } from "@/features/scanner/types";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -34,8 +34,57 @@ type ToneMeta = {
   icon: string;
 };
 
+type LocationProofState =
+  | {
+      detail: string;
+      location: ScannerLocationPayload;
+      status: "idle" | "unsupported" | "denied" | "error";
+    }
+  | {
+      detail: string;
+      location: ScannerLocationPayload;
+      status: "capturing" | "ready";
+    };
+
+const emptyScannerLocation = {
+  latitude: null,
+  longitude: null,
+} as const satisfies ScannerLocationPayload;
+
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
+
+const createInitialLocationProofState = (language: "fi" | "en"): LocationProofState => ({
+  detail:
+    language === "fi"
+      ? "Sijaintitodiste on pois päältä. Skannaus toimii silti normaalisti."
+      : "Location proof is off. Scanning still works normally.",
+  location: emptyScannerLocation,
+  status: "idle",
+});
+
+const readWebScannerLocationAsync = (): Promise<ScannerLocationPayload> =>
+  new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || typeof navigator.geolocation === "undefined") {
+      reject(new Error("Browser geolocation is not available."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      (error) => reject(new Error(error.message)),
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30_000,
+        timeout: 4_000,
+      }
+    );
+  });
 
 const createToneConfig = (
   theme: MobileTheme,
@@ -274,6 +323,18 @@ export default function BusinessScannerScreen() {
       queueReady: language === "fi" ? "Valmis jonolle" : "Ready for the line",
       selectedCheckpoint: language === "fi" ? "Valittu piste" : "Selected checkpoint",
       screenAwake: language === "fi" ? "Näyttö hereillä" : "Screen awake",
+      locationProof: language === "fi" ? "Sijaintitodiste" : "Location proof",
+      locationProofBody:
+        language === "fi"
+          ? "Lisää skannaukseen sijainti, jos laite antaa luvan. Tämä auttaa havaitsemaan etä- tai väärän pisteen skannaukset."
+          : "Attach location when the device allows it. This helps flag remote or wrong-checkpoint scans.",
+      locationProofAction: language === "fi" ? "Lisää sijainti" : "Attach location",
+      locationProofReady: language === "fi" ? "Sijainti mukana" : "Location attached",
+      locationProofCapturing: language === "fi" ? "Haetaan sijaintia…" : "Getting location…",
+      locationProofNativePending:
+        language === "fi"
+          ? "Native-sijainti lisätään seuraavassa riippuvuus-slicessa. Tämä build ei kerää sitä hiljaa."
+          : "Native location lands in the next dependency slice. This build does not collect it silently.",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -289,6 +350,19 @@ export default function BusinessScannerScreen() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
+  const [locationProof, setLocationProof] = useState<LocationProofState>(() =>
+    createInitialLocationProofState(language)
+  );
+
+  useEffect(() => {
+    setLocationProof((currentState) => {
+      if (currentState.status !== "idle") {
+        return currentState;
+      }
+
+      return createInitialLocationProofState(language);
+    });
+  }, [language]);
 
   const { scale: resultScale, opacity: resultOpacity } = useScanResultAnimation(lastResult);
 
@@ -346,6 +420,45 @@ export default function BusinessScannerScreen() {
     setManualToken("");
   };
 
+  const handleAttachLocationPress = async (): Promise<void> => {
+    if (!isWeb) {
+      setLocationProof({
+        detail: labels.locationProofNativePending,
+        location: emptyScannerLocation,
+        status: "unsupported",
+      });
+      return;
+    }
+
+    setLocationProof({
+      detail: labels.locationProofCapturing,
+      location: emptyScannerLocation,
+      status: "capturing",
+    });
+
+    try {
+      const location = await readWebScannerLocationAsync();
+
+      setLocationProof({
+        detail:
+          language === "fi"
+            ? "Sijainti liitetään seuraavaan skannaukseen."
+            : "Location will be attached to the next scan.",
+        location,
+        status: "ready",
+      });
+    } catch (error) {
+      setLocationProof({
+        detail:
+          language === "fi"
+            ? `Sijaintia ei voitu liittää: ${error instanceof Error ? error.message : "tuntematon virhe"}`
+            : `Could not attach location: ${error instanceof Error ? error.message : "unknown error"}`,
+        location: emptyScannerLocation,
+        status: "error",
+      });
+    }
+  };
+
   const submitScanAsync = async (qrToken: string): Promise<void> => {
     if (selectedEvent === null || isScannerLocked || isSubmitting) {
       return;
@@ -362,6 +475,7 @@ export default function BusinessScannerScreen() {
           qrToken,
           businessId: selectedEvent.businessId,
           scannerDeviceId: isWeb ? "web-preview" : null,
+          scannerLocation: locationProof.location,
         },
         scanTimeoutMs
       );
@@ -529,6 +643,47 @@ export default function BusinessScannerScreen() {
                       <Text style={styles.eventDayReadyText}>{labels.queueReady}</Text>
                     </View>
                   </View>
+                </View>
+              ) : null}
+
+              {selectedEvent ? (
+                <View style={styles.locationProofPanel}>
+                  <View style={styles.locationProofHeader}>
+                    <View style={styles.locationProofCopy}>
+                      <Text style={styles.eventDayEyebrow}>{labels.locationProof}</Text>
+                      <Text style={styles.bodyText}>{labels.locationProofBody}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.locationProofStatus,
+                        locationProof.status === "ready" ? styles.locationProofStatusReady : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.locationProofStatusText,
+                          locationProof.status === "ready" ? styles.locationProofStatusTextReady : null,
+                        ]}
+                      >
+                        {locationProof.status === "ready" ? labels.locationProofReady : locationProof.status}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.metaText}>{locationProof.detail}</Text>
+                  <Pressable
+                    disabled={isSubmitting || locationProof.status === "capturing"}
+                    onPress={() => void handleAttachLocationPress()}
+                    style={[
+                      styles.secondaryButton,
+                      isSubmitting || locationProof.status === "capturing" ? styles.disabledButton : null,
+                    ]}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      {locationProof.status === "capturing"
+                        ? labels.locationProofCapturing
+                        : labels.locationProofAction}
+                    </Text>
+                  </Pressable>
                 </View>
               ) : null}
 
@@ -959,6 +1114,43 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: 16,
       letterSpacing: 2,
       lineHeight: 20,
+    },
+    locationProofCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    locationProofHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+    },
+    locationProofPanel: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 12,
+      padding: 14,
+    },
+    locationProofStatus: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+    },
+    locationProofStatusReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    locationProofStatusText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      lineHeight: 13,
+      textTransform: "uppercase",
+    },
+    locationProofStatusTextReady: {
+      color: theme.colors.actionPrimaryText,
     },
     metaText: {
       color: theme.colors.textDim,

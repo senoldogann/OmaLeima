@@ -24,6 +24,11 @@ export type ScannerAttemptResult = {
   stampCount?: number;
 };
 
+export type ScannerLocationPayload = {
+  latitude: number | null;
+  longitude: number | null;
+};
+
 export type ScanQrResponse = {
   status: BusinessScanStatus;
   message: string;

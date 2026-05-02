@@ -1,4 +1,8 @@
-import type { ScanQrResponse, ScannerAttemptResult } from "@/features/scanner/types";
+import type {
+  ScanQrResponse,
+  ScannerAttemptResult,
+  ScannerLocationPayload,
+} from "@/features/scanner/types";
 
 type ScanQrTransportParams = {
   supabaseUrl: string;
@@ -6,6 +10,7 @@ type ScanQrTransportParams = {
   qrToken: string;
   businessId: string;
   scannerDeviceId: string | null;
+  scannerLocation: ScannerLocationPayload;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
 };
@@ -81,6 +86,7 @@ export const requestScanQrAsync = async ({
   qrToken,
   businessId,
   scannerDeviceId,
+  scannerLocation,
   fetchImpl = fetch,
   signal,
 }: ScanQrTransportParams): Promise<ScannerAttemptResult> => {
@@ -95,10 +101,7 @@ export const requestScanQrAsync = async ({
       qrToken,
       businessId,
       scannerDeviceId,
-      scannerLocation: {
-        latitude: null,
-        longitude: null,
-      },
+      scannerLocation,
     }),
   });
 
