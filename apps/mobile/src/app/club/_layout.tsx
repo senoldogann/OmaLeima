@@ -9,8 +9,8 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
-export default function BusinessLayout() {
-  const { copy } = useUiPreferences();
+export default function ClubLayout() {
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
@@ -21,9 +21,9 @@ export default function BusinessLayout() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow={copy.common.business} title={copy.common.loading}>
+        <InfoCard eyebrow="Club" title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            {copy.business.accessChecking}
+            {language === "fi" ? "Tarkistetaan järjestäjäoikeuksia." : "Checking organizer access."}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -37,9 +37,9 @@ export default function BusinessLayout() {
   if (accessQuery.isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow={copy.common.business} title={copy.common.loading}>
+        <InfoCard eyebrow="Club" title={copy.common.loading}>
           <Text selectable style={styles.bodyText}>
-            {copy.business.accessResolving}
+            {language === "fi" ? "Haetaan klubin mobiilinäkymää." : "Loading the club mobile area."}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -50,7 +50,7 @@ export default function BusinessLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title={copy.business.accessResolving}
+          title={language === "fi" ? "Klubipääsy epäonnistui" : "Club access failed"}
           detail={accessQuery.error.message}
           retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
@@ -63,16 +63,20 @@ export default function BusinessLayout() {
     return <Redirect href="/student/events" />;
   }
 
-  if (accessQuery.data?.area === "club") {
-    return <Redirect href="/club/home" />;
+  if (accessQuery.data?.area === "business") {
+    return <Redirect href="/business/home" />;
   }
 
-  if (accessQuery.data?.area !== "business") {
+  if (accessQuery.data?.area !== "club") {
     return (
       <AppScreen>
         <AccessIssueCard
-          title={copy.business.accessMissing}
-          detail={copy.business.accessMissing}
+          title={language === "fi" ? "Klubiroolia ei löydy" : "Club role missing"}
+          detail={
+            language === "fi"
+              ? "Tällä tilillä ei ole aktiivista klubin mobiiliroolia."
+              : "This account does not have an active club mobile role."
+          }
           retryLabel={null}
           onRetry={null}
         />
@@ -83,10 +87,6 @@ export default function BusinessLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="home" />
-      <Stack.Screen name="events" />
-      <Stack.Screen name="history" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="scanner" />
     </Stack>
   );
 }
@@ -95,7 +95,8 @@ const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
     bodyText: {
       color: theme.colors.textSecondary,
-      fontSize: 14,
-      lineHeight: 20,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
   });

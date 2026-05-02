@@ -18,15 +18,26 @@ type BusinessRow = {
   id: string;
 };
 
-export type SessionAccessArea = "student" | "business" | "unsupported";
+type ClubMembershipRow = {
+  club_id: string;
+  role: "OWNER" | "ORGANIZER" | "STAFF";
+  status: "ACTIVE" | "DISABLED";
+};
+
+type ClubRow = {
+  id: string;
+};
+
+export type SessionAccessArea = "student" | "business" | "club" | "unsupported";
 
 export type SessionAccess = {
   userId: string;
   area: SessionAccessArea;
-  homeHref: "/student/events" | "/business/home" | null;
+  homeHref: "/student/events" | "/business/home" | "/club/home" | null;
   primaryRole: ProfileRow["primary_role"];
   profileStatus: ProfileRow["status"];
   businessMembershipCount: number;
+  clubMembershipCount: number;
 };
 
 type UseSessionAccessQueryParams = {
@@ -65,6 +76,21 @@ const fetchBusinessMembershipsAsync = async (userId: string): Promise<BusinessMe
   return data;
 };
 
+const fetchClubMembershipsAsync = async (userId: string): Promise<ClubMembershipRow[]> => {
+  const { data, error } = await supabase
+    .from("club_members")
+    .select("club_id,role,status")
+    .eq("user_id", userId)
+    .eq("status", "ACTIVE")
+    .returns<ClubMembershipRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load active club memberships for ${userId}: ${error.message}`);
+  }
+
+  return data;
+};
+
 const fetchActiveBusinessesAsync = async (businessIds: string[]): Promise<BusinessRow[]> => {
   if (businessIds.length === 0) {
     return [];
@@ -84,10 +110,30 @@ const fetchActiveBusinessesAsync = async (businessIds: string[]): Promise<Busine
   return data;
 };
 
+const fetchActiveClubsAsync = async (clubIds: string[]): Promise<ClubRow[]> => {
+  if (clubIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("id")
+    .in("id", clubIds)
+    .eq("status", "ACTIVE")
+    .returns<ClubRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load active clubs for the current session: ${error.message}`);
+  }
+
+  return data;
+};
+
 export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAccess> => {
-  const [profile, businessMemberships] = await Promise.all([
+  const [profile, businessMemberships, clubMemberships] = await Promise.all([
     fetchProfileAsync(userId),
     fetchBusinessMembershipsAsync(userId),
+    fetchClubMembershipsAsync(userId),
   ]);
 
   if (profile === null) {
@@ -97,9 +143,16 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
   const activeBusinesses = await fetchActiveBusinessesAsync(
     businessMemberships.map((membership) => membership.business_id)
   );
+  const activeClubs = await fetchActiveClubsAsync(
+    clubMemberships.map((membership) => membership.club_id)
+  );
   const activeBusinessIds = new Set(activeBusinesses.map((business) => business.id));
+  const activeClubIds = new Set(activeClubs.map((club) => club.id));
   const activeBusinessMembershipCount = businessMemberships.filter((membership) =>
     activeBusinessIds.has(membership.business_id)
+  ).length;
+  const activeClubMembershipCount = clubMemberships.filter((membership) =>
+    activeClubIds.has(membership.club_id)
   ).length;
 
   if (profile.status !== "ACTIVE") {
@@ -110,6 +163,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       primaryRole: profile.primary_role,
       profileStatus: profile.status,
       businessMembershipCount: activeBusinessMembershipCount,
+      clubMembershipCount: activeClubMembershipCount,
     };
   }
 
@@ -121,6 +175,19 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       primaryRole: profile.primary_role,
       profileStatus: profile.status,
       businessMembershipCount: activeBusinessMembershipCount,
+      clubMembershipCount: activeClubMembershipCount,
+    };
+  }
+
+  if (activeClubMembershipCount > 0) {
+    return {
+      userId,
+      area: "club",
+      homeHref: "/club/home",
+      primaryRole: profile.primary_role,
+      profileStatus: profile.status,
+      businessMembershipCount: 0,
+      clubMembershipCount: activeClubMembershipCount,
     };
   }
 
@@ -132,6 +199,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       primaryRole: profile.primary_role,
       profileStatus: profile.status,
       businessMembershipCount: 0,
+      clubMembershipCount: activeClubMembershipCount,
     };
   }
 
@@ -142,6 +210,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
     primaryRole: profile.primary_role,
     profileStatus: profile.status,
     businessMembershipCount: 0,
+    clubMembershipCount: activeClubMembershipCount,
   };
 };
 
