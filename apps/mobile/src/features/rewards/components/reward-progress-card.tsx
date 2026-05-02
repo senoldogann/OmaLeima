@@ -18,6 +18,7 @@ import type {
 type RewardProgressCardProps = {
   event: StudentRewardEventProgress;
   onOpenEvent?: (eventId: string) => void;
+  visibleTierCount: number;
 };
 
 const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
@@ -161,12 +162,14 @@ const getEventSummaryCopy = (event: StudentRewardEventProgress, language: "fi" |
     : "Keep collecting leimas to unlock rewards.";
 };
 
-export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardProps) => {
+export const RewardProgressCard = ({ event, onOpenEvent, visibleTierCount }: RewardProgressCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const formatter = createDateTimeFormatter(localeTag);
   const hasClaimable = event.claimableTierCount > 0;
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
+  const visibleTiers = event.tiers.slice(0, Math.max(0, visibleTierCount));
+  const hiddenTierCount = Math.max(0, event.tiers.length - visibleTiers.length);
 
   return (
     <InfoCard eyebrow={event.city} title={event.name} variant={hasClaimable ? "scene" : "card"}>
@@ -207,7 +210,7 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
       {event.tiers.length > 0 ? (
         <View style={styles.tierSection}>
           <Text style={styles.sectionLabel}>{language === "fi" ? "PALKINTOTASOT" : "REWARD TIERS"}</Text>
-          {event.tiers.map((tier) => (
+          {visibleTiers.map((tier) => (
             <View
               key={tier.id}
               style={[
@@ -223,12 +226,19 @@ export const RewardProgressCard = ({ event, onOpenEvent }: RewardProgressCardPro
               <Text style={styles.tierMeta}>
                 {tier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"} · {tier.rewardType.toLowerCase()}
               </Text>
-              <Text style={styles.tierCopy}>{getTierCopy(tier, language, formatter)}</Text>
+              <Text numberOfLines={1} style={styles.tierCopy}>{getTierCopy(tier, language, formatter)}</Text>
               <Text style={styles.tierInventory}>{getInventoryCopy(tier, language)}</Text>
-              {tier.description ? <Text style={styles.tierCopy}>{tier.description}</Text> : null}
-              {tier.claimInstructions ? <Text style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
+              {tier.description ? <Text numberOfLines={1} style={styles.tierCopy}>{tier.description}</Text> : null}
+              {tier.claimInstructions ? <Text numberOfLines={1} style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
             </View>
           ))}
+          {hiddenTierCount > 0 ? (
+            <Text style={styles.moreTiersText}>
+              {language === "fi"
+                ? `+${hiddenTierCount} tasoa tapahtuman tiedoissa`
+                : `+${hiddenTierCount} more tiers in event details`}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -319,6 +329,12 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: 999,
       height: 8,
       overflow: "hidden",
+    },
+    moreTiersText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     sectionLabel: {
       color: theme.colors.lime,
