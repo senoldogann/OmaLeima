@@ -5,47 +5,40 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-02
-- **Branch:** `feature/product-ops-roadmap-assets`
-- **Goal:** Decide the correct next product architecture for event-day scanning, organizer mobile, announcements, and security, make OmaLeima visual assets more evenly used, and ship the first event-day scanner ergonomics slice.
+- **Branch:** `feature/club-mobile-dashboard`
+- **Goal:** Ship the first native mobile `/club` dashboard so active organizer/club staff accounts can enter OmaLeima and monitor event-day operations without using the venue scanner UI.
 
 ## Architectural Decisions
 
-- Treat low-friction scanning as an operations problem, not just a camera component problem.
-- Keep QR security server-owned: short TTL, atomic RPC, event/venue limits, scanner identity, device identity, and audit logs stay mandatory.
-- Add future convenience through event-day scanner mode, trusted venue devices, optional staff PIN/device pairing, queue-optimized UI, NFC/static checkpoint options where appropriate, and manual recovery lanes.
-- Add `/club` mobile as its own role area for organizers and club staff. Do not route pure club accounts into `/business`.
-- Split announcement work into platform announcements and organizer announcements. Both need audience targeting, expiry, read receipts, and moderation; organizer push also needs explicit student subscription or event registration consent.
-- Use imagegen for additional repo-owned event/QR/reward visuals, then wire them only through the existing centralized event fallback image list in this slice.
-- Keep generated visuals free of readable text, QR codes, brand marks, and scannable data so they can safely appear behind localized UI copy.
-- Use gravity-line backgrounds only through shared shell primitives. Do not paste decorative background code into every screen.
-- Prefer explicit fallback purposes for major surfaces so login, discovery, QR, rewards, leaderboard, scanner, and admin shell do not all reuse the same first image.
-- Add the first scanner event-day mode without touching QR signing, scan RPCs, token TTL, or duplicate-scan rules.
-- Keep the scanner screen awake while mounted so staff can leave the device open at the counter.
+- Extend `SessionAccessArea` with `club` and add `/club/home` as the native organizer destination.
+- Determine club access from active `club_members` rows whose clubs are still `ACTIVE`.
+- Give business access priority when the same user also has active business staff membership, because scanner users need the venue flow during events.
+- Keep `PLATFORM_ADMIN` unsupported in native mobile until a real admin mobile surface exists.
+- Build a mobile-only read model in `apps/mobile/src/features/club/` instead of importing admin web server modules.
+- Query club event data in batches: memberships/clubs, events, registrations, venues, reward tiers, reward claims, and stamps.
+- Show a simple event-day dashboard: managed clubs, active/upcoming counts, participant total, joined venues, reward progress, and recent/next events.
+- Route guards must redirect between `student`, `business`, and `club` areas deterministically.
+- Keep all club dashboard operations read-only in this branch.
 - Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
 
-- Let pure `CLUB_ORGANIZER` accounts into `/business/home` immediately:
-  - rejected because organizer accounts manage clubs/events, not business venue scanner profiles, unless they also have an active `business_staff` membership
-- Make businesses scan with a public static QR:
-  - rejected as the primary flow because it reverses trust and makes fraud/replay much easier unless paired with signed checkpoint sessions and server-side limits
-- Implement announcements immediately without docs:
-  - rejected because push/announcement systems are high-risk for spam, consent, and trust; the data model should be explicit first
-- Replace all event photos at once:
-  - rejected because existing event-cover rotation is already centralized and can absorb new assets safely without touching every UI component
-- Add hard-coded per-screen background images everywhere:
-  - rejected because it would make future visual tuning brittle and would duplicate styling across routes
+- Route organizer accounts into `/business/home`:
+  - rejected because organizer accounts manage event operations, not a single business checkpoint
+- Add full event create/edit/delete in native mobile now:
+  - rejected because this first slice is about unblocking access and read-only event-day visibility; mutations need more form validation, media upload, and audit review
+- Add platform admin native dashboard now:
+  - rejected because admin is safer and more useful as web-first until the native admin scope is explicitly designed
 
 ## Edge Cases
 
-- Event-day flow must work when the venue is busy, staff changes mid-shift, or a scanner device loses connection.
-- Announcement popups must not block emergency app use forever; they need dismiss/read state and expiry.
-- Push announcements must respect user consent and event/organizer scope.
-- Typecheck, lint, and export/build must stay green for affected apps.
-- The generated hero asset must not contain readable text, logos, or external brand marks.
-- The generated gravity-line backgrounds must preserve text contrast in both dark and light themes.
-- Event-day scanner UI must still let staff choose the right event/venue before scanning and must not auto-confirm failed or offline scans.
-- Admin accounts can remain web-first. Organizer mobile access should be added only with its own screens and permission model.
+- A user with suspended/deleted profile must stay unsupported even if stale memberships exist.
+- A club membership for a suspended/deleted club must not unlock `/club`.
+- A user with both business and club memberships should still land in business first; later account switching can be added explicitly.
+- Empty club event state must be clear and non-error.
+- Completed/cancelled/draft events should not inflate the live event-day counters.
+- All Supabase errors should include actionable context.
+- Typecheck, lint, export, and diff checks must pass.
 
 ## Validation Plan
 

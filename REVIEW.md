@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-02
-- **Branch:** `feature/product-ops-roadmap-assets`
-- **Scope:** Product-level operations review and first implementation slice for low-friction event-day scanning, organizer mobile access, platform/organizer announcements, security gates, image surface distribution, and additional OmaLeima visual assets.
+- **Branch:** `feature/club-mobile-dashboard`
+- **Scope:** Add the first native mobile `/club` area so organizer and club staff accounts can enter the app and see a read-only event-day operations dashboard.
 
 ## Affected Files
 
@@ -14,49 +14,37 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `docs/PRODUCT_OPERATIONS_ROADMAP.md`
-- `docs/FINNISH_APPRO_PRODUCT_NOTES.md`
-- `apps/mobile/assets/event-covers/*`
-- `apps/mobile/assets/backgrounds/*`
-- `apps/mobile/src/components/app-screen.tsx`
-- `apps/mobile/src/features/events/event-visuals.ts`
-- `apps/mobile/src/features/auth/components/login-hero.tsx`
-- `apps/mobile/src/app/student/events/index.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
-- `apps/mobile/src/app/student/active-event.tsx`
-- `apps/mobile/src/app/student/rewards.tsx`
-- `apps/mobile/src/app/student/leaderboard.tsx`
-- `apps/mobile/src/app/business/scanner.tsx`
-- `apps/admin/src/app/globals.css`
+- `apps/mobile/src/features/auth/session-access.ts`
+- `apps/mobile/src/features/auth/components/business-password-sign-in.tsx`
+- `apps/mobile/src/features/club/*`
+- `apps/mobile/src/app/index.tsx`
+- `apps/mobile/src/app/auth/_layout.tsx`
+- `apps/mobile/src/app/student/_layout.tsx`
+- `apps/mobile/src/app/business/_layout.tsx`
+- `apps/mobile/src/app/club/*`
 
 ## Risks
 
-- QR scanning cannot become so manual that venues ignore it during rush hour.
-- Low-friction scanning must not weaken the core anti-fraud invariant. Convenience should come from better operator modes, not from trusting clients.
-- Organizer mobile access should be a real `/club` mobile area, not a shortcut into business scanner screens.
-- Announcement systems need audience, consent, moderation, expiry, and delivery history before push is enabled broadly.
-- Generated imagery must live inside the repo before any code references it.
-- Background imagery can easily make the UI feel noisy again; use it as low-opacity atmosphere only and keep content cards readable.
-- Different screens should not all start from the same fallback cover. Real uploaded event/business media still takes priority.
-- User-owned unstaged changes in `apps/mobile/package.json` and the untracked `.idea/` folder must stay untouched.
+- Organizer and club staff must not be routed into `/business` because they do not necessarily belong to a venue scanner account.
+- Platform admin should stay web-first for now; giving admin native access without a real admin mobile surface would be misleading.
+- Club mobile must rely on existing RLS-backed read permissions. The first slice should not add client-side-only authorization assumptions.
+- Dashboard queries can become heavy if they turn into N+1 requests. Fetch event rows, registrations, venues, rewards, claims, and stamps in bounded batches.
+- This branch must not stage the user-owned `apps/mobile/package.json` script changes, `RAPOR.md`, or `.idea/` metadata.
 
 ## Dependencies
 
-- Current QR flow already has short-lived QR tokens, single-use JTI, atomic scan RPC, scan history, reward unlock push, and manual token fallback.
-- Current push stack already has device registration, test push, promotion push, event reminders, notification rows, and Expo push transport.
-- Current mobile role access supports student and business roles. Pure club organizer/staff accounts are currently web-only.
-- Existing event-cover fallback images are centralized in `apps/mobile/src/features/events/event-visuals.ts`.
-- `AppScreen` is the shared mobile page shell, so a subtle background change there reaches student and business screens without repeating code.
+- Current mobile role access supports student and active business memberships only. `CLUB_ORGANIZER` and `CLUB_STAFF` are marked unsupported even when `club_members` rows exist.
+- Existing Supabase RLS allows club staff to read/manage their own events and read event registrations, venues, stamps, and reward claims through `public.can_user_manage_event`.
+- Admin web already has read-model logic for club event counts; the mobile slice can mirror that shape without importing Next.js/server code.
+- `AppScreen`, `InfoCard`, `CoverImageSurface`, `StatusBadge`, `AppIcon`, and theme/i18n providers are the existing mobile UI primitives to reuse.
 
 ## Existing Logic Checked
 
-- `docs/FINNISH_APPRO_PRODUCT_NOTES.md` already calls out venue-specific stamp limits, claim desk, event-day guidance, organizer announcements, and venue-logo stamp memories as missing roadmap items.
-- Current scanner requires a staff device to open the app and scan QR manually. That is secure, but it is too much friction for crowded bar moments unless the scanner surface gets an event-day mode.
-- The scanner screen already had secure lock-after-read behavior. The missing part was an explicit event-day state that tells staff the screen can stay open and that the selected checkpoint is the working context.
-- Admin-wide announcements and organizer announcements are not currently modeled as first-class tables with read receipts, expiry, or push subscriptions.
-- Finnish appro references reinforce that checkpoints, appropassi, leima thresholds, venue limits, claim desks, and event-day information all vary by event. The product needs configurable event operations instead of hard-coded one-size-fits-all assumptions.
-- Current deep review found no new immediate logic blocker in the already-built MVP foundation. The meaningful product gaps remain planned feature slices: event-day scanner mode, `/club` mobile, announcements, role invitations, and event/venue stamp rules.
+- `business-password-sign-in.tsx` explicitly signs out pure club roles after login, which is why organizer accounts work on web but not native mobile.
+- `session-access.ts` only fetches `business_staff`; no active `club_members` check exists in the mobile client.
+- Student and business route layouts redirect only between student/business areas. A third `club` area needs explicit routing protection to avoid access bounce loops.
+- The first club mobile route should be read-only: active/upcoming events, registered count, joined venue count, stamp count, reward tier count, and reward claim count are enough to validate the architecture.
 
 ## Review Outcome
 
-Document the next product architecture before implementing large behavior changes. Add more repo-owned OmaLeima generated visuals to the centralized mobile fallback image rotation and use background textures through shared shell code. Add the first event-day scanner ergonomics slice without changing scan security. Leave `/club` mobile, announcements, subscriptions, role-invite security, and event/venue stamp rules as explicit feature slices because they require schema/RPC/UI/security work.
+Implement `/club` mobile as a minimal, safe read-only area. Extend session access to recognize active club memberships and route organizer/staff accounts to `/club/home`. Keep platform admin unsupported on native mobile. Do not add mutations in this slice; event creation/update, announcements, claim queues, and venue/stamp rule editing remain separate feature branches.

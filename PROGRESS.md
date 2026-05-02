@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-02
+- **Branch:** `feature/club-mobile-dashboard`
+- **Yapılan iş:** Native mobile icin ilk `/club` alani eklendi. Mobile session resolver artik aktif `club_members` + aktif `clubs` zincirini okuyarak organizer/club staff hesaplarini `/club/home` rotasina tasiyor; business membership varsa scanner operasyonu icin business alani oncelikli kaliyor. Password login artik platform admin'i web-first tutuyor ama aktif club organizer/staff hesaplarini native club dashboard'a sokuyor. `/club/_layout` route guard'i eklendi ve `/club/home` read-only event-day dashboard'u kuruldu: yonetilen kulüpler, live/upcoming event sayilari, kayitli ogrenci, katilan rasti, valid leima, reward tier ve teslim edilen reward ozetleri batch Supabase sorgulariyla gosteriliyor.
+- **Neden yapıldı:** Kullanici organizatorlerin sadece web panelden degil mobil taraftan da iceriklerine ve operasyon durumuna erisebilmesi gerektigini, ama business scanner akisiyle karistirilmamasi gerektigini netlestirdi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone veya dev-client uzerinde `organizer@omaleima.test` gibi aktif club membership'i olan hesapla password login smoke alinmali. Sonraki kod slice'i: `/club` icin event detail + claim queue + organizer announcements shortcut'i; mutasyonlar yine RLS/RPC ve audit planina baglanarak ayri branch'te yapilmali.
+- **Açık risk/blokaj:** Bu branch read-only dashboard; event create/update/cancel, role invite, organizer announcement push ve event/venue stamp rules henuz eklenmedi. `apps/mobile/package.json` icindeki kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` yerel dosyalari commit disinda birakildi.
+
+- **Tarih:** 2026-05-02
 - **Branch:** `feature/product-ops-roadmap-assets`
 - **Yapılan iş:** Event-day scanner ergonomics icin ilk kod slice'i eklendi. Business scanner route'u artik `expo-keep-awake` ile acikken ekrani uyanik tutuyor. Secili event/venue icin yeni event-day paneli eklendi: staff hangi piste ile calistigini, ekranin uyanik kaldigini ve kuyruga hazir oldugunu tek bakista goruyor. Scan güvenligi degismedi; QR token, scan RPC, duplicate/replay/expired kontrolleri ve success sonrasi result lock davranisi aynen server-owned kaldi. Product roadmap'e MallasAppro ve Herkkuappro gibi ek appro ornekleri eklendi; pass return, degree/proof, task/purchase/rasti gibi event-rule ihtiyaclari not edildi.
 - **Neden yapıldı:** Kullanici isletmeler icin her dakika telefonu acip QR okutma isini kolaylastirmamiz gerektigini ve Finlandiya appro/ogrenci etkinlik kulturunu daha arastirmaci sekilde anlamamizi istedi.

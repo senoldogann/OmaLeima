@@ -82,6 +82,10 @@ export default function StudentTabsLayout() {
     return <Redirect href="/business/home" />;
   }
 
+  if (accessQuery.data?.area === "club") {
+    return <Redirect href="/club/home" />;
+  }
+
   if (accessQuery.data?.area !== "student") {
     return (
       <AppScreen>

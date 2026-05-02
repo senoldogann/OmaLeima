@@ -60,7 +60,7 @@ export default function AuthLayout() {
       <AppScreen>
         <AccessIssueCard
           title="This account is not allowed here"
-          detail="This authenticated account cannot enter the shared mobile auth flow because it does not have an active student or business mobile role."
+          detail="This authenticated account cannot enter the shared mobile auth flow because it does not have an active student, business, or club mobile role."
           retryLabel={null}
           onRetry={null}
         />

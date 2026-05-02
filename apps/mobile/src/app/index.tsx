@@ -64,7 +64,7 @@ export default function IndexRoute() {
       <AppScreen>
         <AccessIssueCard
           title={copy.student.accessMissing}
-          detail="The current authenticated account does not have an active student or business mobile role."
+          detail="The current authenticated account does not have an active student, business, or club mobile role."
           retryLabel={null}
           onRetry={null}
         />

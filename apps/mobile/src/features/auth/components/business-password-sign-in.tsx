@@ -13,9 +13,7 @@ import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/prefer
 import { supabase } from "@/lib/supabase";
 
 const requiresWebPanel = (access: SessionAccess): boolean =>
-  access.primaryRole === "PLATFORM_ADMIN" ||
-  access.primaryRole === "CLUB_ORGANIZER" ||
-  access.primaryRole === "CLUB_STAFF";
+  access.primaryRole === "PLATFORM_ADMIN";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
@@ -55,7 +53,7 @@ export const BusinessPasswordSignIn = () => {
     try {
       const access = await fetchSessionAccessAsync(userId);
 
-      if (access.area !== "business" || access.homeHref === null) {
+      if ((access.area !== "business" && access.area !== "club") || access.homeHref === null) {
         await supabase.auth.signOut();
         setIsLoading(false);
         setErrorMessage(requiresWebPanel(access) ? copy.business.webPanelRequired : copy.business.accessMissing);
