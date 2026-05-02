@@ -34,7 +34,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $cancel_event_registration_atomic$
+as $$
 declare
   v_event public.events%rowtype;
   v_registration public.event_registrations%rowtype;
@@ -117,7 +117,7 @@ begin
     'registrationId', v_registration.id
   );
 end;
-$cancel_event_registration_atomic$;
+$$;
 
 create or replace function public.register_event_atomic(
   p_event_id uuid,
@@ -127,7 +127,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $register_event_atomic$
+as $$
 declare
   v_event public.events%rowtype;
   v_profile public.profiles%rowtype;
@@ -265,7 +265,7 @@ begin
     'registrationId', v_registration_id
   );
 end;
-$register_event_atomic$;
+$$;
 
 create or replace function public.scan_stamp_atomic(
   p_event_id uuid,
@@ -283,7 +283,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $scan_stamp_atomic$
+as $$
 declare
   v_event public.events%rowtype;
   v_event_venue public.event_venues%rowtype;
@@ -471,4 +471,4 @@ exception
 
     raise;
 end;
-$scan_stamp_atomic$;
+$$;

@@ -18,8 +18,13 @@ import { businessScanHistoryQueryKey } from "@/features/business/business-histor
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { registerBusinessScannerDeviceAsync } from "@/features/scanner/scanner-device";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
-import type { ScannerAttemptResult, ScannerLocationPayload } from "@/features/scanner/types";
+import type {
+  ScannerAttemptResult,
+  ScannerDeviceRegistration,
+  ScannerLocationPayload,
+} from "@/features/scanner/types";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -47,6 +52,23 @@ type LocationProofState =
       status: "capturing" | "ready";
     };
 
+type ScannerDeviceState =
+  | {
+      device: null;
+      error: null;
+      status: "idle" | "registering";
+    }
+  | {
+      device: ScannerDeviceRegistration;
+      error: null;
+      status: "ready";
+    }
+  | {
+      device: null;
+      error: string;
+      status: "error";
+    };
+
 const emptyScannerLocation = {
   latitude: null,
   longitude: null,
@@ -61,6 +83,12 @@ const createInitialLocationProofState = (language: "fi" | "en"): LocationProofSt
       ? "Sijaintitodiste on pois päältä. Skannaus toimii silti normaalisti."
       : "Location proof is off. Scanning still works normally.",
   location: emptyScannerLocation,
+  status: "idle",
+});
+
+const createInitialScannerDeviceState = (): ScannerDeviceState => ({
+  device: null,
+  error: null,
   status: "idle",
 });
 
@@ -159,6 +187,8 @@ const createScanResultTitles = (
     language === "fi" ? "Piste liittyi liian myöhään" : "Venue joined too late",
   BUSINESS_STAFF_NOT_ALLOWED:
     language === "fi" ? "Skanneritiliä ei hyväksytty" : "Scanner account not allowed",
+  SCANNER_DEVICE_NOT_ALLOWED:
+    language === "fi" ? "Skannerilaite ei kelpaa" : "Scanner device not allowed",
   NOT_BUSINESS_STAFF:
     language === "fi" ? "Yritysoikeus puuttuu" : "Business access missing",
   BUSINESS_CONTEXT_REQUIRED:
@@ -217,6 +247,10 @@ const createScanResultDetails = (
     language === "fi"
       ? "Tällä tunnuksella ei ole skannerioikeutta valittuun yritykseen."
       : "This signed-in account does not have scanner permission for the selected business.",
+  SCANNER_DEVICE_NOT_ALLOWED:
+    language === "fi"
+      ? "Tämä skannerilaite ei ole aktiivinen valitulle yritykselle. Päivitä skanneri tai kirjaudu uudelleen."
+      : "This scanner device is not active for the selected business. Refresh the scanner or sign in again.",
   NOT_BUSINESS_STAFF:
     language === "fi"
       ? "Nykyinen istunto ei ole enää sidottu aktiiviseen henkilökuntatiliin."
@@ -341,6 +375,18 @@ export default function BusinessScannerScreen() {
       queueReady: language === "fi" ? "Valmis jonolle" : "Ready for the line",
       selectedCheckpoint: language === "fi" ? "Valittu piste" : "Selected checkpoint",
       screenAwake: language === "fi" ? "Näyttö hereillä" : "Screen awake",
+      scannerDevice: language === "fi" ? "Skannerilaite" : "Scanner device",
+      scannerDeviceRegistering:
+        language === "fi" ? "Rekisteröidään tätä laitetta…" : "Registering this device…",
+      scannerDeviceReady: language === "fi" ? "Laite valmis" : "Device ready",
+      scannerDeviceIdle: language === "fi" ? "Odotetaan tapahtumapistettä" : "Waiting for checkpoint",
+      scannerDeviceError: language === "fi" ? "Laite ei rekisteröitynyt" : "Device did not register",
+      scannerDeviceRequired:
+        language === "fi"
+          ? "Skannerilaite täytyy rekisteröidä ennen leiman kirjausta."
+          : "Scanner device must be registered before recording a stamp.",
+      retryScannerDevice:
+        language === "fi" ? "Yritä laiterekisteröintiä uudelleen" : "Retry device registration",
       locationProof: language === "fi" ? "Sijaintitodiste" : "Location proof",
       locationProofBody:
         language === "fi"
@@ -368,6 +414,10 @@ export default function BusinessScannerScreen() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
+  const [scannerDeviceRetryNonce, setScannerDeviceRetryNonce] = useState<number>(0);
+  const [scannerDeviceState, setScannerDeviceState] = useState<ScannerDeviceState>(
+    createInitialScannerDeviceState
+  );
   const [locationProof, setLocationProof] = useState<LocationProofState>(() =>
     createInitialLocationProofState(language)
   );
@@ -418,6 +468,60 @@ export default function BusinessScannerScreen() {
       activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ?? null,
     [activeJoinedEvents, selectedEventVenueId]
   );
+  const selectedBusinessId = selectedEvent?.businessId ?? null;
+  const selectedBusinessName = selectedEvent?.businessName ?? null;
+  const isScannerDeviceReady = scannerDeviceState.status === "ready";
+
+  useEffect(() => {
+    if (selectedBusinessId === null || selectedBusinessName === null) {
+      setScannerDeviceState(createInitialScannerDeviceState());
+      return;
+    }
+
+    let isActive = true;
+
+    setScannerDeviceState({
+      device: null,
+      error: null,
+      status: "registering",
+    });
+
+    const registerScannerDeviceAsync = async (): Promise<void> => {
+      try {
+        const device = await registerBusinessScannerDeviceAsync({
+          businessId: selectedBusinessId,
+          businessName: selectedBusinessName,
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setScannerDeviceState({
+          device,
+          error: null,
+          status: "ready",
+        });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setScannerDeviceState({
+          device: null,
+          error: error instanceof Error ? error.message : "Unknown scanner device registration error.",
+          status: "error",
+        });
+      }
+    };
+
+    void registerScannerDeviceAsync();
+
+    return () => {
+      isActive = false;
+    };
+  }, [scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
+
   const selectedBusinessDetails = useMemo(() => {
     if (selectedEvent === null) {
       return [];
@@ -473,6 +577,11 @@ export default function BusinessScannerScreen() {
       return;
     }
 
+    if (scannerDeviceState.status !== "ready") {
+      setSubmitError(labels.scannerDeviceRequired);
+      return;
+    }
+
     setIsScannerLocked(true);
     setIsSubmitting(true);
     setSubmitError(null);
@@ -483,7 +592,7 @@ export default function BusinessScannerScreen() {
         {
           qrToken,
           businessId: selectedEvent.businessId,
-          scannerDeviceId: isWeb ? "web-preview" : null,
+          scannerDeviceId: scannerDeviceState.device.scannerDeviceId,
           scannerLocation: locationProof.location,
         },
         scanTimeoutMs
@@ -659,6 +768,51 @@ export default function BusinessScannerScreen() {
                 <View style={styles.locationProofPanel}>
                   <View style={styles.locationProofHeader}>
                     <View style={styles.locationProofCopy}>
+                      <Text style={styles.eventDayEyebrow}>{labels.scannerDevice}</Text>
+                      <Text style={styles.bodyText}>
+                        {scannerDeviceState.status === "ready"
+                          ? scannerDeviceState.device.label
+                          : scannerDeviceState.status === "registering"
+                            ? labels.scannerDeviceRegistering
+                            : scannerDeviceState.status === "error"
+                              ? scannerDeviceState.error
+                              : labels.scannerDeviceIdle}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.locationProofStatus,
+                        scannerDeviceState.status === "ready" ? styles.locationProofStatusReady : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.locationProofStatusText,
+                          scannerDeviceState.status === "ready" ? styles.locationProofStatusTextReady : null,
+                        ]}
+                      >
+                        {scannerDeviceState.status === "ready"
+                          ? labels.scannerDeviceReady
+                          : scannerDeviceState.status}
+                      </Text>
+                    </View>
+                  </View>
+                  {scannerDeviceState.status === "error" ? (
+                    <Pressable
+                      disabled={isSubmitting}
+                      onPress={() => setScannerDeviceRetryNonce((value) => value + 1)}
+                      style={[styles.secondaryButton, isSubmitting ? styles.disabledButton : null]}
+                    >
+                      <Text style={styles.secondaryButtonText}>{labels.retryScannerDevice}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {selectedEvent ? (
+                <View style={styles.locationProofPanel}>
+                  <View style={styles.locationProofHeader}>
+                    <View style={styles.locationProofCopy}>
                       <Text style={styles.eventDayEyebrow}>{labels.locationProof}</Text>
                       <Text style={styles.bodyText}>{labels.locationProofBody}</Text>
                     </View>
@@ -699,7 +853,7 @@ export default function BusinessScannerScreen() {
               {selectedEvent ? (
                 permission === null ? (
                   <Text style={styles.bodyText}>{labels.cameraPermissionLoading}</Text>
-                ) : permission.granted ? (
+                ) : permission.granted && isScannerDeviceReady ? (
                   <View style={styles.cameraStack}>
                     <View
                       style={[
@@ -735,6 +889,10 @@ export default function BusinessScannerScreen() {
                     <Text style={styles.cameraHint}>
                       {isScannerLocked ? labels.reviewHint : labels.aimHint}
                     </Text>
+                  </View>
+                ) : permission.granted && !isScannerDeviceReady ? (
+                  <View style={styles.cameraStack}>
+                    <Text style={styles.bodyText}>{labels.scannerDeviceRequired}</Text>
                   </View>
                 ) : (
                   <View style={styles.cameraStack}>
@@ -828,11 +986,13 @@ export default function BusinessScannerScreen() {
             value={manualToken}
           />
           <Pressable
-            disabled={manualToken.trim().length === 0 || isSubmitting || isScannerLocked}
+            disabled={
+              manualToken.trim().length === 0 || isSubmitting || isScannerLocked || !isScannerDeviceReady
+            }
             onPress={() => void submitScanAsync(manualToken.trim())}
             style={[
               styles.secondaryButton,
-              manualToken.trim().length === 0 || isSubmitting || isScannerLocked
+              manualToken.trim().length === 0 || isSubmitting || isScannerLocked || !isScannerDeviceReady
                 ? styles.disabledButton
                 : null,
             ]}

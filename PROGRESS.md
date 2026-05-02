@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/scanner-device-audit`
+- **Yapılan iş:** Scanner device audit slice eklendi. Supabase tarafinda `business_scanner_devices` registry tablosu, business staff kontrollu `register_business_scanner_device` RPC'si ve `scan_stamp_atomic` icinde non-null scanner device ID dogrulamasi geldi. Mobile business scanner artik her business icin lokal install ID uzerinden cihaz kaydi olusturuyor, cihaz hazir olmadan QR/manual scan gondermiyor ve scan isteklerine registry UUID'sini ekliyor. `SCANNER_DEVICE_NOT_ALLOWED` status'u edge function, transport ve UI mesajlarina eklendi. Distance fraud signal metadata'sina `scannerDeviceId` de eklendi.
+- **Neden yapıldı:** Onceki location proof slice'i uzaklik anomalilerini yakaliyordu; siradaki en dogru adim bu anomalileri hangi business scanner cihazinin/personel noktasinin urettigine baglamakti.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, `supabase migration list` ve `git --no-pager diff --check` gecti. `supabase db lint` lokal Postgres `127.0.0.1:54322` kapali oldugu icin calismadi. Sistem Supabase CLI v2.90.0 `db push` sirasinda prepared-statement parser hatasina dustu; global kurulum yapmadan `npx supabase@2.95.4 db push --yes` ile `20260503103000`, `20260503113000` ve `20260503123000` remote'a basariyla uygulandi.
+- **Sıradaki önerilen adım:** Editable scanner device names/staff PIN ve admin/club fraud review aksiyonlari gelmeli. Ardindan typed event rules builder ve organizer/platform announcement modeli devam etmeli.
+- **Açık risk/blokaj:** Hosted Supabase schema artik guncel. Native scanner cihaz kimligi icin mobile dev build'de business scanner ekrani acilip cihaz kaydi ve bir smoke scan denenmeli. `apps/mobile/package.json` icindeki kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/native-scanner-location-proof`
 - **Yapılan iş:** Scanner location proof native tarafta tamamlandi. `expo-location` SDK uyumlu surumle eklendi, Expo config icine acik when-in-use izin metni girildi ve business scanner ekranindaki mevcut opt-in butonu artik web'de browser geolocation, iOS/Android'de foreground `expo-location` kullanarak scanner koordinatini scan istegine ekliyor. Konum izni reddedilirse scan akisi bloklanmiyor; operator sadece konum kanitini null gondererek devam ediyor.
 - **Neden yapıldı:** Onceki scanner location consent/fraud slice'i web preview ve backend fraud scoring'i tamamlamisti; kalan en dogru adim native fiziksel cihazlarda da ayni acik izinli lokasyon kanitini calisir hale getirmekti.

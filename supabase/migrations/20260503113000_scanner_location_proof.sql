@@ -3,7 +3,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $create_scanner_distance_fraud_signal$
+as $$
 declare
   v_business_latitude numeric;
   v_business_longitude numeric;
@@ -75,7 +75,7 @@ begin
 
   return NEW;
 end;
-$create_scanner_distance_fraud_signal$;
+$$;
 
 drop trigger if exists create_scanner_distance_fraud_signal_on_stamp on public.stamps;
 

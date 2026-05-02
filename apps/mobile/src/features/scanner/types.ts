@@ -11,6 +11,7 @@ export type BusinessScanStatus =
   | "STUDENT_NOT_REGISTERED"
   | "VENUE_JOINED_TOO_LATE"
   | "BUSINESS_STAFF_NOT_ALLOWED"
+  | "SCANNER_DEVICE_NOT_ALLOWED"
   | "NOT_BUSINESS_STAFF"
   | "BUSINESS_CONTEXT_REQUIRED";
 
@@ -34,4 +35,12 @@ export type ScanQrResponse = {
   message: string;
   stampId?: string;
   stampCount?: number;
+};
+
+export type ScannerDevicePlatform = "IOS" | "ANDROID" | "WEB" | "UNKNOWN";
+
+export type ScannerDeviceRegistration = {
+  scannerDeviceId: string;
+  label: string;
+  platform: ScannerDevicePlatform;
 };

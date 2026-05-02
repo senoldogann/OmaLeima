@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/native-scanner-location-proof`
-- **Scope:** Finish native foreground location proof for the business scanner after the consent/payload/backend fraud slice.
+- **Branch:** `feature/scanner-device-audit`
+- **Scope:** Add named scanner device audit identity before building fraud review actions.
 
 ## Affected Files
 
@@ -14,25 +14,27 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/app.config.ts`
-- `apps/mobile/package.json`
-- `apps/mobile/package-lock.json`
+- `apps/mobile/src/features/scanner/scanner-device.ts`
+- `apps/mobile/src/features/scanner/scan-transport.ts`
+- `apps/mobile/src/features/scanner/types.ts`
 - `apps/mobile/src/app/business/scanner.tsx`
+- `supabase/functions/scan-qr/index.ts`
+- `supabase/migrations/20260503123000_scanner_device_audit.sql`
 
 ## Existing Logic Checked
 
-- Scanner already has an explicit opt-in location proof panel.
-- Scanner transport already forwards nullable `scannerLocation`.
-- Backend already stores scanner coordinates and creates non-blocking distance anomaly fraud signals.
-- `apps/mobile/package.json` still includes user-owned `android` and `ios` script changes. Only the `expo-location` dependency should be staged from that file.
+- `scannerDeviceId` already exists in the mobile scanner request, scan edge function, `qr_token_uses`, and `stamps`.
+- The current mobile scanner sends `"web-preview"` on web and `null` on native, so scan audit is not tied to a real business/device.
+- `scan_stamp_atomic` stores `scanner_device_id` but does not verify it against any business-owned device registry.
+- Business staff membership is already verified in both the edge function and `scan_stamp_atomic`.
 
 ## Risks
 
-- Native location must only be requested after the operator taps the location proof button.
-- Permission copy must explain event-day fraud review, not general tracking.
-- Dependency changes must not accidentally stage unrelated local script edits.
-- Location denial must not block QR scans.
+- Device identity is audit context, not an auth replacement; business staff auth must remain the primary authorization primitive.
+- A stale or forged `scannerDeviceId` must not be accepted for another business.
+- First scanner launch should register the device without forcing event-day staff through a long setup flow.
+- If device registration fails, the scanner should stop before reading QR codes so audit data does not silently disappear.
 
 ## Review Outcome
 
-Add Expo Location with SDK-compatible version, configure permission text, and use native foreground location only from the existing explicit scanner opt-in action.
+Add a business-owned scanner device registry, auto-register the current install per business, validate non-null scanner device IDs in the atomic scan RPC, and surface the device status in the scanner UI.
