@@ -12,6 +12,7 @@ type SupportRequestRow = {
   id: string;
   area: SupportRequestArea;
   business_id: string | null;
+  club_id: string | null;
   subject: string;
   message: string;
   status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
@@ -19,6 +20,9 @@ type SupportRequestRow = {
   created_at: string;
   resolved_at: string | null;
   business: {
+    name: string;
+  } | null;
+  club: {
     name: string;
   } | null;
 };
@@ -38,6 +42,8 @@ const mapSupportRequests = (rows: SupportRequestRow[]): SupportRequestSummary[] 
     area: row.area,
     businessId: row.business_id,
     businessName: row.business?.name ?? null,
+    clubId: row.club_id,
+    clubName: row.club?.name ?? null,
     subject: row.subject,
     message: row.message,
     status: row.status,
@@ -57,13 +63,15 @@ const fetchSupportRequestsAsync = async (
       id,
       area,
       business_id,
+      club_id,
       subject,
       message,
       status,
       admin_reply,
       created_at,
       resolved_at,
-      business:businesses(name)
+      business:businesses(name),
+      club:clubs(name)
     `
     )
     .eq("user_id", userId)
@@ -83,6 +91,7 @@ const createSupportRequestAsync = async ({
   userId,
   area,
   businessId,
+  clubId,
   subject,
   message,
 }: SupportRequestDraft): Promise<SupportRequestSummary> => {
@@ -90,6 +99,7 @@ const createSupportRequestAsync = async ({
     user_id: userId,
     area,
     business_id: businessId,
+    club_id: clubId,
     subject: subject.trim(),
     message: message.trim(),
   };
@@ -102,13 +112,15 @@ const createSupportRequestAsync = async ({
       id,
       area,
       business_id,
+      club_id,
       subject,
       message,
       status,
       admin_reply,
       created_at,
       resolved_at,
-      business:businesses(name)
+      business:businesses(name),
+      club:clubs(name)
     `
     )
     .single<SupportRequestRow>();

@@ -5,40 +5,37 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-02
-- **Branch:** `feature/club-mobile-dashboard`
-- **Goal:** Ship the first native mobile `/club` dashboard so active organizer/club staff accounts can enter OmaLeima and monitor event-day operations without using the venue scanner UI.
+- **Branch:** `feature/club-mobile-operations`
+- **Goal:** Add the next organizer mobile operations layer: preferences, support, and safe event create/update/cancel flows.
 
 ## Architectural Decisions
 
-- Extend `SessionAccessArea` with `club` and add `/club/home` as the native organizer destination.
-- Determine club access from active `club_members` rows whose clubs are still `ACTIVE`.
-- Give business access priority when the same user also has active business staff membership, because scanner users need the venue flow during events.
-- Keep `PLATFORM_ADMIN` unsupported in native mobile until a real admin mobile surface exists.
-- Build a mobile-only read model in `apps/mobile/src/features/club/` instead of importing admin web server modules.
-- Query club event data in batches: memberships/clubs, events, registrations, venues, reward tiers, reward claims, and stamps.
-- Show a simple event-day dashboard: managed clubs, active/upcoming counts, participant total, joined venues, reward progress, and recent/next events.
-- Route guards must redirect between `student`, `business`, and `club` areas deterministically.
-- Keep all club dashboard operations read-only in this branch.
+- Add `/club/profile` for organizer preferences, support, and sign-out.
+- Extend support requests with `CLUB` area and optional `club_id`; RLS must require the user to be an active club member for inserts.
+- Generalize `SupportRequestSheet` enough to support club targets without breaking student/business support.
+- Add `/club/events` with a compact event manager: select event, create draft, update DRAFT/PUBLISHED/ACTIVE, and soft cancel.
+- Reuse `create_club_event_atomic` for creation and RLS-backed direct event updates/cancel for edit/cancel.
+- Keep the dashboard as the default route and add clear navigation buttons to profile/events.
+- Keep announcement creation out of this branch. Document it as next slice because it needs audience targeting, moderation, expiry, and push consent.
 - Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
 
-- Route organizer accounts into `/business/home`:
-  - rejected because organizer accounts manage event operations, not a single business checkpoint
-- Add full event create/edit/delete in native mobile now:
-  - rejected because this first slice is about unblocking access and read-only event-day visibility; mutations need more form validation, media upload, and audit review
-- Add platform admin native dashboard now:
-  - rejected because admin is safer and more useful as web-first until the native admin scope is explicitly designed
+- Make club support use BUSINESS area with fake business id:
+  - rejected because it would break authorization semantics and create confusing support history
+- Add announcement push now:
+  - rejected because it is a separate trust/consent feature, not a form-only UI task
+- Hard-delete events:
+  - rejected because scan, registration, and reward history must remain auditable
 
 ## Edge Cases
 
-- A user with suspended/deleted profile must stay unsupported even if stale memberships exist.
-- A club membership for a suspended/deleted club must not unlock `/club`.
-- A user with both business and club memberships should still land in business first; later account switching can be added explicitly.
-- Empty club event state must be clear and non-error.
-- Completed/cancelled/draft events should not inflate the live event-day counters.
-- All Supabase errors should include actionable context.
-- Typecheck, lint, export, and diff checks must pass.
+- Club support insert must fail unless the selected club belongs to the signed-in user.
+- Support history should still show own rows only.
+- Create event must reject invalid dates before invoking RPC.
+- Event update/cancel must not succeed for completed/cancelled/outside-club rows.
+- Staff users without create rights should see events but not the create form.
+- Typecheck, lint, export, migration push, and diff checks must pass where available.
 
 ## Validation Plan
 

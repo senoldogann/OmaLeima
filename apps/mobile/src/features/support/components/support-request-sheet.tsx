@@ -18,6 +18,7 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useCreateSupportRequestMutation, useSupportRequestsQuery } from "@/features/support/support-requests";
 import type {
+  ClubSupportOption,
   BusinessSupportOption,
   SupportRequestArea,
   SupportRequestStatus,
@@ -26,6 +27,7 @@ import type {
 type SupportRequestSheetProps = {
   area: SupportRequestArea;
   businessOptions: readonly BusinessSupportOption[];
+  clubOptions?: readonly ClubSupportOption[];
   isVisible: boolean;
   onClose: () => void;
   userId: string | null;
@@ -70,6 +72,10 @@ const createTitle = (area: SupportRequestArea, language: "fi" | "en"): string =>
     return language === "fi" ? "Yrityksen tuki" : "Business support";
   }
 
+  if (area === "CLUB") {
+    return language === "fi" ? "Klubin tuki" : "Club support";
+  }
+
   return language === "fi" ? "Opiskelijan tuki" : "Student support";
 };
 
@@ -80,6 +86,12 @@ const createEmptyHistory = (area: SupportRequestArea, language: "fi" | "en"): st
       : "No support requests have been sent from this business account yet.";
   }
 
+  if (area === "CLUB") {
+    return language === "fi"
+      ? "Tukipyyntöjä ei ole vielä lähetetty tällä klubitilillä."
+      : "No support requests have been sent from this club account yet.";
+  }
+
   return language === "fi"
     ? "Tukipyyntöjä ei ole vielä lähetetty tällä opiskelijatilillä."
     : "No support requests have been sent from this student account yet.";
@@ -88,6 +100,7 @@ const createEmptyHistory = (area: SupportRequestArea, language: "fi" | "en"): st
 export const SupportRequestSheet = ({
   area,
   businessOptions,
+  clubOptions = [],
   isVisible,
   onClose,
   userId,
@@ -103,6 +116,7 @@ export const SupportRequestSheet = ({
   const [subject, setSubject] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [isHistoryVisible, setIsHistoryVisible] = useState<boolean>(false);
   const [isSentAnimationVisible, setIsSentAnimationVisible] = useState<boolean>(false);
   const planeTranslateY = useRef(new Animated.Value(0)).current;
@@ -126,6 +140,22 @@ export const SupportRequestSheet = ({
       return nextBusinessId;
     });
   }, [area, businessOptions]);
+
+  useEffect(() => {
+    if (area !== "CLUB") {
+      setSelectedClubId(null);
+      return;
+    }
+
+    const nextClubId = clubOptions[0]?.clubId ?? null;
+    setSelectedClubId((currentValue) => {
+      if (currentValue !== null && clubOptions.some((option) => option.clubId === currentValue)) {
+        return currentValue;
+      }
+
+      return nextClubId;
+    });
+  }, [area, clubOptions]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -217,7 +247,7 @@ export const SupportRequestSheet = ({
     !createMutation.isPending &&
     subject.trim().length >= 3 &&
     message.trim().length >= 12 &&
-    (area === "STUDENT" || selectedBusinessId !== null);
+    (area === "STUDENT" || selectedBusinessId !== null || selectedClubId !== null);
 
   const selectedBusiness = useMemo(
     () =>
@@ -225,6 +255,13 @@ export const SupportRequestSheet = ({
         ? null
         : (businessOptions.find((option) => option.businessId === selectedBusinessId) ?? null),
     [businessOptions, selectedBusinessId]
+  );
+  const selectedClub = useMemo(
+    () =>
+      selectedClubId === null
+        ? null
+        : (clubOptions.find((option) => option.clubId === selectedClubId) ?? null),
+    [clubOptions, selectedClubId]
   );
 
   const handleSubmit = async (): Promise<void> => {
@@ -236,6 +273,7 @@ export const SupportRequestSheet = ({
       userId,
       area,
       businessId: area === "BUSINESS" ? selectedBusinessId : null,
+      clubId: area === "CLUB" ? selectedClubId : null,
       subject,
       message,
     });
@@ -296,6 +334,30 @@ export const SupportRequestSheet = ({
               </View>
             ) : null}
 
+            {area === "CLUB" ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>{language === "fi" ? "Klubi" : "Club"}</Text>
+                <View style={styles.optionStack}>
+                  {clubOptions.map((option) => {
+                    const isSelected = option.clubId === selectedClubId;
+
+                    return (
+                      <Pressable
+                        key={option.clubId}
+                        onPress={() => setSelectedClubId(option.clubId)}
+                        style={[styles.optionCard, isSelected ? styles.optionCardSelected : null]}
+                      >
+                        <Text style={styles.optionTitle}>{option.clubName}</Text>
+                        <Text style={styles.optionMeta}>
+                          {[option.city, option.role].filter(Boolean).join(" · ")}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{language === "fi" ? "Aihe" : "Subject"}</Text>
               <TextInput
@@ -306,9 +368,13 @@ export const SupportRequestSheet = ({
                   language === "fi"
                     ? area === "BUSINESS"
                       ? "Esim. Skanneri ei avaa kameraa"
+                      : area === "CLUB"
+                        ? "Esim. Tapahtumaa ei voi päivittää"
                       : "Esim. QR ei päivity"
                     : area === "BUSINESS"
                       ? "Example: Scanner does not open the camera"
+                      : area === "CLUB"
+                        ? "Example: Event cannot be updated"
                       : "Example: QR does not refresh"
                 }
                 placeholderTextColor={theme.colors.textDim}
@@ -383,6 +449,13 @@ export const SupportRequestSheet = ({
                   : "A support request needs an active business membership."}
               </Text>
             ) : null}
+            {area === "CLUB" && selectedClub === null ? (
+              <Text style={styles.metaText}>
+                {language === "fi"
+                  ? "Tukipyyntö tarvitsee aktiivisen klubiroolin."
+                  : "A support request needs an active club membership."}
+              </Text>
+            ) : null}
             </ScrollView>
 
             {isSentAnimationVisible ? (
@@ -452,6 +525,7 @@ export const SupportRequestSheet = ({
                       <Text style={styles.historyMeta}>
                         {formatDateTime(localeTag, request.createdAt)}
                         {request.businessName ? ` · ${request.businessName}` : ""}
+                        {request.clubName ? ` · ${request.clubName}` : ""}
                       </Text>
                       {request.adminReply ? (
                         <Text style={styles.historyReply}>
