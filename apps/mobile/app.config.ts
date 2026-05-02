@@ -70,6 +70,13 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
         barcodeScannerEnabled: true,
       },
     ],
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "Allow OmaLeima to attach this scanner location to leima scans for event-day fraud review.",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
