@@ -151,26 +151,40 @@ Deno.serve(async (request: Request): Promise<Response> => {
       }, 200);
     }
 
+    const refreshResults = await Promise.allSettled(
+      dirtyEventIds.map(async (eventId) => {
+        const { error: refreshError } = await supabase.rpc("update_event_leaderboard", {
+          p_event_id: eventId,
+        });
+
+        if (refreshError !== null) {
+          throw new Error(`Failed to refresh leaderboard for ${eventId}: ${refreshError.message}`);
+        }
+
+        return eventId;
+      })
+    );
     const updatedEventIds: string[] = [];
     const failedEventIds: string[] = [];
 
-    for (const eventId of dirtyEventIds) {
-      const { error: refreshError } = await supabase.rpc("update_event_leaderboard", {
-        p_event_id: eventId,
-      });
+    refreshResults.forEach((result, index) => {
+      const eventId = dirtyEventIds[index];
 
-      if (refreshError !== null) {
-        console.error("leaderboard_refresh_failed", {
-          eventId,
-          message: refreshError.message,
-          code: refreshError.code,
-        });
-        failedEventIds.push(eventId);
-        continue;
+      if (typeof eventId === "undefined") {
+        return;
       }
 
-      updatedEventIds.push(eventId);
-    }
+      if (result.status === "fulfilled") {
+        updatedEventIds.push(result.value);
+        return;
+      }
+
+      console.error("leaderboard_refresh_failed", {
+        eventId,
+        message: result.reason instanceof Error ? result.reason.message : "Unknown leaderboard refresh error.",
+      });
+      failedEventIds.push(eventId);
+    });
 
     return jsonResponse({
       status: failedEventIds.length > 0 ? "PARTIAL_SUCCESS" : "SUCCESS",

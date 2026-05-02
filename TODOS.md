@@ -4,13 +4,28 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Completed Todos (Previous Waves)
 
-- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, and business media upload slices recorded in `PROGRESS.md`.
+- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, and reward cover slider slices recorded in `PROGRESS.md`.
 
-## Current Todos (Reward Cover And Slider Fix)
+## Current Todos (Verified Technical Report Fixes)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the current branch.
-- [x] Make event detail, rewards hero, active QR, and leaderboard hero use deterministic event covers.
-- [x] Compact the rewards slider cards so long reward tier lists do not push carousel dots down.
-- [x] Run mobile validation commands.
-- [x] Update `PROGRESS.md` with handoff.
+- [x] Read `RAPOR.md` and compare findings against current code.
+- [x] Add missing `/club` root Stack registration.
+- [x] Add QR token usage SELECT RLS policies.
+- [x] Restrict current business application inserts to authenticated users.
+- [x] Add student registration cancellation RPC and mobile UI.
+- [x] Remove unnecessary profile row lock from event registration.
+- [x] Refresh leaderboard after successful scans.
+- [x] Count successful push deliveries correctly.
+- [x] Parallelize scheduled leaderboard refresh.
+- [x] Rename QR token query key parameter semantics.
+- [x] Run available validation commands and record the local Supabase lint blocker.
+- [x] Update `PROGRESS.md` with verified findings and handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the bug-fix branch.
+
+## Next Queue
+
+- [ ] Design scanner location consent and fraud scoring slice.
+- [ ] Design public business application captcha/rate-limit/API slice before exposing self-serve onboarding.
+- [ ] Design platform and organizer announcement model with push opt-in and read receipts.
+- [ ] Design typed event rules builder for leima quotas and venue-specific stamp limits.
+- [ ] Plan session/admin performance cleanup.

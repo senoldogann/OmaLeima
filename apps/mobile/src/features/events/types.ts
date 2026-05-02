@@ -108,3 +108,19 @@ export type JoinEventResult = {
   maxParticipants?: number;
   currentRegistrations?: number;
 };
+
+export type CancelEventRegistrationResultStatus =
+  | "SUCCESS"
+  | "ALREADY_CANCELLED"
+  | "AUTH_REQUIRED"
+  | "ACTOR_NOT_ALLOWED"
+  | "EVENT_NOT_FOUND"
+  | "EVENT_ALREADY_STARTED"
+  | "NOT_REGISTERED"
+  | "STUDENT_BANNED";
+
+export type CancelEventRegistrationResult = {
+  status: CancelEventRegistrationResultStatus;
+  registrationId?: string;
+  startAt?: string;
+};

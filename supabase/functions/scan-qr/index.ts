@@ -253,7 +253,7 @@ const sendRewardUnlockPushAsync = async (
     data: basePayload,
   }));
   const pushResults = await sendExpoPushMessages(expoPushApiUrl, expoPushAccessToken, pushMessages);
-  const notificationsSent = pushResults.some((result) => result.ok) ? 1 : 0;
+  const notificationsSent = pushResults.filter((result) => result.ok).length;
   await persistRewardUnlockNotificationAsync(
     supabase,
     createRewardUnlockNotificationRow(
@@ -266,12 +266,12 @@ const sendRewardUnlockPushAsync = async (
         deliveryResults: serializeTokenResults(pushResults),
         deviceTokenCount: deviceTokens.length,
       },
-      notificationsSent === 1 ? "SENT" : "FAILED"
+      notificationsSent > 0 ? "SENT" : "FAILED"
     ),
     {
       studentId,
       eventId,
-      deliveryError: notificationsSent === 1 ? null : "EXPO_PUSH_REJECTED",
+      deliveryError: notificationsSent > 0 ? null : "EXPO_PUSH_REJECTED",
     }
   );
 

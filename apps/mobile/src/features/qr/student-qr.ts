@@ -75,8 +75,8 @@ export const studentQrContextQueryKey = (studentId: string) => ["student-qr-cont
 export const studentEventStampCountQueryKey = (eventId: string, studentId: string) =>
   ["student-event-stamp-count", eventId, studentId] as const;
 
-export const studentGenerateQrTokenQueryKey = (eventId: string, studentId: string) =>
-  ["student-generate-qr-token", eventId, studentId] as const;
+export const studentGenerateQrTokenQueryKey = (eventId: string, accessTokenCacheKey: string) =>
+  ["student-generate-qr-token", eventId, accessTokenCacheKey] as const;
 
 export const studentQrSvgQueryKey = (token: string) => ["student-qr-svg", token] as const;
 

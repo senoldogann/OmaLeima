@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `bug/verify-technical-report-findings`
+- **Yapılan iş:** `RAPOR.md` bulgulari mevcut kodla tek tek karsilastirildi. Dogrulanan net bulgular icin fix eklendi: root mobile Stack'e `/club` kaydi eklendi; `qr_token_uses` icin platform admin, event manager ve ilgili business staff SELECT RLS policy'leri eklendi; mevcut private-pilot akisa gore `business_applications` insert policy'si authenticated kullanicilarla sinirlandi; `cancel_event_registration_atomic` RPC'si ve ogrenci event detail uzerinde kayit iptali aksiyonu eklendi; `register_event_atomic` profil satirini gereksiz `for update` kilitlemekten cikarildi; basarili scan sonrasinda leaderboard refresh tetiklendi; scan push delivery sayaci cihaz bazli basarili sonuc sayacak sekilde duzeltildi; scheduled leaderboard refresh dirty eventleri paralel islemeye tasindi; QR token query key parametre adi access-token cache anahtarini dogru anlatacak sekilde duzeltildi.
+- **Neden yapıldı:** Kullanici `RAPOR.md` icindeki bulgularin dogru olup olmadigini dogrulamami, dogru olanlari kok nedene uygun sekilde duzeltmemi ve siradaki adimlari kaybetmeden siraya almami istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint` ve `git --no-pager diff --check` gecti. `supabase db lint` calistirildi fakat lokal Supabase Postgres `127.0.0.1:54322` kapali oldugu icin baglanti hatasiyla bloklandi; `supabase start` denemesi de Docker daemon kapali oldugu icin baslayamadi.
+- **Sıradaki önerilen adım:** Siradaki planli slice scanner location consent/fraud scoring olmali: izin metni, reddedilme durumu, privacy copy, server fraud scoring ve event-day QA. Ardindan public business application acilacaksa captcha/rate-limit/API; sonra platform/organizer announcement + push opt-in/read-receipts; sonra typed event rules builder.
+- **Açık risk/blokaj:** Business application insert artik authenticated gerektiriyor; ileride public self-serve venue onboarding acilirsa bu akisa ozel route/API ve abuse korumasi gerekir. Scanner location bilincli olarak bu branch'te eklenmedi cunku izin ve privacy UX'i olmadan dogru olmaz. `apps/mobile/package.json` kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` yerel dosyalari commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `bug/reward-cover-slider-layout`
 - **Yapılan iş:** Palkinnot, Tapahtuma tiedot, My QR active event ve Leaderboard hero gibi event'e bagli ogrenci yuzeylerinde kapak gorseli ayni deterministic event anahtariyla secilecek sekilde duzeltildi. Remote `coverImageUrl` varsa her yerde ayni remote gorsel kullaniliyor; yoksa `${event.id}:${event.name}` fallback'i ayni etkinlik icin ayni asset'i donduruyor. Palkinnot slider kartlari compact preview haline getirildi: ilk iki reward tier gosteriliyor, kalan tier sayisi kisa bir satirla event detail'e yonlendiriliyor. Boylece tek uzun event karti carousel dot alanini gereksiz asagi itme davranisini artik tetiklemiyor.
 - **Neden yapıldı:** Kullanici Palkinnot sayfasindaki event fotografi ile Tapahtuma tiedot sayfasindaki fotograf ayni degil dedi ve Palkinnot slider indicator noktalarinin en uzun kart yuksekligine gore gereksiz asagida kalmasini duzeltmemizi istedi.
@@ -908,6 +916,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: `RAPOR.md` teknik bulgu triage'i tamamlandi; dogrulanan root Stack, QR audit RLS, registration cancel, leaderboard freshness, push count ve scheduler parallelism fixleri eklendi.
 - *2026-05-03*: Palkinnot event cover ve slider layout fix tamamlandi; event-specific ogrenci yuzeyleri ayni deterministic cover secimine tasindi ve reward slider kartlari compact preview oldu.
 - *2026-04-28*: Faz 3 student QR screen tamamlandı; active-event tabı canlı registered-event selection, backend-timed QR refresh, capture warning ve progress summary göstermeye başladı.
 - *2026-04-28*: Faz 3 student reward progress tamamlandı; rewards tabı gerçek reward tier state gösteriyor ve active-event QR ekranı ile shared reward progress surface kullanıyor.
