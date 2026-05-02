@@ -75,6 +75,7 @@ const responseMessages: Record<string, string> = {
   VENUE_NOT_IN_EVENT: "Venue is not part of this event.",
   VENUE_JOINED_TOO_LATE: "Venue joined this event too late.",
   BUSINESS_STAFF_NOT_ALLOWED: "Scanner is not allowed to scan for this business.",
+  SCANNER_DEVICE_NOT_ALLOWED: "Scanner device is not registered for this business.",
   QR_ALREADY_USED_OR_REPLAYED: "QR code was already used.",
   ALREADY_STAMPED: "This student already has a leima from this venue for this event.",
 };
@@ -315,8 +316,8 @@ const parseRequestBody = (body: Record<string, unknown>): ScanQrRequest => {
     throw new Error("businessId must be a valid UUID when provided.");
   }
 
-  if (typeof body.scannerDeviceId !== "undefined" && body.scannerDeviceId !== null && !isString(body.scannerDeviceId)) {
-    throw new Error("scannerDeviceId must be a non-empty string when provided.");
+  if (body.scannerDeviceId !== null && !isOptionalUuid(body.scannerDeviceId)) {
+    throw new Error("scannerDeviceId must be a valid UUID when provided.");
   }
 
   return {

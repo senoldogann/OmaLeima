@@ -37,6 +37,7 @@ const knownScanStatuses = [
   "STUDENT_NOT_REGISTERED",
   "VENUE_JOINED_TOO_LATE",
   "BUSINESS_STAFF_NOT_ALLOWED",
+  "SCANNER_DEVICE_NOT_ALLOWED",
   "NOT_BUSINESS_STAFF",
   "BUSINESS_CONTEXT_REQUIRED",
 ] as const satisfies readonly ScanQrResponse["status"][];
@@ -54,6 +55,7 @@ const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["to
   STUDENT_NOT_REGISTERED: "danger",
   VENUE_JOINED_TOO_LATE: "danger",
   BUSINESS_STAFF_NOT_ALLOWED: "danger",
+  SCANNER_DEVICE_NOT_ALLOWED: "danger",
   NOT_BUSINESS_STAFF: "danger",
   BUSINESS_CONTEXT_REQUIRED: "warning",
 };
