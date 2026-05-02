@@ -9,7 +9,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
@@ -120,15 +120,14 @@ export default function StudentActiveEventScreen() {
       qrTokenQuery.data.qrPayload.token.length > 0,
   });
 
-  const refreshAfterSeconds = qrTokenQuery.data?.refreshAfterSeconds ?? null;
-  const countdownSeconds = useQrCountdown(refreshAfterSeconds, qrTokenQuery.dataUpdatedAt, shouldRefreshQr);
+  const countdownSeconds = useQrCountdown(qrTokenQuery.data?.expiresAt ?? null, shouldRefreshQr);
   const isQrLive = selectedEvent?.viewState === "ACTIVE" && !qrTokenQuery.isLoading && !qrTokenQuery.error;
   const showProtectionNotice = protection.status === "ERROR";
   const eventCoverSource = useMemo(
     () =>
       selectedEvent === null
         ? null
-        : getEventCoverSource(selectedRewardEvent?.coverImageUrl ?? null, `${selectedEvent.id}:${selectedEvent.name}`),
+        : getEventCoverSourceWithFallback(selectedRewardEvent?.coverImageUrl ?? null, "qrPass"),
     [selectedEvent, selectedRewardEvent?.coverImageUrl]
   );
 
@@ -408,7 +407,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },

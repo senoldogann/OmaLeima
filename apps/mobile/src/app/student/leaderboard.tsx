@@ -7,7 +7,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getEventCoverSource, getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
 import type { MobileTheme } from "@/features/foundation/theme";
 import {
@@ -201,7 +201,7 @@ export default function StudentLeaderboardScreen() {
   const freshness = getFreshnessBadge(leaderboardRefreshedAt, language);
   const heroLabel = createLeaderboardHeroLabel(selectedEvent?.name ?? null, top10.length, currentUser?.rank ?? null, language);
   const selectedEventCover = selectedEvent
-    ? getEventCoverSource(selectedEvent.coverImageUrl, `${selectedEvent.id}:${selectedEvent.name}`)
+    ? getEventCoverSourceWithFallback(selectedEvent.coverImageUrl, "leaderboard")
     : null;
   const selectedEventTimelineLabel =
     selectedEvent === null ? null : createTimelineMetaLabel(language, formatter, selectedEvent);
@@ -627,7 +627,7 @@ const createStyles = (theme: MobileTheme) =>
       width: 36,
     },
     podiumBadgeText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },

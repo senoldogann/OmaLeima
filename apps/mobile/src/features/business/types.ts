@@ -3,7 +3,18 @@ export type BusinessTimelineState = "ACTIVE" | "UPCOMING" | "COMPLETED";
 export type BusinessMembershipSummary = {
   businessId: string;
   businessName: string;
+  address: string;
   city: string;
+  contactEmail: string;
+  phone: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  yTunnus: string | null;
+  contactPersonName: string | null;
+  openingHours: string | null;
+  announcement: string | null;
   role: "OWNER" | "MANAGER" | "SCANNER";
 };
 
@@ -12,6 +23,12 @@ export type BusinessJoinedEventSummary = {
   eventId: string;
   businessId: string;
   businessName: string;
+  businessLogoUrl: string | null;
+  businessCoverImageUrl: string | null;
+  businessAnnouncement: string | null;
+  businessAddress: string;
+  businessPhone: string | null;
+  businessOpeningHours: string | null;
   eventName: string;
   city: string;
   startAt: string;

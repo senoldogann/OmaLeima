@@ -4,34 +4,24 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Completed Todos (Previous Waves)
 
-- [x] Create `feature/full-ui-redesign-foundation` branch.
-- [x] Update `REVIEW.md` for the redesign foundation slice.
-- [x] Update `PLAN.md` for the same slice.
-- [x] Redesign the shared mobile theme and foundation components.
-- [x] Apply the new visual language to the key student surfaces.
-- [x] Run static mobile validation for the redesign slice.
-- [x] Update `PROGRESS.md` with the redesign handoff note and next visual wave.
-- [x] Update the working docs for the second redesign wave.
-- [x] Restyle student event detail, rewards, and profile around the new foundation.
-- [x] Restyle business home, events, and scanner around the same foundation.
-- [x] Run static mobile validation for the second redesign wave.
-- [x] Update `PROGRESS.md` with the second-wave redesign handoff note and next visual wave.
-- [x] Update the working docs for the runtime-proof slice.
-- [x] Run signed-in runtime visual smoke for redesigned business surfaces on local web.
-- [x] Fix any runtime-only layout or interaction regression found during the smoke.
-- [x] Narrow the remaining student runtime proof gap honestly in docs and handoff.
-- [x] Update `PROGRESS.md` with the runtime-proof handoff note and next visual wave.
-- [x] Update the working docs for the design-handoff slice.
-- [x] Create a repo-owned redesign handoff document with references and file inventory.
-- [x] Group redesign files by mobile foundation, student routes, business routes, and admin web routes.
-- [x] Document the visual direction, Stitch sources, and guardrails for the next design agent.
-- [x] Update `PROGRESS.md` with the redesign handoff note and next recommended step.
+- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, and business media upload slices recorded in `PROGRESS.md`.
 
-## Current Todos (Deep Project Review)
+## Current Todos (Product Ops Roadmap Assets)
 
-- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for `feature/deep-project-review`.
-- [x] Run repository-wide inspection on current `main` state.
-- [x] Collect an extra reviewer subagent pass.
-- [x] Fix any real defects or process drift found during review.
-- [x] Rerun the relevant mobile/admin validation gates.
-- [x] Update `PROGRESS.md` with the review outcome and merge note.
+- [x] Refresh `REVIEW.md`, `PLAN.md`, and `TODOS.md` for the current branch.
+- [x] Re-read current QR, push, organizer, business scanner, and Finnish appro notes.
+- [x] Document low-friction scanner, `/club` mobile, announcement, subscription, and security roadmap.
+- [x] Generate additional OmaLeima visual assets with imagegen.
+- [x] Add generated visuals to centralized mobile event fallback covers.
+- [x] Run mobile validation commands.
+- [x] Update `PROGRESS.md` with handoff.
+- [x] Review current image usage across mobile and admin surfaces.
+- [x] Generate dark/light gravity-line background textures with imagegen.
+- [x] Add gravity-line backgrounds to the shared mobile screen shell.
+- [x] Assign explicit fallback image purposes for login, discovery, QR, rewards, leaderboard, scanner, and admin shell.
+- [x] Run full mobile/admin validation after the visual distribution pass.
+- [x] Update `PROGRESS.md` with the second handoff.
+- [x] Re-check Finnish appro/event-day context before the scanner ergonomics slice.
+- [x] Add first event-day scanner surface with selected checkpoint, queue-ready state, and screen-awake behavior.
+- [x] Run mobile validation after scanner ergonomics changes.
+- [x] Update `PROGRESS.md` with scanner handoff.

@@ -52,7 +52,7 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     retryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontSize: 14,
       fontWeight: "700",
     },

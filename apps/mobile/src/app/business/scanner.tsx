@@ -5,13 +5,17 @@ import {
   type BarcodeScanningResult,
   useCameraPermissions,
 } from "expo-camera";
+import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
+import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type { ScannerAttemptResult } from "@/features/scanner/types";
@@ -20,6 +24,7 @@ import { useSession } from "@/providers/session-provider";
 
 const scanTimeoutMs = 4_000;
 const isWeb = process.env.EXPO_OS === "web";
+const scannerKeepAwakeTag = "omaleima-event-day-scanner";
 
 type ToneMeta = {
   eyebrow: string;
@@ -197,6 +202,7 @@ export default function BusinessScannerScreen() {
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
+  useKeepAwake(scannerKeepAwakeTag, { suppressDeactivateWarnings: true });
 
   const formatter = useMemo(
     () =>
@@ -259,6 +265,15 @@ export default function BusinessScannerScreen() {
       scanPastedToken: language === "fi" ? "Skannaa liitetty token" : "Scan pasted token",
       stampCountLabel: language === "fi" ? "leimaa yhteensä" : "stamps total",
       endsLabel: language === "fi" ? "Päättyy" : "Ends",
+      eventDayEyebrow: language === "fi" ? "Tapahtumapäivä" : "Event day",
+      eventDayTitle: language === "fi" ? "Skanneri pysyy auki" : "Scanner stays awake",
+      eventDayBody:
+        language === "fi"
+          ? "Pidä tämä näkymä auki tiskillä. Valittu piste pysyy paikallaan ja kamera on valmis seuraavalle opiskelijalle."
+          : "Keep this view open at the desk. The selected checkpoint stays in place and the camera is ready for the next student.",
+      queueReady: language === "fi" ? "Valmis jonolle" : "Ready for the line",
+      selectedCheckpoint: language === "fi" ? "Valittu piste" : "Selected checkpoint",
+      screenAwake: language === "fi" ? "Näyttö hereillä" : "Screen awake",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -311,6 +326,17 @@ export default function BusinessScannerScreen() {
       activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ?? null,
     [activeJoinedEvents, selectedEventVenueId]
   );
+  const selectedBusinessDetails = useMemo(() => {
+    if (selectedEvent === null) {
+      return [];
+    }
+
+    return [
+      selectedEvent.businessAddress,
+      selectedEvent.businessOpeningHours,
+      selectedEvent.businessPhone,
+    ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  }, [selectedEvent]);
 
   const resetScanner = (): void => {
     setIsScannerLocked(false);
@@ -365,9 +391,14 @@ export default function BusinessScannerScreen() {
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
-        <Text style={styles.metaText}>{copy.business.scannerMeta}</Text>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
+          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
+        </Pressable>
+        <View style={styles.topBarCopy}>
+          <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
+          <Text style={styles.metaText}>{copy.business.scannerMeta}</Text>
+        </View>
       </View>
 
       {homeOverviewQuery.isLoading ? (
@@ -416,6 +447,51 @@ export default function BusinessScannerScreen() {
               </View>
 
               {selectedEvent ? (
+                <CoverImageSurface
+                  source={
+                    selectedEvent.businessCoverImageUrl
+                      ? { uri: selectedEvent.businessCoverImageUrl }
+                      : getFallbackCoverSource("clubControl")
+                  }
+                  style={styles.businessHero}
+                >
+                  <View style={styles.businessHeroOverlay} />
+                  <View style={styles.businessHeroContent}>
+                    <CoverImageSurface
+                      source={
+                        selectedEvent.businessLogoUrl
+                          ? { uri: selectedEvent.businessLogoUrl }
+                          : null
+                      }
+                      style={styles.businessLogo}
+                    >
+                      {selectedEvent.businessLogoUrl === null ? (
+                        <AppIcon color={theme.colors.textPrimary} name="business" size={22} />
+                      ) : null}
+                    </CoverImageSurface>
+                    <View style={styles.businessHeroCopy}>
+                      <Text numberOfLines={1} style={styles.businessHeroTitle}>
+                        {selectedEvent.businessName}
+                      </Text>
+                      <Text numberOfLines={2} style={styles.businessHeroMeta}>
+                        {selectedEvent.businessAnnouncement ?? selectedEvent.city}
+                      </Text>
+                    </View>
+                  </View>
+                </CoverImageSurface>
+              ) : null}
+
+              {selectedBusinessDetails.length > 0 ? (
+                <View style={styles.businessDetailStack}>
+                  {selectedBusinessDetails.map((detail) => (
+                    <Text key={detail} numberOfLines={2} style={styles.businessDetailText}>
+                      {detail}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+
+              {selectedEvent ? (
                 <View style={styles.selectedMetaRow}>
                   <Text style={styles.metaText}>
                     {labels.endsLabel} {formatDateTime(formatter, selectedEvent.endAt)}
@@ -423,6 +499,36 @@ export default function BusinessScannerScreen() {
                   {selectedEvent.stampLabel ? (
                     <Text style={styles.stampLabel}>{selectedEvent.stampLabel}</Text>
                   ) : null}
+                </View>
+              ) : null}
+
+              {selectedEvent ? (
+                <View style={styles.eventDayPanel}>
+                  <View style={styles.eventDayHeader}>
+                    <View style={styles.eventDayIcon}>
+                      <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
+                    </View>
+                    <View style={styles.eventDayCopy}>
+                      <Text style={styles.eventDayEyebrow}>{labels.eventDayEyebrow}</Text>
+                      <Text style={styles.eventDayTitle}>{labels.eventDayTitle}</Text>
+                    </View>
+                    <View style={styles.eventDayState}>
+                      <View style={styles.eventDayDot} />
+                      <Text style={styles.eventDayStateText}>{labels.screenAwake}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.eventDayBody}>{labels.eventDayBody}</Text>
+                  <View style={styles.eventDayFooter}>
+                    <View style={styles.eventDayPill}>
+                      <Text style={styles.eventDayPillLabel}>{labels.selectedCheckpoint}</Text>
+                      <Text numberOfLines={1} style={styles.eventDayPillValue}>
+                        {selectedEvent.businessName}
+                      </Text>
+                    </View>
+                    <View style={styles.eventDayReady}>
+                      <Text style={styles.eventDayReadyText}>{labels.queueReady}</Text>
+                    </View>
+                  </View>
                 </View>
               ) : null}
 
@@ -596,6 +702,79 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    backButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
+    businessHero: {
+      borderRadius: theme.radius.inner,
+      minHeight: 128,
+      overflow: "hidden",
+      position: "relative",
+    },
+    businessHeroContent: {
+      alignItems: "flex-end",
+      bottom: 14,
+      flexDirection: "row",
+      gap: 10,
+      left: 14,
+      position: "absolute",
+      right: 14,
+      zIndex: 2,
+    },
+    businessHeroCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    businessHeroMeta: {
+      color: "rgba(255, 255, 255, 0.78)",
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    businessHeroOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.42)",
+      zIndex: 1,
+    },
+    businessHeroTitle: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    businessLogo: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: "rgba(255, 255, 255, 0.52)",
+      borderRadius: 14,
+      borderWidth: 1,
+      height: 50,
+      justifyContent: "center",
+      overflow: "hidden",
+      position: "relative",
+      width: 50,
+    },
+    businessDetailStack: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 5,
+      padding: 12,
+    },
+    businessDetailText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     cameraHint: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
@@ -645,6 +824,115 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    eventDayBody: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventDayCopy: {
+      flex: 1,
+      gap: 1,
+    },
+    eventDayDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
+    },
+    eventDayEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    eventDayFooter: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    eventDayHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+    },
+    eventDayIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 38,
+      justifyContent: "center",
+      width: 38,
+    },
+    eventDayPanel: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.08)" : "rgba(200, 255, 71, 0.2)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 12,
+      padding: 14,
+    },
+    eventDayPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    eventDayPillLabel: {
+      color: theme.colors.textDim,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 0.9,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    eventDayPillValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventDayReady: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    eventDayReadyText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    eventDayState: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+    },
+    eventDayStateText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      lineHeight: 13,
+    },
+    eventDayTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
     ghostButton: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
@@ -686,7 +974,7 @@ const createStyles = (theme: MobileTheme) => {
       paddingVertical: 14,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
@@ -745,15 +1033,21 @@ const createStyles = (theme: MobileTheme) => {
       right: 16,
       top: 16,
     },
-    screenHeader: {
-      gap: 6,
-      marginBottom: 4,
-    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
+    },
+    topBar: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 4,
+    },
+    topBarCopy: {
+      flex: 1,
+      gap: 6,
     },
     secondaryButton: {
       alignItems: "center",

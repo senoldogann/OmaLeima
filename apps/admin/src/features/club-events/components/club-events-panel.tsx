@@ -9,10 +9,17 @@ import {
   formatClubMembershipRole,
   getClubEventStatusClassName,
 } from "@/features/club-events/format";
-import { clubEventRefreshableStatuses, submitClubEventCreationRequestAsync } from "@/features/club-events/event-client";
+import {
+  clubEventRefreshableStatuses,
+  submitClubEventCancelRequestAsync,
+  submitClubEventCreationRequestAsync,
+  submitClubEventUpdateRequestAsync,
+} from "@/features/club-events/event-client";
 import type {
   ClubEventActionState,
   ClubEventCreationPayload,
+  ClubEventRecord,
+  ClubEventUpdatePayload,
   ClubEventsSnapshot,
 } from "@/features/club-events/types";
 
@@ -36,6 +43,33 @@ const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
   visibility: "PUBLIC",
 });
 
+const toLocalDateTimeInput = (value: string): string => {
+  const date = new Date(value);
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+  const localDate = new Date(date.getTime() - timezoneOffsetMs);
+
+  return localDate.toISOString().slice(0, 16);
+};
+
+const createUpdatePayload = (event: ClubEventRecord): ClubEventUpdatePayload => ({
+  city: event.city,
+  coverImageUrl: event.coverImageUrl ?? "",
+  description: event.description ?? "",
+  endAt: toLocalDateTimeInput(event.endAt),
+  eventId: event.eventId,
+  joinDeadlineAt: toLocalDateTimeInput(event.joinDeadlineAt),
+  maxParticipants: event.maxParticipants === null ? "" : String(event.maxParticipants),
+  minimumStampsRequired: String(event.minimumStampsRequired),
+  name: event.name,
+  rulesJson: event.rulesJson,
+  startAt: toLocalDateTimeInput(event.startAt),
+  status: event.status === "ACTIVE" || event.status === "PUBLISHED" ? event.status : "DRAFT",
+  visibility: event.visibility,
+});
+
+const canCancelEvent = (event: ClubEventRecord): boolean =>
+  event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED";
+
 const renderActionState = (state: ClubEventActionState) => {
   if (state.message === null) {
     return null;
@@ -58,7 +92,44 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
     message: null,
     tone: "idle",
   });
+  const [selectedEventId, setSelectedEventId] = useState<string>(
+    snapshot.recentEvents[0]?.eventId ?? ""
+  );
+  const selectedEvent = useMemo(
+    () => snapshot.recentEvents.find((event) => event.eventId === selectedEventId) ?? null,
+    [selectedEventId, snapshot.recentEvents]
+  );
+  const [updatePayload, setUpdatePayload] = useState<ClubEventUpdatePayload | null>(
+    selectedEvent === null ? null : createUpdatePayload(selectedEvent)
+  );
+  const [updateActionState, setUpdateActionState] = useState<ClubEventActionState>({
+    code: null,
+    message: null,
+    tone: "idle",
+  });
+  const [cancelActionState, setCancelActionState] = useState<ClubEventActionState>({
+    code: null,
+    message: null,
+    tone: "idle",
+  });
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [isUpdatePending, setIsUpdatePending] = useState<boolean>(false);
+  const [isCancelPending, setIsCancelPending] = useState<boolean>(false);
+
+  const handleSelectEvent = (event: ClubEventRecord): void => {
+    setSelectedEventId(event.eventId);
+    setUpdatePayload(createUpdatePayload(event));
+    setUpdateActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+    setCancelActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -91,6 +162,78 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
       });
     } finally {
       setIsPending(false);
+    }
+  };
+
+  const handleUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    if (updatePayload === null) {
+      return;
+    }
+
+    setIsUpdatePending(true);
+    setUpdateActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitClubEventUpdateRequestAsync(updatePayload);
+      const nextState: ClubEventActionState = {
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      };
+
+      setUpdateActionState(nextState);
+
+      if (response.status !== null && clubEventRefreshableStatuses.has(response.status)) {
+        router.refresh();
+      }
+    } catch (error) {
+      setUpdateActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown event update request error.",
+        tone: "error",
+      });
+    } finally {
+      setIsUpdatePending(false);
+    }
+  };
+
+  const handleCancelEvent = async (event: ClubEventRecord): Promise<void> => {
+    setIsCancelPending(true);
+    setCancelActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitClubEventCancelRequestAsync({
+        eventId: event.eventId,
+      });
+      const nextState: ClubEventActionState = {
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      };
+
+      setCancelActionState(nextState);
+
+      if (response.status !== null && clubEventRefreshableStatuses.has(response.status)) {
+        router.refresh();
+      }
+    } catch (error) {
+      setCancelActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown event cancel request error.",
+        tone: "error",
+      });
+    } finally {
+      setIsCancelPending(false);
     }
   };
 
@@ -397,6 +540,316 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
         </div>
       </section>
 
+      <section className="panel panel-hero">
+        <div className="review-card-header">
+          <div className="stack-sm">
+            <div className="eyebrow">Manage event</div>
+            <h3 className="section-title">Update the selected event</h3>
+            <p className="muted-text">
+              Keep published details current without deleting registrations, stamps, or reward history.
+            </p>
+          </div>
+          {selectedEvent !== null ? (
+            <span className={getClubEventStatusClassName(selectedEvent.status)}>{selectedEvent.status}</span>
+          ) : null}
+        </div>
+
+        {selectedEvent === null || updatePayload === null ? (
+          <p className="muted-text">Create or select an event before editing details.</p>
+        ) : (
+          <form className="stack-md" onSubmit={(event) => void handleUpdateSubmit(event)}>
+            <div className="detail-grid">
+              <label className="field">
+                <span className="field-label">Selected event</span>
+                <select
+                  className="field-input"
+                  disabled={isUpdatePending || isCancelPending}
+                  onChange={(event) => {
+                    const nextEvent = snapshot.recentEvents.find((record) => record.eventId === event.target.value);
+
+                    if (typeof nextEvent !== "undefined") {
+                      handleSelectEvent(nextEvent);
+                    }
+                  }}
+                  value={selectedEvent.eventId}
+                >
+                  {snapshot.recentEvents.map((event) => (
+                    <option key={event.eventId} value={event.eventId}>
+                      {event.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Status</span>
+                <select
+                  className="field-input"
+                  disabled={isUpdatePending || selectedEvent.status === "CANCELLED" || selectedEvent.status === "COMPLETED"}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            status: event.target.value as ClubEventUpdatePayload["status"],
+                          }
+                    )
+                  }
+                  value={updatePayload.status}
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="ACTIVE">Active</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span className="field-label">Visibility</span>
+                <select
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            visibility: event.target.value as ClubEventUpdatePayload["visibility"],
+                          }
+                    )
+                  }
+                  value={updatePayload.visibility}
+                >
+                  <option value="PUBLIC">Public</option>
+                  <option value="PRIVATE">Private</option>
+                  <option value="UNLISTED">Unlisted</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="detail-grid">
+              <label className="field">
+                <span className="field-label">Name</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            name: event.target.value,
+                          }
+                    )
+                  }
+                  value={updatePayload.name}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">City</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            city: event.target.value,
+                          }
+                    )
+                  }
+                  value={updatePayload.city}
+                />
+              </label>
+            </div>
+
+            <label className="field">
+              <span className="field-label">Description</span>
+              <textarea
+                className="field-input field-textarea"
+                disabled={isUpdatePending}
+                onChange={(event) =>
+                  setUpdatePayload((currentPayload) =>
+                    currentPayload === null
+                      ? null
+                      : {
+                          ...currentPayload,
+                          description: event.target.value,
+                        }
+                  )
+                }
+                value={updatePayload.description}
+              />
+            </label>
+
+            <div className="detail-grid">
+              <label className="field">
+                <span className="field-label">Start</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            startAt: event.target.value,
+                          }
+                    )
+                  }
+                  type="datetime-local"
+                  value={updatePayload.startAt}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">End</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            endAt: event.target.value,
+                          }
+                    )
+                  }
+                  type="datetime-local"
+                  value={updatePayload.endAt}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Join deadline</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            joinDeadlineAt: event.target.value,
+                          }
+                    )
+                  }
+                  type="datetime-local"
+                  value={updatePayload.joinDeadlineAt}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Cover image URL</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            coverImageUrl: event.target.value,
+                          }
+                    )
+                  }
+                  value={updatePayload.coverImageUrl}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Max participants</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            maxParticipants: event.target.value,
+                          }
+                    )
+                  }
+                  type="number"
+                  value={updatePayload.maxParticipants}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Minimum stamps required</span>
+                <input
+                  className="field-input"
+                  disabled={isUpdatePending}
+                  onChange={(event) =>
+                    setUpdatePayload((currentPayload) =>
+                      currentPayload === null
+                        ? null
+                        : {
+                            ...currentPayload,
+                            minimumStampsRequired: event.target.value,
+                          }
+                    )
+                  }
+                  type="number"
+                  value={updatePayload.minimumStampsRequired}
+                />
+              </label>
+            </div>
+
+            <label className="field">
+              <span className="field-label">Rules JSON</span>
+              <textarea
+                className="field-input field-textarea"
+                disabled={isUpdatePending}
+                onChange={(event) =>
+                  setUpdatePayload((currentPayload) =>
+                    currentPayload === null
+                      ? null
+                      : {
+                          ...currentPayload,
+                          rulesJson: event.target.value,
+                        }
+                  )
+                }
+                value={updatePayload.rulesJson}
+              />
+            </label>
+
+            <div className="button-row">
+              <button
+                className="button button-primary"
+                disabled={isUpdatePending || selectedEvent.status === "CANCELLED" || selectedEvent.status === "COMPLETED"}
+                type="submit"
+              >
+                {isUpdatePending ? "Saving..." : "Save event"}
+              </button>
+              <button
+                className="button button-danger"
+                disabled={isCancelPending || !canCancelEvent(selectedEvent)}
+                onClick={() => void handleCancelEvent(selectedEvent)}
+                type="button"
+              >
+                {isCancelPending ? "Cancelling..." : "Cancel event"}
+              </button>
+            </div>
+            {renderActionState(updateActionState)}
+            {renderActionState(cancelActionState)}
+          </form>
+        )}
+      </section>
+
       <section className="stack-md">
         <div className="stack-sm">
           <div className="eyebrow">Recent events</div>
@@ -413,7 +866,10 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
         ) : (
           <div className="content-grid">
             {snapshot.recentEvents.map((event) => (
-              <article key={event.eventId} className="panel review-card-compact">
+              <article
+                key={event.eventId}
+                className={`panel review-card-compact event-management-card ${event.eventId === selectedEventId ? "event-management-card-active" : ""}`}
+              >
                 <div className="stack-sm">
                   <div className="review-card-header">
                     <div className="stack-sm">
@@ -422,17 +878,43 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                     </div>
                     <span className={getClubEventStatusClassName(event.status)}>{event.status}</span>
                   </div>
-                  <p className="review-note">Slug: {event.slug}</p>
+                  <div className="event-stat-row">
+                    <span className="event-stat">
+                      <strong>{event.registeredParticipantCount}</strong>
+                      <span>registered</span>
+                    </span>
+                    <span className="event-stat">
+                      <strong>{event.joinedVenueCount}</strong>
+                      <span>venues</span>
+                    </span>
+                    <span className="event-stat">
+                      <strong>{event.minimumStampsRequired}</strong>
+                      <span>stamps</span>
+                    </span>
+                  </div>
                   <p className="muted-text">
                     {formatClubEventDateTime(event.startAt)} to {formatClubEventDateTime(event.endAt)}
                   </p>
                   <p className="muted-text">
-                    Join deadline {formatClubEventDateTime(event.joinDeadlineAt)} · Minimum stamps {event.minimumStampsRequired}
+                    Join deadline {formatClubEventDateTime(event.joinDeadlineAt)}
                   </p>
                   <p className="muted-text">
                     {event.maxParticipants === null ? "Unlimited capacity" : `${event.maxParticipants} max participants`}
                     {event.createdByEmail !== null ? ` · Created by ${event.createdByEmail}` : ""}
                   </p>
+                  <div className="button-row">
+                    <button className="button button-secondary" onClick={() => handleSelectEvent(event)} type="button">
+                      Edit details
+                    </button>
+                    <button
+                      className="button button-danger"
+                      disabled={!canCancelEvent(event) || isCancelPending}
+                      onClick={() => void handleCancelEvent(event)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

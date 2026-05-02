@@ -1,44 +1,56 @@
 import type { PropsWithChildren } from "react";
-import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { MobileTheme } from "@/features/foundation/theme";
-import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
+import { Image as ExpoImage } from "expo-image";
 
-// AppScreen: pure black base with no decorative overlays.
+import type { MobileTheme } from "@/features/foundation/theme";
+import { useAppTheme, useThemeStyles } from "@/features/preferences/ui-preferences-provider";
+
+const darkBackgroundSource = require("../../assets/backgrounds/gravity-lines-dark.png");
+const lightBackgroundSource = require("../../assets/backgrounds/gravity-lines-light.png");
+
 export const AppScreen = ({ children }: PropsWithChildren) => {
+  const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const backgroundSource = theme.mode === "dark" ? darkBackgroundSource : lightBackgroundSource;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
-        style={styles.keyboardAvoidingView}
+      <ExpoImage
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        pointerEvents="none"
+        source={backgroundSource}
+        style={styles.backgroundImage}
+        transition={180}
+      />
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.content}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        style={styles.scrollView}
       >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          style={styles.scrollView}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {children}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
+    backgroundImage: {
+      ...StyleSheet.absoluteFillObject,
+      opacity: theme.mode === "dark" ? 0.26 : 0.32,
+    },
     safeArea: {
       flex: 1,
       backgroundColor: theme.colors.screenBase,
     },
-    keyboardAvoidingView: {
-      flex: 1,
-    },
     scrollView: {
       flex: 1,
+      position: "relative",
     },
     content: {
       gap: theme.spacing.sectionGap,

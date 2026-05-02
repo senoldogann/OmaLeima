@@ -109,7 +109,7 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.limeBorder,
     },
     currentUserNameText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
     },
     currentUserRankBubble: {
       backgroundColor: "rgba(8, 9, 14, 0.16)",
@@ -118,7 +118,7 @@ const createStyles = (theme: MobileTheme) =>
       color: "rgba(8, 9, 14, 0.74)",
     },
     currentUserScoreText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
     },
     leftGroup: {
       alignItems: "center",

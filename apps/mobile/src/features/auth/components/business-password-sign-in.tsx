@@ -4,13 +4,18 @@ import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
-import { fetchSessionAccessAsync } from "@/features/auth/session-access";
+import { fetchSessionAccessAsync, type SessionAccess } from "@/features/auth/session-access";
 import {
   interactiveSurfaceShadowStyle,
   type MobileTheme,
 } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
+
+const requiresWebPanel = (access: SessionAccess): boolean =>
+  access.primaryRole === "PLATFORM_ADMIN" ||
+  access.primaryRole === "CLUB_ORGANIZER" ||
+  access.primaryRole === "CLUB_STAFF";
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
@@ -53,7 +58,7 @@ export const BusinessPasswordSignIn = () => {
       if (access.area !== "business" || access.homeHref === null) {
         await supabase.auth.signOut();
         setIsLoading(false);
-        setErrorMessage(copy.business.accessMissing);
+        setErrorMessage(requiresWebPanel(access) ? copy.business.webPanelRequired : copy.business.accessMissing);
         return;
       }
 
@@ -118,8 +123,8 @@ export const BusinessPasswordSignIn = () => {
           pressed ? styles.buttonPressed : null,
         ]}
       >
-        {isLoading ? <ActivityIndicator color={theme.colors.screenBase} size="small" /> : null}
-        {isLoading ? null : <AppIcon color={theme.colors.screenBase} name="business" size={18} />}
+        {isLoading ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
+        {isLoading ? null : <AppIcon color={theme.colors.actionPrimaryText} name="business" size={18} />}
         <Text style={styles.buttonText}>{isLoading ? copy.auth.businessSigningIn : copy.auth.businessButton}</Text>
       </Pressable>
 
@@ -153,7 +158,7 @@ const createStyles = (theme: MobileTheme) =>
       transform: [{ translateY: 1 }, { scale: 0.992 }],
     },
     buttonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontSize: 14,
       fontWeight: "800",
     },

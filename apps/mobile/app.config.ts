@@ -56,6 +56,14 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     "expo-secure-store",
     "expo-notifications",
     [
+      "expo-image-picker",
+      {
+        photosPermission: "OmaLeima uses your photos so venues can add a logo and cover image to their scanner profile.",
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
+    [
       "expo-camera",
       {
         cameraPermission: "Allow OmaLeima to access the camera for QR scanning.",

@@ -8,7 +8,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import {
@@ -305,7 +305,7 @@ export default function StudentEventDetailScreen() {
   const joinAvailability = event ? getJoinAvailability(event, language, formatter) : null;
   const joinPresentation = getJoinResultPresentation(joinMutation.data, language);
   const coverSource =
-    event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
+    event === null ? undefined : getEventCoverSourceWithFallback(event.coverImageUrl, "eventDetail");
 
   const handleJoinPress = async (): Promise<void> => {
     if (studentId === null || event === null) {
@@ -617,7 +617,7 @@ const createStyles = (theme: MobileTheme) => {
       ...interactiveSurfaceShadowStyle,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },

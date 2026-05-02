@@ -4,47 +4,54 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 ## Current Plan
 
-- **Date:** 2026-04-30
-- **Branch:** `feature/deep-project-review`
-- **Goal:** Run a post-merge deep review on top of `main`, fix any remaining real defects or process drift, and leave the branch clean enough to merge back without hidden regressions.
+- **Date:** 2026-05-02
+- **Branch:** `feature/product-ops-roadmap-assets`
+- **Goal:** Decide the correct next product architecture for event-day scanning, organizer mobile, announcements, and security, make OmaLeima visual assets more evenly used, and ship the first event-day scanner ergonomics slice.
 
 ## Architectural Decisions
 
-- Treat this pass as a narrow correctness/hardening slice, not a fresh redesign or new feature wave.
-- Keep the new support flow as-is architecturally unless review finds a real security, product, or maintainability defect.
-- Use reviewer delegation for an extra correctness pass, but keep local ownership of fixes and merge flow.
-- Preserve the repo’s phased/process discipline by updating the working docs even if the resulting code diff is small.
-- Treat mobile/admin validations and the readiness audits as the hard merge gate again.
+- Treat low-friction scanning as an operations problem, not just a camera component problem.
+- Keep QR security server-owned: short TTL, atomic RPC, event/venue limits, scanner identity, device identity, and audit logs stay mandatory.
+- Add future convenience through event-day scanner mode, trusted venue devices, optional staff PIN/device pairing, queue-optimized UI, NFC/static checkpoint options where appropriate, and manual recovery lanes.
+- Add `/club` mobile as its own role area for organizers and club staff. Do not route pure club accounts into `/business`.
+- Split announcement work into platform announcements and organizer announcements. Both need audience targeting, expiry, read receipts, and moderation; organizer push also needs explicit student subscription or event registration consent.
+- Use imagegen for additional repo-owned event/QR/reward visuals, then wire them only through the existing centralized event fallback image list in this slice.
+- Keep generated visuals free of readable text, QR codes, brand marks, and scannable data so they can safely appear behind localized UI copy.
+- Use gravity-line backgrounds only through shared shell primitives. Do not paste decorative background code into every screen.
+- Prefer explicit fallback purposes for major surfaces so login, discovery, QR, rewards, leaderboard, scanner, and admin shell do not all reuse the same first image.
+- Add the first scanner event-day mode without touching QR signing, scan RPCs, token TTL, or duplicate-scan rules.
+- Keep the scanner screen awake while mounted so staff can leave the device open at the counter.
+- Do not stage or modify user-owned local script changes or editor metadata.
 
 ## Alternatives Considered
 
-- Skip a new review because `main` is already green:
-  - rejected because the user explicitly wants a deep final pass and reviewer-backed confidence
-- Re-open broad UI polish during this audit:
-  - rejected because it would blur review findings with subjective redesign changes
-- Change the support architecture again:
-  - rejected unless a real defect shows up; churn would add more risk than value
+- Let pure `CLUB_ORGANIZER` accounts into `/business/home` immediately:
+  - rejected because organizer accounts manage clubs/events, not business venue scanner profiles, unless they also have an active `business_staff` membership
+- Make businesses scan with a public static QR:
+  - rejected as the primary flow because it reverses trust and makes fraud/replay much easier unless paired with signed checkpoint sessions and server-side limits
+- Implement announcements immediately without docs:
+  - rejected because push/announcement systems are high-risk for spam, consent, and trust; the data model should be explicit first
+- Replace all event photos at once:
+  - rejected because existing event-cover rotation is already centralized and can absorb new assets safely without touching every UI component
+- Add hard-coded per-screen background images everywhere:
+  - rejected because it would make future visual tuning brittle and would duplicate styling across routes
 
 ## Edge Cases
 
-- The review may find no real code changes are needed; in that case we still need truthful docs and validation evidence.
-- Support UI should stay stable when there are no business memberships, no previous requests, or pending submissions.
-- Recent route/copy/theme work could hide repeated text or stale labels in less-traveled screens.
-- Validation must ignore the known untracked `.idea/` folder and not try to clean it up.
-- `qa:phase6-readiness` may still remain environment-blocked if local Docker stays off; that should be documented honestly, not papered over.
+- Event-day flow must work when the venue is busy, staff changes mid-shift, or a scanner device loses connection.
+- Announcement popups must not block emergency app use forever; they need dismiss/read state and expiry.
+- Push announcements must respect user consent and event/organizer scope.
+- Typecheck, lint, and export/build must stay green for affected apps.
+- The generated hero asset must not contain readable text, logos, or external brand marks.
+- The generated gravity-line backgrounds must preserve text contrast in both dark and light themes.
+- Event-day scanner UI must still let staff choose the right event/venue before scanning and must not auto-confirm failed or offline scans.
+- Admin accounts can remain web-first. Organizer mobile access should be added only with its own screens and permission model.
 
 ## Validation Plan
 
-- Update `REVIEW.md`, `PLAN.md`, and `TODOS.md` for this deep-review slice.
-- Run local inspection plus at least one reviewer subagent pass.
-- Search for obvious drift markers (`TODO`, stale copy, broken routes, duplicated UI text where practical).
-- Fix only the concrete defects found.
-- Rerun:
-  - `npm --prefix apps/mobile run lint`
+- Run:
   - `npm --prefix apps/mobile run typecheck`
-  - `npm --prefix apps/mobile run export:web`
-  - `npm --prefix apps/admin run lint`
-  - `npm --prefix apps/admin run typecheck`
-  - `npm --prefix apps/admin run build`
-- Rerun the touched readiness audits if code changes affect them.
-- Document the exact outcome in `PROGRESS.md`, including any environment-only blockers.
+  - `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run export:web`
+- `git --no-pager diff --check`
+- Record the handoff in `PROGRESS.md`.

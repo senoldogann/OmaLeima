@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -178,6 +188,7 @@ export default function StudentProfileScreen() {
 
   const handleClearPushDiagnosticsPress = (): void => {
     clearCapturedPushActivity();
+    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -369,11 +380,6 @@ export default function StudentProfileScreen() {
                   : "Enable notifications"}
             </Text>
           </Pressable>
-          {__DEV__ ? (
-            <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Push diagnostics</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -387,13 +393,33 @@ export default function StudentProfileScreen() {
               <Text selectable style={styles.preferenceTitle}>{copy.common.support}</Text>
             </View>
             <View style={styles.preferenceSelectValue}>
-              <Text selectable style={styles.preferenceSelectValueText}>
-                {language === "fi" ? "Avaa" : "Open"}
-              </Text>
+              <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
               <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
             </View>
           </Pressable>
         </View>
+
+        {__DEV__ ? (
+          <>
+            <View style={styles.preferenceDivider} />
+
+            <View style={styles.preferenceSection}>
+              <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.preferenceSelectRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="tools" size={16} />
+                </View>
+                <View style={styles.preferenceHeaderCopy}>
+                  <Text selectable style={styles.preferenceTitle}>{copy.common.qaTools}</Text>
+                  <Text selectable style={styles.preferenceSummaryText}>Push diagnostics</Text>
+                </View>
+                <View style={styles.preferenceSelectValue}>
+                  <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.preferenceDivider} />
 
@@ -463,7 +489,7 @@ export default function StudentProfileScreen() {
                   {isPushDiagnosticsRefreshing ? "Refreshing..." : "Refresh push diagnostics"}
                 </Text>
               </Pressable>
-              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.secondaryButton}>
+              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.qaSecondaryButton}>
                 <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
               </Pressable>
             </View>
@@ -485,7 +511,7 @@ export default function StudentProfileScreen() {
         transparent
         visible={preferenceSheet !== null}
       >
-        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
+        <Pressable onPress={() => setPreferenceSheet(null)} style={styles.preferenceModalBackdrop}>
           <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
@@ -555,86 +581,98 @@ export default function StudentProfileScreen() {
         visible={isTagModalVisible}
       >
         <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalBackdrop}>
-          <Pressable onPress={() => {}} style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
-                <Text style={styles.modalTitle}>
-                  {language === "fi" ? "Hallitse tageja" : "Manage tags"}
-                </Text>
-              </View>
-              <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalCloseButton}>
-                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
-              </Pressable>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
-              {selectedTags.length > 0 ? (
-                <View style={styles.stack}>
-                  {selectedTags.map((tag) => (
-                    <ProfileTagCard
-                      key={tag.linkId}
-                      isBusy={isTagMutationPending}
-                      onRemove={handleRemoveTagPress}
-                      onSetPrimary={handleSetPrimaryTagPress}
-                      tag={tag}
-                    />
-                  ))}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={0}
+            style={styles.modalKeyboardAvoidingView}
+          >
+            <Pressable onPress={() => {}} style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHeaderCopy}>
+                  <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
+                  <Text style={styles.modalTitle}>
+                    {language === "fi" ? "Hallitse tageja" : "Manage tags"}
+                  </Text>
                 </View>
-              ) : (
-                <Text selectable style={styles.bodyText}>
-                  {language === "fi" ? "Tagit näkyvät täällä, kun valitset ensimmäisen." : "Tags appear here after your first selection."}
-                </Text>
-              )}
+                <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+                </Pressable>
+              </View>
 
-              {suggestedTags.length > 0 ? (
-                <View style={styles.suggestionGroup}>
-                  <Text style={styles.sectionLabel}>{language === "fi" ? "Ehdotukset" : "Suggestions"}</Text>
-                  <View style={styles.suggestionList}>
-                    {suggestedTags.map((tag) => (
-                      <Pressable
-                        key={tag.id}
-                        disabled={isTagMutationPending || remainingTagSlots === 0}
-                        onPress={() => void handleAttachSuggestedTagPress(tag)}
-                        style={[
-                          styles.suggestionChip,
-                          isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
-                        ]}
-                      >
-                        <Text style={styles.suggestionTitle}>{tag.title}</Text>
-                        <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
-                      </Pressable>
+              <ScrollView
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardDismissMode="interactive"
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {selectedTags.length > 0 ? (
+                  <View style={styles.stack}>
+                    {selectedTags.map((tag) => (
+                      <ProfileTagCard
+                        key={tag.linkId}
+                        isBusy={isTagMutationPending}
+                        onRemove={handleRemoveTagPress}
+                        onSetPrimary={handleSetPrimaryTagPress}
+                        tag={tag}
+                      />
                     ))}
                   </View>
-                </View>
-              ) : null}
+                ) : (
+                  <Text selectable style={styles.bodyText}>
+                    {language === "fi" ? "Tagit näkyvät täällä, kun valitset ensimmäisen." : "Tags appear here after your first selection."}
+                  </Text>
+                )}
 
-              {remainingTagSlots > 0 ? (
-                <View style={styles.createGroup}>
-                  <Text style={styles.sectionLabel}>{language === "fi" ? "Luo oma tagi" : "Create a custom tag"}</Text>
-                  <TextInput
-                    autoCapitalize="words"
-                    editable={!isTagMutationPending}
-                    onChangeText={setCustomTitle}
-                    placeholder={language === "fi" ? "Esim. Tieto- ja viestintätekniikka" : "Example: Information technology"}
-                    placeholderTextColor={theme.colors.textDim}
-                    style={styles.input}
-                    value={customTitle}
-                  />
-                  <Pressable
-                    disabled={isTagMutationPending || customTitle.trim().length === 0}
-                    onPress={() => void handleCreateCustomTagPress()}
-                    style={[
-                      styles.secondaryButton,
-                      isTagMutationPending || customTitle.trim().length === 0 ? styles.disabledButton : null,
-                    ]}
-                  >
-                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Luo tagi" : "Create tag"}</Text>
-                  </Pressable>
-                </View>
-              ) : null}
-            </ScrollView>
-          </Pressable>
+                {suggestedTags.length > 0 ? (
+                  <View style={styles.suggestionGroup}>
+                    <Text style={styles.sectionLabel}>{language === "fi" ? "Ehdotukset" : "Suggestions"}</Text>
+                    <View style={styles.suggestionList}>
+                      {suggestedTags.map((tag) => (
+                        <Pressable
+                          key={tag.id}
+                          disabled={isTagMutationPending || remainingTagSlots === 0}
+                          onPress={() => void handleAttachSuggestedTagPress(tag)}
+                          style={[
+                            styles.suggestionChip,
+                            isTagMutationPending || remainingTagSlots === 0 ? styles.disabledButton : null,
+                          ]}
+                        >
+                          <Text style={styles.suggestionTitle}>{tag.title}</Text>
+                          <Text style={styles.metaText}>{createSuggestionMeta(tag)}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {remainingTagSlots > 0 ? (
+                  <View style={styles.createGroup}>
+                    <Text style={styles.sectionLabel}>{language === "fi" ? "Luo oma tagi" : "Create a custom tag"}</Text>
+                    <TextInput
+                      autoCapitalize="words"
+                      editable={!isTagMutationPending}
+                      onChangeText={setCustomTitle}
+                      placeholder={language === "fi" ? "Esim. Tieto- ja viestintätekniikka" : "Example: Information technology"}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.input}
+                      value={customTitle}
+                    />
+                    <Pressable
+                      disabled={isTagMutationPending || customTitle.trim().length === 0}
+                      onPress={() => void handleCreateCustomTagPress()}
+                      style={[
+                        styles.secondaryButton,
+                        isTagMutationPending || customTitle.trim().length === 0 ? styles.disabledButton : null,
+                      ]}
+                    >
+                      <Text style={styles.secondaryButtonText}>{language === "fi" ? "Luo tagi" : "Create tag"}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </ScrollView>
+            </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
     </AppScreen>
@@ -744,9 +782,13 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       gap: 4,
     },
+    modalKeyboardAvoidingView: {
+      justifyContent: "flex-end",
+      width: "100%",
+    },
     modalScrollContent: {
       gap: 16,
-      paddingBottom: 20,
+      paddingBottom: 32,
     },
     modalSheet: {
       backgroundColor: theme.colors.surfaceL1,
@@ -785,6 +827,12 @@ const createStyles = (theme: MobileTheme) =>
       gap: 16,
       marginHorizontal: 20,
       padding: 18,
+    },
+    preferenceModalBackdrop: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 20,
     },
     preferenceOption: {
       alignItems: "center",
@@ -867,7 +915,7 @@ const createStyles = (theme: MobileTheme) =>
       ...interactiveSurfaceShadowStyle,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },
@@ -934,6 +982,16 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
+    },
+    qaSecondaryButton: {
+      alignItems: "center",
+      alignSelf: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.button,
+      minWidth: 220,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
     },
     stack: {
       gap: 12,

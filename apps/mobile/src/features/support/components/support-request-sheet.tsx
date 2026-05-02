@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -91,6 +103,13 @@ export const SupportRequestSheet = ({
   const [subject, setSubject] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [isHistoryVisible, setIsHistoryVisible] = useState<boolean>(false);
+  const [isSentAnimationVisible, setIsSentAnimationVisible] = useState<boolean>(false);
+  const planeTranslateY = useRef(new Animated.Value(0)).current;
+  const planeTranslateX = useRef(new Animated.Value(0)).current;
+  const planeScale = useRef(new Animated.Value(0.9)).current;
+  const planeOpacity = useRef(new Animated.Value(0)).current;
+  const sentCopyOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (area !== "BUSINESS") {
@@ -107,6 +126,91 @@ export const SupportRequestSheet = ({
       return nextBusinessId;
     });
   }, [area, businessOptions]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      setIsHistoryVisible(false);
+      setIsSentAnimationVisible(false);
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (!isSentAnimationVisible) {
+      planeTranslateY.setValue(0);
+      planeTranslateX.setValue(0);
+      planeScale.setValue(0.9);
+      planeOpacity.setValue(0);
+      sentCopyOpacity.setValue(0);
+      return;
+    }
+
+    const animation = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(planeOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(planeScale, {
+          toValue: 1,
+          duration: 240,
+          easing: Easing.out(Easing.back(1.4)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sentCopyOpacity, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(planeTranslateX, {
+          toValue: 72,
+          duration: 720,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(planeTranslateY, {
+          toValue: -56,
+          duration: 720,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(planeOpacity, {
+          toValue: 0,
+          duration: 720,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(sentCopyOpacity, {
+        toValue: 0,
+        duration: 240,
+        delay: 380,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(({ finished }) => {
+      if (finished) {
+        setIsSentAnimationVisible(false);
+      }
+    });
+
+    return () => {
+      animation.stop();
+    };
+  }, [
+    isSentAnimationVisible,
+    planeOpacity,
+    planeScale,
+    planeTranslateX,
+    planeTranslateY,
+    sentCopyOpacity,
+  ]);
 
   const canSubmit =
     userId !== null &&
@@ -138,23 +242,36 @@ export const SupportRequestSheet = ({
 
     setSubject("");
     setMessage("");
+    setIsSentAnimationVisible(true);
   };
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={isVisible}>
-      <Pressable onPress={onClose} style={styles.modalBackdrop}>
-        <Pressable onPress={() => {}} style={styles.modalSheet}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderCopy}>
-              <Text style={styles.modalEyebrow}>{language === "fi" ? "Tuki" : "Support"}</Text>
-              <Text style={styles.modalTitle}>{createTitle(area, language)}</Text>
+      <View style={styles.modalRoot}>
+        <Pressable onPress={onClose} style={styles.modalBackdrop} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={0}
+          style={styles.keyboardSheetLayer}
+        >
+          <Pressable onPress={() => {}} style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Tuki" : "Support"}</Text>
+                <Text style={styles.modalTitle}>{createTitle(area, language)}</Text>
+              </View>
+              <Pressable onPress={onClose} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} style={styles.modalCloseButton}>
-              <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
-            </Pressable>
-          </View>
 
-          <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             {area === "BUSINESS" ? (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>{language === "fi" ? "Yritys" : "Business"}</Text>
@@ -224,7 +341,7 @@ export const SupportRequestSheet = ({
               onPress={() => void handleSubmit()}
               style={[styles.primaryButton, !canSubmit ? styles.disabledButton : null]}
             >
-              <AppIcon color={theme.colors.screenBase} name="support" size={18} />
+              <AppIcon color={theme.colors.actionPrimaryText} name="support" size={18} />
               <Text style={styles.primaryButtonText}>
                 {createMutation.isPending
                   ? language === "fi"
@@ -239,7 +356,77 @@ export const SupportRequestSheet = ({
             {createMutation.error ? <Text style={styles.errorText}>{createMutation.error.message}</Text> : null}
 
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{language === "fi" ? "Viimeisimmät pyynnöt" : "Latest requests"}</Text>
+              <Pressable onPress={() => setIsHistoryVisible(true)} style={styles.secondaryActionRow}>
+                <View style={styles.secondaryActionCopy}>
+                  <Text style={styles.sectionLabel}>
+                    {language === "fi" ? "Viimeisimmät pyynnöt" : "Latest requests"}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    {supportQuery.data?.length
+                      ? language === "fi"
+                        ? `${supportQuery.data.length} viimeisintä näkyvissä`
+                        : `${supportQuery.data.length} recent item(s) available`
+                      : createEmptyHistory(area, language)}
+                  </Text>
+                </View>
+                <View style={styles.secondaryActionIconWrap}>
+                  <AppIcon color={theme.colors.textPrimary} name="history" size={16} />
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+            </View>
+
+            {area === "BUSINESS" && selectedBusiness === null ? (
+              <Text style={styles.metaText}>
+                {language === "fi"
+                  ? "Tukipyyntö tarvitsee aktiivisen yritysroolin."
+                  : "A support request needs an active business membership."}
+              </Text>
+            ) : null}
+            </ScrollView>
+
+            {isSentAnimationVisible ? (
+              <View pointerEvents="none" style={styles.sentOverlay}>
+                <Animated.View
+                  style={[
+                    styles.sentPlane,
+                    {
+                      opacity: planeOpacity,
+                      transform: [
+                        { translateX: planeTranslateX },
+                        { translateY: planeTranslateY },
+                        { scale: planeScale },
+                        { rotate: "-10deg" },
+                      ],
+                    },
+                  ]}
+                >
+                  <AppIcon color={theme.colors.actionPrimaryText} name="send" size={22} />
+                </Animated.View>
+                <Animated.View style={[styles.sentBubble, { opacity: sentCopyOpacity }]}>
+                  <Text style={styles.sentBubbleText}>
+                    {language === "fi" ? "Pyyntö lähetetty" : "Request sent"}
+                  </Text>
+                </Animated.View>
+              </View>
+            ) : null}
+          </Pressable>
+        </KeyboardAvoidingView>
+      </View>
+      <Modal animationType="fade" onRequestClose={() => setIsHistoryVisible(false)} transparent visible={isHistoryVisible}>
+        <View style={styles.historyModalRoot}>
+          <Pressable onPress={() => setIsHistoryVisible(false)} style={styles.modalBackdrop} />
+          <Pressable onPress={() => {}} style={styles.historyModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Historia" : "History"}</Text>
+                <Text style={styles.modalTitle}>{language === "fi" ? "Viimeisimmät pyynnöt" : "Latest requests"}</Text>
+              </View>
+              <Pressable onPress={() => setIsHistoryVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Sulje" : "Close"}</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.historyModalContent} showsVerticalScrollIndicator={false}>
               {supportQuery.isLoading ? (
                 <Text style={styles.metaText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
               ) : null}
@@ -259,7 +446,7 @@ export const SupportRequestSheet = ({
                           {createStatusLabel(language, request.status)}
                         </Text>
                       </View>
-                      <Text numberOfLines={2} style={styles.historyMessage}>
+                      <Text numberOfLines={3} style={styles.historyMessage}>
                         {request.message}
                       </Text>
                       <Text style={styles.historyMeta}>
@@ -275,18 +462,10 @@ export const SupportRequestSheet = ({
                   ))}
                 </View>
               ) : null}
-            </View>
-
-            {area === "BUSINESS" && selectedBusiness === null ? (
-              <Text style={styles.metaText}>
-                {language === "fi"
-                  ? "Tukipyyntö tarvitsee aktiivisen yritysroolin."
-                  : "A support request needs an active business membership."}
-              </Text>
-            ) : null}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
+            </ScrollView>
+          </Pressable>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -337,6 +516,26 @@ const createStyles = (theme: MobileTheme) =>
     historyStack: {
       gap: 10,
     },
+    historyModalCard: {
+      alignSelf: "stretch",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 16,
+      marginHorizontal: 20,
+      maxHeight: "72%",
+      padding: 18,
+    },
+    historyModalContent: {
+      gap: 10,
+      paddingBottom: 8,
+    },
+    historyModalRoot: {
+      flex: 1,
+      justifyContent: "center",
+      paddingVertical: 24,
+    },
     historyStatus: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.bold,
@@ -364,6 +563,10 @@ const createStyles = (theme: MobileTheme) =>
     messageInput: {
       minHeight: 132,
     },
+    keyboardSheetLayer: {
+      flex: 1,
+      justifyContent: "flex-end",
+    },
     metaText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
@@ -372,6 +575,9 @@ const createStyles = (theme: MobileTheme) =>
     },
     modalBackdrop: {
       backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
+      ...StyleSheet.absoluteFillObject,
+    },
+    modalRoot: {
       flex: 1,
       justifyContent: "flex-end",
     },
@@ -464,10 +670,63 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     primaryButtonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    secondaryActionCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    secondaryActionIconWrap: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    secondaryActionRow: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    sentBubble: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    sentBubbleText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    sentOverlay: {
+      alignItems: "center",
+      bottom: 84,
+      left: 0,
+      pointerEvents: "none",
+      position: "absolute",
+      right: 0,
+    },
+    sentPlane: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 52,
+      justifyContent: "center",
+      marginBottom: 12,
+      width: 52,
     },
     section: {
       gap: 10,

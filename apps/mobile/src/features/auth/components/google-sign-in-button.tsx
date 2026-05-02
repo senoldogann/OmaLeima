@@ -42,8 +42,8 @@ export const GoogleSignInButton = () => {
           pressed ? styles.buttonPressed : null,
         ]}
       >
-        {state === "loading" ? <ActivityIndicator color={theme.colors.screenBase} size="small" /> : null}
-        {state !== "loading" ? <AppIcon color={theme.colors.screenBase} name="google" size={18} /> : null}
+        {state === "loading" ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
+        {state !== "loading" ? <AppIcon color={theme.colors.actionPrimaryText} name="google" size={18} /> : null}
         <Text style={styles.buttonText}>
           {state === "loading" ? copy.auth.googleOpening : copy.auth.googleButton}
         </Text>
@@ -89,7 +89,7 @@ const createStyles = (theme: MobileTheme) =>
       transform: [{ translateY: 1 }, { scale: 0.992 }],
     },
     buttonText: {
-      color: theme.colors.screenBase,
+      color: theme.colors.actionPrimaryText,
       fontSize: 14,
       fontWeight: "800",
     },
