@@ -6,7 +6,7 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - **Date:** 2026-05-02
 - **Branch:** `feature/product-ops-roadmap-assets`
-- **Scope:** Product-level operations review for low-friction event-day scanning, organizer mobile access, platform/organizer announcements, security gates, image surface distribution, and additional OmaLeima visual assets.
+- **Scope:** Product-level operations review and first implementation slice for low-friction event-day scanning, organizer mobile access, platform/organizer announcements, security gates, image surface distribution, and additional OmaLeima visual assets.
 
 ## Affected Files
 
@@ -52,10 +52,11 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 - `docs/FINNISH_APPRO_PRODUCT_NOTES.md` already calls out venue-specific stamp limits, claim desk, event-day guidance, organizer announcements, and venue-logo stamp memories as missing roadmap items.
 - Current scanner requires a staff device to open the app and scan QR manually. That is secure, but it is too much friction for crowded bar moments unless the scanner surface gets an event-day mode.
+- The scanner screen already had secure lock-after-read behavior. The missing part was an explicit event-day state that tells staff the screen can stay open and that the selected checkpoint is the working context.
 - Admin-wide announcements and organizer announcements are not currently modeled as first-class tables with read receipts, expiry, or push subscriptions.
 - Finnish appro references reinforce that checkpoints, appropassi, leima thresholds, venue limits, claim desks, and event-day information all vary by event. The product needs configurable event operations instead of hard-coded one-size-fits-all assumptions.
 - Current deep review found no new immediate logic blocker in the already-built MVP foundation. The meaningful product gaps remain planned feature slices: event-day scanner mode, `/club` mobile, announcements, role invitations, and event/venue stamp rules.
 
 ## Review Outcome
 
-Document the next product architecture before implementing large behavior changes. Add more repo-owned OmaLeima generated visuals to the centralized mobile fallback image rotation and use background textures through shared shell code. Leave QR flow, organizer mobile, announcements, subscriptions, and role-invite security as explicit feature slices because they require schema/RPC/UI/security work.
+Document the next product architecture before implementing large behavior changes. Add more repo-owned OmaLeima generated visuals to the centralized mobile fallback image rotation and use background textures through shared shell code. Add the first event-day scanner ergonomics slice without changing scan security. Leave `/club` mobile, announcements, subscriptions, role-invite security, and event/venue stamp rules as explicit feature slices because they require schema/RPC/UI/security work.

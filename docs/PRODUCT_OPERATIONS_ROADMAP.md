@@ -9,12 +9,16 @@ This document records the current product direction for event-day operations, or
 - Tahko Appro info: https://www.tahkofest.fi/info/tahko-appro/
 - University of Oulu interest society appro: https://www.oulu.fi/en/events/interest-society-appro-event-all-students
 - Kide.app event marketplace examples: https://kide.app/
+- MallasAppro rules and FAQ: https://www.mallasappro.fi/saannot/
+- Herkkuappro degree completion notes: https://www.pedagory.fi/yhdistys/tapahtumat-2/herkkuapprot/tutkinnon-suorittaminen/
 
 ## Product Direction
 
 OmaLeima should stay centered on Finnish student event culture: appropassi, leimat, haalarimerkit, checkpoints, afterparties, club organizers, and venue partners. The product should not become a generic QR app.
 
 The secure QR scan remains the canonical leima path. The next usability improvement should reduce staff friction without weakening server-side verification.
+
+Appro operations seen in current examples include flexible arrival windows, checkpoint tasks, food/drink purchase rules, route locations, info points, pass return, patch inventory, degree levels, and sometimes proof of earlier overall patches. OmaLeima should model these as event rules and organizer content instead of hiding them in free-form text only.
 
 ## Event-Day Scanning
 
@@ -30,6 +34,14 @@ The next scanner feature should be **event-day scanner mode**:
 - after a successful scan, staff sees the result and taps one obvious next action
 - venue switching is allowed only for roles with explicit access
 - manual token entry remains a fallback, not the default path
+
+First shipped slice:
+
+- the business scanner screen now keeps the device awake while the scanner route is open
+- the selected event/venue context is shown as a queue-ready event-day panel
+- staff can leave the view open at the counter instead of re-opening the phone between students
+- successful scans still lock the result for review before the next scan
+- scan validation, token expiry, duplicate prevention, and reward unlock logic remain server-owned
 
 Security boundaries must stay server-owned:
 

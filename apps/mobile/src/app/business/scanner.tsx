@@ -5,6 +5,7 @@ import {
   type BarcodeScanningResult,
   useCameraPermissions,
 } from "expo-camera";
+import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -23,6 +24,7 @@ import { useSession } from "@/providers/session-provider";
 
 const scanTimeoutMs = 4_000;
 const isWeb = process.env.EXPO_OS === "web";
+const scannerKeepAwakeTag = "omaleima-event-day-scanner";
 
 type ToneMeta = {
   eyebrow: string;
@@ -200,6 +202,7 @@ export default function BusinessScannerScreen() {
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
+  useKeepAwake(scannerKeepAwakeTag, { suppressDeactivateWarnings: true });
 
   const formatter = useMemo(
     () =>
@@ -262,6 +265,15 @@ export default function BusinessScannerScreen() {
       scanPastedToken: language === "fi" ? "Skannaa liitetty token" : "Scan pasted token",
       stampCountLabel: language === "fi" ? "leimaa yhteensä" : "stamps total",
       endsLabel: language === "fi" ? "Päättyy" : "Ends",
+      eventDayEyebrow: language === "fi" ? "Tapahtumapäivä" : "Event day",
+      eventDayTitle: language === "fi" ? "Skanneri pysyy auki" : "Scanner stays awake",
+      eventDayBody:
+        language === "fi"
+          ? "Pidä tämä näkymä auki tiskillä. Valittu piste pysyy paikallaan ja kamera on valmis seuraavalle opiskelijalle."
+          : "Keep this view open at the desk. The selected checkpoint stays in place and the camera is ready for the next student.",
+      queueReady: language === "fi" ? "Valmis jonolle" : "Ready for the line",
+      selectedCheckpoint: language === "fi" ? "Valittu piste" : "Selected checkpoint",
+      screenAwake: language === "fi" ? "Näyttö hereillä" : "Screen awake",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -487,6 +499,36 @@ export default function BusinessScannerScreen() {
                   {selectedEvent.stampLabel ? (
                     <Text style={styles.stampLabel}>{selectedEvent.stampLabel}</Text>
                   ) : null}
+                </View>
+              ) : null}
+
+              {selectedEvent ? (
+                <View style={styles.eventDayPanel}>
+                  <View style={styles.eventDayHeader}>
+                    <View style={styles.eventDayIcon}>
+                      <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
+                    </View>
+                    <View style={styles.eventDayCopy}>
+                      <Text style={styles.eventDayEyebrow}>{labels.eventDayEyebrow}</Text>
+                      <Text style={styles.eventDayTitle}>{labels.eventDayTitle}</Text>
+                    </View>
+                    <View style={styles.eventDayState}>
+                      <View style={styles.eventDayDot} />
+                      <Text style={styles.eventDayStateText}>{labels.screenAwake}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.eventDayBody}>{labels.eventDayBody}</Text>
+                  <View style={styles.eventDayFooter}>
+                    <View style={styles.eventDayPill}>
+                      <Text style={styles.eventDayPillLabel}>{labels.selectedCheckpoint}</Text>
+                      <Text numberOfLines={1} style={styles.eventDayPillValue}>
+                        {selectedEvent.businessName}
+                      </Text>
+                    </View>
+                    <View style={styles.eventDayReady}>
+                      <Text style={styles.eventDayReadyText}>{labels.queueReady}</Text>
+                    </View>
+                  </View>
                 </View>
               ) : null}
 
@@ -779,6 +821,115 @@ const createStyles = (theme: MobileTheme) => {
     eventSelectorTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    eventDayBody: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventDayCopy: {
+      flex: 1,
+      gap: 1,
+    },
+    eventDayDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
+    },
+    eventDayEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    eventDayFooter: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    eventDayHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+    },
+    eventDayIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 38,
+      justifyContent: "center",
+      width: 38,
+    },
+    eventDayPanel: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.08)" : "rgba(200, 255, 71, 0.2)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 12,
+      padding: 14,
+    },
+    eventDayPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    eventDayPillLabel: {
+      color: theme.colors.textDim,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 0.9,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    eventDayPillValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventDayReady: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    eventDayReadyText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    eventDayState: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+    },
+    eventDayStateText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      lineHeight: 13,
+    },
+    eventDayTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },

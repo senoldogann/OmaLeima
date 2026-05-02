@@ -21,3 +21,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Assign explicit fallback image purposes for login, discovery, QR, rewards, leaderboard, scanner, and admin shell.
 - [x] Run full mobile/admin validation after the visual distribution pass.
 - [x] Update `PROGRESS.md` with the second handoff.
+- [x] Re-check Finnish appro/event-day context before the scanner ergonomics slice.
+- [x] Add first event-day scanner surface with selected checkpoint, queue-ready state, and screen-awake behavior.
+- [x] Run mobile validation after scanner ergonomics changes.
+- [x] Update `PROGRESS.md` with scanner handoff.
