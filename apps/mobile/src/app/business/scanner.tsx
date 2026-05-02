@@ -6,6 +6,7 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 import { useKeepAwake } from "expo-keep-awake";
+import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -85,6 +86,23 @@ const readWebScannerLocationAsync = (): Promise<ScannerLocationPayload> =>
       }
     );
   });
+
+const readNativeScannerLocationAsync = async (): Promise<ScannerLocationPayload> => {
+  const permission = await Location.requestForegroundPermissionsAsync();
+
+  if (!permission.granted) {
+    throw new Error("Location permission was not granted.");
+  }
+
+  const position = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.Balanced,
+  });
+
+  return {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+  };
+};
 
 const createToneConfig = (
   theme: MobileTheme,
@@ -333,8 +351,8 @@ export default function BusinessScannerScreen() {
       locationProofCapturing: language === "fi" ? "Haetaan sijaintia…" : "Getting location…",
       locationProofNativePending:
         language === "fi"
-          ? "Native-sijainti lisätään seuraavassa riippuvuus-slicessa. Tämä build ei kerää sitä hiljaa."
-          : "Native location lands in the next dependency slice. This build does not collect it silently.",
+          ? "Salli sijainti vain, jos haluat liittää tämän skannauksen pisteeseen."
+          : "Allow location only when you want to attach this scan to the checkpoint.",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -421,15 +439,6 @@ export default function BusinessScannerScreen() {
   };
 
   const handleAttachLocationPress = async (): Promise<void> => {
-    if (!isWeb) {
-      setLocationProof({
-        detail: labels.locationProofNativePending,
-        location: emptyScannerLocation,
-        status: "unsupported",
-      });
-      return;
-    }
-
     setLocationProof({
       detail: labels.locationProofCapturing,
       location: emptyScannerLocation,
@@ -437,7 +446,7 @@ export default function BusinessScannerScreen() {
     });
 
     try {
-      const location = await readWebScannerLocationAsync();
+      const location = isWeb ? await readWebScannerLocationAsync() : await readNativeScannerLocationAsync();
 
       setLocationProof({
         detail:
