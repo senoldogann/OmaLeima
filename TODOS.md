@@ -6,13 +6,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, and scanner location consent slices recorded in `PROGRESS.md`.
 
-## Current Todos (Typed Event Rules Builder)
+## Current Todos (Scanner Location Module Optional)
 
-- [x] Mark previous fraud review branch as merged and cleaned.
-- [x] Add typed stamp policy helpers and validation.
-- [x] Replace raw rules JSON textareas with an organizer-friendly rules builder.
-- [x] Enforce per-business stamp limits inside `scan_stamp_atomic`.
-- [x] Run Supabase, admin, and mobile validation commands.
+- [x] Mark previous typed event rules branch as merged and cleaned.
+- [x] Remove the route-level static `expo-location` import.
+- [x] Add dynamic native location loading with a recoverable missing-module error.
+- [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
