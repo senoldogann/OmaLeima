@@ -18,7 +18,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Document the persistent announcement/feed gap as the next product slice.
 - [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
-- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
