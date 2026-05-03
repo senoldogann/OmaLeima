@@ -5,23 +5,23 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/club-event-sorting-polish`
-- **Goal:** Keep organizer event lists readable by always placing live/upcoming/newer future events before completed history.
+- **Branch:** `feature/organizer-profile-rls-keyboard-polish`
+- **Goal:** Remove organizer profile cover update RLS failures and polish Finnish copy plus keyboard-safe editing.
 
 ## Architectural Decisions
 
-- Create a typed `sortClubEventsForOrganizer` helper near the club feature read model.
-- Status priority: LIVE, UPCOMING, DRAFT, CANCELLED, COMPLETED.
-- Within active/future statuses, sort by nearest start date first.
-- Within completed/cancelled history, sort newest start date first while keeping them after active/future statuses.
-- Use the helper before rendering Club Home live rail, next-events rail, and Club Upcoming results.
+- Add an idempotent Supabase migration that recreates club profile update and event-media storage policies.
+- Let only club owners/organizers or platform admins update club profile rows and upload/update/delete media under the matching club storage folder.
+- Keep `event-media` select public because event covers/logos are user-visible public assets.
+- Fix Finnish organizer profile labels from Turkish/incorrect text to natural Finnish.
+- Wrap the shared app screen and club event date/time modal in keyboard-aware containers.
 
 ## Edge Cases
 
-- `COMPLETED` filter must still show completed events even though they normally sit last.
-- `ALL` view must not mix completed events ahead of upcoming events.
-- Empty lists and preview modal behavior should remain unchanged.
-- Sorting must copy arrays before `.sort`.
+- Malformed storage paths must evaluate false instead of throwing.
+- Existing public media URLs must remain readable.
+- Date/time modal must remain scrollable on small screens when the keyboard is open.
+- Local unrelated changes must remain untouched.
 
 ## Ordered Follow-Up Queue
 
@@ -35,5 +35,6 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
+  - `npx supabase@2.95.4 db push`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

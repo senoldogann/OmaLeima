@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/club-event-sorting-polish`
-- **Scope:** Make organizer event ordering consistent so active/upcoming events appear first and completed events stay last.
+- **Branch:** `feature/organizer-profile-rls-keyboard-polish`
+- **Scope:** Fix organizer media/profile RLS, Finnish organizer profile copy, and keyboard coverage around club profile/event editing inputs.
 
 ## Affected Files
 
@@ -14,22 +14,25 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/club/home.tsx`
-- `apps/mobile/src/app/club/upcoming.tsx`
-- `apps/mobile/src/features/club/event-ordering.ts`
+- `apps/mobile/src/components/app-screen.tsx`
+- `apps/mobile/src/app/club/profile.tsx`
+- `apps/mobile/src/app/club/events.tsx`
+- `supabase/migrations/20260503223000_harden_club_media_profile_policies.sql`
 
 ## Existing Logic Checked
 
-- Club Home currently consumes dashboard events in backend order.
-- Club Upcoming already has a `COMPLETED` status filter, but the all-view sort is raw ascending start time.
-- The user expects active/new/future events before ended events in both Tulossa and sliders.
+- Club profile cover/logo upload writes to the `event-media` storage bucket under `clubs/{clubId}/...`.
+- Existing storage policy routes through `public.is_event_media_object_manager(name)`, and the club profile update routes through `public.clubs` update RLS.
+- Organizer profile Finnish copy still had Turkish text for the announcement label.
+- `AppScreen` uses `automaticallyAdjustKeyboardInsets`, but club event date/time modal inputs are inside a plain modal card.
 
 ## Risks
 
-- Sorting must not mutate React Query cached arrays in place.
-- Completed and cancelled events should not bury live/upcoming events.
-- The status filter order should surface `Päättynyt` clearly in Tulossa.
+- Storage and table policies must remain role-bound, not public writable.
+- Policy functions must avoid unsafe UUID casts on malformed storage paths.
+- Keyboard changes must not break normal scrolling or modal layout.
+- Remote Supabase must receive the migration because the reported RLS error happens on-device against hosted backend.
 
 ## Review Outcome
 
-Add a shared club event ordering helper and use it in Club Home live/next rails and Club Upcoming filtered lists.
+Recreate club profile/media policies with owner/organizer/platform admin checks, keep event-media public read-only, fix Finnish text, and make organizer form inputs keyboard-aware.

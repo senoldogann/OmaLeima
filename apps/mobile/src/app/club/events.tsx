@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
@@ -675,134 +686,153 @@ export default function ClubEventsScreen() {
         </>
       ) : null}
 
-      <Modal animationType="fade" transparent visible={dateTimeEditor !== null}>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setDateTimeEditor(null)}
+        transparent
+        visible={dateTimeEditor !== null}
+      >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
-            <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={16}
+            style={styles.modalKeyboardAvoidingView}
+          >
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.modalCard}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
+                <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
 
-            <View style={styles.calendarHeader}>
-              <Pressable
-                onPress={() =>
-                  setDateTimeEditor((currentEditor) =>
-                    currentEditor === null
-                      ? null
-                      : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
-                  )
-                }
-                style={styles.calendarNavButton}
-              >
-                <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
-              </Pressable>
-              <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
-              <Pressable
-                onPress={() =>
-                  setDateTimeEditor((currentEditor) =>
-                    currentEditor === null
-                      ? null
-                      : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
-                  )
-                }
-                style={styles.calendarNavButton}
-              >
-                <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
-              </Pressable>
-            </View>
+                <View style={styles.calendarHeader}>
+                  <Pressable
+                    onPress={() =>
+                      setDateTimeEditor((currentEditor) =>
+                        currentEditor === null
+                          ? null
+                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
+                      )
+                    }
+                    style={styles.calendarNavButton}
+                  >
+                    <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
+                  </Pressable>
+                  <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
+                  <Pressable
+                    onPress={() =>
+                      setDateTimeEditor((currentEditor) =>
+                        currentEditor === null
+                          ? null
+                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
+                      )
+                    }
+                    style={styles.calendarNavButton}
+                  >
+                    <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
+                  </Pressable>
+                </View>
 
-            <View style={styles.weekdayGrid}>
-              {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
-                <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
-              ))}
-            </View>
+                <View style={styles.weekdayGrid}>
+                  {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
+                    <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
+                  ))}
+                </View>
 
-            <View style={styles.calendarGrid}>
-              {calendarDays.map((day) => (
-                <Pressable
-                  key={day.date}
-                  onPress={() =>
-                    setDateTimeEditor((currentEditor) =>
-                      currentEditor === null
-                        ? null
-                        : {
-                            ...currentEditor,
-                            date: day.date,
-                            visibleMonth: getMonthStartInput(day.date),
-                          }
-                    )
-                  }
-                  style={[
-                    styles.calendarDay,
-                    day.isSelected ? styles.calendarDaySelected : null,
-                    day.isCurrentMonth ? null : styles.calendarDayOutside,
-                  ]}
-                >
-                  <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
-                    {day.dayLabel}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+                <View style={styles.calendarGrid}>
+                  {calendarDays.map((day) => (
+                    <Pressable
+                      key={day.date}
+                      onPress={() =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null
+                            ? null
+                            : {
+                                ...currentEditor,
+                                date: day.date,
+                                visibleMonth: getMonthStartInput(day.date),
+                              }
+                        )
+                      }
+                      style={[
+                        styles.calendarDay,
+                        day.isSelected ? styles.calendarDaySelected : null,
+                        day.isCurrentMonth ? null : styles.calendarDayOutside,
+                      ]}
+                    >
+                      <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
+                        {day.dayLabel}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
 
-            <View style={styles.modalFieldRow}>
-              <View style={styles.modalField}>
-                <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
-                <TextInput
-                  autoCapitalize="none"
-                  keyboardType="numbers-and-punctuation"
-                  onChangeText={(date) =>
-                    setDateTimeEditor((currentEditor) =>
-                      currentEditor === null ? null : { ...currentEditor, date }
-                    )
-                  }
-                  placeholder="2026-09-12"
-                  placeholderTextColor={theme.colors.textDim}
-                  style={styles.input}
-                  value={dateTimeEditor?.date ?? ""}
-                />
+                <View style={styles.modalFieldRow}>
+                  <View style={styles.modalField}>
+                    <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      keyboardType="numbers-and-punctuation"
+                      onChangeText={(date) =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, date }
+                        )
+                      }
+                      placeholder="2026-09-12"
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.input}
+                      value={dateTimeEditor?.date ?? ""}
+                    />
+                  </View>
+                  <View style={styles.modalField}>
+                    <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      keyboardType="numbers-and-punctuation"
+                      onChangeText={(time) =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, time }
+                        )
+                      }
+                      placeholder="18:00"
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.input}
+                      value={dateTimeEditor?.time ?? ""}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.timeChipRow}>
+                  {["16:00", "18:00", "20:00", "22:00"].map((time) => (
+                    <Pressable
+                      key={time}
+                      onPress={() =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, time }
+                        )
+                      }
+                      style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
+                    >
+                      <Text style={styles.timeChipText}>{time}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.modalActions}>
+                  <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
+                  </Pressable>
+                  <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
+                    <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
+                  </Pressable>
+                </View>
               </View>
-              <View style={styles.modalField}>
-                <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
-                <TextInput
-                  autoCapitalize="none"
-                  keyboardType="numbers-and-punctuation"
-                  onChangeText={(time) =>
-                    setDateTimeEditor((currentEditor) =>
-                      currentEditor === null ? null : { ...currentEditor, time }
-                    )
-                  }
-                  placeholder="18:00"
-                  placeholderTextColor={theme.colors.textDim}
-                  style={styles.input}
-                  value={dateTimeEditor?.time ?? ""}
-                />
-              </View>
-            </View>
-
-            <View style={styles.timeChipRow}>
-              {["16:00", "18:00", "20:00", "22:00"].map((time) => (
-                <Pressable
-                  key={time}
-                  onPress={() =>
-                    setDateTimeEditor((currentEditor) =>
-                      currentEditor === null ? null : { ...currentEditor, time }
-                    )
-                  }
-                  style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
-                >
-                  <Text style={styles.timeChipText}>{time}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.modalActions}>
-              <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
-              </Pressable>
-              <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
-              </Pressable>
-            </View>
-          </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </AppScreen>
@@ -1060,6 +1090,15 @@ const createStyles = (theme: MobileTheme) =>
     modalFieldRow: {
       flexDirection: "row",
       gap: 10,
+    },
+    modalKeyboardAvoidingView: {
+      maxHeight: "100%",
+      width: "100%",
+    },
+    modalScrollContent: {
+      flexGrow: 1,
+      justifyContent: "center",
+      paddingVertical: 12,
     },
     modalTitle: {
       color: theme.colors.textPrimary,
