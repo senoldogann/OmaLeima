@@ -23,6 +23,8 @@ export type BusinessJoinedEventSummary = {
   eventId: string;
   businessId: string;
   businessName: string;
+  coverImageUrl: string | null;
+  description: string | null;
   businessLogoUrl: string | null;
   businessCoverImageUrl: string | null;
   businessAnnouncement: string | null;
@@ -34,6 +36,7 @@ export type BusinessJoinedEventSummary = {
   startAt: string;
   endAt: string;
   joinDeadlineAt: string;
+  status: "PUBLISHED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   timelineState: BusinessTimelineState;
   stampLabel: string | null;
   venueOrder: number | null;
@@ -44,9 +47,13 @@ export type BusinessOpportunitySummary = {
   businessName: string;
   eventId: string;
   eventName: string;
+  coverImageUrl: string | null;
+  description: string | null;
   city: string;
   startAt: string;
+  endAt: string;
   joinDeadlineAt: string;
+  status: "PUBLISHED" | "ACTIVE";
 };
 
 export type BusinessHomeOverview = {

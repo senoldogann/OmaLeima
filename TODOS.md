@@ -4,15 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Completed Todos (Previous Waves)
 
-- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner policy, media fallback, and business timeline slices recorded in `PROGRESS.md`.
+- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner policy, media fallback, business timeline, and active event membership slices recorded in `PROGRESS.md`.
 
-## Current Todos (Business Active Event Membership Fix)
+## Current Todos (Business Manage Event Rail Preview)
 
 - [x] Start a dedicated feature branch.
-- [x] Inspect hosted pilot business, staff memberships, event statuses, event times, and event venue rows.
-- [x] Add completed joined events to the business overview read model.
-- [x] Show past joined events in business home/events without scanner CTA.
-- [x] Create a current hosted joined scanner smoke event for pilot business.
+- [x] Inspect hosted public events and verify why user-created Tampere/Oulu events were hidden.
+- [x] Remove city-only filtering from business joinable opportunities.
+- [x] Add event cover/description/status to business event summaries.
+- [x] Convert business manage sections to horizontal image rails.
+- [x] Add full event preview modal for business joined and joinable events.
 - [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.

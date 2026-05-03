@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -17,6 +18,7 @@ import type {
   BusinessOpportunitySummary,
   BusinessJoinedEventSummary,
 } from "@/features/business/types";
+import { getEventCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -28,8 +30,35 @@ type FeedbackState = {
   message: string;
 };
 
+type EventPreview =
+  | {
+      event: BusinessJoinedEventSummary;
+      kind: "joined";
+    }
+  | {
+      event: BusinessOpportunitySummary;
+      kind: "opportunity";
+    };
+
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
+
+const getJoinedEventBadge = (
+  event: BusinessJoinedEventSummary,
+  language: "fi" | "en"
+): { label: string; state: "pending" | "ready" | "warning" } => {
+  switch (event.timelineState) {
+    case "ACTIVE":
+      return { label: language === "fi" ? "Live" : "Live", state: "ready" };
+    case "UPCOMING":
+      return { label: language === "fi" ? "Tulossa" : "Upcoming", state: "pending" };
+    case "COMPLETED":
+      return { label: language === "fi" ? "Päättynyt" : "Completed", state: "warning" };
+  }
+};
+
+const getPreviewEvent = (preview: EventPreview): BusinessJoinedEventSummary | BusinessOpportunitySummary =>
+  preview.event;
 
 const createJoinResultMessages = (
   language: "fi" | "en"
@@ -161,22 +190,13 @@ const createFeedback = (
   return null;
 };
 
-const createEventMeta = (
-  event: BusinessJoinedEventSummary | BusinessOpportunitySummary,
-  formatter: Intl.DateTimeFormat,
-  language: "fi" | "en"
-): string => {
-  const startsLabel = language === "fi" ? "Alkaa" : "Starts";
-
-  return `${event.businessName} · ${event.city} · ${startsLabel} ${formatDateTime(formatter, event.startAt)}`;
-};
-
 export default function BusinessEventsScreen() {
   const router = useRouter();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
+  const [preview, setPreview] = useState<EventPreview | null>(null);
 
   const formatter = useMemo(
     () =>
@@ -218,6 +238,14 @@ export default function BusinessEventsScreen() {
           ? "Tällä yrityksellä ei ole vielä päättyneitä liittyneitä tapahtumia."
           : "This business does not have past joined events yet.",
       endedAt: language === "fi" ? "Päättyi" : "Ended",
+      closePreview: language === "fi" ? "Sulje" : "Close",
+      eventPreview: language === "fi" ? "Tapahtuman tiedot" : "Event details",
+      description: language === "fi" ? "Kuvaus" : "Description",
+      noDescription:
+        language === "fi"
+          ? "Tälle tapahtumalle ei ole vielä lisätty kuvausta."
+          : "No description has been added for this event yet.",
+      venue: language === "fi" ? "Piste" : "Venue",
       openScanner: copy.business.openScanner,
       openHistory: copy.business.history,
       leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",
@@ -252,6 +280,98 @@ export default function BusinessEventsScreen() {
     () => createFeedback(language, joinMutation.data?.status, leaveMutation.data?.status),
     [joinMutation.data?.status, language, leaveMutation.data?.status]
   );
+  const previewEvent = preview === null ? null : getPreviewEvent(preview);
+  const previewBadge =
+    preview === null
+      ? null
+      : preview.kind === "joined"
+        ? getJoinedEventBadge(preview.event, language)
+        : { label: language === "fi" ? "Liityttävissä" : "Joinable", state: "pending" as const };
+
+  const renderJoinedEventCard = (
+    event: BusinessJoinedEventSummary,
+    primaryAction: ReactNode
+  ) => {
+    const badge = getJoinedEventBadge(event, language);
+
+    return (
+      <View key={event.eventVenueId} style={styles.railCard}>
+        <Pressable onPress={() => setPreview({ event, kind: "joined" })} style={styles.cardPreviewButton}>
+          <CoverImageSurface
+            imageStyle={styles.cardCoverImage}
+            source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
+            style={styles.cardCover}
+          >
+            <View style={styles.cardCoverOverlay} />
+            <View style={styles.cardCoverContent}>
+              <StatusBadge label={badge.label} state={badge.state} />
+              <Text numberOfLines={2} style={styles.coverTitle}>{event.eventName}</Text>
+            </View>
+          </CoverImageSurface>
+          <View style={styles.cardBody}>
+            <Text numberOfLines={1} style={styles.metaText}>{event.businessName} · {event.city}</Text>
+            <Text numberOfLines={1} style={styles.metaText}>
+              {event.timelineState === "ACTIVE"
+                ? `${language === "fi" ? "Päättyy" : "Ends"} ${formatDateTime(formatter, event.endAt)}`
+                : event.timelineState === "UPCOMING"
+                  ? `${language === "fi" ? "Alkaa" : "Starts"} ${formatDateTime(formatter, event.startAt)}`
+                  : `${labels.endedAt} ${formatDateTime(formatter, event.endAt)}`}
+            </Text>
+            {event.stampLabel ? <Text numberOfLines={1} style={styles.eventStamp}>{event.stampLabel}</Text> : null}
+          </View>
+        </Pressable>
+        {primaryAction}
+      </View>
+    );
+  };
+
+  const renderOpportunityCard = (event: BusinessOpportunitySummary) => {
+    const joinKey = `${event.businessId}:${event.eventId}`;
+    const isPending = joinMutation.isPending && activeJoinKey === joinKey;
+
+    return (
+      <View key={joinKey} style={styles.railCard}>
+        <Pressable onPress={() => setPreview({ event, kind: "opportunity" })} style={styles.cardPreviewButton}>
+          <CoverImageSurface
+            imageStyle={styles.cardCoverImage}
+            source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
+            style={styles.cardCover}
+          >
+            <View style={styles.cardCoverOverlay} />
+            <View style={styles.cardCoverContent}>
+              <StatusBadge label={language === "fi" ? "Liityttävissä" : "Joinable"} state="pending" />
+              <Text numberOfLines={2} style={styles.coverTitle}>{event.eventName}</Text>
+            </View>
+          </CoverImageSurface>
+          <View style={styles.cardBody}>
+            <Text numberOfLines={1} style={styles.metaText}>{event.city}</Text>
+            <Text numberOfLines={1} style={styles.metaText}>
+              {labels.joinDeadline} {formatDateTime(formatter, event.joinDeadlineAt)}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          disabled={userId === null || isPending}
+          onPress={() => {
+            if (userId === null) {
+              return;
+            }
+
+            void joinMutation.mutateAsync({
+              eventId: event.eventId,
+              businessId: event.businessId,
+              staffUserId: userId,
+            });
+          }}
+          style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isPending ? labels.joiningEvent : labels.joinEvent}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   return (
     <AppScreen>
@@ -302,16 +422,12 @@ export default function BusinessEventsScreen() {
           {activeJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.queueEmptyBody}</Text>
           ) : (
-            <View style={styles.stack}>
-              {activeJoinedEvents.map((event) => (
-                <View key={event.eventVenueId} style={styles.rowCard}>
-                  <Text style={styles.cardTitle}>{event.eventName}</Text>
-                  <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
-                  <Text style={styles.metaText}>
-                    {(language === "fi" ? "Päättyy" : "Ends")} {formatDateTime(formatter, event.endAt)}
-                    {event.stampLabel ? ` · ${event.stampLabel}` : ""}
-                  </Text>
-                  <View style={styles.actionRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.railContent}>
+                {activeJoinedEvents.map((event) =>
+                  renderJoinedEventCard(
+                    event,
+                    <View style={styles.actionRow}>
                     <Pressable
                       onPress={() =>
                         router.push({
@@ -329,10 +445,11 @@ export default function BusinessEventsScreen() {
                     >
                       <Text style={styles.secondaryButtonText}>{labels.openHistory}</Text>
                     </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
+                    </View>
+                  )
+                )}
+              </View>
+            </ScrollView>
           )}
         </InfoCard>
       ) : null}
@@ -342,18 +459,14 @@ export default function BusinessEventsScreen() {
           {upcomingJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.joinedNextEmptyBody}</Text>
           ) : (
-            <View style={styles.stack}>
-              {upcomingJoinedEvents.map((event) => {
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.railContent}>
+                {upcomingJoinedEvents.map((event) => {
                 const leaveKey = `${event.businessId}:${event.eventId}`;
                 const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
 
-                return (
-                  <View key={event.eventVenueId} style={styles.rowCard}>
-                    <Text style={styles.cardTitle}>{event.eventName}</Text>
-                    <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
-                    <Text style={styles.metaText}>
-                      {labels.joinDeadline} {formatDateTime(formatter, event.joinDeadlineAt)}
-                    </Text>
+                  return renderJoinedEventCard(
+                    event,
                     <Pressable
                       disabled={userId === null || isLeaving}
                       onPress={() => {
@@ -373,10 +486,10 @@ export default function BusinessEventsScreen() {
                         {isLeaving ? labels.leavingEvent : labels.leaveEvent}
                       </Text>
                     </Pressable>
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
           )}
         </InfoCard>
       ) : null}
@@ -386,45 +499,11 @@ export default function BusinessEventsScreen() {
           {cityOpportunities.length === 0 ? (
             <Text style={styles.bodyText}>{labels.availableEmptyBody}</Text>
           ) : (
-            <View style={styles.stack}>
-              {cityOpportunities.map((event) => {
-                const joinKey = `${event.businessId}:${event.eventId}`;
-                const isPending = joinMutation.isPending && activeJoinKey === joinKey;
-
-                return (
-                  <View key={joinKey} style={styles.rowCard}>
-                    <Text style={styles.cardTitle}>{event.eventName}</Text>
-                    <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
-                    <Text style={styles.metaText}>
-                      {labels.joinDeadline} {formatDateTime(formatter, event.joinDeadlineAt)}
-                    </Text>
-                    <Pressable
-                      disabled={userId === null || isPending}
-                      onPress={() => {
-                        if (userId === null) {
-                          return;
-                        }
-
-                        void joinMutation.mutateAsync({
-                          eventId: event.eventId,
-                          businessId: event.businessId,
-                          staffUserId: userId,
-                        });
-                      }}
-                      style={[
-                        styles.primaryButton,
-                        styles.elevatedButton,
-                        isPending ? styles.disabledButton : null,
-                      ]}
-                    >
-                      <Text style={styles.primaryButtonText}>
-                        {isPending ? labels.joiningEvent : labels.joinEvent}
-                      </Text>
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.railContent}>
+                {cityOpportunities.map((event) => renderOpportunityCard(event))}
+              </View>
+            </ScrollView>
           )}
         </InfoCard>
       ) : null}
@@ -434,24 +513,75 @@ export default function BusinessEventsScreen() {
           {completedJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.pastJoinedEmptyBody}</Text>
           ) : (
-            <View style={styles.stack}>
-              {completedJoinedEvents.map((event) => (
-                <View key={event.eventVenueId} style={styles.rowCard}>
-                  <View style={styles.eventStatusRow}>
-                    <Text style={styles.cardTitle}>{event.eventName}</Text>
-                    <StatusBadge label={language === "fi" ? "Päättynyt" : "Completed"} state="warning" />
-                  </View>
-                  <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
-                  <Text style={styles.metaText}>
-                    {labels.endedAt} {formatDateTime(formatter, event.endAt)}
-                    {event.stampLabel ? ` · ${event.stampLabel}` : ""}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.railContent}>
+                {completedJoinedEvents.map((event) => renderJoinedEventCard(event, null))}
+              </View>
+            </ScrollView>
           )}
         </InfoCard>
       ) : null}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setPreview(null)}
+        transparent
+        visible={preview !== null}
+      >
+        <Pressable onPress={() => setPreview(null)} style={styles.modalBackdrop}>
+          {previewEvent !== null && previewBadge !== null ? (
+            <Pressable onPress={() => undefined} style={styles.modalSheet}>
+              <CoverImageSurface
+                imageStyle={styles.modalCoverImage}
+                source={getEventCoverSource(
+                  previewEvent.coverImageUrl,
+                  `${previewEvent.eventId}:${previewEvent.eventName}`
+                )}
+                style={styles.modalCover}
+              >
+                <View style={styles.modalCoverOverlay} />
+                <View style={styles.modalCoverContent}>
+                  <View style={styles.eventStatusRow}>
+                    <Text style={styles.eyebrow}>{labels.eventPreview}</Text>
+                    <StatusBadge label={previewBadge.label} state={previewBadge.state} />
+                  </View>
+                  <Text numberOfLines={2} style={styles.modalTitle}>{previewEvent.eventName}</Text>
+                  <Text numberOfLines={1} style={styles.coverMeta}>{previewEvent.city}</Text>
+                </View>
+              </CoverImageSurface>
+              <View style={styles.modalContent}>
+                <View style={styles.detailGrid}>
+                  <View style={styles.detailPill}>
+                    <Text style={styles.detailLabel}>{language === "fi" ? "Alkaa" : "Starts"}</Text>
+                    <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.startAt)}</Text>
+                  </View>
+                  <View style={styles.detailPill}>
+                    <Text style={styles.detailLabel}>{language === "fi" ? "Päättyy" : "Ends"}</Text>
+                    <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.endAt)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.sectionLabel}>{labels.description}</Text>
+                <Text style={styles.bodyText}>
+                  {previewEvent.description !== null && previewEvent.description.trim().length > 0
+                    ? previewEvent.description.trim()
+                    : labels.noDescription}
+                </Text>
+                {preview?.kind === "joined" ? (
+                  <View style={styles.detailPill}>
+                    <Text style={styles.detailLabel}>{labels.venue}</Text>
+                    <Text style={styles.detailValue}>
+                      {preview.event.businessName}
+                      {preview.event.stampLabel ? ` · ${preview.event.stampLabel}` : ""}
+                    </Text>
+                  </View>
+                ) : null}
+                <Pressable onPress={() => setPreview(null)} style={styles.secondaryButton}>
+                  <Text style={styles.secondaryButtonText}>{labels.closePreview}</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          ) : null}
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
@@ -489,6 +619,71 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    cardBody: {
+      gap: 5,
+      padding: 12,
+    },
+    cardCover: {
+      height: 140,
+      overflow: "hidden",
+    },
+    cardCoverContent: {
+      bottom: 12,
+      gap: 8,
+      left: 12,
+      position: "absolute",
+      right: 12,
+    },
+    cardCoverImage: {
+      borderTopLeftRadius: theme.radius.inner,
+      borderTopRightRadius: theme.radius.inner,
+    },
+    cardCoverOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.34)",
+    },
+    cardPreviewButton: {
+      borderRadius: theme.radius.inner,
+      overflow: "hidden",
+    },
+    coverMeta: {
+      color: "rgba(255,255,255,0.78)",
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    coverTitle: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    detailGrid: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    detailLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    detailPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      flex: 1,
+      gap: 4,
+      padding: 12,
+    },
+    detailValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     disabledButton: {
       opacity: 0.7,
     },
@@ -499,17 +694,76 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "flex-start",
       gap: 8,
     },
+    eventStamp: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     eventStatusRow: {
       alignItems: "center",
       flexDirection: "row",
       gap: 8,
       justifyContent: "space-between",
     },
+    eyebrow: {
+      color: "rgba(255,255,255,0.8)",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.caption,
+      letterSpacing: 2,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
     metaText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    modalBackdrop: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.72)",
+      flex: 1,
+      justifyContent: "center",
+      padding: 18,
+    },
+    modalContent: {
+      gap: 14,
+      padding: 16,
+    },
+    modalCover: {
+      height: 220,
+      overflow: "hidden",
+    },
+    modalCoverContent: {
+      bottom: 16,
+      gap: 8,
+      left: 16,
+      position: "absolute",
+      right: 16,
+    },
+    modalCoverImage: {
+      borderTopLeftRadius: theme.radius.card,
+      borderTopRightRadius: theme.radius.card,
+    },
+    modalCoverOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.38)",
+    },
+    modalSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      maxWidth: 520,
+      overflow: "hidden",
+      width: "100%",
+    },
+    modalTitle: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
     },
     primaryButton: {
       alignItems: "center",
@@ -533,6 +787,21 @@ const createStyles = (theme: MobileTheme) =>
       gap: 7,
       padding: 14,
     },
+    railCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 10,
+      overflow: "hidden",
+      paddingBottom: 12,
+      width: 274,
+    },
+    railContent: {
+      flexDirection: "row",
+      gap: 12,
+      paddingRight: 4,
+    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
@@ -550,6 +819,12 @@ const createStyles = (theme: MobileTheme) =>
     secondaryButtonText: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    sectionLabel: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
