@@ -5,28 +5,26 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/mobile-club-event-creation-polish`
-- **Goal:** Bring mobile organizer event creation closer to real Finnish appro operations and make public events easier to join from the student event list.
+- **Branch:** `feature/club-home-media-polish`
+- **Goal:** Make the club mobile area match the intended organizer mental model: club identity at the top, live-event slider under actions, and editable club logo/cover/announcement controls.
 
 ## Architectural Decisions
 
-- Add an `event-media` Supabase Storage bucket with public reads and club-staff-only writes under `clubs/{clubId}/...`.
-- Add a mobile event cover picker/upload helper using existing `expo-image-picker`.
-- Replace the organizer cover URL input with upload/preview controls while preserving `coverImageUrl` in the event model.
-- Replace raw datetime text fields in the organizer form with compact date/time pressable controls that still store local datetime strings.
-- Render status chips during create and edit. For create, create the draft atomically first and then update status if the chosen status is not `DRAFT`.
-- Add a dedicated `/club/upcoming` page with status/date filters and add it to the club stack.
-- Turn organizer home event lists into horizontal rails so current/upcoming events do not become long vertical blocks.
-- Add an optional direct join button beside `Avaa tapahtuma` for public/not-registered student events using the existing join mutation.
+- Add `clubs.cover_image_url` and `clubs.announcement` columns.
+- Extend club dashboard read model and membership summary types to include `logoUrl`, `coverImageUrl`, and `announcement`.
+- Add mobile club media picker/upload helpers using the existing `event-media` bucket.
+- Add a club profile editor for selected club logo, cover, announcement, and contact email.
+- Remove the separate `Klubit` home card and display the primary club name/city in the opening header.
+- Keep the hero/slider under the manage button, but feed it only active/live events.
+- Make organizer event image cards pressable and route to `/club/events?eventId=...`; make events screen honor that param.
 
 ## Edge Cases
 
-- Organizer chooses a phone image, upload succeeds, and the same cover URL is saved to the event.
-- Organizer cancels image picking and the draft remains unchanged.
-- Organizer edits start/end/join deadline through the new control and parser receives valid local datetime strings.
-- Organizer creates a published public event and the created row is updated from draft to published.
-- Student sees direct `Liity` only when the event is public and not already joined.
-- Private/unlisted or already joined events still only open details.
+- Home header shows the club name instead of a generic `Klubin päivä` only.
+- Home no longer renders the separate `Klubit` card.
+- The slider under the manage button only includes `timelineState === LIVE`.
+- Club profile can upload logo/cover and save announcement/contact email.
+- Pressing organizer event images opens the edit screen for that event.
 
 ## Ordered Follow-Up Queue
 

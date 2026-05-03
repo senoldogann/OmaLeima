@@ -181,28 +181,37 @@ export default function ClubUpcomingScreen() {
         const badge = getTimelineBadge(event.timelineState, labels.status);
 
         return (
-          <CoverImageSurface
+          <Pressable
             key={event.eventId}
-            source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
-            style={styles.eventCard}
+            onPress={() =>
+              router.push({
+                pathname: "/club/events",
+                params: { eventId: event.eventId },
+              })
+            }
           >
-            <View style={styles.eventOverlay} />
-            <View style={styles.eventContent}>
-              <View style={styles.eventTopRow}>
-                <StatusBadge label={badge.label} state={badge.state} />
-                <Text style={styles.eventDate}>{formatDateTime(formatter, event.startAt)}</Text>
-              </View>
-              <View style={styles.eventBottom}>
-                <Text numberOfLines={2} style={styles.eventTitle}>{event.name}</Text>
-                <Text style={styles.eventMeta}>{event.clubName} · {event.city}</Text>
-                <View style={styles.eventMetricRow}>
-                  <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.metrics.participants}</Text>
-                  <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.metrics.venues}</Text>
-                  <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.metrics.claims}</Text>
+            <CoverImageSurface
+              source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
+              style={styles.eventCard}
+            >
+              <View style={styles.eventOverlay} />
+              <View style={styles.eventContent}>
+                <View style={styles.eventTopRow}>
+                  <StatusBadge label={badge.label} state={badge.state} />
+                  <Text style={styles.eventDate}>{formatDateTime(formatter, event.startAt)}</Text>
+                </View>
+                <View style={styles.eventBottom}>
+                  <Text numberOfLines={2} style={styles.eventTitle}>{event.name}</Text>
+                  <Text style={styles.eventMeta}>{event.clubName} · {event.city}</Text>
+                  <View style={styles.eventMetricRow}>
+                    <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.metrics.participants}</Text>
+                    <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.metrics.venues}</Text>
+                    <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.metrics.claims}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </CoverImageSurface>
+            </CoverImageSurface>
+          </Pressable>
         );
       })}
     </AppScreen>

@@ -19,8 +19,12 @@ type ClubMembershipRow = {
 };
 
 type ClubRow = {
+  announcement: string | null;
   city: string | null;
+  contact_email: string | null;
+  cover_image_url: string | null;
   id: string;
+  logo_url: string | null;
   name: string;
   university_name: string | null;
 };
@@ -103,7 +107,7 @@ const fetchClubsByIdsAsync = async (clubIds: string[]): Promise<ClubRow[]> => {
 
   const { data, error } = await supabase
     .from("clubs")
-    .select("id,name,city,university_name")
+    .select("id,name,city,university_name,logo_url,cover_image_url,announcement,contact_email")
     .in("id", clubIds)
     .eq("status", "ACTIVE")
     .returns<ClubRow[]>();
@@ -247,9 +251,13 @@ const mapMemberships = (
     return [
       {
         canCreateEvents: membership.role === "OWNER" || membership.role === "ORGANIZER",
+        announcement: club.announcement,
         city: club.city,
         clubId: club.id,
         clubName: club.name,
+        contactEmail: club.contact_email,
+        coverImageUrl: club.cover_image_url,
+        logoUrl: club.logo_url,
         membershipRole: membership.role,
         universityName: club.university_name,
       },
