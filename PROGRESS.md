@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/business-active-event-membership-fix`
+- **Yapılan iş:** Business tarafında event görünürlüğünün neden boş göründüğü canlı veriyle doğrulandı: pilot business'a bağlı `ACTIVE/PUBLISHED` eventlerin çoğu 2026-04-29 ve 2026-05-01'de bitmişti, bu yüzden scanner açısından live sayılmaları doğru değildi. Business overview'e `joinedCompletedEvents` eklendi; home artık past count gösteriyor, `/business/events` geçmiş bağlı eventleri ayrı `Aiemmat tapahtumat/Past joined events` bölümünde gösteriyor ve bu bölümde scan CTA yok. Ayrıca hosted pilot business için şu an canlı `OmaLeima Live Scanner Smoke` event'i oluşturuldu ve `OmaLeima Test Bar` business'ına `JOINED` olarak bağlandı.
+- **Neden yapıldı:** Kullanıcı business tarafında hâlâ `No active events` gördüğünü, published/active eventler olmasına rağmen listelenmediğini söyledi. Root cause status alanının tek başına live anlamına gelmemesi ve geçmiş joined eventlerin UI'da görünmemesiydi.
+- **Doğrulama:** Hosted service-role veri kontrolünde `OmaLeima Live Scanner Smoke` için `isLiveNow: true` doğrulandı. `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel cihazda `pilot-scanner@example.com` veya `pilot-business-manager@example.com` ile giriş yapıp `/business/home` ve `/business/scanner` açılmalı; scanner kuyruğunda `OmaLeima Live Scanner Smoke` görünmeli. Eski ACTIVE eventler artık scanner'da değil, `/business/events` içindeki past bölümünde görünmeli.
+- **Açık risk/blokaj:** Bu slice geçmiş eventleri scan-enabled yapmadı; bu güvenlik açısından bilinçli. Live event görünmüyorsa Metro cache temizlenmeli veya 30 saniyelik overview refetch beklenmeli. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/business-event-timeline-visibility`
 - **Yapılan iş:** Business/scanner event görünürlüğü düzeltildi. Ortak `useBusinessHomeOverviewQuery` artık `PUBLISHED` ve `ACTIVE` eventleri zaman aralığına göre live/upcoming sınıflandırıyor; böylece DB status'u hâlâ `PUBLISHED` kalsa bile zamanı gelen, işletmenin katıldığı event scanner kuyruğunda görünüyor. Business manage/opportunity listesi de hâlâ start/deadline öncesinde olan `PUBLISHED` veya `ACTIVE` eventleri getiriyor. Business overview 30 saniyede bir refetch edecek şekilde ayarlandı, bu sayede açık ekranda beklerken upcoming event live olunca scanner tarafına düşebiliyor.
 - **Neden yapıldı:** Kullanıcı işletme/scanner rolünde active veya published eventlerin listelenmediğini, live/upcoming/manage işlemlerinin scanner tarafında doğru çalıştığından emin olmamı istedi.
@@ -1060,6 +1068,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Business active event membership fix tamamlandi; past joined events business UI'da gorunur oldu ve hosted pilot business icin current live scanner smoke event olusturuldu.
 - *2026-05-03*: Business/scanner event timeline visibility tamamlandi; PUBLISHED/ACTIVE eventler zaman araligina gore live/upcoming siniflandiriliyor, joinable manage listesi backend join kurallariyla hizalandi ve business overview 30 saniyelik refetch kazandi.
 - *2026-05-03*: Media upload display resilience ve pilot business-manager hesabi tamamlandi; shared cover image surface remote image load hatasinda siyah kalmak yerine theme fallback gosteriyor ve `pilot-business-manager@example.com` hosted pilot business'a `MANAGER` olarak baglandi.
 - *2026-05-03*: Scanner location consent ve distance anomaly fraud signal slice'i tamamlandi; web opt-in lokasyon payload'i eklendi, native dependency sonraki temiz branch'e birakildi.

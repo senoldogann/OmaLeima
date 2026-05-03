@@ -281,6 +281,11 @@ const mapCityOpportunities = (
 const compareJoinedEvents = (left: BusinessJoinedEventSummary, right: BusinessJoinedEventSummary): number =>
   new Date(left.startAt).getTime() - new Date(right.startAt).getTime();
 
+const compareCompletedJoinedEvents = (
+  left: BusinessJoinedEventSummary,
+  right: BusinessJoinedEventSummary
+): number => new Date(right.endAt).getTime() - new Date(left.endAt).getTime();
+
 export const fetchBusinessHomeOverviewAsync = async (userId: string): Promise<BusinessHomeOverview> => {
   const membershipRows = await fetchBusinessMembershipsAsync(userId);
   const businessIds = membershipRows.map((membership) => membership.business_id);
@@ -298,6 +303,9 @@ export const fetchBusinessHomeOverviewAsync = async (userId: string): Promise<Bu
   const joinedEventSummaries = mapJoinedEvents(joinedEventVenueRows, businesses, joinedEvents, now).sort(compareJoinedEvents);
   const joinedActiveEvents = joinedEventSummaries.filter((event) => event.timelineState === "ACTIVE");
   const joinedUpcomingEvents = joinedEventSummaries.filter((event) => event.timelineState === "UPCOMING");
+  const joinedCompletedEvents = joinedEventSummaries
+    .filter((event) => event.timelineState === "COMPLETED")
+    .sort(compareCompletedJoinedEvents);
   const cityOpportunities = mapCityOpportunities(
     cityOpportunityEvents,
     new Set(joinedEventVenueRows.map((eventVenue) => `${eventVenue.business_id}:${eventVenue.event_id}`)),
@@ -308,6 +316,7 @@ export const fetchBusinessHomeOverviewAsync = async (userId: string): Promise<Bu
     memberships,
     joinedActiveEvents,
     joinedUpcomingEvents,
+    joinedCompletedEvents,
     cityOpportunities,
   };
 };
