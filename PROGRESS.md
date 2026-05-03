@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/organizer-profile-rls-keyboard-polish`
+- **Yapılan iş:** Organizer kapak/logo upload ve kulüp profil güncelleme RLS'i düzeltildi. `20260503223000_harden_club_media_profile_policies.sql` migration'ı eklendi ve remote Supabase'e uygulandı; `event-media` bucket'ı public read kalırken upload/update/delete sadece ilgili kulübün owner/organizer üyelerine veya platform adminlere izin veriyor. `public.clubs` update policy'si de owner/organizer/platform admin sınırına çekildi. Organizer profilindeki Fince metinler `Klubin tiedot` ve `Tiedote` olarak düzeltildi. Global `AppScreen` ve club event tarih/saat modalı keyboard-aware hale getirildi.
+- **Neden yapıldı:** Organizer kapak fotoğrafı güncellerken RLS hatası alınıyordu; ayrıca Fince profilde Türkçe metin kalmıştı ve event düzenleme tarih/saat inputları klavyenin altında kalıyordu.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, `npx supabase@2.95.4 db push`, `npx supabase@2.95.4 db lint --linked` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone'da organizer hesabıyla kapak/logo upload, profil kaydetme, event tarih/saat modalında input focus ve club event düzenleme smoke testi yapılmalı. Sonraki product slice olarak announcement follow/subscription preferences ve read receipt analytics devam edebilir.
+- **Açık risk/blokaj:** RLS schema lint temiz; ancak tüm rol/policy davranışı gerçek kullanıcı hesaplarıyla smoke edilmeden UX seviyesi garanti edilemez. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/club-event-sorting-polish`
 - **Yapılan iş:** Organizer tarafındaki event sıralaması düzeltildi. Yeni ortak `sortClubEventsForOrganizer` helper'ı eklendi; `LIVE`, `UPCOMING`, `DRAFT`, `CANCELLED`, `COMPLETED` önceliğiyle sıralıyor. Aktif/gelecek eventlerde en yakın başlangıç öne geliyor, `Päättynyt/COMPLETED` ve iptal edilmiş eventler listenin sonuna düşüyor ve kendi içinde en yeni geçmiş en üstte kalıyor. Club Home slider/rail ve `/club/upcoming` filtreli listesi artık aynı sıralama mantığını kullanıyor. Tulossa'daki `Päättynyt` filtresinin zaten mevcut olduğu doğrulandı.
 - **Neden yapıldı:** Kullanıcı organizer sayfasında bitmiş eventlerin en sonda kalmasını, yeni ve gelecekteki eventlerin önde görünmesini, bunun Tulossa ve slider alanlarında tutarlı olmasını istedi.

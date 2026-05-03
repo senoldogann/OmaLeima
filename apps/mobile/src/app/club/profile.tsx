@@ -140,7 +140,7 @@ export default function ClubProfileScreen() {
         </View>
       </View>
 
-      <InfoCard eyebrow="Club" title={language === "fi" ? "Kulükin tiedot" : "Club identity"}>
+      <InfoCard eyebrow="Club" title={language === "fi" ? "Klubin tiedot" : "Club identity"}>
         {dashboardQuery.isLoading ? (
           <Text style={styles.bodyText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
         ) : null}
@@ -218,7 +218,7 @@ export default function ClubProfileScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>{language === "fi" ? "Duyuru" : "Announcement"}</Text>
+              <Text style={styles.fieldLabel}>{language === "fi" ? "Tiedote" : "Announcement"}</Text>
               <TextInput
                 multiline
                 onChangeText={(announcement) =>
