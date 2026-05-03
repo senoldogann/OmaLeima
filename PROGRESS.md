@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `bug/scanner-location-module-optional`
+- **Yapılan iş:** Business scanner route crash'i duzeltildi. `apps/mobile/src/app/business/scanner.tsx` icindeki top-level `expo-location` import'u kaldirildi; native location proof artik sadece butona basildiginda dynamic import ile yukleniyor. Mevcut fiziksel iOS dev build `ExpoLocation` native modulunu icermiyorsa scanner route artik aciliyor, location proof butonu recoverable hata mesaji gosteriyor ve scan akisi null koordinatlarla devam edebiliyor.
+- **Neden yapıldı:** Kullanici iOS Metro'da `Cannot find native module 'ExpoLocation'` hatasi aldi. Bu statik import route module evaluation sirasinda patladigi icin Expo Router da yan etki olarak `business/scanner.tsx` default export yok uyarisi veriyordu.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Mevcut dev build ile Metro'yu yeniden baslatip business scanner route'unun acildigi smoke edilmeli. Native location proof'u gercekten kullanmak istenirse iOS dev build yeniden kurulmalı; aksi halde scan guvenligi konumsuz calismaya devam eder.
+- **Açık risk/blokaj:** Bu fix eski dev build'i calisir hale getirir ama `expo-location` native ozelligini eski build'e eklemez. `apps/mobile/package.json` icindeki kullanici script degisiklikleri, `RAPOR.md` ve `.idea/` commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/typed-event-rules-builder`
 - **Yapılan iş:** Typed event rules builder ilk slice'i tamamlandi. Admin/club event create ve update formlarindaki raw `Rules JSON` textarea kaldirildi; yerine `stampPolicy.perBusinessLimit` icin organizer-friendly typed builder eklendi. Yeni etkinlikler artik default olarak `{"stampPolicy":{"perBusinessLimit":1}}` ile basliyor. Admin validation `stampPolicy.perBusinessLimit` degerini 1-5 arasi integer olarak dogruluyor. Supabase tarafinda `get_event_per_business_stamp_limit` helper'i eklendi; `scan_stamp_atomic` ayni ogrenci/event icin event registration row lock altinda mevcut valid business stamp sayisini sayip event rules limitine gore `ALREADY_STAMPED` donduruyor. Eski `stamps(event_id, student_id, business_id)` unique constraint kaldirildi; QR replay korumasi `qr_token_uses` primary key ve `stamps.qr_jti` unique ile devam ediyor. Helper icin ek safe-parse migration'i invalid manuel JSON degerlerinde scan'i patlatmak yerine default limit 1'e dusurecek sekilde remote'a uygulandi.
 - **Neden yapıldı:** Kullanici her etkinlikte mekan basina leima limitinin degisebilecegini netlestirmisti. Sadece UI'da kural gostermek yeterli degildi; mevcut DB unique constraint her zaman 1 leima ile sinirladigi icin hem builder hem backend enforcement ayni slice'ta hizalandi.

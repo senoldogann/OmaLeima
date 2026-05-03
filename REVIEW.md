@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/typed-event-rules-builder`
-- **Scope:** Replace raw event rules JSON with a typed stamp policy builder and enforce the per-business stamp limit server-side.
+- **Branch:** `bug/scanner-location-module-optional`
+- **Scope:** Prevent the business scanner route from crashing when the installed iOS dev build does not include `expo-location`.
 
 ## Affected Files
 
@@ -14,26 +14,20 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/admin/src/features/club-events/components/club-events-panel.tsx`
-- `apps/admin/src/features/club-events/components/event-rules-builder.tsx`
-- `apps/admin/src/features/club-events/validation.ts`
-- `apps/admin/src/features/club-events/types.ts`
-- `supabase/migrations/20260503170000_typed_event_stamp_rules.sql`
+- `apps/mobile/src/app/business/scanner.tsx`
 
 ## Existing Logic Checked
 
-- `events.rules` is already a JSONB object, but the admin UI exposes it as a raw JSON textarea.
-- `minimum_stamps_required` controls completion, while same-business repeats are hard-blocked by a unique constraint on `stamps(event_id, student_id, business_id)`.
-- `scan_stamp_atomic` already locks the student's event registration row, so per-student/event stamp limit checks can be serialized safely there.
-- Existing duplicate status copy expects `ALREADY_STAMPED`, which can remain the status for per-business limit exhaustion.
+- `scanner.tsx` statically imported `expo-location`, so old dev builds without the native module crashed before the route default export could initialize.
+- Location proof is optional telemetry; scanning must continue without it.
+- `app.config.ts` already includes the location plugin for rebuilt dev builds.
 
 ## Risks
 
-- Dropping the old unique constraint must not reopen replay risk; QR JTI uniqueness remains in `qr_token_uses` and `stamps.qr_jti`.
-- Per-business limit checks must happen before insert and inside the registration row lock.
-- Default policy must preserve current behavior: one valid leima per business.
-- UI must generate a predictable rules object rather than arbitrary JSON.
+- The route must not import/evaluate `expo-location` at module load time.
+- Pressing the location proof button on an old dev build should show a recoverable error, not crash the scanner.
+- Rebuilt dev builds should still use native location proof normally.
 
 ## Review Outcome
 
-Add a typed stamp policy builder for event create/update and enforce `rules.stampPolicy.perBusinessLimit` inside `scan_stamp_atomic`.
+Move `expo-location` behind a dynamic import inside the optional native location proof path.
