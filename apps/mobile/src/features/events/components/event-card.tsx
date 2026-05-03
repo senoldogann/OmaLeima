@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
@@ -10,6 +10,8 @@ import type { StudentEventSummary } from "@/features/events/types";
 
 type EventCardProps = {
   event: StudentEventSummary;
+  isJoinPending?: boolean;
+  onJoinPress?: () => void;
   onPress: () => void;
   motionIndex?: number;
 };
@@ -53,13 +55,18 @@ const getRegistrationBadge = (
   return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
-export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
+export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress, motionIndex }: EventCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const timeFormatter = createDateTimeFormatter(localeTag);
   const timelineBadge = getTimelineBadge(event, language);
   const registrationBadge = getRegistrationBadge(event, language);
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
+  const canJoinFromCard = onJoinPress !== undefined && event.registrationState === "NOT_REGISTERED";
+  const handleJoinPress = (pressEvent: GestureResponderEvent): void => {
+    pressEvent.stopPropagation();
+    onJoinPress?.();
+  };
 
   return (
     <Pressable
@@ -106,6 +113,17 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 
         <View style={styles.actionRow}>
           <Text style={styles.actionText}>{language === "fi" ? "Avaa tapahtuma" : "Open event"}</Text>
+          {canJoinFromCard ? (
+            <Pressable
+              disabled={isJoinPending}
+              onPress={handleJoinPress}
+              style={[styles.joinButton, isJoinPending ? styles.joinButtonDisabled : null]}
+            >
+              <Text style={styles.joinButtonText}>
+                {isJoinPending ? (language === "fi" ? "Liitytään..." : "Joining...") : language === "fi" ? "Liity" : "Join"}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </InfoCard>
     </Pressable>
@@ -115,7 +133,10 @@ export const EventCard = ({ event, onPress, motionIndex }: EventCardProps) => {
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
   actionRow: {
-    gap: 0,
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between",
   },
   actionText: {
     color: theme.colors.lime,
@@ -154,6 +175,21 @@ const createStyles = (theme: MobileTheme) =>
     fontFamily: theme.typography.families.bold,
     fontSize: 16,
     lineHeight: 22,
+  },
+  joinButton: {
+    backgroundColor: theme.colors.lime,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  joinButtonDisabled: {
+    opacity: 0.62,
+  },
+  joinButtonText: {
+    color: theme.colors.actionPrimaryText,
+    fontFamily: theme.typography.families.extrabold,
+    fontSize: theme.typography.sizes.caption,
+    lineHeight: theme.typography.lineHeights.caption,
   },
   metaGroup: {
     gap: 7,
