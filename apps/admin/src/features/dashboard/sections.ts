@@ -43,6 +43,10 @@ export const getClubDashboardNavigationItems = (canManageRewards: boolean): Dash
       href: "/club/claims",
       label: "Reward claims",
     },
+    {
+      href: "/club/fraud",
+      label: "Fraud review",
+    },
     canManageRewards
       ? {
           href: "/club/rewards",
@@ -94,6 +98,6 @@ export const getClubDashboardSections = (canManageRewards: boolean): DashboardSe
   {
     title: "Integrity",
     tone: "warning",
-    items: ["Fraud warnings", "Audit review", "Rule checks"],
+    items: ["Fraud review", "Audit review", "Rule checks"],
   },
 ];

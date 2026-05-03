@@ -603,6 +603,18 @@ button {
   white-space: pre-wrap;
 }
 
+.fraud-review-item {
+  align-items: stretch;
+}
+
+.fraud-review-note-field {
+  max-width: 640px;
+}
+
+.fraud-review-note {
+  min-height: 78px;
+}
+
 .review-card,
 .review-card-compact,
 .moderation-card {

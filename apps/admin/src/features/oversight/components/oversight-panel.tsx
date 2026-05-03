@@ -1,5 +1,6 @@
 import { formatOversightClubMeta, formatOversightDateTime, formatOversightEventMeta } from "@/features/oversight/format";
 import type { AdminOversightSnapshot } from "@/features/oversight/types";
+import { FraudSignalReviewList } from "@/features/fraud-review/components/fraud-signal-review-list";
 
 type OversightPanelProps = {
   snapshot: AdminOversightSnapshot;
@@ -117,36 +118,10 @@ export const OversightPanel = ({ snapshot }: OversightPanelProps) => (
           <p className="muted-text">Showing the latest {snapshot.summary.latestFraudLimit} fraud signals that still need operator attention.</p>
         </div>
 
-        {snapshot.fraudSignals.length === 0 ? (
-          <p className="muted-text">No fraud signals are visible right now.</p>
-        ) : (
-          <ul className="record-list">
-            {snapshot.fraudSignals.map((signal) => (
-              <li key={signal.id} className="record-item">
-                <div className="record-main">
-                  <p className="record-title">{signal.type}</p>
-                  <p className="record-meta">
-                    {withFallback(
-                      [signal.eventName, signal.businessName, signal.scannerEmail]
-                        .filter((value) => value !== null)
-                        .join(" · "),
-                      "No linked event, business, or scanner"
-                    )}
-                  </p>
-                  <p className="record-note">{signal.description}</p>
-                  {renderMetadataLine(signal.metadataSummary)}
-                  <p className="record-note">Created {formatOversightDateTime(signal.createdAt)}</p>
-                </div>
-                <div className="badge-group">
-                  <span className={`status-pill ${signal.severity === "CRITICAL" || signal.severity === "HIGH" ? "status-pill-danger" : "status-pill-warning"}`}>
-                    {signal.severity}
-                  </span>
-                  <span className="status-pill">{signal.status}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <FraudSignalReviewList
+          emptyText="No fraud signals are visible right now."
+          signals={snapshot.fraudSignals}
+        />
       </article>
 
       <article className="panel">

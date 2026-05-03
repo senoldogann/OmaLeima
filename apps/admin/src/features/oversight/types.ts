@@ -60,3 +60,9 @@ export type AdminOversightSnapshot = {
   fraudSignals: OversightFraudSignalRecord[];
   summary: OversightSummary;
 };
+
+export type FraudReviewSnapshot = {
+  fraudSignals: OversightFraudSignalRecord[];
+  latestFraudLimit: number;
+  openFraudSignalCount: number;
+};
