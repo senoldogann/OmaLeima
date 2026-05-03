@@ -14,12 +14,14 @@ type RegisterScannerDeviceRpcResponse =
       scannerDeviceId: string;
       label: string;
       platform: ScannerDevicePlatform;
+      pinRequired: boolean;
     }
   | {
       status: "DEVICE_REVOKED";
       scannerDeviceId: string;
       label: string;
       platform: ScannerDevicePlatform;
+      pinRequired: boolean;
     }
   | {
       status: "ACTOR_NOT_ALLOWED";
@@ -40,6 +42,7 @@ type BusinessScannerDeviceRow = {
   first_seen_at: string;
   last_seen_at: string;
   updated_at: string;
+  pin_set_at: string | null;
 };
 
 type RenameScannerDeviceRpcResponse =
@@ -62,6 +65,26 @@ type RevokeScannerDeviceRpcResponse =
       status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
     };
 
+type SetScannerDevicePinRpcResponse =
+  | {
+      status: "SUCCESS";
+      scannerDeviceId: string;
+      pinRequired: true;
+    }
+  | {
+      status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_ACTIVE" | "DEVICE_NOT_FOUND" | "PIN_INVALID_FORMAT";
+    };
+
+type ClearScannerDevicePinRpcResponse =
+  | {
+      status: "SUCCESS";
+      scannerDeviceId: string;
+      pinRequired: false;
+    }
+  | {
+      status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
+    };
+
 export type BusinessScannerDeviceSummary = {
   id: string;
   businessId: string;
@@ -72,6 +95,7 @@ export type BusinessScannerDeviceSummary = {
   firstSeenAt: string;
   lastSeenAt: string;
   updatedAt: string;
+  pinRequired: boolean;
 };
 
 export type RenameBusinessScannerDeviceParams = {
@@ -81,6 +105,17 @@ export type RenameBusinessScannerDeviceParams = {
 };
 
 export type RevokeBusinessScannerDeviceParams = {
+  businessId: string;
+  scannerDeviceId: string;
+};
+
+export type SetBusinessScannerDevicePinParams = {
+  businessId: string;
+  scannerDeviceId: string;
+  pin: string;
+};
+
+export type ClearBusinessScannerDevicePinParams = {
   businessId: string;
   scannerDeviceId: string;
 };
@@ -188,6 +223,7 @@ const isRegisterScannerDeviceRpcResponse = (value: unknown): value is RegisterSc
     (candidate.status === "SUCCESS" || candidate.status === "DEVICE_REVOKED") &&
     typeof candidate.scannerDeviceId === "string" &&
     typeof candidate.label === "string" &&
+    typeof candidate.pinRequired === "boolean" &&
     (candidate.platform === "IOS" ||
       candidate.platform === "ANDROID" ||
       candidate.platform === "WEB" ||
@@ -231,6 +267,39 @@ const isRevokeScannerDeviceRpcResponse = (value: unknown): value is RevokeScanne
   );
 };
 
+const isSetScannerDevicePinRpcResponse = (value: unknown): value is SetScannerDevicePinRpcResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (
+    candidate.status === "ACTOR_NOT_ALLOWED" ||
+    candidate.status === "DEVICE_NOT_ACTIVE" ||
+    candidate.status === "DEVICE_NOT_FOUND" ||
+    candidate.status === "PIN_INVALID_FORMAT"
+  ) {
+    return true;
+  }
+
+  return candidate.status === "SUCCESS" && typeof candidate.scannerDeviceId === "string" && candidate.pinRequired === true;
+};
+
+const isClearScannerDevicePinRpcResponse = (value: unknown): value is ClearScannerDevicePinRpcResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (candidate.status === "ACTOR_NOT_ALLOWED" || candidate.status === "DEVICE_NOT_FOUND") {
+    return true;
+  }
+
+  return candidate.status === "SUCCESS" && typeof candidate.scannerDeviceId === "string" && candidate.pinRequired === false;
+};
+
 const mapBusinessScannerDeviceRow = (row: BusinessScannerDeviceRow): BusinessScannerDeviceSummary => ({
   id: row.id,
   businessId: row.business_id,
@@ -241,6 +310,7 @@ const mapBusinessScannerDeviceRow = (row: BusinessScannerDeviceRow): BusinessSca
   firstSeenAt: row.first_seen_at,
   lastSeenAt: row.last_seen_at,
   updatedAt: row.updated_at,
+  pinRequired: row.pin_set_at !== null,
 });
 
 export const businessScannerDevicesQueryKey = (businessId: string) =>
@@ -249,7 +319,7 @@ export const businessScannerDevicesQueryKey = (businessId: string) =>
 const fetchBusinessScannerDevicesAsync = async (businessId: string): Promise<BusinessScannerDeviceSummary[]> => {
   const { data, error } = await supabase
     .from("business_scanner_devices")
-    .select("id,business_id,label,platform,status,created_by,first_seen_at,last_seen_at,updated_at")
+    .select("id,business_id,label,platform,status,created_by,first_seen_at,last_seen_at,updated_at,pin_set_at")
     .eq("business_id", businessId)
     .order("status", { ascending: true })
     .order("last_seen_at", { ascending: false })
@@ -304,6 +374,48 @@ const revokeBusinessScannerDeviceAsync = async ({
   }
 };
 
+const setBusinessScannerDevicePinAsync = async ({
+  scannerDeviceId,
+  pin,
+}: SetBusinessScannerDevicePinParams): Promise<void> => {
+  const { data, error } = await supabase.rpc("set_business_scanner_device_pin", {
+    p_scanner_device_id: scannerDeviceId,
+    p_pin: pin,
+  });
+
+  if (error !== null) {
+    throw new Error(`Failed to set scanner device PIN ${scannerDeviceId}: ${error.message}`);
+  }
+
+  if (!isSetScannerDevicePinRpcResponse(data)) {
+    throw new Error(`Set scanner device PIN returned an invalid response for ${scannerDeviceId}.`);
+  }
+
+  if (data.status !== "SUCCESS") {
+    throw new Error(`Set scanner device PIN ${scannerDeviceId} failed with status ${data.status}.`);
+  }
+};
+
+const clearBusinessScannerDevicePinAsync = async ({
+  scannerDeviceId,
+}: ClearBusinessScannerDevicePinParams): Promise<void> => {
+  const { data, error } = await supabase.rpc("clear_business_scanner_device_pin", {
+    p_scanner_device_id: scannerDeviceId,
+  });
+
+  if (error !== null) {
+    throw new Error(`Failed to clear scanner device PIN ${scannerDeviceId}: ${error.message}`);
+  }
+
+  if (!isClearScannerDevicePinRpcResponse(data)) {
+    throw new Error(`Clear scanner device PIN returned an invalid response for ${scannerDeviceId}.`);
+  }
+
+  if (data.status !== "SUCCESS") {
+    throw new Error(`Clear scanner device PIN ${scannerDeviceId} failed with status ${data.status}.`);
+  }
+};
+
 export const registerBusinessScannerDeviceAsync = async ({
   businessId,
   businessName,
@@ -338,6 +450,7 @@ export const registerBusinessScannerDeviceAsync = async ({
     scannerDeviceId: data.scannerDeviceId,
     label: data.label,
     platform: data.platform,
+    pinRequired: data.pinRequired,
   };
 };
 
@@ -380,6 +493,40 @@ export const useRevokeBusinessScannerDeviceMutation = (): UseMutationResult<
 
   return useMutation({
     mutationFn: async (params) => revokeBusinessScannerDeviceAsync(params),
+    onSuccess: async (_, params) => {
+      await queryClient.invalidateQueries({
+        queryKey: businessScannerDevicesQueryKey(params.businessId),
+      });
+    },
+  });
+};
+
+export const useSetBusinessScannerDevicePinMutation = (): UseMutationResult<
+  void,
+  Error,
+  SetBusinessScannerDevicePinParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params) => setBusinessScannerDevicePinAsync(params),
+    onSuccess: async (_, params) => {
+      await queryClient.invalidateQueries({
+        queryKey: businessScannerDevicesQueryKey(params.businessId),
+      });
+    },
+  });
+};
+
+export const useClearBusinessScannerDevicePinMutation = (): UseMutationResult<
+  void,
+  Error,
+  ClearBusinessScannerDevicePinParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params) => clearBusinessScannerDevicePinAsync(params),
     onSuccess: async (_, params) => {
       await queryClient.invalidateQueries({
         queryKey: businessScannerDevicesQueryKey(params.businessId),

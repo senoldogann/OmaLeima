@@ -5,36 +5,36 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/scanner-device-management`
-- **Goal:** Let business operators see, rename, and revoke scanner devices without weakening scan security.
+- **Branch:** `feature/scanner-staff-pin`
+- **Goal:** Add optional scanner staff PINs that are enforced by the backend during QR scans.
 
 ## Architectural Decisions
 
-- Keep direct SELECT reads for `business_scanner_devices`; the existing RLS policy already limits rows to business staff.
-- Add `rename_business_scanner_device` as a `security definer` RPC that permits the device creator or business manager to update the label.
-- Add `revoke_business_scanner_device` as a manager-only RPC so scanner-role staff cannot remove other operators' devices.
-- Update `register_business_scanner_device` so a revoked installation returns `DEVICE_REVOKED` instead of silently becoming active again.
-- Preserve manually renamed scanner labels when the same installation checks in again.
-- Add the mobile surface to business profile, not the scanner screen, so the event-day scanner stays focused.
-- Replace the stale `scan_stamp_atomic` reward unlock block with the current `reward_tiers.status = 'ACTIVE'` model and remove writes to non-existent event registration cache columns.
-- Keep staff PIN as the next dedicated slice; enforcing a PIN correctly needs separate UX, hashing/storage, and scan RPC validation.
+- Store PIN hashes in `business_scanner_device_pins`, not in the staff-readable device registry table.
+- Add `pin_set_at` to `business_scanner_devices` as non-sensitive UI state.
+- Use `crypt()` / `gen_salt('bf')` from `pgcrypto` for PIN hashing.
+- Add `set_business_scanner_device_pin` and `clear_business_scanner_device_pin` RPCs for the device creator or business manager.
+- Extend `register_business_scanner_device` to return `pinRequired` so the scanner knows whether to prompt.
+- Extend `scan_stamp_atomic` with `p_scanner_pin` and return `SCANNER_PIN_REQUIRED` / `SCANNER_PIN_INVALID` when needed.
+- Pass `scannerPin` through mobile scanner transport and edge function validation.
+- Keep PIN UX compact: setup lives in business profile device cards; scanner screen shows one numeric field only when required.
 
 ## Edge Cases
 
-- Revoked current device opens scanner again: registration returns a clear error and scan submission remains blocked.
-- Scanner-role staff renames the device they created: allowed.
-- Scanner-role staff tries to revoke a device: denied by RPC.
-- Owner/manager revokes a stale device: later scans using that device fail with `SCANNER_DEVICE_NOT_ALLOWED`.
-- Empty or too-long labels: RPC rejects empty labels and truncates overly long labels to the existing 80 character limit.
-- Reward tier unlock after a successful scan: returns newly unlocked active reward tiers without auto-inserting invalid reward claims.
-- Event completion after a successful scan: sets `completed_at` when the valid stamp count reaches `minimum_stamps_required`.
+- Device has no PIN: scan behaves exactly as before.
+- Device has PIN and scanner sends empty PIN: scan returns `SCANNER_PIN_REQUIRED`.
+- Device has PIN and scanner sends wrong PIN: scan returns `SCANNER_PIN_INVALID`.
+- Device has PIN and scanner sends correct PIN: existing QR/device/event checks continue normally.
+- Scanner role sets PIN on its own device: allowed.
+- Business manager sets or clears PIN on any business device: allowed.
+- PIN format: 4-8 digits, practical for event-day staff and explicit enough for validation.
 
 ## Ordered Follow-Up Queue
 
-1. Add staff PIN setup and scan-time PIN verification.
-2. Add admin/club fraud review actions for `SCANNER_DISTANCE_ANOMALY`.
-3. Add typed event rules builder for leima quotas and venue-specific limits.
-4. Add announcement/push opt-in/read-receipt model.
+1. Add admin/club fraud review actions for `SCANNER_DISTANCE_ANOMALY`.
+2. Add typed event rules builder for leima quotas and venue-specific limits.
+3. Add announcement/push opt-in/read-receipt model.
+4. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
 
 ## Validation Plan
 
