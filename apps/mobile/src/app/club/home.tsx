@@ -96,6 +96,7 @@ export default function ClubHomeScreen() {
           : "Once the club creates an event, its status appears here.",
       clubsTitle: language === "fi" ? "Klubit" : "Clubs",
       eventsTitle: language === "fi" ? "Seuraavat tapahtumat" : "Next events",
+      openUpcoming: language === "fi" ? "Avaa Tulossa" : "Open Upcoming",
       live: language === "fi" ? "Käynnissä" : "Live",
       upcoming: language === "fi" ? "Tulossa" : "Upcoming",
       participants: language === "fi" ? "Osallistujat" : "Participants",
@@ -293,33 +294,49 @@ export default function ClubHomeScreen() {
           </InfoCard>
 
           <InfoCard eyebrow={labels.upcoming} title={labels.eventsTitle}>
-            <View style={styles.eventList}>
+            <View style={styles.sectionHeaderAction}>
+              <Text style={styles.bodyText}>
+                {language === "fi"
+                  ? "Selaa julkaistuja, luonnoksia ja päättyneitä tapahtumia ajan mukaan."
+                  : "Browse published, draft, and completed events by time."}
+              </Text>
+              <Pressable onPress={() => router.push("/club/upcoming")} style={styles.textButton}>
+                <Text style={styles.textButtonText}>{labels.openUpcoming}</Text>
+                <AppIcon color={theme.colors.lime} name="chevron-right" size={16} />
+              </Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventRail}>
               {events.map((event) => {
                 const badge = getTimelineBadge(event.timelineState, labels.status);
                 const timeLabel = event.timelineState === "LIVE" ? labels.ends : labels.starts;
 
                 return (
-                  <View key={event.eventId} style={styles.eventRow}>
-                    <View style={styles.eventHeaderRow}>
-                      <View style={styles.eventTitleGroup}>
-                        <Text numberOfLines={1} style={styles.eventTitle}>
+                  <CoverImageSurface
+                    key={event.eventId}
+                    source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
+                    style={styles.eventCard}
+                  >
+                    <View style={styles.eventCardOverlay} />
+                    <View style={styles.eventCardContent}>
+                      <View style={styles.eventHeaderRow}>
+                        <Text numberOfLines={1} style={styles.eventCardTitle}>
                           {event.name}
                         </Text>
-                        <Text numberOfLines={1} style={styles.eventMeta}>
-                          {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
-                        </Text>
+                        <StatusBadge label={badge.label} state={badge.state} />
                       </View>
-                      <StatusBadge label={badge.label} state={badge.state} />
+                      <Text numberOfLines={1} style={styles.eventCardMeta}>
+                        {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
+                      </Text>
+                      <View style={styles.eventMetricRow}>
+                        <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
+                        <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
+                        <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
+                      </View>
                     </View>
-                    <View style={styles.eventMetricRow}>
-                      <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
-                      <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
-                      <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
-                    </View>
-                  </View>
+                  </CoverImageSurface>
                 );
               })}
-            </View>
+            </ScrollView>
           </InfoCard>
         </>
       ) : null}
@@ -380,8 +397,35 @@ const createStyles = (theme: MobileTheme) =>
       gap: 10,
       justifyContent: "space-between",
     },
-    eventList: {
+    eventCard: {
+      borderRadius: theme.radius.scene,
+      minHeight: 220,
+      overflow: "hidden",
+      position: "relative",
+      width: 282,
+    },
+    eventCardContent: {
+      flex: 1,
       gap: 10,
+      justifyContent: "flex-end",
+      padding: 16,
+    },
+    eventCardMeta: {
+      color: "rgba(255,255,255,0.78)",
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    eventCardOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    eventCardTitle: {
+      color: "#FFFFFF",
+      flex: 1,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     eventMeta: {
       color: theme.colors.textMuted,
@@ -400,13 +444,9 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
     },
-    eventRow: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
-      borderWidth: theme.mode === "light" ? 1 : 0,
+    eventRail: {
       gap: 10,
-      padding: 14,
+      paddingRight: 4,
     },
     eventTitle: {
       color: theme.colors.textPrimary,
@@ -533,6 +573,9 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 10,
     },
+    sectionHeaderAction: {
+      gap: 12,
+    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
@@ -580,5 +623,18 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
+    },
+    textButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      gap: 6,
+      minHeight: 34,
+    },
+    textButtonText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
   });

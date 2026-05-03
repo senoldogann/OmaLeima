@@ -12,6 +12,7 @@ import {
 } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { useJoinEventMutation } from "@/features/events/student-event-detail";
 import { useStudentEventsQuery } from "@/features/events/student-events";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -36,6 +37,7 @@ export default function StudentEventsScreen() {
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
   });
+  const joinMutation = useJoinEventMutation();
 
   const activeEvents = useMemo(
     () => eventsQuery.data?.activeEvents ?? [],
@@ -86,6 +88,17 @@ export default function StudentEventsScreen() {
     router.push({
       pathname: "/student/events/[eventId]",
       params: { eventId },
+    });
+  };
+
+  const joinEventFromCard = async (eventId: string): Promise<void> => {
+    if (studentId === null) {
+      return;
+    }
+
+    await joinMutation.mutateAsync({
+      eventId,
+      studentId,
     });
   };
 
@@ -149,6 +162,16 @@ export default function StudentEventsScreen() {
         </View>
       ) : null}
 
+      {joinMutation.error ? (
+        <View style={styles.messageCard}>
+          <Text style={styles.messageEyebrow}>{copy.common.error}</Text>
+          <Text style={styles.messageTitle}>
+            {language === "fi" ? "Liittyminen epäonnistui" : "Could not join event"}
+          </Text>
+          <Text style={styles.bodyText}>{joinMutation.error.message}</Text>
+        </View>
+      ) : null}
+
       {!eventsQuery.isLoading && !eventsQuery.error && !hasEvents ? (
         <View style={styles.messageCard}>
           <Text style={styles.messageEyebrow}>{copy.common.standby}</Text>
@@ -169,8 +192,10 @@ export default function StudentEventsScreen() {
           {activeEvents.map((event, index) => (
             <EventCard
               event={event}
+              isJoinPending={joinMutation.isPending}
               key={event.id}
               motionIndex={index + 1}
+              onJoinPress={() => void joinEventFromCard(event.id)}
               onPress={() => openEventDetail(event.id)}
             />
           ))}
@@ -183,8 +208,10 @@ export default function StudentEventsScreen() {
           {upcomingEvents.map((event, index) => (
             <EventCard
               event={event}
+              isJoinPending={joinMutation.isPending}
               key={event.id}
               motionIndex={activeEvents.length + index + 1}
+              onJoinPress={() => void joinEventFromCard(event.id)}
               onPress={() => openEventDetail(event.id)}
             />
           ))}

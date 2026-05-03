@@ -88,6 +88,7 @@ export default function ClubLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="home" />
       <Stack.Screen name="events" />
+      <Stack.Screen name="upcoming" />
       <Stack.Screen name="profile" />
     </Stack>
   );

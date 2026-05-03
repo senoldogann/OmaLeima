@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `bug/scanner-location-type-erasure`
-- **Scope:** Make the business scanner route independent from every route-load reference to `expo-location` so older iOS dev builds do not crash before rendering.
+- **Branch:** `feature/mobile-club-event-creation-polish`
+- **Scope:** Improve mobile organizer event creation around real appro operations: phone cover upload, clearer date/time editing, create-time status, organizer upcoming navigation, and public student join CTA.
 
 ## Affected Files
 
@@ -14,21 +14,31 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/app/club/events.tsx`
+- `apps/mobile/src/app/club/home.tsx`
+- `apps/mobile/src/app/club/upcoming.tsx`
+- `apps/mobile/src/app/club/_layout.tsx`
+- `apps/mobile/src/features/club/club-event-media.ts`
+- `apps/mobile/src/features/club/club-event-mutations.ts`
+- `apps/mobile/src/features/events/components/event-card.tsx`
+- `supabase/migrations/*_event_media_storage.sql`
 
 ## Existing Logic Checked
 
-- `scanner.tsx` no longer has a value import for `expo-location`, but it still had a `typeof import("expo-location")` type alias in the route module.
-- Metro/Babel can still surface native-module resolution issues in dev-client bundles when a route keeps module-level references to a missing native dependency.
-- Location proof is optional telemetry; scanning must continue without it.
-- `app.config.ts` already includes the location plugin for rebuilt dev builds.
+- Mobile club event creation already exists in `apps/mobile/src/app/club/events.tsx`, but cover media is a raw URL field and date/time fields are raw local datetime strings.
+- `expo-image-picker` is already used for business media, so event cover upload can reuse the existing native dependency pattern.
+- Supabase Storage currently has a `business-media` bucket only; event covers need a club-scoped bucket/policy instead of overloading business media paths.
+- Create mutation calls `create_club_event_atomic`, which creates drafts; create-time status needs a post-create status update when organizer explicitly chooses published/active.
+- Student event cards already know registration state and route to details; adding a direct public join CTA requires wiring the existing join mutation rather than duplicating backend logic blindly.
 
 ## Risks
 
-- The route must not import, type-import, or otherwise evaluate `expo-location` at module load time.
-- Pressing the location proof button on an old dev build should show a recoverable error, not crash the scanner.
-- Rebuilt dev builds should still use native location proof normally.
+- Storage policies must restrict organizer uploads to clubs they manage.
+- Date/time UX must still produce the existing `YYYY-MM-DDTHH:mm` values expected by current parser/RPC.
+- Create-time status must not bypass RLS or allow completed/cancelled states.
+- New event join CTA must avoid showing the wrong action for already joined, private, cancelled, or closed events.
+- Mobile changes must not require adding a new native module to the already installed dev build.
 
 ## Review Outcome
 
-Keep `expo-location` fully inside the optional native location proof function and remove route-level type references.
+Implement the organizer creation polish first, then finish the organizer upcoming page/home slider and student public join CTA in the same feature branch if validation remains green.

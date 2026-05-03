@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
+import { pickClubEventCoverAsync, uploadClubEventCoverAsync } from "@/features/club/club-event-media";
 import {
   useCancelClubEventMutation,
   useCreateClubEventMutation,
   useUpdateClubEventMutation,
 } from "@/features/club/club-event-mutations";
+import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
 import type {
   ClubDashboardEventSummary,
   ClubEventEditableStatus,
@@ -23,24 +26,42 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
-type EditableField = keyof Pick<
+type TextEditableField = keyof Pick<
   ClubEventFormDraft,
   | "city"
-  | "coverImageUrl"
   | "description"
-  | "endAt"
-  | "joinDeadlineAt"
   | "maxParticipants"
   | "minimumStampsRequired"
   | "name"
-  | "startAt"
 >;
 
+type DateTimeField = keyof Pick<ClubEventFormDraft, "endAt" | "joinDeadlineAt" | "startAt">;
+
 type FieldConfig = {
-  field: EditableField;
+  field: TextEditableField;
   label: string;
   multiline: boolean;
   placeholder: string;
+};
+
+type DateTimeFieldConfig = {
+  field: DateTimeField;
+  label: string;
+};
+
+type DateTimeEditorState = {
+  date: string;
+  field: DateTimeField;
+  label: string;
+  time: string;
+  visibleMonth: string;
+} | null;
+
+type CalendarDay = {
+  date: string;
+  dayLabel: string;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
 };
 
 const toLocalDateTimeInput = (value: string): string => {
@@ -116,30 +137,6 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
         : "Write the public event description for students.",
   },
   {
-    field: "coverImageUrl",
-    label: language === "fi" ? "Kansikuvan URL" : "Cover image URL",
-    multiline: false,
-    placeholder: "https://...",
-  },
-  {
-    field: "startAt",
-    label: language === "fi" ? "Alkaa" : "Starts",
-    multiline: false,
-    placeholder: "2026-09-12T18:00",
-  },
-  {
-    field: "endAt",
-    label: language === "fi" ? "Päättyy" : "Ends",
-    multiline: false,
-    placeholder: "2026-09-12T23:00",
-  },
-  {
-    field: "joinDeadlineAt",
-    label: language === "fi" ? "Ilmoittautuminen sulkeutuu" : "Join deadline",
-    multiline: false,
-    placeholder: "2026-09-12T16:00",
-  },
-  {
     field: "minimumStampsRequired",
     label: language === "fi" ? "Minimi leimat" : "Minimum stamps",
     multiline: false,
@@ -153,8 +150,73 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
   },
 ];
 
+const createDateTimeFieldConfigs = (language: "fi" | "en"): DateTimeFieldConfig[] => [
+  {
+    field: "startAt",
+    label: language === "fi" ? "Alkaa" : "Starts",
+  },
+  {
+    field: "endAt",
+    label: language === "fi" ? "Päättyy" : "Ends",
+  },
+  {
+    field: "joinDeadlineAt",
+    label: language === "fi" ? "Ilmoittautuminen sulkeutuu" : "Join deadline",
+  },
+];
+
 const canEditEvent = (event: ClubDashboardEventSummary | null): boolean =>
   event !== null && (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
+
+const splitLocalDateTime = (value: string): { date: string; time: string } => {
+  const [date = "", time = ""] = value.split("T");
+
+  return {
+    date,
+    time,
+  };
+};
+
+const buildLocalDateTime = (date: string, time: string): string => `${date.trim()}T${time.trim()}`;
+
+const formatDateInput = (date: Date): string => date.toISOString().slice(0, 10);
+
+const getMonthStartInput = (dateInput: string): string => {
+  const date = dateInput.length > 0 ? new Date(`${dateInput}T00:00:00`) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return formatDateInput(new Date());
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+};
+
+const shiftMonthInput = (monthInput: string, offset: number): string => {
+  const month = new Date(`${monthInput}T00:00:00`);
+  month.setMonth(month.getMonth() + offset);
+
+  return getMonthStartInput(formatDateInput(month));
+};
+
+const createCalendarDays = (visibleMonth: string, selectedDate: string): CalendarDay[] => {
+  const monthStart = new Date(`${visibleMonth}T00:00:00`);
+  const calendarStart = new Date(monthStart);
+  const mondayBasedDay = (monthStart.getDay() + 6) % 7;
+  calendarStart.setDate(monthStart.getDate() - mondayBasedDay);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(calendarStart);
+    day.setDate(calendarStart.getDate() + index);
+    const date = formatDateInput(day);
+
+    return {
+      date,
+      dayLabel: String(day.getDate()),
+      isCurrentMonth: day.getMonth() === monthStart.getMonth(),
+      isSelected: date === selectedDate,
+    };
+  });
+};
 
 export default function ClubEventsScreen() {
   const router = useRouter();
@@ -184,7 +246,11 @@ export default function ClubEventsScreen() {
     createNewDraft(creatableMemberships[0]?.clubId ?? "", creatableMemberships[0]?.city ?? null)
   );
   const [mode, setMode] = useState<"create" | "edit">("create");
+  const [dateTimeEditor, setDateTimeEditor] = useState<DateTimeEditorState>(null);
+  const [coverUploadError, setCoverUploadError] = useState<string | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
+  const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(localeTag, {
@@ -216,11 +282,67 @@ export default function ClubEventsScreen() {
     }
   }, [mode, selectedEvent]);
 
-  const updateDraftField = (field: EditableField, value: string): void => {
+  const updateDraftField = (field: TextEditableField, value: string): void => {
     setDraft((currentDraft) => ({
       ...currentDraft,
       [field]: value,
     }));
+  };
+
+  const openDateTimeEditor = (config: DateTimeFieldConfig): void => {
+    const parts = splitLocalDateTime(draft[config.field]);
+
+    setDateTimeEditor({
+      date: parts.date,
+      field: config.field,
+      label: config.label,
+      time: parts.time,
+      visibleMonth: getMonthStartInput(parts.date),
+    });
+  };
+
+  const handleConfirmDateTimePress = (): void => {
+    if (dateTimeEditor === null) {
+      return;
+    }
+
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      [dateTimeEditor.field]: buildLocalDateTime(dateTimeEditor.date, dateTimeEditor.time),
+    }));
+    setDateTimeEditor(null);
+  };
+
+  const handleUploadCoverPress = async (): Promise<void> => {
+    if (draft.clubId.trim().length === 0 || isUploadingCover) {
+      return;
+    }
+
+    setCoverUploadError(null);
+    setIsUploadingCover(true);
+
+    try {
+      const asset = await pickClubEventCoverAsync();
+
+      if (asset === null) {
+        setIsUploadingCover(false);
+        return;
+      }
+
+      const uploadedCover = await uploadClubEventCoverAsync({
+        asset,
+        clubId: draft.clubId,
+      });
+
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        coverImageUrl: uploadedCover.publicUrl,
+      }));
+    } catch (error) {
+      setCoverUploadError(error instanceof Error ? error.message : "Unknown event cover upload error.");
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   const handleSelectCreateMode = (): void => {
@@ -271,6 +393,38 @@ export default function ClubEventsScreen() {
     cancelMutation.error?.message ??
     null;
   const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
+  const submitButtonLabel = (() => {
+    if (isPending) {
+      return language === "fi" ? "Tallennetaan..." : "Saving...";
+    }
+
+    if (mode === "create") {
+      if (language === "fi") {
+        return draft.status === "DRAFT" ? "Luo luonnos" : "Luo tapahtuma";
+      }
+
+      return draft.status === "DRAFT" ? "Create draft" : "Create event";
+    }
+
+    return language === "fi" ? "Tallenna muutokset" : "Save changes";
+  })();
+  const calendarDays = useMemo(
+    () =>
+      dateTimeEditor === null
+        ? []
+        : createCalendarDays(dateTimeEditor.visibleMonth, dateTimeEditor.date),
+    [dateTimeEditor]
+  );
+  const monthTitle = useMemo(() => {
+    if (dateTimeEditor === null) {
+      return "";
+    }
+
+    return new Intl.DateTimeFormat(localeTag, {
+      month: "long",
+      year: "numeric",
+    }).format(new Date(`${dateTimeEditor.visibleMonth}T00:00:00`));
+  }, [dateTimeEditor, localeTag]);
 
   return (
     <AppScreen>
@@ -366,11 +520,48 @@ export default function ClubEventsScreen() {
             ) : null}
 
             <View style={styles.formStack}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>{language === "fi" ? "Kansikuva" : "Cover image"}</Text>
+                <CoverImageSurface
+                  imageStyle={styles.coverPreviewImage}
+                  source={getEventCoverSourceWithFallback(draft.coverImageUrl, "clubControl")}
+                  style={styles.coverPreview}
+                >
+                  <View style={styles.coverPreviewOverlay} />
+                  <View style={styles.coverPreviewContent}>
+                    <Text style={styles.coverPreviewTitle}>
+                      {draft.coverImageUrl.trim().length > 0
+                        ? language === "fi"
+                          ? "Kansikuva valittu"
+                          : "Cover selected"
+                        : language === "fi"
+                          ? "Lisää tapahtuman tunnelma"
+                          : "Add the event atmosphere"}
+                    </Text>
+                    <Pressable
+                      disabled={isPending || isUploadingCover || draft.clubId.trim().length === 0}
+                      onPress={() => void handleUploadCoverPress()}
+                      style={[styles.coverUploadButton, isUploadingCover ? styles.disabledButton : null]}
+                    >
+                      {isUploadingCover ? (
+                        <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" />
+                      ) : (
+                        <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={16} />
+                      )}
+                      <Text style={styles.coverUploadButtonText}>
+                        {language === "fi" ? "Valitse puhelimesta" : "Choose from phone"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </CoverImageSurface>
+                {coverUploadError !== null ? <Text style={styles.errorText}>{coverUploadError}</Text> : null}
+              </View>
+
               {fieldConfigs.map((config) => (
                 <View key={config.field} style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>{config.label}</Text>
                   <TextInput
-                    autoCapitalize={config.field === "coverImageUrl" ? "none" : "sentences"}
+                    autoCapitalize="sentences"
                     editable={!isPending && (mode === "create" || canEditEvent(selectedEvent))}
                     keyboardType={config.field === "minimumStampsRequired" || config.field === "maxParticipants" ? "number-pad" : "default"}
                     multiline={config.multiline}
@@ -383,6 +574,28 @@ export default function ClubEventsScreen() {
                   />
                 </View>
               ))}
+
+              <View style={styles.dateTimeGrid}>
+                {dateTimeFieldConfigs.map((config) => (
+                  <Pressable
+                    disabled={isPending || !(mode === "create" || canEditEvent(selectedEvent))}
+                    key={config.field}
+                    onPress={() => openDateTimeEditor(config)}
+                    style={styles.dateTimeCard}
+                  >
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <Text style={styles.dateTimeValue}>
+                      {formatDateTime(formatter, new Date(draft[config.field]).toISOString())}
+                    </Text>
+                    <View style={styles.dateTimeHintRow}>
+                      <AppIcon color={theme.colors.lime} name="calendar" size={14} />
+                      <Text style={styles.dateTimeHint}>
+                        {language === "fi" ? "Valitse päivä ja aika" : "Pick date and time"}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.optionBlock}>
@@ -400,41 +613,28 @@ export default function ClubEventsScreen() {
               </View>
             </View>
 
-            {mode === "edit" ? (
-              <View style={styles.optionBlock}>
-                <Text style={styles.fieldLabel}>Status</Text>
-                <View style={styles.optionRow}>
-                  {(["DRAFT", "PUBLISHED", "ACTIVE"] as ClubEventEditableStatus[]).map((status) => (
-                    <Pressable
-                      key={status}
-                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, status }))}
-                      style={[styles.optionChip, draft.status === status ? styles.optionChipSelected : null]}
-                    >
-                      <Text style={styles.optionChipText}>{status}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+            <View style={styles.optionBlock}>
+              <Text style={styles.fieldLabel}>Status</Text>
+              <View style={styles.optionRow}>
+                {(["DRAFT", "PUBLISHED", "ACTIVE"] as ClubEventEditableStatus[]).map((status) => (
+                  <Pressable
+                    disabled={isPending || (mode === "edit" && !canEditEvent(selectedEvent))}
+                    key={status}
+                    onPress={() => setDraft((currentDraft) => ({ ...currentDraft, status }))}
+                    style={[styles.optionChip, draft.status === status ? styles.optionChipSelected : null]}
+                  >
+                    <Text style={styles.optionChipText}>{status}</Text>
+                  </Pressable>
+                ))}
               </View>
-            ) : null}
+            </View>
 
             <Pressable
               disabled={isPending || (mode === "create" && creatableMemberships.length === 0) || (mode === "edit" && !canEditEvent(selectedEvent))}
               onPress={() => void handleSubmitPress()}
               style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
             >
-              <Text style={styles.primaryButtonText}>
-                {isPending
-                  ? language === "fi"
-                    ? "Tallennetaan..."
-                    : "Saving..."
-                  : mode === "create"
-                    ? language === "fi"
-                      ? "Luo luonnos"
-                      : "Create draft"
-                    : language === "fi"
-                      ? "Tallenna muutokset"
-                      : "Save changes"}
-              </Text>
+              <Text style={styles.primaryButtonText}>{submitButtonLabel}</Text>
             </Pressable>
 
             {mode === "edit" && selectedEvent !== null && canEditEvent(selectedEvent) ? (
@@ -454,6 +654,137 @@ export default function ClubEventsScreen() {
           </InfoCard>
         </>
       ) : null}
+
+      <Modal animationType="fade" transparent visible={dateTimeEditor !== null}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
+            <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
+
+            <View style={styles.calendarHeader}>
+              <Pressable
+                onPress={() =>
+                  setDateTimeEditor((currentEditor) =>
+                    currentEditor === null
+                      ? null
+                      : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
+                  )
+                }
+                style={styles.calendarNavButton}
+              >
+                <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
+              </Pressable>
+              <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
+              <Pressable
+                onPress={() =>
+                  setDateTimeEditor((currentEditor) =>
+                    currentEditor === null
+                      ? null
+                      : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
+                  )
+                }
+                style={styles.calendarNavButton}
+              >
+                <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
+              </Pressable>
+            </View>
+
+            <View style={styles.weekdayGrid}>
+              {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
+                <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
+              ))}
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {calendarDays.map((day) => (
+                <Pressable
+                  key={day.date}
+                  onPress={() =>
+                    setDateTimeEditor((currentEditor) =>
+                      currentEditor === null
+                        ? null
+                        : {
+                            ...currentEditor,
+                            date: day.date,
+                            visibleMonth: getMonthStartInput(day.date),
+                          }
+                    )
+                  }
+                  style={[
+                    styles.calendarDay,
+                    day.isSelected ? styles.calendarDaySelected : null,
+                    day.isCurrentMonth ? null : styles.calendarDayOutside,
+                  ]}
+                >
+                  <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
+                    {day.dayLabel}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.modalFieldRow}>
+              <View style={styles.modalField}>
+                <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  keyboardType="numbers-and-punctuation"
+                  onChangeText={(date) =>
+                    setDateTimeEditor((currentEditor) =>
+                      currentEditor === null ? null : { ...currentEditor, date }
+                    )
+                  }
+                  placeholder="2026-09-12"
+                  placeholderTextColor={theme.colors.textDim}
+                  style={styles.input}
+                  value={dateTimeEditor?.date ?? ""}
+                />
+              </View>
+              <View style={styles.modalField}>
+                <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  keyboardType="numbers-and-punctuation"
+                  onChangeText={(time) =>
+                    setDateTimeEditor((currentEditor) =>
+                      currentEditor === null ? null : { ...currentEditor, time }
+                    )
+                  }
+                  placeholder="18:00"
+                  placeholderTextColor={theme.colors.textDim}
+                  style={styles.input}
+                  value={dateTimeEditor?.time ?? ""}
+                />
+              </View>
+            </View>
+
+            <View style={styles.timeChipRow}>
+              {["16:00", "18:00", "20:00", "22:00"].map((time) => (
+                <Pressable
+                  key={time}
+                  onPress={() =>
+                    setDateTimeEditor((currentEditor) =>
+                      currentEditor === null ? null : { ...currentEditor, time }
+                    )
+                  }
+                  style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
+                >
+                  <Text style={styles.timeChipText}>{time}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
+              </Pressable>
+              <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AppScreen>
   );
 }
@@ -476,8 +807,125 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    calendarDay: {
+      alignItems: "center",
+      aspectRatio: 1,
+      borderRadius: 999,
+      justifyContent: "center",
+      width: `${100 / 7}%`,
+    },
+    calendarDayOutside: {
+      opacity: 0.36,
+    },
+    calendarDaySelected: {
+      backgroundColor: theme.colors.lime,
+    },
+    calendarDayText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    calendarDayTextSelected: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+    },
+    calendarGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    calendarHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    calendarMonthTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      textTransform: "capitalize",
+    },
+    calendarNavButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      height: 38,
+      justifyContent: "center",
+      width: 38,
+    },
     disabledButton: {
       opacity: 0.62,
+    },
+    coverPreview: {
+      borderRadius: theme.radius.scene,
+      minHeight: 188,
+      overflow: "hidden",
+      position: "relative",
+    },
+    coverPreviewContent: {
+      flex: 1,
+      gap: 14,
+      justifyContent: "flex-end",
+      padding: 16,
+    },
+    coverPreviewImage: {
+      borderRadius: theme.radius.scene,
+    },
+    coverPreviewOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.46)",
+    },
+    coverPreviewTitle: {
+      color: "#F8FAF5",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    coverUploadButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 8,
+      minHeight: 42,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    coverUploadButtonText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    dateTimeCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 8,
+      padding: 14,
+    },
+    dateTimeGrid: {
+      gap: 10,
+    },
+    dateTimeHint: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    dateTimeHintRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    dateTimeValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     errorText: {
       color: theme.colors.danger,
@@ -557,6 +1005,48 @@ const createStyles = (theme: MobileTheme) =>
     optionBlock: {
       gap: 8,
     },
+    modalActions: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    modalBackdrop: {
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.72)",
+      flex: 1,
+      justifyContent: "center",
+      padding: 20,
+    },
+    modalCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.scene,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 16,
+      padding: 18,
+      width: "100%",
+    },
+    modalEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    modalField: {
+      flex: 1,
+      gap: 8,
+    },
+    modalFieldRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
     optionChip: {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
@@ -633,5 +1123,39 @@ const createStyles = (theme: MobileTheme) =>
     topBarCopy: {
       flex: 1,
       gap: 6,
+    },
+    timeChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    timeChipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    timeChipSelected: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    timeChipText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    weekdayGrid: {
+      flexDirection: "row",
+    },
+    weekdayLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+      width: `${100 / 7}%`,
     },
   });

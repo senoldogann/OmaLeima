@@ -5,33 +5,40 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `bug/scanner-location-type-erasure`
-- **Goal:** Let the business scanner route load even when the current dev build lacks the native `expo-location` module and Metro is using a stale or strict route transform.
+- **Branch:** `feature/mobile-club-event-creation-polish`
+- **Goal:** Bring mobile organizer event creation closer to real Finnish appro operations and make public events easier to join from the student event list.
 
 ## Architectural Decisions
 
-- Remove every route-level `expo-location` reference from `business/scanner.tsx`, including type-only import expressions.
-- Dynamically import `expo-location` only when native location proof is requested.
-- Treat missing native module as a recoverable optional location-proof error.
-- Keep web geolocation and rebuilt native dev builds on the same scan payload path.
+- Add an `event-media` Supabase Storage bucket with public reads and club-staff-only writes under `clubs/{clubId}/...`.
+- Add a mobile event cover picker/upload helper using existing `expo-image-picker`.
+- Replace the organizer cover URL input with upload/preview controls while preserving `coverImageUrl` in the event model.
+- Replace raw datetime text fields in the organizer form with compact date/time pressable controls that still store local datetime strings.
+- Render status chips during create and edit. For create, create the draft atomically first and then update status if the chosen status is not `DRAFT`.
+- Add a dedicated `/club/upcoming` page with status/date filters and add it to the club stack.
+- Turn organizer home event lists into horizontal rails so current/upcoming events do not become long vertical blocks.
+- Add an optional direct join button beside `Avaa tapahtuma` for public/not-registered student events using the existing join mutation.
 
 ## Edge Cases
 
-- Old dev build without `ExpoLocation`: scanner route opens; location proof button shows a clear error.
-- Rebuilt dev build with `ExpoLocation`: location proof permission and coordinates work as before.
-- Web preview: browser geolocation path is unchanged.
-- Scan without location proof: scan payload still sends null coordinates and remains valid.
+- Organizer chooses a phone image, upload succeeds, and the same cover URL is saved to the event.
+- Organizer cancels image picking and the draft remains unchanged.
+- Organizer edits start/end/join deadline through the new control and parser receives valid local datetime strings.
+- Organizer creates a published public event and the created row is updated from draft to published.
+- Student sees direct `Liity` only when the event is public and not already joined.
+- Private/unlisted or already joined events still only open details.
 
 ## Ordered Follow-Up Queue
 
-1. Restart Metro with `--clear` after this fix so the physical iPhone receives the new bundle.
-2. Rebuild the iOS dev client when native location proof needs to be exercised.
-3. Add announcement/push opt-in/read-receipt model.
-4. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
+1. Platform/organizer announcements with push opt-in/read receipts.
+2. Pass return/reward handout operations for haalarimerkki pickup.
+3. Scanner PIN reset audit review in admin/club tools if operators need central oversight.
 
 ## Validation Plan
 
 - Run:
+  - `npx supabase@2.95.4 db push --yes`
+  - `npx supabase@2.95.4 db lint --linked`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`

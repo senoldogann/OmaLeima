@@ -5,6 +5,7 @@ import type { ClubEventFormDraft } from "@/features/club/types";
 import { supabase } from "@/lib/supabase";
 
 type ClubEventMutationResult = {
+  eventId: string | null;
   message: string;
   status: string;
 };
@@ -129,6 +130,34 @@ const buildCreateMessage = (status: string): string => {
   return messages[status] ?? "Club event creation request completed.";
 };
 
+const updateCreatedEventStatusAsync = async ({
+  eventId,
+  status,
+  userId,
+}: {
+  eventId: string;
+  status: ClubEventFormDraft["status"];
+  userId: string;
+}): Promise<void> => {
+  const { data, error } = await supabase
+    .from("events")
+    .update({
+      status,
+    })
+    .eq("id", eventId)
+    .eq("status", "DRAFT")
+    .select("id,status")
+    .maybeSingle<UpdatedEventRow>();
+
+  if (error !== null) {
+    throw new Error(`Failed to set created club event ${eventId} status for ${userId}: ${error.message}`);
+  }
+
+  if (data === null) {
+    throw new Error(`Created club event ${eventId} status could not be updated for ${userId}.`);
+  }
+};
+
 const createClubEventAsync = async ({
   draft,
   userId,
@@ -157,9 +186,22 @@ const createClubEventAsync = async ({
 
   const responsePayload = data as CreateClubEventRpcPayload | null;
   const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+  const eventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status === "SUCCESS" && eventId !== null && draft.status !== "DRAFT") {
+    await updateCreatedEventStatusAsync({
+      eventId,
+      status: draft.status,
+      userId,
+    });
+  }
 
   return {
-    message: buildCreateMessage(status),
+    eventId,
+    message:
+      status === "SUCCESS" && draft.status !== "DRAFT"
+        ? "Event created and published successfully."
+        : buildCreateMessage(status),
     status,
   };
 };
@@ -199,12 +241,14 @@ const updateClubEventAsync = async ({
 
   if (data === null) {
     return {
+      eventId: null,
       message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
       status: "EVENT_UPDATE_NOT_ALLOWED",
     };
   }
 
   return {
+    eventId: data.id,
     message: "Event updated successfully.",
     status: "SUCCESS",
   };
@@ -230,12 +274,14 @@ const cancelClubEventAsync = async ({
 
   if (data === null) {
     return {
+      eventId: null,
       message: "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account.",
       status: "EVENT_CANCEL_NOT_ALLOWED",
     };
   }
 
   return {
+    eventId: data.id,
     message: "Event cancelled without deleting operational history.",
     status: "SUCCESS",
   };
