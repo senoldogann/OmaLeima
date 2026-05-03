@@ -5,25 +5,23 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/announcement-push-followers`
-- **Goal:** Let admins and club organizers send already-published announcements as real Expo push notifications with delivery records.
+- **Branch:** `feature/club-event-sorting-polish`
+- **Goal:** Keep organizer event lists readable by always placing live/upcoming/newer future events before completed history.
 
 ## Architectural Decisions
 
-- Add `send-announcement-push` Edge Function using the existing Expo push helper and service-role Supabase client.
-- Use audience-aware recipient selection from active profiles, business staff, club staff, and club event registrations.
-- Insert `notifications` rows with `type = ANNOUNCEMENT` and delivery result payloads.
-- Add `/api/announcements/send-push` route so the web panel can trigger the function with the current authenticated session.
-- Add a send-push button to the announcement list.
-- Keep user-facing follow/subscription preference UI as a separate next slice.
+- Create a typed `sortClubEventsForOrganizer` helper near the club feature read model.
+- Status priority: LIVE, UPCOMING, DRAFT, CANCELLED, COMPLETED.
+- Within active/future statuses, sort by nearest start date first.
+- Within completed/cancelled history, sort newest start date first while keeping them after active/future statuses.
+- Use the helper before rendering Club Home live rail, next-events rail, and Club Upcoming results.
 
 ## Edge Cases
 
-- Draft/archived/inactive announcements must not send.
-- Announcement pushes must not send twice once successful delivery records exist.
-- If no enabled device tokens exist, return a clear no-recipient status.
-- Partial push failures should still record per-user notification outcomes.
-- Club-scoped audience `STUDENTS` targets registered students from that club's events.
+- `COMPLETED` filter must still show completed events even though they normally sit last.
+- `ALL` view must not mix completed events ahead of upcoming events.
+- Empty lists and preview modal behavior should remain unchanged.
+- Sorting must copy arrays before `.sort`.
 
 ## Ordered Follow-Up Queue
 
@@ -37,9 +35,5 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
-  - `npm --prefix apps/admin run typecheck`
-  - `npm --prefix apps/admin run lint`
-  - `npm --prefix apps/admin run build`
-  - `npx supabase@2.95.4 functions deploy send-announcement-push`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

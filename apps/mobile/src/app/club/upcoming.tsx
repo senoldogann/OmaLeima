@@ -9,6 +9,7 @@ import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
+import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -122,11 +123,11 @@ export default function ClubUpcomingScreen() {
 
   const events = useMemo(() => {
     const sourceEvents = dashboardQuery.data?.events ?? [];
-
-    return sourceEvents
+    const filteredEvents = sourceEvents
       .filter((event) => statusFilter === "ALL" || event.timelineState === statusFilter)
-      .filter((event) => isInsideDateFilter(event, dateFilter))
-      .sort((leftEvent, rightEvent) => new Date(leftEvent.startAt).getTime() - new Date(rightEvent.startAt).getTime());
+      .filter((event) => isInsideDateFilter(event, dateFilter));
+
+    return sortClubEventsForOrganizer(filteredEvents);
   }, [dashboardQuery.data?.events, dateFilter, statusFilter]);
 
   const handleEditPreviewEventPress = (eventId: string): void => {

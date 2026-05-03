@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/club-event-sorting-polish`
+- **Yapılan iş:** Organizer tarafındaki event sıralaması düzeltildi. Yeni ortak `sortClubEventsForOrganizer` helper'ı eklendi; `LIVE`, `UPCOMING`, `DRAFT`, `CANCELLED`, `COMPLETED` önceliğiyle sıralıyor. Aktif/gelecek eventlerde en yakın başlangıç öne geliyor, `Päättynyt/COMPLETED` ve iptal edilmiş eventler listenin sonuna düşüyor ve kendi içinde en yeni geçmiş en üstte kalıyor. Club Home slider/rail ve `/club/upcoming` filtreli listesi artık aynı sıralama mantığını kullanıyor. Tulossa'daki `Päättynyt` filtresinin zaten mevcut olduğu doğrulandı.
+- **Neden yapıldı:** Kullanıcı organizer sayfasında bitmiş eventlerin en sonda kalmasını, yeni ve gelecekteki eventlerin önde görünmesini, bunun Tulossa ve slider alanlarında tutarlı olmasını istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone'da organizer hesabıyla Club Home ve Tulossa ekranlarında birkaç aktif/upcoming/completed event ile görsel sıralama smoke'u alınmalı. Sonraki feature slice: announcement follow/subscription preferences ve read receipt analytics.
+- **Açık risk/blokaj:** Bu slice sadece client-side render sıralamasını düzeltir; backend dashboard query limiti ileride çok fazla event olduğunda geçmiş eventlerin payload içinde yer kaplamasına neden olabilir. Gerekirse sonraki performans slice'ında dashboard query status/time aware hale getirilmeli. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/announcement-push-followers`
 - **Yapılan iş:** Duyuru push delivery slice'i tamamlandı. `send-announcement-push` Edge Function eklendi ve remote Supabase'e deploy edildi. Function published/aktif duyuruları platform admin veya ilgili kulüp owner/organizer yetkisiyle gönderiyor, audience'a göre alıcıları seçiyor, Expo push helper ile batch gönderim yapıyor, her kullanıcı için `notifications(type='ANNOUNCEMENT')` delivery row'u ve audit log yazıyor. Admin/club web duyuru kartlarına `Send push` aksiyonu, `/api/announcements/send-push` route'u ve client transport eklendi. Tekrar gönderim, aynı announcement için başarılı notification kaydı varsa `ANNOUNCEMENT_ALREADY_SENT` ile bloklanıyor.
 - **Neden yapıldı:** Bir önceki slice in-app popup duyuru kaynağını kurmuştu. Kullanıcı duyuruların telefona bildirim olarak da gitmesini istediği için sıradaki mantıklı adım, gerçek push fan-out ve teslimat kayıtlarıydı.
