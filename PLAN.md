@@ -5,24 +5,24 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/business-manage-event-rail-preview`
-- **Goal:** Make business event management visually scannable and ensure all public joinable events are discoverable.
+- **Branch:** `feature/scanner-camera-events-preview-polish`
+- **Goal:** Fix scanner native camera permission, remove impossible manual token scanning, and show event details in a pop-up before deeper navigation.
 
 ## Architectural Decisions
 
-- Keep `useBusinessHomeOverviewQuery` as the shared source for business home/events/scanner.
-- Fetch joinable opportunities globally instead of by business city, because joining rules are enforced by RPC and city is a product hint, not a security rule.
-- Preserve deduplication by `businessId:eventId` so events already joined by the business do not appear in joinable opportunities.
-- Add event cover and description to business joined/opportunity summaries so UI cards and preview modal use the same event asset everywhere.
-- Use horizontal rails for live/upcoming/joinable/past sections; use a modal for full event details.
+- Add `NSCameraUsageDescription` directly to `ios.infoPlist` so iOS native camera service metadata is present even when plugin mutation is not enough for a given dev build.
+- Keep camera scanning as the only business scanner input path; QR token typing is not a realistic event-day workflow.
+- Update timeout copy to tell staff to retry with a fresh scan instead of suggesting manual fallback.
+- Add a student event preview modal fed by the existing `StudentEventSummary` data and shared cover fallback helpers.
+- Preserve the current detail route behind an explicit modal action for users who want the full event screen.
 
 ## Edge Cases
 
-- Joinable events outside the business city display their city on the card and modal.
-- A live joined event keeps scanner/history actions.
-- An upcoming joined event keeps leave action.
-- A past joined event is visible but read-only.
-- An event without a cover or description uses fallback imagery and a clear empty description sentence.
+- Existing dev clients need a native rebuild before the new camera permission string appears.
+- If camera permission is denied, the existing permission CTA remains the only recovery path.
+- If an event has no uploaded cover, preview and cards render a themed fallback image.
+- If a student is not registered, joining is still a separate button press and never triggered by opening the modal.
+- If event description is missing, the preview shows a clear empty-state sentence.
 
 ## Validation Plan
 

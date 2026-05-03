@@ -19,6 +19,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     icon: "./assets/expo.icon",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      NSCameraUsageDescription: "OmaLeima uses the camera to scan student QR codes during events.",
     },
   },
   android: {
