@@ -68,8 +68,6 @@ type ScannerDeviceState =
       status: "error";
     };
 
-type ExpoLocationModule = typeof import("expo-location");
-
 const emptyScannerLocation = {
   latitude: null,
   longitude: null,
@@ -117,11 +115,9 @@ const readWebScannerLocationAsync = (): Promise<ScannerLocationPayload> =>
   });
 
 const readNativeScannerLocationAsync = async (): Promise<ScannerLocationPayload> => {
-  let Location: ExpoLocationModule;
+  const Location = await import("expo-location").catch(() => null);
 
-  try {
-    Location = await import("expo-location");
-  } catch {
+  if (Location === null) {
     throw new Error("Location proof requires a dev build that includes expo-location. Rebuild the app or continue without location proof.");
   }
 
