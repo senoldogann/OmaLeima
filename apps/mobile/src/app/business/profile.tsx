@@ -191,6 +191,8 @@ export default function BusinessProfileScreen() {
   const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
+  const activeJoinedEventCount = homeOverviewQuery.data?.joinedActiveEvents.length ?? 0;
+  const upcomingJoinedEventCount = homeOverviewQuery.data?.joinedUpcomingEvents.length ?? 0;
   const scannerDeviceTimeFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(language === "fi" ? "fi-FI" : "en-US", {
@@ -451,6 +453,36 @@ export default function BusinessProfileScreen() {
           ) : null}
           {mediaError ? <Text style={styles.errorText}>{mediaError}</Text> : null}
 
+          <InfoCard
+            eyebrow={language === "fi" ? "Tapahtumat" : "Events"}
+            title={language === "fi" ? "Skannerin työvuoro" : "Scanner workflow"}
+          >
+            <Text style={styles.bodyText}>
+              {language === "fi"
+                ? "Tapahtumiin liittyminen ja skannerin avaaminen tehdään tapahtumanäkymässä. Skannerirooli voi skannata liittyneissä tapahtumissa, mutta yritysprofiilia muokkaavat owner ja manager."
+                : "Join events and open the scanner from the event view. Scanner role can scan joined events, while owner and manager edit the business profile."}
+            </Text>
+            <View style={styles.quickActionRow}>
+              <Pressable onPress={() => router.push("/business/events")} style={[styles.primaryButton, styles.quickActionButton]}>
+                <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={16} />
+                <Text style={styles.primaryButtonText}>
+                  {language === "fi"
+                    ? `Tapahtumat (${upcomingJoinedEventCount})`
+                    : `Events (${upcomingJoinedEventCount})`}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(activeJoinedEventCount > 0 ? "/business/scanner" : "/business/events")}
+                style={[styles.secondaryButton, styles.quickActionButton]}
+              >
+                <AppIcon color={theme.colors.textPrimary} name="scan" size={16} />
+                <Text style={styles.secondaryButtonText}>
+                  {activeJoinedEventCount > 0 ? copy.business.openScanner : copy.business.manageEvents}
+                </Text>
+              </Pressable>
+            </View>
+          </InfoCard>
+
           {memberships.length > 1 ? (
             <View style={styles.businessSwitchRow}>
               {memberships.map((membership) => {
@@ -487,7 +519,11 @@ export default function BusinessProfileScreen() {
                     onChangeText={(value) => updateDraftField(config.field, value)}
                     placeholder={config.placeholder}
                     placeholderTextColor={theme.colors.textDim}
-                    style={[styles.input, config.multiline ? styles.textArea : null]}
+                    style={[
+                      styles.input,
+                      config.multiline ? styles.textArea : null,
+                      !canEditSelectedMembership ? styles.readOnlyInput : null,
+                    ]}
                     textAlignVertical={config.multiline ? "top" : "center"}
                     value={draft[config.field]}
                   />
@@ -1166,6 +1202,18 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    quickActionButton: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+    },
+    quickActionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    readOnlyInput: {
+      opacity: 0.64,
     },
     screenTitle: {
       color: theme.colors.textPrimary,

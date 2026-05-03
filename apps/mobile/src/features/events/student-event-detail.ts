@@ -60,6 +60,14 @@ type BusinessRow = {
   id: string;
   name: string;
   city: string;
+  logo_url: string | null;
+  cover_image_url: string | null;
+};
+
+type StampRow = {
+  business_id: string;
+  scanned_at: string;
+  validation_status: "VALID" | "MANUAL_REVIEW" | "REVOKED";
 };
 
 type UseStudentEventDetailQueryParams = {
@@ -162,12 +170,28 @@ const fetchBusinessesAsync = async (businessIds: string[]): Promise<BusinessRow[
 
   const { data, error } = await supabase
     .from("businesses")
-    .select("id,name,city")
+    .select("id,name,city,logo_url,cover_image_url")
     .in("id", businessIds)
     .returns<BusinessRow[]>();
 
   if (error !== null) {
     throw new Error(`Failed to load businesses for event venues: ${error.message}`);
+  }
+
+  return data;
+};
+
+const fetchStudentVenueStampsAsync = async (eventId: string, studentId: string): Promise<StampRow[]> => {
+  const { data, error } = await supabase
+    .from("stamps")
+    .select("business_id,scanned_at,validation_status")
+    .eq("event_id", eventId)
+    .eq("student_id", studentId)
+    .in("validation_status", ["VALID", "MANUAL_REVIEW"])
+    .returns<StampRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load venue stamp state for event ${eventId} and student ${studentId}: ${error.message}`);
   }
 
   return data;
@@ -185,11 +209,17 @@ const mapRewardTiers = (rows: RewardTierRow[]): RewardTierSummary[] =>
     claimInstructions: row.claim_instructions,
   }));
 
-const mapVenues = (rows: EventVenueRow[], businesses: BusinessRow[]): EventVenueSummary[] => {
+const mapVenues = (
+  rows: EventVenueRow[],
+  businesses: BusinessRow[],
+  stamps: StampRow[]
+): EventVenueSummary[] => {
   const businessById = new Map(businesses.map((business) => [business.id, business]));
+  const stampByBusinessId = new Map(stamps.map((stamp) => [stamp.business_id, stamp]));
 
   return rows.flatMap((row) => {
     const business = businessById.get(row.business_id);
+    const stamp = stampByBusinessId.get(row.business_id) ?? null;
 
     if (typeof business === "undefined") {
       return [];
@@ -201,9 +231,13 @@ const mapVenues = (rows: EventVenueRow[], businesses: BusinessRow[]): EventVenue
         businessId: row.business_id,
         name: business.name,
         city: business.city,
+        logoUrl: business.logo_url,
+        coverImageUrl: business.cover_image_url,
         venueOrder: row.venue_order,
         stampLabel: row.stamp_label,
         customInstructions: row.custom_instructions,
+        stampStatus: stamp === null ? "PENDING" : "COLLECTED",
+        stampedAt: stamp?.scanned_at ?? null,
       },
     ];
   });
@@ -221,7 +255,10 @@ export const fetchStudentEventDetailAsync = async (
   ]);
 
   const businessIds = Array.from(new Set(eventVenueLinks.map((row) => row.business_id)));
-  const businesses = await fetchBusinessesAsync(businessIds);
+  const [businesses, stamps] = await Promise.all([
+    fetchBusinessesAsync(businessIds),
+    fetchStudentVenueStampsAsync(eventId, studentId),
+  ]);
 
   return {
     id: event.id,
@@ -240,7 +277,7 @@ export const fetchStudentEventDetailAsync = async (
     minimumStampsRequired: event.minimum_stamps_required,
     rules: event.rules,
     registrationState: deriveRegistrationState(registration),
-    venues: mapVenues(eventVenueLinks, businesses),
+    venues: mapVenues(eventVenueLinks, businesses, stamps),
     rewardTiers: mapRewardTiers(rewardTiers),
   };
 };
