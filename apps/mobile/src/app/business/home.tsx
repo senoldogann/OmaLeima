@@ -78,6 +78,7 @@ export default function BusinessHomeScreen() {
       upcomingStarts: language === "fi" ? "Alkaa" : "Starts",
       completedEnded: language === "fi" ? "Päättyi" : "Ended",
       completedStatus: language === "fi" ? "Päättynyt" : "Completed",
+      past: language === "fi" ? "Menneet" : "Past",
       historyShort: language === "fi" ? "Historia" : "History",
     }),
     [copy.business.joinedEvents, language]
@@ -90,7 +91,8 @@ export default function BusinessHomeScreen() {
 
   const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
-  const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents];
+  const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
+  const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
     setSignOutError(null);
@@ -142,6 +144,10 @@ export default function BusinessHomeScreen() {
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{copy.business.upcoming}</Text>
             <Text style={styles.summaryValue}>{joinedUpcomingEvents.length}</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>{labels.past}</Text>
+            <Text style={styles.summaryValue}>{joinedCompletedEvents.length}</Text>
           </View>
         </View>
       ) : null}

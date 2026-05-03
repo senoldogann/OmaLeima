@@ -212,6 +212,12 @@ export default function BusinessEventsScreen() {
         language === "fi"
           ? "Liitetyissä kaupungeissa ei ole juuri nyt avoimia julkisia tapahtumia."
           : "No joinable public event is visible in the linked business cities right now.",
+      pastJoinedTitle: language === "fi" ? "Aiemmat tapahtumat" : "Past joined events",
+      pastJoinedEmptyBody:
+        language === "fi"
+          ? "Tällä yrityksellä ei ole vielä päättyneitä liittyneitä tapahtumia."
+          : "This business does not have past joined events yet.",
+      endedAt: language === "fi" ? "Päättyi" : "Ended",
       openScanner: copy.business.openScanner,
       openHistory: copy.business.history,
       leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",
@@ -232,6 +238,7 @@ export default function BusinessEventsScreen() {
 
   const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const upcomingJoinedEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
+  const completedJoinedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
   const cityOpportunities = homeOverviewQuery.data?.cityOpportunities ?? [];
 
   const activeJoinKey = joinMutation.variables
@@ -421,6 +428,30 @@ export default function BusinessEventsScreen() {
           )}
         </InfoCard>
       ) : null}
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <InfoCard eyebrow={copy.business.history} title={labels.pastJoinedTitle}>
+          {completedJoinedEvents.length === 0 ? (
+            <Text style={styles.bodyText}>{labels.pastJoinedEmptyBody}</Text>
+          ) : (
+            <View style={styles.stack}>
+              {completedJoinedEvents.map((event) => (
+                <View key={event.eventVenueId} style={styles.rowCard}>
+                  <View style={styles.eventStatusRow}>
+                    <Text style={styles.cardTitle}>{event.eventName}</Text>
+                    <StatusBadge label={language === "fi" ? "Päättynyt" : "Completed"} state="warning" />
+                  </View>
+                  <Text style={styles.metaText}>{createEventMeta(event, formatter, language)}</Text>
+                  <Text style={styles.metaText}>
+                    {labels.endedAt} {formatDateTime(formatter, event.endAt)}
+                    {event.stampLabel ? ` · ${event.stampLabel}` : ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </InfoCard>
+      ) : null}
     </AppScreen>
   );
 }
@@ -467,6 +498,12 @@ const createStyles = (theme: MobileTheme) =>
     feedbackRow: {
       alignItems: "flex-start",
       gap: 8,
+    },
+    eventStatusRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "space-between",
     },
     metaText: {
       color: theme.colors.textMuted,

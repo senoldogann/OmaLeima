@@ -53,6 +53,7 @@ export type BusinessHomeOverview = {
   memberships: BusinessMembershipSummary[];
   joinedActiveEvents: BusinessJoinedEventSummary[];
   joinedUpcomingEvents: BusinessJoinedEventSummary[];
+  joinedCompletedEvents: BusinessJoinedEventSummary[];
   cityOpportunities: BusinessOpportunitySummary[];
 };
 
