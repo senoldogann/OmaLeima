@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/business-event-timeline-visibility`
+- **Yapılan iş:** Business/scanner event görünürlüğü düzeltildi. Ortak `useBusinessHomeOverviewQuery` artık `PUBLISHED` ve `ACTIVE` eventleri zaman aralığına göre live/upcoming sınıflandırıyor; böylece DB status'u hâlâ `PUBLISHED` kalsa bile zamanı gelen, işletmenin katıldığı event scanner kuyruğunda görünüyor. Business manage/opportunity listesi de hâlâ start/deadline öncesinde olan `PUBLISHED` veya `ACTIVE` eventleri getiriyor. Business overview 30 saniyede bir refetch edecek şekilde ayarlandı, bu sayede açık ekranda beklerken upcoming event live olunca scanner tarafına düşebiliyor.
+- **Neden yapıldı:** Kullanıcı işletme/scanner rolünde active veya published eventlerin listelenmediğini, live/upcoming/manage işlemlerinin scanner tarafında doğru çalıştığından emin olmamı istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel cihazda `pilot-scanner@example.com` ve `pilot-business-manager@example.com` ile `/business/home`, `/business/events`, `/business/scanner` smoke alınmalı: joined live event scanner'da görünmeli, upcoming joined event upcoming alanda görünmeli, joinable public event manage/listede görünmeli.
+- **Açık risk/blokaj:** Bu slice yetki/RLS değiştirmedi; sadece client read-model/timeline görünürlüğünü düzeltti. Eğer hâlâ boş liste görülürse sıradaki kontrol ilgili business'ın evente `event_venues.status='JOINED'` ile bağlı olup olmadığı ve event city/business city eşleşmesi olmalı. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/media-upload-manager-account-fix`
 - **Yapılan iş:** Organizer/business/club/event kapak yüzeylerinde uploaded URL yüklenemezse siyah boş yüzey kalmasını engelleyen ortak fallback eklendi. `CoverImageSurface` artık her kaynak değişiminde hata durumunu sıfırlıyor, geçersiz/geç yüklenen image için temalı fallback gösteriyor ve yeni upload URL'i geldiğinde tekrar render deniyor. Ayrıca hosted pilot business manager hesabı oluşturmak için `bootstrap:pilot-business-manager` script'i eklendi ve canlı projede `pilot-business-manager@example.com` aynı pilot business'a `MANAGER` olarak bağlandı. Şifre `/Users/dogan/Desktop/OmaLeima-pilot-business-manager-credentials.txt` dosyasına yazıldı.
 - **Neden yapıldı:** Kullanıcı organizer kapak fotoğrafını değiştirdikten sonra görüntünün siyah kaldığını, tüm rollerde fotoğraf yükleme/güncelleme akışının sorunsuz çalışmasını ve yeni business-manager rol/h hesabı oluşturulmasını istedi.
@@ -1052,6 +1060,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Business/scanner event timeline visibility tamamlandi; PUBLISHED/ACTIVE eventler zaman araligina gore live/upcoming siniflandiriliyor, joinable manage listesi backend join kurallariyla hizalandi ve business overview 30 saniyelik refetch kazandi.
 - *2026-05-03*: Media upload display resilience ve pilot business-manager hesabi tamamlandi; shared cover image surface remote image load hatasinda siyah kalmak yerine theme fallback gosteriyor ve `pilot-business-manager@example.com` hosted pilot business'a `MANAGER` olarak baglandi.
 - *2026-05-03*: Scanner location consent ve distance anomaly fraud signal slice'i tamamlandi; web opt-in lokasyon payload'i eklendi, native dependency sonraki temiz branch'e birakildi.
 - *2026-05-03*: `RAPOR.md` teknik bulgu triage'i tamamlandi; dogrulanan root Stack, QR audit RLS, registration cancel, leaderboard freshness, push count ve scheduler parallelism fixleri eklendi.

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/media-upload-manager-account-fix`
-- **Scope:** Make uploaded cover/logo images resilient across mobile roles and create a hosted pilot business manager account.
+- **Branch:** `feature/business-event-timeline-visibility`
+- **Scope:** Ensure business/scanner accounts see live, upcoming, and joinable events correctly.
 
 ## Affected Files
 
@@ -14,24 +14,23 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/components/cover-image-surface.tsx`
-- `apps/admin/package.json`
-- `apps/admin/scripts/bootstrap-pilot-business-manager.ts`
+- `apps/mobile/src/features/business/business-home.ts`
 
 ## Existing Logic Checked
 
-- Business, club, and event media upload helpers write to Supabase Storage and persist public URLs on the relevant row.
-- Shared image display flows use `CoverImageSurface` for hero/cover rendering, so one missing remote fallback can affect organizer, business, club, event, and student screens.
-- Business access already models staff roles as `OWNER`, `MANAGER`, and `SCANNER`; mobile routing grants business area access when a user has an active business staff membership.
-- Scanner accounts intentionally remain read-only for official business profile fields. `OWNER` and `MANAGER` can update business identity/media.
+- Business home, business events, business profile counters, and scanner route all read from `useBusinessHomeOverviewQuery`.
+- Scanner route only scans `joinedActiveEvents`; if an event is not classified as active there, the scanner has no event context.
+- Student event discovery derives active/upcoming from timestamps for both `PUBLISHED` and `ACTIVE` events.
+- `join_business_event_atomic` allows joining only before `start_at` and `join_deadline_at`, and accepts event status `PUBLISHED` or `ACTIVE`.
+- Current business timeline logic requires database `status = ACTIVE` for a live event, so a time-live `PUBLISHED` event can disappear from business/scanner live lists.
 
 ## Risks
 
-- Do not grant scanner accounts manager permissions while creating the new test account.
-- Do not expose generated passwords in committed files or logs.
-- Image fallback must not hide valid images permanently after the user changes to a new uploaded URL.
-- Keep uploaded image URLs as the source of truth; the UI fallback should only protect rendering when the remote image fails to load.
+- Do not make completed/cancelled events scan-enabled.
+- Do not show events as joinable after `start_at`; the RPC rejects that anyway.
+- Avoid stale open-screen state when an upcoming event becomes live while staff keeps the app open.
+- Keep scanner permissions unchanged; this slice is visibility/timeline only.
 
 ## Review Outcome
 
-Harden the shared cover image renderer with per-source error recovery, add a focused hosted bootstrap script for `pilot-business-manager@example.com`, and validate mobile/admin builds without touching unrelated local changes.
+Align business timeline derivation with student visibility and backend join rules: `PUBLISHED` and `ACTIVE` events become live by time window, joinable opportunities include both statuses only before start/deadline, and the overview query refreshes while the business area is open.
