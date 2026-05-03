@@ -8,6 +8,7 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
+import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -67,6 +68,7 @@ export default function ClubUpcomingScreen() {
   const userId = session?.user.id ?? null;
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [dateFilter, setDateFilter] = useState<DateFilter>("ALL");
+  const [previewEvent, setPreviewEvent] = useState<ClubDashboardEventSummary | null>(null);
   const dashboardQuery = useClubDashboardQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
@@ -127,6 +129,14 @@ export default function ClubUpcomingScreen() {
       .sort((leftEvent, rightEvent) => new Date(leftEvent.startAt).getTime() - new Date(rightEvent.startAt).getTime());
   }, [dashboardQuery.data?.events, dateFilter, statusFilter]);
 
+  const handleEditPreviewEventPress = (eventId: string): void => {
+    setPreviewEvent(null);
+    router.push({
+      pathname: "/club/events",
+      params: { eventId },
+    });
+  };
+
   return (
     <AppScreen>
       <View style={styles.topBar}>
@@ -183,12 +193,7 @@ export default function ClubUpcomingScreen() {
         return (
           <Pressable
             key={event.eventId}
-            onPress={() =>
-              router.push({
-                pathname: "/club/events",
-                params: { eventId: event.eventId },
-              })
-            }
+            onPress={() => setPreviewEvent(event)}
           >
             <CoverImageSurface
               source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
@@ -214,6 +219,13 @@ export default function ClubUpcomingScreen() {
           </Pressable>
         );
       })}
+      <ClubEventPreviewModal
+        event={previewEvent}
+        formatter={formatter}
+        language={language}
+        onClose={() => setPreviewEvent(null)}
+        onEditPress={handleEditPreviewEventPress}
+      />
     </AppScreen>
   );
 }
