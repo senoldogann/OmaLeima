@@ -22,6 +22,12 @@ import { useBusinessHomeOverviewQuery } from "@/features/business/business-home"
 import type { BusinessMembershipSummary } from "@/features/business/types";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import {
+  type BusinessScannerDeviceSummary,
+  useBusinessScannerDevicesQuery,
+  useRenameBusinessScannerDeviceMutation,
+  useRevokeBusinessScannerDeviceMutation,
+} from "@/features/scanner/scanner-device";
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import type { BusinessSupportOption } from "@/features/support/types";
 import { useSession } from "@/providers/session-provider";
@@ -48,6 +54,20 @@ type EditableFieldConfig = {
   multiline: boolean;
   placeholder: string;
 };
+
+const formatScannerDevicePlatform = (platform: BusinessScannerDeviceSummary["platform"]): string => {
+  const platformLabels: Record<BusinessScannerDeviceSummary["platform"], string> = {
+    IOS: "iOS",
+    ANDROID: "Android",
+    WEB: "Web",
+    UNKNOWN: "Scanner",
+  };
+
+  return platformLabels[platform];
+};
+
+const formatScannerDeviceTime = (formatter: Intl.DateTimeFormat, value: string): string =>
+  formatter.format(new Date(value));
 
 const mapSupportOptions = (memberships: BusinessMembershipSummary[]): BusinessSupportOption[] =>
   memberships.map((membership) => ({
@@ -139,9 +159,13 @@ export default function BusinessProfileScreen() {
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BusinessProfileDraft | null>(null);
+  const [editingScannerDeviceId, setEditingScannerDeviceId] = useState<string | null>(null);
+  const [editingScannerDeviceLabel, setEditingScannerDeviceLabel] = useState<string>("");
   const [uploadingMediaKind, setUploadingMediaKind] = useState<BusinessMediaKind | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const updateBusinessProfileMutation = useUpdateBusinessProfileMutation();
+  const renameScannerDeviceMutation = useRenameBusinessScannerDeviceMutation();
+  const revokeScannerDeviceMutation = useRevokeBusinessScannerDeviceMutation();
 
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
     userId: userId ?? "",
@@ -161,6 +185,20 @@ export default function BusinessProfileScreen() {
   const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
+  const scannerDeviceTimeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(language === "fi" ? "fi-FI" : "en-US", {
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        month: "short",
+      }),
+    [language]
+  );
+  const scannerDevicesQuery = useBusinessScannerDevicesQuery({
+    businessId: selectedMembership?.businessId ?? "",
+    isEnabled: selectedMembership !== null,
+  });
 
   useEffect(() => {
     if (memberships.length === 0) {
@@ -205,6 +243,42 @@ export default function BusinessProfileScreen() {
     }
 
     await updateBusinessProfileMutation.mutateAsync(draft);
+  };
+
+  const handleEditScannerDevicePress = (device: BusinessScannerDeviceSummary): void => {
+    setEditingScannerDeviceId(device.id);
+    setEditingScannerDeviceLabel(device.label);
+  };
+
+  const handleCancelScannerDeviceEditPress = (): void => {
+    setEditingScannerDeviceId(null);
+    setEditingScannerDeviceLabel("");
+  };
+
+  const handleSaveScannerDevicePress = async (device: BusinessScannerDeviceSummary): Promise<void> => {
+    const label = editingScannerDeviceLabel.trim();
+
+    if (selectedMembership === null || label.length === 0) {
+      return;
+    }
+
+    await renameScannerDeviceMutation.mutateAsync({
+      businessId: selectedMembership.businessId,
+      scannerDeviceId: device.id,
+      label,
+    });
+    handleCancelScannerDeviceEditPress();
+  };
+
+  const handleRevokeScannerDevicePress = async (device: BusinessScannerDeviceSummary): Promise<void> => {
+    if (selectedMembership === null || !canEditSelectedMembership) {
+      return;
+    }
+
+    await revokeScannerDeviceMutation.mutateAsync({
+      businessId: selectedMembership.businessId,
+      scannerDeviceId: device.id,
+    });
   };
 
   const handleMediaPress = async (kind: BusinessMediaKind): Promise<void> => {
@@ -409,6 +483,154 @@ export default function BusinessProfileScreen() {
               <Text style={styles.successText}>
                 {language === "fi" ? "Yritysprofiili tallennettu." : "Business profile saved."}
               </Text>
+            ) : null}
+          </InfoCard>
+
+          <InfoCard
+            eyebrow={language === "fi" ? "Skannerit" : "Scanners"}
+            title={language === "fi" ? "Laitteet" : "Devices"}
+          >
+            {scannerDevicesQuery.isLoading ? (
+              <Text style={styles.bodyText}>
+                {language === "fi" ? "Ladataan skannerilaitteita." : "Loading scanner devices."}
+              </Text>
+            ) : null}
+
+            {scannerDevicesQuery.error ? (
+              <View style={styles.inlineErrorBlock}>
+                <Text style={styles.errorText}>{scannerDevicesQuery.error.message}</Text>
+                <Pressable onPress={() => void scannerDevicesQuery.refetch()} style={styles.secondaryButton}>
+                  <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {!scannerDevicesQuery.isLoading &&
+            scannerDevicesQuery.error === null &&
+            (scannerDevicesQuery.data ?? []).length === 0 ? (
+              <Text style={styles.bodyText}>
+                {language === "fi"
+                  ? "Skannerilaitteet ilmestyvät tähän, kun henkilökunta avaa skannerin."
+                  : "Scanner devices appear here after staff opens the scanner."}
+              </Text>
+            ) : null}
+
+            <View style={styles.scannerDeviceList}>
+              {(scannerDevicesQuery.data ?? []).map((device) => {
+                const isEditing = editingScannerDeviceId === device.id;
+                const canRenameDevice =
+                  device.createdBy === userId || canEditSelectedMembership;
+                const canRevokeDevice = canEditSelectedMembership && device.status === "ACTIVE";
+                const isMutationPending =
+                  renameScannerDeviceMutation.isPending || revokeScannerDeviceMutation.isPending;
+
+                return (
+                  <View key={device.id} style={styles.scannerDeviceRow}>
+                    <View style={styles.scannerDeviceHeader}>
+                      <View style={styles.scannerDeviceIcon}>
+                        <AppIcon color={theme.colors.lime} name="scan" size={18} />
+                      </View>
+                      <View style={styles.scannerDeviceCopy}>
+                        {isEditing ? (
+                          <TextInput
+                            autoCapitalize="sentences"
+                            editable={!isMutationPending}
+                            onChangeText={setEditingScannerDeviceLabel}
+                            placeholder={language === "fi" ? "Skannerin nimi" : "Scanner name"}
+                            placeholderTextColor={theme.colors.textDim}
+                            style={styles.scannerDeviceInput}
+                            value={editingScannerDeviceLabel}
+                          />
+                        ) : (
+                          <Text numberOfLines={1} style={styles.scannerDeviceTitle}>
+                            {device.label}
+                          </Text>
+                        )}
+                        <Text style={styles.scannerDeviceMeta}>
+                          {formatScannerDevicePlatform(device.platform)} ·{" "}
+                          {language === "fi" ? "nähty" : "seen"}{" "}
+                          {formatScannerDeviceTime(scannerDeviceTimeFormatter, device.lastSeenAt)}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.scannerDeviceStatus,
+                          device.status === "REVOKED" ? styles.scannerDeviceStatusRevoked : null,
+                        ]}
+                      >
+                        <Text style={styles.scannerDeviceStatusText}>
+                          {device.status === "ACTIVE"
+                            ? language === "fi"
+                              ? "Aktiivinen"
+                              : "Active"
+                            : language === "fi"
+                              ? "Poistettu"
+                              : "Revoked"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {canRenameDevice || canRevokeDevice ? (
+                      <View style={styles.scannerDeviceActions}>
+                        {isEditing ? (
+                          <>
+                            <Pressable
+                              disabled={isMutationPending}
+                              onPress={() => void handleSaveScannerDevicePress(device)}
+                              style={[styles.scannerDeviceActionButton, styles.scannerDevicePrimaryAction]}
+                            >
+                              <Text style={styles.scannerDevicePrimaryActionText}>
+                                {language === "fi" ? "Tallenna" : "Save"}
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              disabled={isMutationPending}
+                              onPress={handleCancelScannerDeviceEditPress}
+                              style={styles.scannerDeviceActionButton}
+                            >
+                              <Text style={styles.scannerDeviceActionText}>
+                                {language === "fi" ? "Peruuta" : "Cancel"}
+                              </Text>
+                            </Pressable>
+                          </>
+                        ) : (
+                          <>
+                            {canRenameDevice ? (
+                              <Pressable
+                                disabled={isMutationPending}
+                                onPress={() => handleEditScannerDevicePress(device)}
+                                style={styles.scannerDeviceActionButton}
+                              >
+                                <Text style={styles.scannerDeviceActionText}>
+                                  {language === "fi" ? "Nimeä" : "Rename"}
+                                </Text>
+                              </Pressable>
+                            ) : null}
+                            {canRevokeDevice ? (
+                              <Pressable
+                                disabled={isMutationPending}
+                                onPress={() => void handleRevokeScannerDevicePress(device)}
+                                style={styles.scannerDeviceActionButton}
+                              >
+                                <Text style={styles.scannerDeviceDangerText}>
+                                  {language === "fi" ? "Poista" : "Revoke"}
+                                </Text>
+                              </Pressable>
+                            ) : null}
+                          </>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+
+            {renameScannerDeviceMutation.error ? (
+              <Text style={styles.errorText}>{renameScannerDeviceMutation.error.message}</Text>
+            ) : null}
+            {revokeScannerDeviceMutation.error ? (
+              <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
             ) : null}
           </InfoCard>
 
@@ -654,6 +876,9 @@ const createStyles = (theme: MobileTheme) =>
       paddingHorizontal: 14,
       paddingVertical: 12,
     },
+    inlineErrorBlock: {
+      gap: 10,
+    },
     logoSurface: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
@@ -833,6 +1058,115 @@ const createStyles = (theme: MobileTheme) =>
       paddingVertical: 12,
     },
     secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    scannerDeviceActionButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      justifyContent: "center",
+      minHeight: 38,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    scannerDeviceActionText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    scannerDeviceActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "flex-end",
+    },
+    scannerDeviceCopy: {
+      flex: 1,
+      gap: 4,
+      minWidth: 0,
+    },
+    scannerDeviceDangerText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    scannerDeviceHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+    },
+    scannerDeviceIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 36,
+      justifyContent: "center",
+      width: 36,
+    },
+    scannerDeviceInput: {
+      backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      minHeight: 42,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    scannerDeviceList: {
+      gap: 10,
+    },
+    scannerDeviceMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    scannerDevicePrimaryAction: {
+      backgroundColor: theme.colors.lime,
+      borderColor: theme.colors.limeBorder,
+    },
+    scannerDevicePrimaryActionText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    scannerDeviceRow: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 12,
+      padding: 12,
+    },
+    scannerDeviceStatus: {
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    scannerDeviceStatusRevoked: {
+      backgroundColor: theme.colors.dangerSurface,
+    },
+    scannerDeviceStatusText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    scannerDeviceTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,

@@ -1,0 +1,195 @@
+create or replace function public.register_business_scanner_device(
+  p_business_id uuid,
+  p_installation_id text,
+  p_label text,
+  p_platform text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $register_business_scanner_device$
+declare
+  v_device public.business_scanner_devices%rowtype;
+  v_installation_id text := nullif(trim(p_installation_id), '');
+  v_label text := nullif(trim(p_label), '');
+  v_platform text := upper(nullif(trim(p_platform), ''));
+begin
+  if v_installation_id is null then
+    raise exception 'p_installation_id is required';
+  end if;
+
+  if length(v_installation_id) > 128 then
+    raise exception 'p_installation_id must be at most 128 characters';
+  end if;
+
+  if v_label is null then
+    raise exception 'p_label is required';
+  end if;
+
+  if length(v_label) > 80 then
+    v_label := left(v_label, 80);
+  end if;
+
+  if v_platform is null or v_platform not in ('IOS', 'ANDROID', 'WEB') then
+    v_platform := 'UNKNOWN';
+  end if;
+
+  if not exists (
+    select 1
+    from public.business_staff
+    where business_id = p_business_id
+      and user_id = auth.uid()
+      and status = 'ACTIVE'
+  ) then
+    return jsonb_build_object('status', 'ACTOR_NOT_ALLOWED');
+  end if;
+
+  select * into v_device
+  from public.business_scanner_devices
+  where business_id = p_business_id
+    and installation_id = v_installation_id
+  for update;
+
+  if found and v_device.status = 'REVOKED' then
+    return jsonb_build_object(
+      'status', 'DEVICE_REVOKED',
+      'scannerDeviceId', v_device.id,
+      'label', v_device.label,
+      'platform', v_device.platform
+    );
+  end if;
+
+  if found then
+    update public.business_scanner_devices
+    set label = v_label,
+        platform = v_platform,
+        status = 'ACTIVE',
+        last_seen_at = now(),
+        updated_at = now()
+    where id = v_device.id
+    returning * into v_device;
+  else
+    insert into public.business_scanner_devices (
+      business_id,
+      installation_id,
+      label,
+      platform,
+      status,
+      created_by
+    )
+    values (
+      p_business_id,
+      v_installation_id,
+      v_label,
+      v_platform,
+      'ACTIVE',
+      auth.uid()
+    )
+    returning * into v_device;
+  end if;
+
+  return jsonb_build_object(
+    'status', 'SUCCESS',
+    'scannerDeviceId', v_device.id,
+    'label', v_device.label,
+    'platform', v_device.platform
+  );
+end;
+$register_business_scanner_device$;
+
+grant execute on function public.register_business_scanner_device(uuid, text, text, text) to authenticated;
+
+create or replace function public.rename_business_scanner_device(
+  p_scanner_device_id uuid,
+  p_label text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $rename_business_scanner_device$
+declare
+  v_device public.business_scanner_devices%rowtype;
+  v_label text := nullif(trim(p_label), '');
+begin
+  if v_label is null then
+    raise exception 'p_label is required';
+  end if;
+
+  if length(v_label) > 80 then
+    v_label := left(v_label, 80);
+  end if;
+
+  select * into v_device
+  from public.business_scanner_devices
+  where id = p_scanner_device_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('status', 'DEVICE_NOT_FOUND');
+  end if;
+
+  if not public.is_business_staff_for(v_device.business_id) then
+    return jsonb_build_object('status', 'ACTOR_NOT_ALLOWED');
+  end if;
+
+  if v_device.created_by <> auth.uid() and not public.is_business_manager_for(v_device.business_id) then
+    return jsonb_build_object('status', 'ACTOR_NOT_ALLOWED');
+  end if;
+
+  update public.business_scanner_devices
+  set label = v_label,
+      updated_at = now()
+  where id = v_device.id
+  returning * into v_device;
+
+  return jsonb_build_object(
+    'status', 'SUCCESS',
+    'scannerDeviceId', v_device.id,
+    'label', v_device.label
+  );
+end;
+$rename_business_scanner_device$;
+
+grant execute on function public.rename_business_scanner_device(uuid, text) to authenticated;
+
+create or replace function public.revoke_business_scanner_device(
+  p_scanner_device_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $revoke_business_scanner_device$
+declare
+  v_device public.business_scanner_devices%rowtype;
+begin
+  select * into v_device
+  from public.business_scanner_devices
+  where id = p_scanner_device_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('status', 'DEVICE_NOT_FOUND');
+  end if;
+
+  if not public.is_business_manager_for(v_device.business_id) then
+    return jsonb_build_object('status', 'ACTOR_NOT_ALLOWED');
+  end if;
+
+  update public.business_scanner_devices
+  set status = 'REVOKED',
+      updated_at = now()
+  where id = v_device.id
+  returning * into v_device;
+
+  return jsonb_build_object(
+    'status', 'SUCCESS',
+    'scannerDeviceId', v_device.id,
+    'statusValue', v_device.status
+  );
+end;
+$revoke_business_scanner_device$;
+
+grant execute on function public.revoke_business_scanner_device(uuid) to authenticated;
