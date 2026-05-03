@@ -5,42 +5,44 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/scanner-staff-pin`
-- **Goal:** Add optional scanner staff PINs that are enforced by the backend during QR scans.
+- **Branch:** `feature/fraud-signal-review-actions`
+- **Goal:** Let admins and event-managing club staff explicitly resolve open fraud signals.
 
 ## Architectural Decisions
 
-- Store PIN hashes in `business_scanner_device_pins`, not in the staff-readable device registry table.
-- Add `pin_set_at` to `business_scanner_devices` as non-sensitive UI state.
-- Use `crypt()` / `gen_salt('bf')` from `pgcrypto` for PIN hashing.
-- Add `set_business_scanner_device_pin` and `clear_business_scanner_device_pin` RPCs for the device creator or business manager.
-- Extend `register_business_scanner_device` to return `pinRequired` so the scanner knows whether to prompt.
-- Extend `scan_stamp_atomic` with `p_scanner_pin` and return `SCANNER_PIN_REQUIRED` / `SCANNER_PIN_INVALID` when needed.
-- Pass `scannerPin` through mobile scanner transport and edge function validation.
-- Keep PIN UX compact: setup lives in business profile device cards; scanner screen shows one numeric field only when required.
+- Add reviewer metadata to `fraud_signals`: `reviewed_by`, `reviewed_at`, `resolution_note`.
+- Add `review_fraud_signal_atomic` as the only write path for fraud review status changes.
+- Authorize the RPC for platform admins or users who can manage the signal's event.
+- Restrict target statuses to `REVIEWED`, `DISMISSED`, and `CONFIRMED`.
+- Insert an `audit_logs` row for every successful review action.
+- Reuse one client component for admin oversight and club fraud pages.
+- Keep club fraud page event-scoped by relying on existing fraud signal RLS and `can_user_manage_event`.
 
 ## Edge Cases
 
-- Device has no PIN: scan behaves exactly as before.
-- Device has PIN and scanner sends empty PIN: scan returns `SCANNER_PIN_REQUIRED`.
-- Device has PIN and scanner sends wrong PIN: scan returns `SCANNER_PIN_INVALID`.
-- Device has PIN and scanner sends correct PIN: existing QR/device/event checks continue normally.
-- Scanner role sets PIN on its own device: allowed.
-- Business manager sets or clears PIN on any business device: allowed.
-- PIN format: 4-8 digits, practical for event-day staff and explicit enough for validation.
+- Already resolved signal: return `FRAUD_SIGNAL_ALREADY_REVIEWED`.
+- User is not admin and cannot manage the signal event: return `FRAUD_SIGNAL_NOT_ALLOWED`.
+- Signal has no event and user is not platform admin: deny.
+- Note is optional but capped to keep audit metadata small.
+- UI refreshes after successful review so counters and list reflect the new state.
 
 ## Ordered Follow-Up Queue
 
-1. Add admin/club fraud review actions for `SCANNER_DISTANCE_ANOMALY`.
-2. Add typed event rules builder for leima quotas and venue-specific limits.
-3. Add announcement/push opt-in/read-receipt model.
-4. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
+1. Add typed event rules builder for leima quotas and venue-specific limits.
+2. Add announcement/push opt-in/read-receipt model.
+3. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
+4. Add richer fraud filters once real pilot data shows signal volume.
 
 ## Validation Plan
 
 - Run:
+  - `npx supabase@2.95.4 db push --yes`
+  - `npx supabase@2.95.4 db lint --linked`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run lint`
+  - `npm --prefix apps/admin run build`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

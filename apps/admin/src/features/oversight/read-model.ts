@@ -6,6 +6,7 @@ import {
 } from "@/features/oversight/format";
 import type {
   AdminOversightSnapshot,
+  FraudReviewSnapshot,
   OversightAuditLogRecord,
   OversightClubRecord,
   OversightEventRecord,
@@ -381,6 +382,35 @@ export const fetchAdminOversightSnapshotAsync = async (
       operationalEventCount,
       recentAuditCount,
     },
+  };
+};
+
+export const fetchFraudReviewSnapshotAsync = async (
+  supabase: SupabaseClient
+): Promise<FraudReviewSnapshot> => {
+  const [fraudSignalRows, openFraudSignalCount] = await Promise.all([
+    fetchLatestFraudSignalsAsync(supabase),
+    fetchOpenFraudSignalCountAsync(supabase),
+  ]);
+  const [businessNames, eventNames, scannerEmails] = await Promise.all([
+    fetchBusinessNamesByIdsAsync(
+      supabase,
+      Array.from(new Set<string>(fraudSignalRows.flatMap((row) => (row.business_id === null ? [] : [row.business_id]))))
+    ),
+    fetchEventNamesByIdsAsync(
+      supabase,
+      Array.from(new Set<string>(fraudSignalRows.flatMap((row) => (row.event_id === null ? [] : [row.event_id]))))
+    ),
+    fetchProfilesByIdsAsync(
+      supabase,
+      Array.from(new Set<string>(fraudSignalRows.flatMap((row) => (row.scanner_user_id === null ? [] : [row.scanner_user_id]))))
+    ),
+  ]);
+
+  return {
+    fraudSignals: mapFraudSignalRecords(fraudSignalRows, eventNames, businessNames, scannerEmails),
+    latestFraudLimit,
+    openFraudSignalCount,
   };
 };
 
