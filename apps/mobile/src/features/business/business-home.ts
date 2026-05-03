@@ -44,6 +44,8 @@ type EventVenueRow = {
 type EventRow = {
   id: string;
   name: string;
+  cover_image_url: string | null;
+  description: string | null;
   city: string;
   start_at: string;
   end_at: string;
@@ -135,7 +137,7 @@ const fetchEventsAsync = async (eventIds: string[]): Promise<EventRow[]> => {
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,city,start_at,end_at,join_deadline_at,status")
+    .select("id,name,cover_image_url,description,city,start_at,end_at,join_deadline_at,status")
     .in("id", eventIds)
     .returns<EventRow[]>();
 
@@ -146,26 +148,21 @@ const fetchEventsAsync = async (eventIds: string[]): Promise<EventRow[]> => {
   return data;
 };
 
-const fetchCityOpportunitiesAsync = async (cities: string[]): Promise<EventRow[]> => {
-  if (cities.length === 0) {
-    return [];
-  }
-
+const fetchJoinableOpportunitiesAsync = async (): Promise<EventRow[]> => {
   const nowIso = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,name,city,start_at,end_at,join_deadline_at,status")
+    .select("id,name,cover_image_url,description,city,start_at,end_at,join_deadline_at,status")
     .eq("visibility", "PUBLIC")
     .in("status", ["PUBLISHED", "ACTIVE"])
-    .in("city", cities)
     .gt("join_deadline_at", nowIso)
     .gt("start_at", nowIso)
     .order("start_at", { ascending: true })
     .returns<EventRow[]>();
 
   if (error !== null) {
-    throw new Error(`Failed to load business city opportunities: ${error.message}`);
+    throw new Error(`Failed to load business joinable opportunities: ${error.message}`);
   }
 
   return data;
@@ -229,6 +226,8 @@ const mapJoinedEvents = (
         eventId: eventVenue.event_id,
         businessId: eventVenue.business_id,
         businessName: business.name,
+        coverImageUrl: event.cover_image_url,
+        description: event.description,
         businessLogoUrl: business.logo_url,
         businessCoverImageUrl: business.cover_image_url,
         businessAnnouncement: business.announcement,
@@ -240,6 +239,7 @@ const mapJoinedEvents = (
         startAt: event.start_at,
         endAt: event.end_at,
         joinDeadlineAt: event.join_deadline_at,
+        status: event.status,
         timelineState: deriveTimelineState(event.status, event.start_at, event.end_at, now),
         stampLabel: eventVenue.stamp_label,
         venueOrder: eventVenue.venue_order,
@@ -255,7 +255,7 @@ const mapCityOpportunities = (
 ): BusinessOpportunitySummary[] => {
   return memberships.flatMap((membership) =>
     events.flatMap((event) => {
-      if (event.city !== membership.city) {
+      if (event.status !== "PUBLISHED" && event.status !== "ACTIVE") {
         return [];
       }
 
@@ -269,9 +269,13 @@ const mapCityOpportunities = (
           businessName: membership.businessName,
           eventId: event.id,
           eventName: event.name,
+          coverImageUrl: event.cover_image_url,
+          description: event.description,
           city: event.city,
           startAt: event.start_at,
+          endAt: event.end_at,
           joinDeadlineAt: event.join_deadline_at,
+          status: event.status,
         },
       ];
     })
@@ -296,7 +300,7 @@ export const fetchBusinessHomeOverviewAsync = async (userId: string): Promise<Bu
   const joinedEventIds = Array.from(new Set(joinedEventVenueRows.map((eventVenue) => eventVenue.event_id)));
   const [joinedEvents, cityOpportunityEvents] = await Promise.all([
     fetchEventsAsync(joinedEventIds),
-    fetchCityOpportunitiesAsync(Array.from(new Set(businesses.map((business) => business.city)))),
+    fetchJoinableOpportunitiesAsync(),
   ]);
 
   const now = Date.now();

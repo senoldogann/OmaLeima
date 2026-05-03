@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/business-manage-event-rail-preview`
+- **Yapılan iş:** Business manage event görünürlüğü ve UX'i düzeltildi. Canlı veride kullanıcının oluşturduğu `Students Ready Party` ve `Haalarimerkki Approv` eventlerinin Tampere/Oulu şehirlerinde olduğu, önceki business opportunity sorgusunun ise Helsinki pilot business için sadece aynı şehir eventlerini getirdiği doğrulandı. Business joinable opportunity sorgusundaki şehir filtresi kaldırıldı; artık tüm public, start/deadline öncesi joinable eventler görünür ve RPC yetkisi yine join anında kontrol eder. Business event summary modellerine cover image, description, status ve end time eklendi. `/business/events` live/upcoming/manage/past bölümleri alt alta satırlar yerine yatay görsel rail kartlarına taşındı; her karta basınca tam event preview modalı açılıyor. Live kartlarda scanner/history, upcoming kartlarda leave, manage kartlarında join aksiyonları korunuyor; past kartlar read-only.
+- **Neden yapıldı:** Kullanıcı kendi oluşturduğu iki active/published eventin business tarafında görünmediğini ve manage events alanının live/upcoming/past/manage için slider kartlar + tam popup detay olacak şekilde düzenlenmesini istedi.
+- **Doğrulama:** Hosted public event sorgusu ile iki user-created eventin mevcut olduğu doğrulandı. `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** `pilot-business-manager@example.com` ile `/business/events` açılıp manage rail içinde `Students Ready Party` ve `Haalarimerkki Approv` kartlarının göründüğü, karta basınca modal açıldığı, `Liity tapahtumaan` ile join sonrası eventin upcoming/live/past bucket'ına taşındığı smoke edilmeli.
+- **Açık risk/blokaj:** Business artık farklı şehirlerdeki public eventleri de joinable olarak görebilir; kartlarda şehir açık gösteriliyor. İleride istenirse şehir/mesafe filtre chips'i eklenebilir. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/business-active-event-membership-fix`
 - **Yapılan iş:** Business tarafında event görünürlüğünün neden boş göründüğü canlı veriyle doğrulandı: pilot business'a bağlı `ACTIVE/PUBLISHED` eventlerin çoğu 2026-04-29 ve 2026-05-01'de bitmişti, bu yüzden scanner açısından live sayılmaları doğru değildi. Business overview'e `joinedCompletedEvents` eklendi; home artık past count gösteriyor, `/business/events` geçmiş bağlı eventleri ayrı `Aiemmat tapahtumat/Past joined events` bölümünde gösteriyor ve bu bölümde scan CTA yok. Ayrıca hosted pilot business için şu an canlı `OmaLeima Live Scanner Smoke` event'i oluşturuldu ve `OmaLeima Test Bar` business'ına `JOINED` olarak bağlandı.
 - **Neden yapıldı:** Kullanıcı business tarafında hâlâ `No active events` gördüğünü, published/active eventler olmasına rağmen listelenmediğini söyledi. Root cause status alanının tek başına live anlamına gelmemesi ve geçmiş joined eventlerin UI'da görünmemesiydi.
@@ -1068,6 +1076,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Business manage event rail preview tamamlandi; all-public joinable opportunities gorunur oldu, live/upcoming/manage/past business eventleri yatay gorsel rail kartlara ve detay modalina tasindi.
 - *2026-05-03*: Business active event membership fix tamamlandi; past joined events business UI'da gorunur oldu ve hosted pilot business icin current live scanner smoke event olusturuldu.
 - *2026-05-03*: Business/scanner event timeline visibility tamamlandi; PUBLISHED/ACTIVE eventler zaman araligina gore live/upcoming siniflandiriliyor, joinable manage listesi backend join kurallariyla hizalandi ve business overview 30 saniyelik refetch kazandi.
 - *2026-05-03*: Media upload display resilience ve pilot business-manager hesabi tamamlandi; shared cover image surface remote image load hatasinda siyah kalmak yerine theme fallback gosteriyor ve `pilot-business-manager@example.com` hosted pilot business'a `MANAGER` olarak baglandi.
