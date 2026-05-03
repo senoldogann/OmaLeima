@@ -2,9 +2,13 @@ export type ClubMembershipRole = "ORGANIZER" | "OWNER" | "STAFF";
 
 export type ClubMembershipSummary = {
   canCreateEvents: boolean;
+  coverImageUrl: string | null;
+  announcement: string | null;
   city: string | null;
   clubId: string;
   clubName: string;
+  contactEmail: string | null;
+  logoUrl: string | null;
   membershipRole: ClubMembershipRole;
   universityName: string | null;
 };

@@ -8,7 +8,7 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
-import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
+import type { ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -22,22 +22,6 @@ type TimelineBadge = {
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
-
-const pickFocusEvent = (events: ClubDashboardEventSummary[]): ClubDashboardEventSummary | null => {
-  const liveEvent = events.find((event) => event.timelineState === "LIVE");
-
-  if (typeof liveEvent !== "undefined") {
-    return liveEvent;
-  }
-
-  const upcomingEvent = events.find((event) => event.timelineState === "UPCOMING");
-
-  if (typeof upcomingEvent !== "undefined") {
-    return upcomingEvent;
-  }
-
-  return events[0] ?? null;
-};
 
 const getTimelineBadge = (
   timelineState: ClubDashboardTimelineState,
@@ -94,7 +78,6 @@ export default function ClubHomeScreen() {
         language === "fi"
           ? "Kun klubi luo tapahtuman, näet sen tilanteen täällä."
           : "Once the club creates an event, its status appears here.",
-      clubsTitle: language === "fi" ? "Klubit" : "Clubs",
       eventsTitle: language === "fi" ? "Seuraavat tapahtumat" : "Next events",
       openUpcoming: language === "fi" ? "Avaa Tulossa" : "Open Upcoming",
       live: language === "fi" ? "Käynnissä" : "Live",
@@ -130,8 +113,15 @@ export default function ClubHomeScreen() {
     [localeTag]
   );
 
-  const events = dashboardQuery.data?.events ?? [];
-  const focusEvent = pickFocusEvent(events);
+  const events = useMemo(
+    () => dashboardQuery.data?.events ?? [],
+    [dashboardQuery.data?.events]
+  );
+  const liveEvents = useMemo(
+    () => events.filter((event) => event.timelineState === "LIVE"),
+    [events]
+  );
+  const primaryClub = dashboardQuery.data?.memberships[0] ?? null;
 
   useEffect(() => {
     if (dashboardQuery.data) {
@@ -158,8 +148,13 @@ export default function ClubHomeScreen() {
     <AppScreen>
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={styles.screenTitle}>{labels.title}</Text>
+          <Text style={styles.screenTitle}>{primaryClub?.clubName ?? labels.title}</Text>
           <Text style={styles.metaText}>{labels.subtitle}</Text>
+          {primaryClub !== null ? (
+            <Text style={styles.clubHeaderMeta}>
+              {[primaryClub.city, primaryClub.membershipRole].filter(Boolean).join(" · ")}
+            </Text>
+          ) : null}
         </View>
         <Pressable onPress={() => router.push("/club/profile")} style={styles.iconButton}>
           <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
@@ -230,68 +225,64 @@ export default function ClubHomeScreen() {
             </Pressable>
           </View>
 
-          {focusEvent !== null ? (
-            <CoverImageSurface
-              source={getEventCoverSourceWithFallback(focusEvent.coverImageUrl, "clubControl")}
-              style={styles.heroCard}
-            >
-              <View style={styles.heroOverlay} />
-              <View style={styles.heroContent}>
-                <View style={styles.heroTopRow}>
-                  <Text style={styles.heroEyebrow}>{labels.focusEyebrow}</Text>
-                  <StatusBadge
-                    label={getTimelineBadge(focusEvent.timelineState, labels.status).label}
-                    state={getTimelineBadge(focusEvent.timelineState, labels.status).state}
-                  />
-                </View>
-                <View style={styles.heroBottom}>
-                  <Text numberOfLines={2} style={styles.heroTitle}>
-                    {focusEvent.name}
-                  </Text>
-                  <Text style={styles.heroMeta}>
-                    {focusEvent.clubName} · {focusEvent.city}
-                  </Text>
-                  <View style={styles.metricRow}>
-                    <View style={styles.metricPill}>
-                      <Text style={styles.metricValue}>{focusEvent.registeredParticipantCount}</Text>
-                      <Text style={styles.metricLabel}>{labels.participants}</Text>
+          {liveEvents.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveRail}>
+              {liveEvents.map((event) => (
+                <Pressable
+                  key={event.eventId}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/club/events",
+                      params: { eventId: event.eventId },
+                    })
+                  }
+                  style={styles.livePressable}
+                >
+                  <CoverImageSurface
+                    source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
+                    style={styles.heroCard}
+                  >
+                    <View style={styles.heroOverlay} />
+                    <View style={styles.heroContent}>
+                      <View style={styles.heroTopRow}>
+                        <Text style={styles.heroEyebrow}>{labels.focusEyebrow}</Text>
+                        <StatusBadge
+                          label={getTimelineBadge(event.timelineState, labels.status).label}
+                          state={getTimelineBadge(event.timelineState, labels.status).state}
+                        />
+                      </View>
+                      <View style={styles.heroBottom}>
+                        <Text numberOfLines={2} style={styles.heroTitle}>
+                          {event.name}
+                        </Text>
+                        <Text style={styles.heroMeta}>
+                          {event.clubName} · {event.city}
+                        </Text>
+                        <View style={styles.metricRow}>
+                          <View style={styles.metricPill}>
+                            <Text style={styles.metricValue}>{event.registeredParticipantCount}</Text>
+                            <Text style={styles.metricLabel}>{labels.participants}</Text>
+                          </View>
+                          <View style={styles.metricPill}>
+                            <Text style={styles.metricValue}>{event.joinedVenueCount}</Text>
+                            <Text style={styles.metricLabel}>{labels.venues}</Text>
+                          </View>
+                          <View style={styles.metricPill}>
+                            <Text style={styles.metricValue}>{event.minimumStampsRequired}</Text>
+                            <Text style={styles.metricLabel}>{labels.minimum}</Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
-                    <View style={styles.metricPill}>
-                      <Text style={styles.metricValue}>{focusEvent.joinedVenueCount}</Text>
-                      <Text style={styles.metricLabel}>{labels.venues}</Text>
-                    </View>
-                    <View style={styles.metricPill}>
-                      <Text style={styles.metricValue}>{focusEvent.minimumStampsRequired}</Text>
-                      <Text style={styles.metricLabel}>{labels.minimum}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </CoverImageSurface>
+                  </CoverImageSurface>
+                </Pressable>
+              ))}
+            </ScrollView>
           ) : (
             <InfoCard eyebrow={labels.focusEyebrow} title={labels.focusEmptyTitle}>
               <Text style={styles.bodyText}>{labels.focusEmptyBody}</Text>
             </InfoCard>
           )}
-
-          <InfoCard eyebrow="Club" title={labels.clubsTitle}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.clubRail}
-            >
-              {dashboardQuery.data.memberships.map((membership) => (
-                <View key={membership.clubId} style={styles.clubChip}>
-                  <Text numberOfLines={1} style={styles.clubName}>
-                    {membership.clubName}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.clubMeta}>
-                    {membership.city ?? membership.universityName ?? membership.membershipRole}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          </InfoCard>
 
           <InfoCard eyebrow={labels.upcoming} title={labels.eventsTitle}>
             <View style={styles.sectionHeaderAction}>
@@ -311,29 +302,38 @@ export default function ClubHomeScreen() {
                 const timeLabel = event.timelineState === "LIVE" ? labels.ends : labels.starts;
 
                 return (
-                  <CoverImageSurface
+                  <Pressable
                     key={event.eventId}
-                    source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
-                    style={styles.eventCard}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/club/events",
+                        params: { eventId: event.eventId },
+                      })
+                    }
                   >
-                    <View style={styles.eventCardOverlay} />
-                    <View style={styles.eventCardContent}>
-                      <View style={styles.eventHeaderRow}>
-                        <Text numberOfLines={1} style={styles.eventCardTitle}>
-                          {event.name}
+                    <CoverImageSurface
+                      source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
+                      style={styles.eventCard}
+                    >
+                      <View style={styles.eventCardOverlay} />
+                      <View style={styles.eventCardContent}>
+                        <View style={styles.eventHeaderRow}>
+                          <Text numberOfLines={1} style={styles.eventCardTitle}>
+                            {event.name}
+                          </Text>
+                          <StatusBadge label={badge.label} state={badge.state} />
+                        </View>
+                        <Text numberOfLines={1} style={styles.eventCardMeta}>
+                          {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
                         </Text>
-                        <StatusBadge label={badge.label} state={badge.state} />
+                        <View style={styles.eventMetricRow}>
+                          <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
+                          <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
+                          <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
+                        </View>
                       </View>
-                      <Text numberOfLines={1} style={styles.eventCardMeta}>
-                        {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
-                      </Text>
-                      <View style={styles.eventMetricRow}>
-                        <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
-                        <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
-                        <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
-                      </View>
-                    </View>
-                  </CoverImageSurface>
+                    </CoverImageSurface>
+                  </Pressable>
                 );
               })}
             </ScrollView>
@@ -377,6 +377,13 @@ const createStyles = (theme: MobileTheme) =>
     clubRail: {
       gap: 10,
       paddingRight: 4,
+    },
+    clubHeaderMeta: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
     },
     compactButton: {
       flex: 0,
@@ -476,6 +483,7 @@ const createStyles = (theme: MobileTheme) =>
       minHeight: 300,
       overflow: "hidden",
       position: "relative",
+      width: 312,
     },
     heroContent: {
       flex: 1,
@@ -520,6 +528,13 @@ const createStyles = (theme: MobileTheme) =>
       height: 44,
       justifyContent: "center",
       width: 44,
+    },
+    livePressable: {
+      borderRadius: 30,
+    },
+    liveRail: {
+      gap: 12,
+      paddingRight: 4,
     },
     metaText: {
       color: theme.colors.textMuted,

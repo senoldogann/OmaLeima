@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -220,6 +220,7 @@ const createCalendarDays = (visibleMonth: string, selectedDate: string): Calenda
 
 export default function ClubEventsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ eventId?: string }>();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -239,7 +240,10 @@ export default function ClubEventsScreen() {
     () => memberships.filter((membership) => membership.canCreateEvents),
     [memberships]
   );
-  const events = dashboardQuery.data?.events ?? [];
+  const events = useMemo(
+    () => dashboardQuery.data?.events ?? [],
+    [dashboardQuery.data?.events]
+  );
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const selectedEvent = events.find((event) => event.eventId === selectedEventId) ?? events[0] ?? null;
   const [draft, setDraft] = useState<ClubEventFormDraft>(() =>
@@ -281,6 +285,22 @@ export default function ClubEventsScreen() {
       setDraft(createDraftFromEvent(selectedEvent));
     }
   }, [mode, selectedEvent]);
+
+  useEffect(() => {
+    if (typeof params.eventId !== "string") {
+      return;
+    }
+
+    const routedEvent = events.find((event) => event.eventId === params.eventId);
+
+    if (typeof routedEvent === "undefined") {
+      return;
+    }
+
+    setSelectedEventId(routedEvent.eventId);
+    setMode("edit");
+    setDraft(createDraftFromEvent(routedEvent));
+  }, [events, params.eventId]);
 
   const updateDraftField = (field: TextEditableField, value: string): void => {
     setDraft((currentDraft) => ({
