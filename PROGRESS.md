@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
-- **Branch:** `feature/club-home-media-polish`
-- **Yapılan iş:** Kullanıcının düzelttiği home yerleşimi uygulandı. Club home üst başlığı artık birincil kulüp adını ve rol/şehir bilgisini gösteriyor; ayrı `Klubit` kartı kaldırıldı. `Hallinnoi tapahtumia` butonunun altındaki ana görsel alan artık sadece `LIVE` eventlerden oluşan yatay slider/rail gösteriyor. Home ve `/club/upcoming` içindeki organizer event görsellerine tıklanınca `/club/events?eventId=...` açılıyor; events ekranı bu parametreyi okuyup ilgili etkinliği edit modunda seçiyor. Kulüp kimliği eksikleri kapatıldı: `clubs.cover_image_url` ve `clubs.announcement` alanları eklendi, dashboard read modeline logo/cover/duyuru/contact email taşındı, club profile içinden logo ve kapak görseli telefondan yüklenebiliyor, duyuru ve iletişim e-postası kaydedilebiliyor.
-- **Neden yapıldı:** Kullanıcı slider’ın yanlış yerde yorumlandığını, sadece aktif eventlerin gösterilmesi gerektiğini, ayrı `Klubit` alanının gereksiz olduğunu, kulüp duyuru/kapak/logo yönetiminin eksik kaldığını ve etkinlik görsellerine tıklanınca ilgili event ekranına gidilmesi gerektiğini belirtti.
-- **Doğrulama:** `npx supabase@2.95.4 db push --yes` ile `20260503200000_club_profile_media.sql` remote'a uygulandı. `npx supabase@2.95.4 db lint --linked`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
-- **Sıradaki önerilen adım:** Fiziksel iPhone’da organizer hesabıyla Club Profile açılıp logo/cover upload + announcement save smoke’u alınmalı. Ardından Club Home’da aktif event varsa slider’ın yalnız live event gösterdiği, event görseline tıklayınca edit ekranına gittiği kontrol edilmeli.
-- **Açık risk/blokaj:** Kulüp medya upload’i mevcut `event-media` bucket’ındaki `clubs/{clubId}/...` RLS politikasını kullanıyor; bu bilinçli olarak club-owned medya için yeniden kullanıldı. Production’da daha semantik bucket adı istenirse ayrı `club-media` bucket’ına taşınabilir. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+- **Branch:** `feature/club-event-preview-flow`
+- **Yapılan iş:** Club Home ve `/club/upcoming` içindeki organizer event görsellerinin davranışı düzeltildi. Görsele/karta dokununca artık doğrudan edit formuna atmak yerine kulüp içinde event önizleme modalı açılıyor. Önizleme; kapak görseli, durum, kulüp/şehir, başlangıç-bitiş zamanı, açıklama, katılımcı, rasti ve minimum leima bilgisini gösteriyor. Düzenleme ayrı `Muokkaa/Edit` aksiyonu ile `/club/events?eventId=...` üzerinden bilinçli olarak açılıyor.
+- **Neden yapıldı:** Kullanıcı görsellere tıklanınca kulüpler içinde event önizlemesi görülmesini istedi. Doğrudan edit ekranına gitmek, hem ürün mantığında daha kaba hem de yanlışlıkla düzenleme ekranına düşüren bir davranıştı.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone’da organizer hesabıyla Club Home ve Tulossa ekranında event görseline basıp önizleme modalını, ardından `Muokkaa` ile edit geçişini smoke etmek.
+- **Açık risk/blokaj:** Bu slice yeni backend fetch eklemedi; mevcut dashboard verisiyle çalışıyor. Çok uzun açıklamalar önizlemede 4 satırla sınırlı, tam metin edit/detail yüzeyinde kalmalı. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
 
 - **Tarih:** 2026-05-03
 - **Branch:** `feature/mobile-club-event-creation-polish`

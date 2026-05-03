@@ -5,26 +5,22 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/club-home-media-polish`
-- **Goal:** Make the club mobile area match the intended organizer mental model: club identity at the top, live-event slider under actions, and editable club logo/cover/announcement controls.
+- **Branch:** `feature/club-event-preview-flow`
+- **Goal:** Make event images inside the club mobile area open an event preview first, then let organizers explicitly continue to edit.
 
 ## Architectural Decisions
 
-- Add `clubs.cover_image_url` and `clubs.announcement` columns.
-- Extend club dashboard read model and membership summary types to include `logoUrl`, `coverImageUrl`, and `announcement`.
-- Add mobile club media picker/upload helpers using the existing `event-media` bucket.
-- Add a club profile editor for selected club logo, cover, announcement, and contact email.
-- Remove the separate `Klubit` home card and display the primary club name/city in the opening header.
-- Keep the hero/slider under the manage button, but feed it only active/live events.
-- Make organizer event image cards pressable and route to `/club/events?eventId=...`; make events screen honor that param.
+- Add a shared `ClubEventPreviewModal` under the club feature folder.
+- Reuse `ClubDashboardEventSummary` so preview opens instantly from already-loaded dashboard data.
+- Change Club Home live/event rails and Club Upcoming cards to open the preview modal on image/card press.
+- Keep `/club/events?eventId=...` routing only behind an explicit `Muokkaa/Edit` preview action.
 
 ## Edge Cases
 
-- Home header shows the club name instead of a generic `Klubin päivä` only.
-- Home no longer renders the separate `Klubit` card.
-- The slider under the manage button only includes `timelineState === LIVE`.
-- Club profile can upload logo/cover and save announcement/contact email.
-- Pressing organizer event images opens the edit screen for that event.
+- Pressing organizer event images opens an in-context preview, not the edit form.
+- The preview still exposes status, time, description, participant, venue, and minimum leima context.
+- Explicit edit action closes the modal and routes to the selected event edit form.
+- Empty or missing descriptions should not create dead space.
 
 ## Ordered Follow-Up Queue
 
@@ -35,8 +31,6 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Validation Plan
 
 - Run:
-  - `npx supabase@2.95.4 db push --yes`
-  - `npx supabase@2.95.4 db lint --linked`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`

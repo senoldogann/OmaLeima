@@ -8,7 +8,8 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
-import type { ClubDashboardTimelineState } from "@/features/club/types";
+import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
+import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -48,6 +49,7 @@ export default function ClubHomeScreen() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [previewEvent, setPreviewEvent] = useState<ClubDashboardEventSummary | null>(null);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const dashboardQuery = useClubDashboardQuery({
     userId: userId ?? "",
@@ -144,6 +146,14 @@ export default function ClubHomeScreen() {
     setIsSigningOut(false);
   };
 
+  const handleEditPreviewEventPress = (eventId: string): void => {
+    setPreviewEvent(null);
+    router.push({
+      pathname: "/club/events",
+      params: { eventId },
+    });
+  };
+
   return (
     <AppScreen>
       <View style={styles.headerRow}>
@@ -230,12 +240,7 @@ export default function ClubHomeScreen() {
               {liveEvents.map((event) => (
                 <Pressable
                   key={event.eventId}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/club/events",
-                      params: { eventId: event.eventId },
-                    })
-                  }
+                  onPress={() => setPreviewEvent(event)}
                   style={styles.livePressable}
                 >
                   <CoverImageSurface
@@ -304,12 +309,7 @@ export default function ClubHomeScreen() {
                 return (
                   <Pressable
                     key={event.eventId}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/club/events",
-                        params: { eventId: event.eventId },
-                      })
-                    }
+                    onPress={() => setPreviewEvent(event)}
                   >
                     <CoverImageSurface
                       source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
@@ -340,6 +340,13 @@ export default function ClubHomeScreen() {
           </InfoCard>
         </>
       ) : null}
+      <ClubEventPreviewModal
+        event={previewEvent}
+        formatter={formatter}
+        language={language}
+        onClose={() => setPreviewEvent(null)}
+        onEditPress={handleEditPreviewEventPress}
+      />
     </AppScreen>
   );
 }
