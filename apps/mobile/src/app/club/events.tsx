@@ -25,7 +25,7 @@ import {
   useCreateClubEventMutation,
   useUpdateClubEventMutation,
 } from "@/features/club/club-event-mutations";
-import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, getFallbackCoverSource } from "@/features/events/event-visuals";
 import type {
   ClubDashboardEventSummary,
   ClubEventEditableStatus,
@@ -554,6 +554,7 @@ export default function ClubEventsScreen() {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>{language === "fi" ? "Kansikuva" : "Cover image"}</Text>
                 <CoverImageSurface
+                  fallbackSource={getFallbackCoverSource("clubControl")}
                   imageStyle={styles.coverPreviewImage}
                   source={getEventCoverSourceWithFallback(draft.coverImageUrl, "clubControl")}
                   style={styles.coverPreview}

@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { BusinessJoinedEventSummary } from "@/features/business/types";
+import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
+import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
@@ -34,6 +37,7 @@ const getTimelineBadge = (
 
 export default function BusinessHomeScreen() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const styles = useThemeStyles(createStyles);
   const { copy, language, localeTag, theme } = useUiPreferences();
   const { session } = useSession();
@@ -93,6 +97,7 @@ export default function BusinessHomeScreen() {
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
   const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
   const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
+  const eventRailWidth = Math.min(340, Math.max(260, windowWidth - 96));
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
     setSignOutError(null);
@@ -217,8 +222,15 @@ export default function BusinessHomeScreen() {
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
         <InfoCard eyebrow={copy.common.events} title={labels.joinedEventsTitle}>
-          <View style={styles.eventList}>
-            {joinedEvents.map((event) => {
+          <AutoAdvancingRail
+            contentContainerStyle={styles.eventRailContent}
+            intervalMs={3500}
+            itemGap={12}
+            items={joinedEvents}
+            itemWidth={eventRailWidth}
+            keyExtractor={(event: BusinessJoinedEventSummary) => event.eventVenueId}
+            railStyle={styles.eventRail}
+            renderItem={(event: BusinessJoinedEventSummary) => {
               const timelineBadge = getTimelineBadge(
                 event,
                 copy.business.live,
@@ -229,32 +241,55 @@ export default function BusinessHomeScreen() {
                 event.timelineState === "ACTIVE"
                   ? labels.liveEnds
                   : event.timelineState === "UPCOMING"
-                    ? labels.upcomingStarts
-                    : labels.completedEnded;
+                  ? labels.upcomingStarts
+                  : labels.completedEnded;
 
               return (
-                <View key={event.eventVenueId} style={styles.eventRow}>
-                  <View style={styles.eventRowHeader}>
-                    <Text style={styles.eventRowTitle}>{event.eventName}</Text>
-                    <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-                  </View>
-                  <Text style={styles.eventRowMeta}>
-                    {event.businessName} · {event.city}
-                  </Text>
-                  <Text style={styles.eventRowMeta}>
-                    {timelineLabel}{" "}
-                    {formatDateTime(
-                      formatter,
-                      event.timelineState === "ACTIVE" ? event.endAt : event.startAt
-                    )}
-                  </Text>
+                <Pressable
+                  onPress={() => router.push("/business/events")}
+                  style={({ pressed }) => [
+                    styles.eventVisualCard,
+                    pressed ? styles.eventVisualCardPressed : null,
+                  ]}
+                >
+                  <CoverImageSurface
+                    fallbackSource={getFallbackCoverSource("eventDiscovery")}
+                    imageStyle={styles.eventVisualImage}
+                    source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
+                    style={styles.eventVisualHero}
+                  >
+                    <View style={styles.eventVisualOverlay} />
+                    <View style={styles.eventVisualContent}>
+                      <View style={styles.eventVisualHeader}>
+                        <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+                      </View>
+                      <View style={styles.eventVisualCopy}>
+                        <Text numberOfLines={2} style={styles.eventVisualTitle}>
+                          {event.eventName}
+                        </Text>
+                        <Text numberOfLines={1} style={styles.eventVisualMeta}>
+                          {event.businessName} · {event.city}
+                        </Text>
+                        <Text numberOfLines={1} style={styles.eventVisualMeta}>
+                          {timelineLabel}{" "}
+                          {formatDateTime(
+                            formatter,
+                            event.timelineState === "ACTIVE" ? event.endAt : event.startAt
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  </CoverImageSurface>
                   {event.stampLabel ? (
-                    <Text style={styles.eventRowStamp}>{event.stampLabel}</Text>
+                    <Text numberOfLines={1} style={styles.eventVisualStamp}>
+                      {event.stampLabel}
+                    </Text>
                   ) : null}
-                </View>
+                </Pressable>
               );
-            })}
-          </View>
+            }}
+            showsIndicators={false}
+          />
 
           <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{labels.viewAllEvents}</Text>
@@ -294,43 +329,67 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    eventList: {
-      gap: 8,
+    eventRail: {
+      marginHorizontal: -2,
     },
-    eventRow: {
+    eventRailContent: {
+      paddingHorizontal: 2,
+    },
+    eventVisualCard: {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.inner,
-      borderWidth: 1,
-      gap: 6,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 10,
+      overflow: "hidden",
+      padding: 10,
+    },
+    eventVisualCardPressed: {
+      transform: [{ translateY: 1.5 }, { scale: 0.992 }],
+    },
+    eventVisualContent: {
+      flex: 1,
+      justifyContent: "space-between",
       padding: 14,
     },
-    eventRowHeader: {
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "space-between",
+    eventVisualCopy: {
+      gap: 4,
     },
-    eventRowMeta: {
-      color: theme.colors.textMuted,
+    eventVisualHeader: {
+      alignItems: "flex-end",
+    },
+    eventVisualHero: {
+      borderRadius: theme.radius.inner,
+      minHeight: 196,
+      overflow: "hidden",
+      position: "relative",
+    },
+    eventVisualImage: {
+      borderRadius: theme.radius.inner,
+    },
+    eventVisualMeta: {
+      color: "rgba(248, 250, 245, 0.78)",
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    eventRowStamp: {
+    eventVisualOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.54)",
+    },
+    eventVisualStamp: {
       color: theme.colors.lime,
-      fontFamily: theme.typography.families.semibold,
+      fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.caption,
       letterSpacing: 1,
       lineHeight: theme.typography.lineHeights.caption,
       textTransform: "uppercase",
     },
-    eventRowTitle: {
-      color: theme.colors.textPrimary,
-      flex: 1,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      marginRight: 8,
+    eventVisualTitle: {
+      color: "#F8FAF5",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     metaText: {
       color: theme.colors.textMuted,
