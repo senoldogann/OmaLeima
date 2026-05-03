@@ -4,15 +4,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Completed Todos (Previous Waves)
 
-- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner location consent, and scanner policy slices recorded in `PROGRESS.md`.
+- [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner policy, and media fallback slices recorded in `PROGRESS.md`.
 
-## Current Todos (Media Upload Resilience And Business Manager)
+## Current Todos (Business Event Timeline Visibility)
 
 - [x] Start a dedicated feature branch.
-- [x] Inspect shared image rendering, media upload helpers, and business staff role model.
-- [x] Add image load fallback/retry behavior to shared cover surfaces.
-- [x] Add a focused pilot business manager bootstrap script.
-- [x] Run hosted bootstrap and validation commands.
+- [x] Inspect business overview, business events, scanner route, student timeline logic, and join RPC rules.
+- [x] Align business live/upcoming derivation with timestamp-based public event visibility.
+- [x] Include still-joinable `ACTIVE` events in business manage opportunities.
+- [x] Add overview refresh while business screens are open.
+- [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 

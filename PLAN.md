@@ -5,32 +5,29 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/media-upload-manager-account-fix`
-- **Goal:** Ensure uploaded media never leaves black/empty cover surfaces and provide a real pilot business manager account for manager-level testing.
+- **Branch:** `feature/business-event-timeline-visibility`
+- **Goal:** Make live/upcoming/manage event visibility reliable for business and scanner roles.
 
 ## Architectural Decisions
 
-- Keep upload helpers bucket-specific and unchanged unless a concrete upload failure appears; the current symptom is display failure after a URL exists.
-- Put image load failure handling in `CoverImageSurface`, because it is the shared display boundary for role-specific cover/hero surfaces.
-- Reset the image error state whenever the source changes so a new upload can render immediately.
-- Create the business manager as a business staff `MANAGER`, not a new database enum/profile role. This matches existing RLS and mobile access logic.
-- Use a focused admin script that attaches the manager to the same active business as the pilot scanner account, then writes credentials to the Desktop only.
+- Keep the shared business overview query as the single source for business home, events, profile, and scanner screens.
+- Change timeline derivation to treat both `PUBLISHED` and `ACTIVE` events as live when the current time is inside `start_at` and `end_at`.
+- Keep completed/cancelled events out of active/upcoming scanner surfaces.
+- Fetch joinable city opportunities for both `PUBLISHED` and `ACTIVE`, but only before `start_at` and `join_deadline_at`.
+- Add a modest refresh interval to the business overview query so an already-open scanner screen can move from upcoming to live without app restart.
 
 ## Edge Cases
 
-- Public URL temporarily returns an error: the app shows themed fallback instead of a black surface.
-- User uploads a replacement image after an error: source key changes and the image is retried.
-- Pilot scanner is missing or not attached to a business: manager bootstrap raises an explicit error.
-- Existing manager account exists: auth user, profile, and business staff membership are updated idempotently.
+- Event status is `PUBLISHED`, time window is live: scanner should list it.
+- Event status is `ACTIVE`, start is still future: business can still see it as upcoming and joinable until deadline/start.
+- Event status is `PUBLISHED` or `ACTIVE`, start has passed: it is no longer joinable unless already joined.
+- Staff keeps the app open at event start: overview refetch should promote the event into scanner queue.
 
 ## Validation Plan
 
 - Run:
-  - `npm --prefix apps/admin run bootstrap:pilot-business-manager`
-  - `npm --prefix apps/admin run typecheck`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
-  - `npx supabase@2.95.4 db lint --linked`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

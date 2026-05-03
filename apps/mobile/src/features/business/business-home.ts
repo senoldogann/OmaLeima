@@ -61,12 +61,13 @@ export const businessHomeOverviewQueryKey = (userId: string) => ["business-home-
 const deriveTimelineState = (eventStatus: EventRow["status"], startAt: string, endAt: string, now: number): BusinessTimelineState => {
   const startTime = new Date(startAt).getTime();
   const endTime = new Date(endAt).getTime();
+  const isVisibleRuntimeStatus = eventStatus === "PUBLISHED" || eventStatus === "ACTIVE";
 
-  if (eventStatus === "ACTIVE" && now >= startTime && now <= endTime) {
+  if (isVisibleRuntimeStatus && now >= startTime && now <= endTime) {
     return "ACTIVE";
   }
 
-  if ((eventStatus === "PUBLISHED" || eventStatus === "ACTIVE") && now < startTime) {
+  if (isVisibleRuntimeStatus && now < startTime) {
     return "UPCOMING";
   }
 
@@ -156,9 +157,10 @@ const fetchCityOpportunitiesAsync = async (cities: string[]): Promise<EventRow[]
     .from("events")
     .select("id,name,city,start_at,end_at,join_deadline_at,status")
     .eq("visibility", "PUBLIC")
-    .eq("status", "PUBLISHED")
+    .in("status", ["PUBLISHED", "ACTIVE"])
     .in("city", cities)
     .gt("join_deadline_at", nowIso)
+    .gt("start_at", nowIso)
     .order("start_at", { ascending: true })
     .returns<EventRow[]>();
 
@@ -318,4 +320,5 @@ export const useBusinessHomeOverviewQuery = ({
     queryKey: businessHomeOverviewQueryKey(userId),
     queryFn: async () => fetchBusinessHomeOverviewAsync(userId),
     enabled: isEnabled,
+    refetchInterval: isEnabled ? 30000 : false,
   });
