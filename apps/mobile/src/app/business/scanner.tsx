@@ -68,6 +68,21 @@ type ScannerDeviceState =
       status: "error";
     };
 
+type ScannerLocationModule = {
+  Accuracy?: {
+    Balanced?: number;
+  };
+  getCurrentPositionAsync?: (options: { accuracy?: number }) => Promise<{
+    coords: {
+      latitude: number;
+      longitude: number;
+    };
+  }>;
+  requestForegroundPermissionsAsync?: () => Promise<{
+    granted: boolean;
+  }>;
+};
+
 const emptyScannerLocation = {
   latitude: null,
   longitude: null,
@@ -115,10 +130,14 @@ const readWebScannerLocationAsync = (): Promise<ScannerLocationPayload> =>
   });
 
 const readNativeScannerLocationAsync = async (): Promise<ScannerLocationPayload> => {
-  const Location = await import("expo-location").catch(() => null);
+  const Location = (await import("expo-location").catch(() => null)) as ScannerLocationModule | null;
 
-  if (Location === null) {
-    throw new Error("Location proof requires a dev build that includes expo-location. Rebuild the app or continue without location proof.");
+  if (
+    Location === null ||
+    typeof Location.requestForegroundPermissionsAsync !== "function" ||
+    typeof Location.getCurrentPositionAsync !== "function"
+  ) {
+    throw new Error("LOCATION_PROOF_UNSUPPORTED");
   }
 
   const permission = await Location.requestForegroundPermissionsAsync();
@@ -128,7 +147,7 @@ const readNativeScannerLocationAsync = async (): Promise<ScannerLocationPayload>
   }
 
   const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
+    accuracy: Location.Accuracy?.Balanced,
   });
 
   return {
@@ -579,13 +598,20 @@ export default function BusinessScannerScreen() {
         status: "ready",
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "unknown error";
+      const isUnsupportedLocationProof = errorMessage === "LOCATION_PROOF_UNSUPPORTED";
+
       setLocationProof({
         detail:
-          language === "fi"
+          isUnsupportedLocationProof
+            ? language === "fi"
+              ? "Sijaintitodiste vaatii uuden dev buildin. Skannaus toimii normaalisti ilman sijaintia."
+              : "Location proof needs a rebuilt dev app. Scanning still works normally without location."
+            : language === "fi"
             ? `Sijaintia ei voitu liittää: ${error instanceof Error ? error.message : "tuntematon virhe"}`
             : `Could not attach location: ${error instanceof Error ? error.message : "unknown error"}`,
         location: emptyScannerLocation,
-        status: "error",
+        status: isUnsupportedLocationProof ? "unsupported" : "error",
       });
     }
   };
@@ -704,6 +730,7 @@ export default function BusinessScannerScreen() {
 
               {selectedEvent ? (
                 <CoverImageSurface
+                  fallbackSource={getFallbackCoverSource("clubControl")}
                   source={
                     selectedEvent.businessCoverImageUrl
                       ? { uri: selectedEvent.businessCoverImageUrl }
@@ -714,6 +741,7 @@ export default function BusinessScannerScreen() {
                   <View style={styles.businessHeroOverlay} />
                   <View style={styles.businessHeroContent}>
                     <CoverImageSurface
+                      fallbackSource={getFallbackCoverSource("qrPass")}
                       source={
                         selectedEvent.businessLogoUrl
                           ? { uri: selectedEvent.businessLogoUrl }
@@ -874,20 +902,22 @@ export default function BusinessScannerScreen() {
                     </View>
                   </View>
                   <Text style={styles.metaText}>{locationProof.detail}</Text>
-                  <Pressable
-                    disabled={isSubmitting || locationProof.status === "capturing"}
-                    onPress={() => void handleAttachLocationPress()}
-                    style={[
-                      styles.secondaryButton,
-                      isSubmitting || locationProof.status === "capturing" ? styles.disabledButton : null,
-                    ]}
-                  >
-                    <Text style={styles.secondaryButtonText}>
-                      {locationProof.status === "capturing"
-                        ? labels.locationProofCapturing
-                        : labels.locationProofAction}
-                    </Text>
-                  </Pressable>
+                  {locationProof.status !== "unsupported" ? (
+                    <Pressable
+                      disabled={isSubmitting || locationProof.status === "capturing"}
+                      onPress={() => void handleAttachLocationPress()}
+                      style={[
+                        styles.secondaryButton,
+                        isSubmitting || locationProof.status === "capturing" ? styles.disabledButton : null,
+                      ]}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        {locationProof.status === "capturing"
+                          ? labels.locationProofCapturing
+                          : labels.locationProofAction}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               ) : null}
 

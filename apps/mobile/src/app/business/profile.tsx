@@ -20,6 +20,7 @@ import {
 } from "@/features/business/business-profile";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { BusinessMembershipSummary } from "@/features/business/types";
+import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import {
@@ -159,6 +160,7 @@ export default function BusinessProfileScreen() {
   const userId = session?.user.id ?? null;
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [isBusinessProfileExpanded, setIsBusinessProfileExpanded] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BusinessProfileDraft | null>(null);
   const [editingScannerDeviceId, setEditingScannerDeviceId] = useState<string | null>(null);
@@ -393,12 +395,14 @@ export default function BusinessProfileScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedMembership !== null && draft !== null ? (
         <>
           <CoverImageSurface
+            fallbackSource={getFallbackCoverSource("clubControl")}
             source={draft.coverImageUrl.trim().length > 0 ? { uri: draft.coverImageUrl.trim() } : null}
             style={styles.businessHero}
           >
             <View style={styles.heroOverlay} />
             <View style={styles.heroContent}>
               <CoverImageSurface
+                fallbackSource={getFallbackCoverSource("qrPass")}
                 source={draft.logoUrl.trim().length > 0 ? { uri: draft.logoUrl.trim() } : null}
                 style={styles.logoSurface}
               >
@@ -503,67 +507,86 @@ export default function BusinessProfileScreen() {
             </View>
           ) : null}
 
-          <InfoCard
-            eyebrow={language === "fi" ? "Yritysprofiili" : "Business profile"}
-            title={language === "fi" ? "Näkyvyys ja tapahtumapäivä" : "Visibility and event-day context"}
+          <Pressable
+            onPress={() => setIsBusinessProfileExpanded((isExpanded) => !isExpanded)}
+            style={styles.collapseHeader}
           >
-            <View style={styles.formStack}>
-              {fieldConfigs.map((config) => (
-                <View key={config.field} style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>{config.label}</Text>
-                  <TextInput
-                    autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
-                    editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
-                    keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
-                    multiline={config.multiline}
-                    onChangeText={(value) => updateDraftField(config.field, value)}
-                    placeholder={config.placeholder}
-                    placeholderTextColor={theme.colors.textDim}
-                    style={[
-                      styles.input,
-                      config.multiline ? styles.textArea : null,
-                      !canEditSelectedMembership ? styles.readOnlyInput : null,
-                    ]}
-                    textAlignVertical={config.multiline ? "top" : "center"}
-                    value={draft[config.field]}
-                  />
-                </View>
-              ))}
+            <View style={styles.collapseHeaderCopy}>
+              <Text style={styles.collapseEyebrow}>
+                {language === "fi" ? "Yritysprofiili" : "Business profile"}
+              </Text>
+              <Text style={styles.collapseTitle}>
+                {language === "fi" ? "Näkyvyys ja tapahtumapäivä" : "Visibility and event-day context"}
+              </Text>
             </View>
+            <View style={[styles.collapseIcon, isBusinessProfileExpanded ? styles.collapseIconOpen : null]}>
+              <AppIcon color={theme.colors.textPrimary} name="chevron-down" size={18} />
+            </View>
+          </Pressable>
 
-            {canEditSelectedMembership ? (
-              <Pressable
-                disabled={updateBusinessProfileMutation.isPending}
-                onPress={() => void handleSavePress()}
-                style={[styles.primaryButton, updateBusinessProfileMutation.isPending ? styles.disabledButton : null]}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {updateBusinessProfileMutation.isPending
-                    ? language === "fi"
-                      ? "Tallennetaan..."
-                      : "Saving..."
-                    : language === "fi"
-                      ? "Tallenna profiili"
-                      : "Save profile"}
+          {isBusinessProfileExpanded ? (
+            <InfoCard
+              eyebrow={language === "fi" ? "Muokkaa" : "Edit"}
+              title={language === "fi" ? "Yrityksen tiedot" : "Business details"}
+            >
+              <View style={styles.formStack}>
+                {fieldConfigs.map((config) => (
+                  <View key={config.field} style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <TextInput
+                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                      multiline={config.multiline}
+                      onChangeText={(value) => updateDraftField(config.field, value)}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={[
+                        styles.input,
+                        config.multiline ? styles.textArea : null,
+                        !canEditSelectedMembership ? styles.readOnlyInput : null,
+                      ]}
+                      textAlignVertical={config.multiline ? "top" : "center"}
+                      value={draft[config.field]}
+                    />
+                  </View>
+                ))}
+              </View>
+
+              {canEditSelectedMembership ? (
+                <Pressable
+                  disabled={updateBusinessProfileMutation.isPending}
+                  onPress={() => void handleSavePress()}
+                  style={[styles.primaryButton, updateBusinessProfileMutation.isPending ? styles.disabledButton : null]}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {updateBusinessProfileMutation.isPending
+                      ? language === "fi"
+                        ? "Tallennetaan..."
+                        : "Saving..."
+                      : language === "fi"
+                        ? "Tallenna profiili"
+                        : "Save profile"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.metaText}>
+                  {language === "fi"
+                    ? "Skannerirooli voi tarkastella profiilia, mutta vain owner tai manager voi muokata sitä."
+                    : "Scanner role can view this profile; only owner or manager can edit it."}
                 </Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.metaText}>
-                {language === "fi"
-                  ? "Skannerirooli voi tarkastella profiilia, mutta vain owner tai manager voi muokata sitä."
-                  : "Scanner role can view this profile; only owner or manager can edit it."}
-              </Text>
-            )}
+              )}
 
-            {updateBusinessProfileMutation.error ? (
-              <Text style={styles.errorText}>{updateBusinessProfileMutation.error.message}</Text>
-            ) : null}
-            {updateBusinessProfileMutation.isSuccess ? (
-              <Text style={styles.successText}>
-                {language === "fi" ? "Yritysprofiili tallennettu." : "Business profile saved."}
-              </Text>
-            ) : null}
-          </InfoCard>
+              {updateBusinessProfileMutation.error ? (
+                <Text style={styles.errorText}>{updateBusinessProfileMutation.error.message}</Text>
+              ) : null}
+              {updateBusinessProfileMutation.isSuccess ? (
+                <Text style={styles.successText}>
+                  {language === "fi" ? "Yritysprofiili tallennettu." : "Business profile saved."}
+                </Text>
+              ) : null}
+            </InfoCard>
+          ) : null}
 
           <InfoCard
             eyebrow={language === "fi" ? "Skannerit" : "Scanners"}
@@ -971,6 +994,46 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
+    },
+    collapseEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    collapseHeader: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+      padding: 18,
+    },
+    collapseHeaderCopy: {
+      flex: 1,
+      gap: 6,
+    },
+    collapseIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      height: 38,
+      justifyContent: "center",
+      width: 38,
+    },
+    collapseIconOpen: {
+      transform: [{ rotate: "180deg" }],
+    },
+    collapseTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     disabledButton: {
       opacity: 0.68,

@@ -8,6 +8,7 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 type CoverImageSurfaceProps = PropsWithChildren<{
+  fallbackSource?: ImageSourcePropType | null;
   imageStyle?: StyleProp<ImageStyle>;
   source: ImageSourcePropType | null | undefined;
   style?: StyleProp<ViewStyle>;
@@ -35,6 +36,7 @@ const createSourceKey = (source: ImageSourcePropType | null | undefined): string
 
 export const CoverImageSurface = ({
   children,
+  fallbackSource,
   imageStyle,
   source,
   style,
@@ -51,6 +53,14 @@ export const CoverImageSurface = ({
   return (
     <View style={style}>
       <View style={styles.fallback} />
+      {fallbackSource !== null && fallbackSource !== undefined ? (
+        <ExpoImage
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          source={fallbackSource}
+          style={[styles.image, imageStyle]}
+        />
+      ) : null}
       {shouldRenderImage ? (
         <ExpoImage
           cachePolicy="memory-disk"

@@ -11,7 +11,7 @@ import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { pickClubMediaAsync, uploadClubMediaAsync, type ClubMediaKind } from "@/features/club/club-media";
 import { useUpdateClubProfileMutation } from "@/features/club/club-profile";
 import type { ClubMembershipSummary } from "@/features/club/types";
-import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
+import { getEventCoverSourceWithFallback, getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
@@ -168,6 +168,7 @@ export default function ClubProfileScreen() {
             ) : null}
 
             <CoverImageSurface
+              fallbackSource={getFallbackCoverSource("clubControl")}
               imageStyle={styles.clubCoverImage}
               source={getEventCoverSourceWithFallback(clubDraft.coverImageUrl, "clubControl")}
               style={styles.clubCover}
@@ -175,6 +176,7 @@ export default function ClubProfileScreen() {
               <View style={styles.clubCoverOverlay} />
               <View style={styles.clubCoverContent}>
                 <CoverImageSurface
+                  fallbackSource={getFallbackCoverSource("qrPass")}
                   imageStyle={styles.clubLogoImage}
                   source={getEventCoverSourceWithFallback(clubDraft.logoUrl, "clubControl")}
                   style={styles.clubLogo}
