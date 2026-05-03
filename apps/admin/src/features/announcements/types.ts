@@ -44,6 +44,9 @@ export type AnnouncementCreatePayload = {
 };
 
 export type AnnouncementMutationResponse = {
+  notificationsCreated?: number;
+  notificationsFailed?: number;
+  notificationsSent?: number;
   message: string;
   status: string | null;
 };

@@ -59,3 +59,19 @@ export const submitAnnouncementCreateRequestAsync = async (
 
   return parseAnnouncementResponseAsync(response);
 };
+
+export const submitAnnouncementPushRequestAsync = async (
+  announcementId: string
+): Promise<AnnouncementMutationResponse> => {
+  const response = await fetch("/api/announcements/send-push", {
+    body: JSON.stringify({
+      announcementId,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  return parseAnnouncementResponseAsync(response);
+};

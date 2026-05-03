@@ -17,6 +17,14 @@ const announcementStatuses = new Set<string>(["DRAFT", "PUBLISHED", "ARCHIVED"])
 
 const isUuid = (value: string): boolean => uuidPattern.test(value);
 
+export const parseAnnouncementIdOrThrow = (value: unknown): string => {
+  if (typeof value !== "string" || !isUuid(value)) {
+    throw new AnnouncementValidationError("announcementId must be a valid UUID.");
+  }
+
+  return value;
+};
+
 const parseIsoDateTimeOrThrow = (value: string, fieldName: string): string => {
   if (!absoluteDateTimePattern.test(value.trim())) {
     throw new AnnouncementValidationError(`${fieldName} must be an ISO datetime with timezone.`);

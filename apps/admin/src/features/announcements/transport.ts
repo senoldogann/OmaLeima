@@ -86,3 +86,41 @@ export const createAnnouncementAsync = async (
     status: 200,
   };
 };
+
+export const sendAnnouncementPushAsync = async (
+  supabase: SupabaseClient,
+  announcementId: string
+): Promise<AnnouncementTransportResult> => {
+  const invokeResult = await supabase.functions.invoke<AnnouncementMutationResponse>(
+    "send-announcement-push",
+    {
+      body: {
+        announcementId,
+      },
+    }
+  );
+
+  if (invokeResult.error !== null) {
+    return {
+      response: {
+        message: invokeResult.error.message,
+        status: "FUNCTION_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  return {
+    response: {
+      message:
+        typeof invokeResult.data?.message === "string"
+          ? invokeResult.data.message
+          : "Announcement push request completed.",
+      notificationsCreated: invokeResult.data?.notificationsCreated,
+      notificationsFailed: invokeResult.data?.notificationsFailed,
+      notificationsSent: invokeResult.data?.notificationsSent,
+      status: typeof invokeResult.data?.status === "string" ? invokeResult.data.status : null,
+    },
+    status: 200,
+  };
+};

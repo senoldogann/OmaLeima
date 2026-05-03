@@ -5,28 +5,29 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/announcements-foundation`
-- **Goal:** Build the first reliable announcement foundation so platform admins and club organizers can publish in-app popup announcements.
+- **Branch:** `feature/announcement-push-followers`
+- **Goal:** Let admins and club organizers send already-published announcements as real Expo push notifications with delivery records.
 
 ## Architectural Decisions
 
-- Add `announcements` as the authoring table and `announcement_acknowledgements` as the per-user dismissal table.
-- Use RLS for active read visibility, platform-wide authoring by platform admins, and club-scoped authoring by club owners/organizers.
-- Add web read model and one create route used by both `/admin/announcements` and `/club/announcements`.
-- Add a mobile app-level popup bridge that fetches active published announcements and records dismissal.
-- Keep remote push fan-out, organizer follow preferences, and read receipts as the next dedicated feature slice.
+- Add `send-announcement-push` Edge Function using the existing Expo push helper and service-role Supabase client.
+- Use audience-aware recipient selection from active profiles, business staff, club staff, and club event registrations.
+- Insert `notifications` rows with `type = ANNOUNCEMENT` and delivery result payloads.
+- Add `/api/announcements/send-push` route so the web panel can trigger the function with the current authenticated session.
+- Add a send-push button to the announcement list.
+- Keep user-facing follow/subscription preference UI as a separate next slice.
 
 ## Edge Cases
 
-- Dismissed announcements should not re-open for the same user.
-- Club organizers can only create announcements for clubs where they can create events.
-- Platform announcements have `club_id = null`; club announcements require `club_id`.
-- Mobile should skip the popup when the session is anonymous or still loading.
-- Time windows must respect `starts_at <= now` and optional `ends_at`.
+- Draft/archived/inactive announcements must not send.
+- Announcement pushes must not send twice once successful delivery records exist.
+- If no enabled device tokens exist, return a clear no-recipient status.
+- Partial push failures should still record per-user notification outcomes.
+- Club-scoped audience `STUDENTS` targets registered students from that club's events.
 
 ## Ordered Follow-Up Queue
 
-1. Platform/organizer announcements with push opt-in/read receipts.
+1. Announcement follow/subscription preferences and read receipt analytics.
 2. Pass return/reward handout operations for haalarimerkki pickup.
 3. Scanner PIN reset audit review in admin/club tools if operators need central oversight.
 
@@ -39,6 +40,6 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/admin run typecheck`
   - `npm --prefix apps/admin run lint`
   - `npm --prefix apps/admin run build`
-  - `npx supabase@2.95.4 db lint --linked`
+  - `npx supabase@2.95.4 functions deploy send-announcement-push`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.
