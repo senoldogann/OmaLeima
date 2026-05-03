@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { submitAnnouncementCreateRequestAsync } from "@/features/announcements/client";
+import {
+  submitAnnouncementCreateRequestAsync,
+  submitAnnouncementPushRequestAsync,
+} from "@/features/announcements/client";
 import type {
   AnnouncementActionState,
   AnnouncementCreatePayload,
@@ -55,34 +58,11 @@ const renderState = (state: AnnouncementActionState) => {
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
 };
 
-const renderAnnouncementCard = (announcement: AnnouncementRecord) => (
-  <article className="panel" key={announcement.announcementId}>
-    <div className="stack-sm">
-      <div className="split-row">
-        <span className="field-label">{announcement.clubName ?? "Platform"}</span>
-        <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
-      </div>
-      <h3 className="section-title">{announcement.title}</h3>
-      <p className="muted-text">{announcement.body}</p>
-      <div className="meta-grid">
-        <span>{announcement.audience}</span>
-        <span>Starts {formatDate(announcement.startsAt)}</span>
-        <span>{announcement.endsAt === null ? "No end date" : `Ends ${formatDate(announcement.endsAt)}`}</span>
-        <span>Priority {announcement.priority}</span>
-      </div>
-      {announcement.ctaLabel !== null && announcement.ctaUrl !== null ? (
-        <a className="text-link" href={announcement.ctaUrl} rel="noreferrer" target="_blank">
-          {announcement.ctaLabel}
-        </a>
-      ) : null}
-    </div>
-  </article>
-);
-
 export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   const router = useRouter();
   const [payload, setPayload] = useState<AnnouncementCreatePayload>(createInitialPayload(snapshot));
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [pendingPushAnnouncementId, setPendingPushAnnouncementId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<AnnouncementActionState>({
     code: null,
     message: null,
@@ -127,6 +107,77 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
     }
   };
 
+  const handleSendPushPress = async (announcement: AnnouncementRecord): Promise<void> => {
+    setPendingPushAnnouncementId(announcement.announcementId);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitAnnouncementPushRequestAsync(announcement.announcementId);
+      const deliveryText =
+        typeof response.notificationsSent === "number" || typeof response.notificationsFailed === "number"
+          ? ` Sent ${response.notificationsSent ?? 0}, failed ${response.notificationsFailed ?? 0}.`
+          : "";
+
+      setActionState({
+        code: response.status,
+        message: `${response.message}${deliveryText}`,
+        tone: response.status === "SUCCESS" || response.status === "PARTIAL_SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status === "SUCCESS" || response.status === "PARTIAL_SUCCESS") {
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown announcement push request error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingPushAnnouncementId(null);
+    }
+  };
+
+  const renderAnnouncementCard = (announcement: AnnouncementRecord) => {
+    const canSendPush = announcement.status === "PUBLISHED";
+
+    return (
+      <article className="panel" key={announcement.announcementId}>
+        <div className="stack-sm">
+          <div className="split-row">
+            <span className="field-label">{announcement.clubName ?? "Platform"}</span>
+            <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
+          </div>
+          <h3 className="section-title">{announcement.title}</h3>
+          <p className="muted-text">{announcement.body}</p>
+          <div className="meta-grid">
+            <span>{announcement.audience}</span>
+            <span>Starts {formatDate(announcement.startsAt)}</span>
+            <span>{announcement.endsAt === null ? "No end date" : `Ends ${formatDate(announcement.endsAt)}`}</span>
+            <span>Priority {announcement.priority}</span>
+          </div>
+          {announcement.ctaLabel !== null && announcement.ctaUrl !== null ? (
+            <a className="text-link" href={announcement.ctaUrl} rel="noreferrer" target="_blank">
+              {announcement.ctaLabel}
+            </a>
+          ) : null}
+          <button
+            className="secondary-action"
+            disabled={!canSendPush || pendingPushAnnouncementId !== null}
+            onClick={() => void handleSendPushPress(announcement)}
+            type="button"
+          >
+            {pendingPushAnnouncementId === announcement.announcementId ? "Sending push..." : "Send push"}
+          </button>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <div className="stack-lg">
       <section className="panel panel-accent">
@@ -135,7 +186,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
             <span className="field-label">{title}</span>
             <h3 className="section-title">Publish an in-app popup</h3>
             <p className="muted-text">
-              This creates the source announcement. Push fan-out and follower preferences are the next separate rollout.
+              This creates the source announcement. Send push from the announcement card after publishing.
             </p>
           </div>
 
