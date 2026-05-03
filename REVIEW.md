@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `bug/scanner-location-module-optional`
-- **Scope:** Prevent the business scanner route from crashing when the installed iOS dev build does not include `expo-location`.
+- **Branch:** `bug/scanner-location-type-erasure`
+- **Scope:** Make the business scanner route independent from every route-load reference to `expo-location` so older iOS dev builds do not crash before rendering.
 
 ## Affected Files
 
@@ -18,16 +18,17 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 ## Existing Logic Checked
 
-- `scanner.tsx` statically imported `expo-location`, so old dev builds without the native module crashed before the route default export could initialize.
+- `scanner.tsx` no longer has a value import for `expo-location`, but it still had a `typeof import("expo-location")` type alias in the route module.
+- Metro/Babel can still surface native-module resolution issues in dev-client bundles when a route keeps module-level references to a missing native dependency.
 - Location proof is optional telemetry; scanning must continue without it.
 - `app.config.ts` already includes the location plugin for rebuilt dev builds.
 
 ## Risks
 
-- The route must not import/evaluate `expo-location` at module load time.
+- The route must not import, type-import, or otherwise evaluate `expo-location` at module load time.
 - Pressing the location proof button on an old dev build should show a recoverable error, not crash the scanner.
 - Rebuilt dev builds should still use native location proof normally.
 
 ## Review Outcome
 
-Move `expo-location` behind a dynamic import inside the optional native location proof path.
+Keep `expo-location` fully inside the optional native location proof function and remove route-level type references.

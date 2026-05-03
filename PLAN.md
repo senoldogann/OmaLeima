@@ -5,12 +5,12 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `bug/scanner-location-module-optional`
-- **Goal:** Let the business scanner route load even when the current dev build lacks the native `expo-location` module.
+- **Branch:** `bug/scanner-location-type-erasure`
+- **Goal:** Let the business scanner route load even when the current dev build lacks the native `expo-location` module and Metro is using a stale or strict route transform.
 
 ## Architectural Decisions
 
-- Remove the top-level `expo-location` import from `business/scanner.tsx`.
+- Remove every route-level `expo-location` reference from `business/scanner.tsx`, including type-only import expressions.
 - Dynamically import `expo-location` only when native location proof is requested.
 - Treat missing native module as a recoverable optional location-proof error.
 - Keep web geolocation and rebuilt native dev builds on the same scan payload path.
@@ -24,9 +24,10 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 
 ## Ordered Follow-Up Queue
 
-1. Rebuild the iOS dev client when native location proof needs to be exercised.
-2. Add announcement/push opt-in/read-receipt model.
-3. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
+1. Restart Metro with `--clear` after this fix so the physical iPhone receives the new bundle.
+2. Rebuild the iOS dev client when native location proof needs to be exercised.
+3. Add announcement/push opt-in/read-receipt model.
+4. Add scanner PIN reset audit review in admin/club tools if operators need central oversight.
 
 ## Validation Plan
 

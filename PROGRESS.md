@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `bug/scanner-location-type-erasure`
+- **Yapılan iş:** Business scanner route icindeki kalan module-level `typeof import("expo-location")` tip referansi kaldirildi. `expo-location` artik sadece kullanici opsiyonel location proof butonuna bastiginda `readNativeScannerLocationAsync()` icinde dynamic import ile yukleniyor; eski iOS dev build `ExpoLocation` native modulunu icermiyorsa route render olmaya devam ediyor ve sadece location proof aksiyonu recoverable hata veriyor.
+- **Neden yapıldı:** Kullanici fiziksel iOS Metro'da `Cannot find native module 'ExpoLocation'` ve yan etki olarak `business/scanner.tsx default export missing` uyarisi aldi. Mevcut main'de value import kaldirilmis olsa da type import expression route module seviyesinde kalmisti; bu turda scanner dosyasini route-load asamasinda tamamen location modulunden bagimsiz hale getirdik.
+- **Doğrulama:** `rg` ile scanner dosyasinda top-level `expo-location` import/type referansi kalmadigi dogrulandi. `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone icin Metro'yu `npx expo start --dev-client --tunnel --clear` ile temiz cache'le yeniden baslatip business scanner route'u tekrar acilmali. Native location proof'u gercekten kullanmak istenirse iOS dev build yeniden kurulmalı; scan akisi konumsuz da calisir.
+- **Açık risk/blokaj:** Bu fix eski dev build'e `ExpoLocation` native modulunu eklemez, sadece opsiyonel konum kaniti yokken scanner'in dusmemesini saglar. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanici degisiklikleri commit disinda birakildi.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `bug/scanner-location-module-optional`
 - **Yapılan iş:** Business scanner route crash'i duzeltildi. `apps/mobile/src/app/business/scanner.tsx` icindeki top-level `expo-location` import'u kaldirildi; native location proof artik sadece butona basildiginda dynamic import ile yukleniyor. Mevcut fiziksel iOS dev build `ExpoLocation` native modulunu icermiyorsa scanner route artik aciliyor, location proof butonu recoverable hata mesaji gosteriyor ve scan akisi null koordinatlarla devam edebiliyor.
 - **Neden yapıldı:** Kullanici iOS Metro'da `Cannot find native module 'ExpoLocation'` hatasi aldi. Bu statik import route module evaluation sirasinda patladigi icin Expo Router da yan etki olarak `business/scanner.tsx` default export yok uyarisi veriyordu.
