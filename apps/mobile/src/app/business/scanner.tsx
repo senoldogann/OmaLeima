@@ -278,8 +278,8 @@ const createScanResultDetails = (
       : "Pick a valid joined event before scanning.",
   NETWORK_TIMEOUT:
     language === "fi"
-      ? "Vastausta ei saatu neljässä sekunnissa. Yritä uudelleen tai käytä manuaalista syöttöä."
-      : "No response arrived within 4 seconds. Retry or use manual fallback.",
+      ? "Vastausta ei saatu neljässä sekunnissa. Skannaa uusi QR, kun yhteys on vakaa."
+      : "No response arrived within 4 seconds. Scan a fresh QR when the connection is stable.",
 });
 
 const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
@@ -369,18 +369,7 @@ export default function BusinessScannerScreen() {
       processing: language === "fi" ? "KÄSITELLÄÄN" : "PROCESSING",
       reviewState: language === "fi" ? "TARKISTA" : "REVIEW",
       requestFailedTitle: language === "fi" ? "Pyyntö epäonnistui" : "Request failed",
-      fallbackTitle: language === "fi" ? "Manuaalinen token-skannaus" : "Manual token scan",
-      fallbackBody:
-        language === "fi"
-          ? "Käytä tätä vain silloin, kun kameraskannaus ei ole käytännöllinen."
-          : "Use this only when camera scanning is not practical.",
-      pasteTokenPlaceholder:
-        language === "fi"
-          ? "Liitä LEIMA_STAMP_QR-token"
-          : "Paste LEIMA_STAMP_QR token",
       scanAgain: language === "fi" ? "Skannaa uudelleen" : "Scan again",
-      scanningPastedToken: language === "fi" ? "Skannataan…" : "Scanning…",
-      scanPastedToken: language === "fi" ? "Skannaa liitetty token" : "Scan pasted token",
       stampCountLabel: language === "fi" ? "leimaa yhteensä" : "stamps total",
       endsLabel: language === "fi" ? "Päättyy" : "Ends",
       eventDayEyebrow: language === "fi" ? "Tapahtumapäivä" : "Event day",
@@ -436,7 +425,6 @@ export default function BusinessScannerScreen() {
   });
   const [permission, requestPermission] = useCameraPermissions();
   const [selectedEventVenueId, setSelectedEventVenueId] = useState<string | null>(null);
-  const [manualToken, setManualToken] = useState<string>("");
   const [scannerPin, setScannerPin] = useState<string>("");
   const [isScannerLocked, setIsScannerLocked] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -570,7 +558,6 @@ export default function BusinessScannerScreen() {
     setIsSubmitting(false);
     setSubmitError(null);
     setLastResult(null);
-    setManualToken("");
   };
 
   const handleAttachLocationPress = async (): Promise<void> => {
@@ -1027,36 +1014,6 @@ export default function BusinessScannerScreen() {
         </InfoCard>
       ) : null}
 
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && selectedEvent !== null ? (
-        <InfoCard eyebrow={copy.common.standby} title={labels.fallbackTitle}>
-          <Text style={styles.bodyText}>{labels.fallbackBody}</Text>
-          <TextInput
-            editable={!isSubmitting}
-            multiline
-            onChangeText={setManualToken}
-            placeholder={labels.pasteTokenPlaceholder}
-            placeholderTextColor={theme.colors.textDim}
-            style={styles.textArea}
-            value={manualToken}
-          />
-          <Pressable
-            disabled={
-              manualToken.trim().length === 0 || isSubmitting || isScannerLocked || !isScannerDeviceReady
-            }
-            onPress={() => void submitScanAsync(manualToken.trim())}
-            style={[
-              styles.secondaryButton,
-              manualToken.trim().length === 0 || isSubmitting || isScannerLocked || !isScannerDeviceReady
-                ? styles.disabledButton
-                : null,
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isSubmitting ? labels.scanningPastedToken : labels.scanPastedToken}
-            </Text>
-          </Pressable>
-        </InfoCard>
-      ) : null}
     </AppScreen>
   );
 }
@@ -1523,18 +1480,6 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: 48,
       fontVariant: ["tabular-nums"],
       lineHeight: 52,
-    },
-    textArea: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderRadius: theme.radius.inner,
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      minHeight: 100,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      textAlignVertical: "top",
     },
   });
 };

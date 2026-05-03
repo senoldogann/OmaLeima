@@ -14,6 +14,7 @@ type AppIconName =
   | "support"
   | "send"
   | "tools"
+  | "x"
   | "chevron-left"
   | "chevron-right"
   | "chevron-down";
@@ -253,6 +254,19 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "x":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
           />
         </Svg>
       );

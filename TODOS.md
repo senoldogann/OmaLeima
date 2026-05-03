@@ -6,14 +6,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner policy, media fallback, business timeline, and active event membership slices recorded in `PROGRESS.md`.
 
-## Current Todos (Business Manage Event Rail Preview)
+## Current Todos (Scanner Camera And Event Preview Polish)
 
 - [x] Start a dedicated feature branch.
-- [x] Inspect hosted public events and verify why user-created Tampere/Oulu events were hidden.
-- [x] Remove city-only filtering from business joinable opportunities.
-- [x] Add event cover/description/status to business event summaries.
-- [x] Convert business manage sections to horizontal image rails.
-- [x] Add full event preview modal for business joined and joinable events.
+- [x] Inspect scanner, student events, and Expo config entry points.
+- [x] Add explicit iOS camera usage metadata.
+- [x] Remove manual token scan UI and copy from business scanner.
+- [x] Add student event preview modal with cover image, description, timing, join status, and explicit actions.
 - [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.

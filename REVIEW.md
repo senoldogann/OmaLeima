@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/business-manage-event-rail-preview`
-- **Scope:** Make business manage events show all joinable public events and replace vertical lists with image rails plus event preview modal.
+- **Branch:** `feature/scanner-camera-events-preview-polish`
+- **Scope:** Fix native scanner camera permission metadata, remove the impractical manual token scanner fallback, and make event taps open rich previews with reliable cover imagery.
 
 ## Affected Files
 
@@ -14,24 +14,25 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/business/events.tsx`
-- `apps/mobile/src/features/business/business-home.ts`
-- `apps/mobile/src/features/business/types.ts`
+- `apps/mobile/app.config.ts`
+- `apps/mobile/src/components/app-icon.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
 
 ## Existing Logic Checked
 
-- Hosted live data shows the two user-created events are `Students Ready Party` in Tampere and `Haalarimerkki Approv` in Oulu.
-- The pilot business is in Helsinki, and the previous opportunity query filtered by business city; therefore those two public joinable events were hidden.
-- `join_business_event_atomic` does not require same-city joining; it validates auth, active business/staff, public status, deadline, and start time.
-- Business manage screen currently renders live/upcoming/joinable/past as vertical lists with little visual context.
+- `app.config.ts` already configures the `expo-camera` plugin, but the iOS `infoPlist` does not explicitly include `NSCameraUsageDescription`.
+- `BusinessScannerScreen` still exposes a manual token textarea even though production QR tokens are too long for real venue staff to type or paste safely.
+- Student event cards currently navigate directly to a detail route; the requested behavior is a pop-up preview on tap.
+- Event cards already use `getEventCoverSource`, so missing uploaded covers should keep a themed fallback image rather than an empty visual.
 
 ## Risks
 
-- Showing all public joinable events can include other cities; cards must display city clearly so staff chooses intentionally.
-- Joined live/upcoming/past buckets should not duplicate joinable opportunities for already joined venues.
-- Past event cards must remain read-only and not offer scanner actions.
-- Modal previews must not navigate or mutate state unless the explicit join/leave/scan buttons are used.
+- Native config changes require rebuilding/reinstalling the dev client; Metro refresh alone cannot add Info.plist keys.
+- Removing manual fallback must not remove the shared `submitScanAsync` camera QR path.
+- Event preview modal must not accidentally join an event; joining remains an explicit button action.
+- Event imagery should use the same cover fallback helpers so first load never shows a blank card when an event has no uploaded image.
 
 ## Review Outcome
 
-Remove the city-only opportunity filter, include cover/description/status fields in the business event read model, render business manage sections as horizontal image rails, and add a full preview modal for joined and joinable events.
+Add explicit iOS camera usage metadata, keep scanner operation camera-first, remove manual token UI/copy, and make student event cards open a detail preview modal while preserving a separate explicit detail/open/join action.
