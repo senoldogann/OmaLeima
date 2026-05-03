@@ -5,33 +5,29 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/business-scanner-role-policy-review`
-- **Goal:** Make scanner permissions understandable, verify business/club policy intent, and show event venues/leima status properly to students.
+- **Branch:** `feature/media-upload-manager-account-fix`
+- **Goal:** Ensure uploaded media never leaves black/empty cover surfaces and provide a real pilot business manager account for manager-level testing.
 
 ## Architectural Decisions
 
-- Keep business profile editing limited to business `OWNER` and `MANAGER`; do not allow `SCANNER` to edit identity/media.
-- Add clear read-only copy and a direct event-management/scanner shortcut for scanner accounts.
-- Extend student event venue read model to fetch business logo/cover and the current student's valid/manual-review stamp rows for the event.
-- Render joined businesses as richer cards with collected/pending state.
-- Treat the organizer RLS issue as a smoke-test/data-role issue unless a concrete failing policy is found; previous owner/organizer policies are retained.
+- Keep upload helpers bucket-specific and unchanged unless a concrete upload failure appears; the current symptom is display failure after a URL exists.
+- Put image load failure handling in `CoverImageSurface`, because it is the shared display boundary for role-specific cover/hero surfaces.
+- Reset the image error state whenever the source changes so a new upload can render immediately.
+- Create the business manager as a business staff `MANAGER`, not a new database enum/profile role. This matches existing RLS and mobile access logic.
+- Use a focused admin script that attaches the manager to the same active business as the pilot scanner account, then writes credentials to the Desktop only.
 
 ## Edge Cases
 
-- If the student is not registered, venue rows can still show public venue list but stamp status remains pending.
-- `VALID` and `MANUAL_REVIEW` stamps count as collected display; `REVOKED` does not.
-- Scanner role sees events through `/business/events`, but profile fields stay disabled.
-- Local unrelated changes must remain untouched.
-
-## Ordered Follow-Up Queue
-
-1. Announcement follow/subscription preferences and read receipt analytics.
-2. Pass return/reward handout operations for haalarimerkki pickup.
-3. Scanner PIN reset audit review in admin/club tools if operators need central oversight.
+- Public URL temporarily returns an error: the app shows themed fallback instead of a black surface.
+- User uploads a replacement image after an error: source key changes and the image is retried.
+- Pilot scanner is missing or not attached to a business: manager bootstrap raises an explicit error.
+- Existing manager account exists: auth user, profile, and business staff membership are updated idempotently.
 
 ## Validation Plan
 
 - Run:
+  - `npm --prefix apps/admin run bootstrap:pilot-business-manager`
+  - `npm --prefix apps/admin run typecheck`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`

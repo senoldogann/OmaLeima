@@ -10,6 +10,7 @@
     "audit:pilot-operator-hygiene": "tsx scripts/audit-pilot-operator-hygiene.ts",
     "audit:pilot-secret-hygiene": "tsx scripts/audit-pilot-secret-hygiene.ts",
     "bootstrap:showcase-events": "tsx scripts/bootstrap-showcase-events.ts",
+    "bootstrap:pilot-business-manager": "tsx scripts/bootstrap-pilot-business-manager.ts",
     "bootstrap:pilot-operator-accounts": "tsx scripts/bootstrap-pilot-operator-accounts.ts",
     "check:hosted-env": "tsx scripts/check-hosted-env.ts",
     "dev": "next dev",

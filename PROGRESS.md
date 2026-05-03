@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-03
+- **Branch:** `feature/media-upload-manager-account-fix`
+- **Yapılan iş:** Organizer/business/club/event kapak yüzeylerinde uploaded URL yüklenemezse siyah boş yüzey kalmasını engelleyen ortak fallback eklendi. `CoverImageSurface` artık her kaynak değişiminde hata durumunu sıfırlıyor, geçersiz/geç yüklenen image için temalı fallback gösteriyor ve yeni upload URL'i geldiğinde tekrar render deniyor. Ayrıca hosted pilot business manager hesabı oluşturmak için `bootstrap:pilot-business-manager` script'i eklendi ve canlı projede `pilot-business-manager@example.com` aynı pilot business'a `MANAGER` olarak bağlandı. Şifre `/Users/dogan/Desktop/OmaLeima-pilot-business-manager-credentials.txt` dosyasına yazıldı.
+- **Neden yapıldı:** Kullanıcı organizer kapak fotoğrafını değiştirdikten sonra görüntünün siyah kaldığını, tüm rollerde fotoğraf yükleme/güncelleme akışının sorunsuz çalışmasını ve yeni business-manager rol/h hesabı oluşturulmasını istedi.
+- **Doğrulama:** `npm --prefix apps/admin run bootstrap:pilot-business-manager`, `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, `npx supabase@2.95.4 db lint --linked` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Fiziksel iPhone'da organizer ve business manager hesaplarıyla kapak/logo upload smoke'u alınmalı. Eğer görsel hâlâ görünmezse artık UI siyah kalmamalı; sıradaki kontrol DB'deki kaydedilen public URL'i Safari/Chrome'da açıp Storage object ve bucket public read erişimini doğrulamak olmalı.
+- **Açık risk/blokaj:** Bu slice upload helper/RLS değiştirmedi; render tarafındaki siyah yüzeyi ve manager hesap eksikliğini çözdü. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakıldı.
+
+- **Tarih:** 2026-05-03
 - **Branch:** `feature/business-scanner-role-policy-review`
 - **Yapılan iş:** Scanner/business rol davranışı ve öğrenci venue görünürlüğü netleştirildi. Business profilinde `SCANNER` rolünün profil inputlarını düzenleyememesi bilinçli bırakıldı; UI artık bunu açıkça anlatıyor ve profile `Tapahtumat/Events` ile scanner aksiyonlarına hızlı geçiş ekliyor. Öğrenci event detayındaki işletme/piste listesi logo, kapak görseli ve öğrenciye özel `Leima saatu/Odottaa` durumunu gösteriyor. Leima durumu `stamps` tablosundan tek sorguyla `VALID` ve `MANUAL_REVIEW` kayıtlarına göre okunuyor; `REVOKED` görünürde kazanılmış sayılmıyor. Business/club policy niyeti tekrar kontrol edildi: business profil/media update `OWNER`/`MANAGER`, club event/profile/media update `OWNER`/`ORGANIZER`, scanning ise business staff bağlamında kalıyor.
 - **Neden yapıldı:** Kullanıcı scanner profilindeki inputların tıklanamamasını, scanner hesabında event yönetimi/görünürlüğünü, öğrencilerin evente katılan yritysleri ve leima alındı durumunu görmesini, ayrıca son policy düzenlemelerinin yanlış olup olmadığını sordu.
@@ -1044,6 +1052,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ---
 ### Tamamlanan Görevler (Changelog)
+- *2026-05-03*: Media upload display resilience ve pilot business-manager hesabi tamamlandi; shared cover image surface remote image load hatasinda siyah kalmak yerine theme fallback gosteriyor ve `pilot-business-manager@example.com` hosted pilot business'a `MANAGER` olarak baglandi.
 - *2026-05-03*: Scanner location consent ve distance anomaly fraud signal slice'i tamamlandi; web opt-in lokasyon payload'i eklendi, native dependency sonraki temiz branch'e birakildi.
 - *2026-05-03*: `RAPOR.md` teknik bulgu triage'i tamamlandi; dogrulanan root Stack, QR audit RLS, registration cancel, leaderboard freshness, push count ve scheduler parallelism fixleri eklendi.
 - *2026-05-03*: Palkinnot event cover ve slider layout fix tamamlandi; event-specific ogrenci yuzeyleri ayni deterministic cover secimine tasindi ve reward slider kartlari compact preview oldu.

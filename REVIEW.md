@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/business-scanner-role-policy-review`
-- **Scope:** Clarify scanner-role profile permissions, audit relevant business/club policies, and improve student visibility into joined venues and collected leimat.
+- **Branch:** `feature/media-upload-manager-account-fix`
+- **Scope:** Make uploaded cover/logo images resilient across mobile roles and create a hosted pilot business manager account.
 
 ## Affected Files
 
@@ -14,26 +14,24 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/business/profile.tsx`
-- `apps/mobile/src/app/student/events/[eventId].tsx`
-- `apps/mobile/src/features/events/student-event-detail.ts`
-- `apps/mobile/src/features/events/types.ts`
+- `apps/mobile/src/components/cover-image-surface.tsx`
+- `apps/admin/package.json`
+- `apps/admin/scripts/bootstrap-pilot-business-manager.ts`
 
 ## Existing Logic Checked
 
-- Business profile editing is intentionally limited to `OWNER` and `MANAGER` via `canManageBusinessProfile` and `public.is_business_manager_for`.
-- `SCANNER` staff can read profile context and scan joined events, but should not update business identity or media.
-- Business event joining/leaving is available through `/business/events`; scanner/home surfaces active joined events.
-- Student event detail already lists joined venues, but lacks business logos/covers and per-venue stamp status.
-- Club event/profile policies are owner/organizer/admin scoped after the previous migration; scanner business policies remain manager scoped.
+- Business, club, and event media upload helpers write to Supabase Storage and persist public URLs on the relevant row.
+- Shared image display flows use `CoverImageSurface` for hero/cover rendering, so one missing remote fallback can affect organizer, business, club, event, and student screens.
+- Business access already models staff roles as `OWNER`, `MANAGER`, and `SCANNER`; mobile routing grants business area access when a user has an active business staff membership.
+- Scanner accounts intentionally remain read-only for official business profile fields. `OWNER` and `MANAGER` can update business identity/media.
 
 ## Risks
 
-- Do not open profile writes to `SCANNER`; it would let counter staff change official business identity.
-- Student venue status must only use the signed-in student's own stamp rows.
-- Public business/event venue reads should not expose private business-only fields beyond already public profile basics.
-- Avoid N+1 queries for venue stamp state.
+- Do not grant scanner accounts manager permissions while creating the new test account.
+- Do not expose generated passwords in committed files or logs.
+- Image fallback must not hide valid images permanently after the user changes to a new uploaded URL.
+- Keep uploaded image URLs as the source of truth; the UI fallback should only protect rendering when the remote image fails to load.
 
 ## Review Outcome
 
-Keep the RLS model role-based, make scanner read-only behavior explicit in UI, add an event-management shortcut from business profile, and enrich student venue rows with logo/cover plus collected/pending leima status.
+Harden the shared cover image renderer with per-source error recovery, add a focused hosted bootstrap script for `pilot-business-manager@example.com`, and validate mobile/admin builds without touching unrelated local changes.

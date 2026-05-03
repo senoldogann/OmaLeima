@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import type { ImageSourcePropType, ImageStyle, StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
 
@@ -13,6 +13,26 @@ type CoverImageSurfaceProps = PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
 }>;
 
+const createSourceKey = (source: ImageSourcePropType | null | undefined): string => {
+  if (source === null || source === undefined) {
+    return "empty";
+  }
+
+  if (typeof source === "number") {
+    return `asset:${source}`;
+  }
+
+  if (Array.isArray(source)) {
+    return source.map((sourceItem) => createSourceKey(sourceItem)).join("|");
+  }
+
+  if (typeof source.uri === "string") {
+    return source.uri;
+  }
+
+  return JSON.stringify(source);
+};
+
 export const CoverImageSurface = ({
   children,
   imageStyle,
@@ -20,20 +40,29 @@ export const CoverImageSurface = ({
   style,
 }: CoverImageSurfaceProps) => {
   const styles = useThemeStyles(createStyles);
+  const sourceKey = useMemo(() => createSourceKey(source), [source]);
+  const [hasImageError, setHasImageError] = useState(false);
+  const shouldRenderImage = source !== null && source !== undefined && !hasImageError;
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [sourceKey]);
 
   return (
     <View style={style}>
-      {source ? (
+      <View style={styles.fallback} />
+      {shouldRenderImage ? (
         <ExpoImage
           cachePolicy="memory-disk"
           contentFit="cover"
+          onError={() => {
+            setHasImageError(true);
+          }}
           source={source}
           style={[styles.image, imageStyle]}
           transition={180}
         />
-      ) : (
-        <View style={styles.fallback} />
-      )}
+      ) : null}
       {children}
     </View>
   );
