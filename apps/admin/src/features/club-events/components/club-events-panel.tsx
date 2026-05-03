@@ -15,6 +15,7 @@ import {
   submitClubEventCreationRequestAsync,
   submitClubEventUpdateRequestAsync,
 } from "@/features/club-events/event-client";
+import { EventRulesBuilder } from "@/features/club-events/components/event-rules-builder";
 import type {
   ClubEventActionState,
   ClubEventCreationPayload,
@@ -38,7 +39,7 @@ const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
   maxParticipants: "",
   minimumStampsRequired: "0",
   name: "",
-  rulesJson: "{}",
+  rulesJson: JSON.stringify({ stampPolicy: { perBusinessLimit: 1 } }, null, 2),
   startAt: "",
   visibility: "PUBLIC",
 });
@@ -515,20 +516,16 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                   </label>
                 </div>
 
-                <label className="field">
-                  <span className="field-label">Rules JSON</span>
-                  <textarea
-                    className="field-input field-textarea"
-                    disabled={isPending}
-                    onChange={(event) =>
-                      setPayload((currentPayload) => ({
-                        ...currentPayload,
-                        rulesJson: event.target.value,
-                      }))
-                    }
-                    value={payload.rulesJson}
-                  />
-                </label>
+                <EventRulesBuilder
+                  disabled={isPending}
+                  onChange={(value) =>
+                    setPayload((currentPayload) => ({
+                      ...currentPayload,
+                      rulesJson: value,
+                    }))
+                  }
+                  value={payload.rulesJson}
+                />
 
                 <button className="button button-primary" disabled={isPending} type="submit">
                   {isPending ? "Creating..." : "Create draft event"}
@@ -808,24 +805,20 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
               </label>
             </div>
 
-            <label className="field">
-              <span className="field-label">Rules JSON</span>
-              <textarea
-                className="field-input field-textarea"
-                disabled={isUpdatePending}
-                onChange={(event) =>
-                  setUpdatePayload((currentPayload) =>
-                    currentPayload === null
-                      ? null
-                      : {
-                          ...currentPayload,
-                          rulesJson: event.target.value,
-                        }
-                  )
-                }
-                value={updatePayload.rulesJson}
-              />
-            </label>
+            <EventRulesBuilder
+              disabled={isUpdatePending}
+              onChange={(value) =>
+                setUpdatePayload((currentPayload) =>
+                  currentPayload === null
+                    ? null
+                    : {
+                        ...currentPayload,
+                        rulesJson: value,
+                      }
+                )
+              }
+              value={updatePayload.rulesJson}
+            />
 
             <div className="button-row">
               <button

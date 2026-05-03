@@ -68,7 +68,27 @@ export const parseRulesJsonOrThrow = (value: string): EventRules => {
     throw new ClubEventValidationError("rulesJson must be a JSON object.");
   }
 
-  return parsedValue as EventRules;
+  const rules = parsedValue as Record<string, unknown>;
+  const stampPolicy = rules.stampPolicy;
+
+  if (typeof stampPolicy !== "undefined") {
+    if (stampPolicy === null || Array.isArray(stampPolicy) || typeof stampPolicy !== "object") {
+      throw new ClubEventValidationError("stampPolicy must be a JSON object.");
+    }
+
+    const perBusinessLimit = (stampPolicy as Record<string, unknown>).perBusinessLimit;
+
+    if (
+      typeof perBusinessLimit !== "number" ||
+      !Number.isInteger(perBusinessLimit) ||
+      perBusinessLimit < 1 ||
+      perBusinessLimit > 5
+    ) {
+      throw new ClubEventValidationError("stampPolicy.perBusinessLimit must be an integer between 1 and 5.");
+    }
+  }
+
+  return rules as EventRules;
 };
 
 export const parseClubEventCreationPayloadOrThrow = (
