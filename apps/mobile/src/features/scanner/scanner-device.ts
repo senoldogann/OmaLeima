@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
 
@@ -15,12 +16,73 @@ type RegisterScannerDeviceRpcResponse =
       platform: ScannerDevicePlatform;
     }
   | {
+      status: "DEVICE_REVOKED";
+      scannerDeviceId: string;
+      label: string;
+      platform: ScannerDevicePlatform;
+    }
+  | {
       status: "ACTOR_NOT_ALLOWED";
     };
 
 type RegisterBusinessScannerDeviceParams = {
   businessId: string;
   businessName: string;
+};
+
+type BusinessScannerDeviceRow = {
+  id: string;
+  business_id: string;
+  label: string;
+  platform: ScannerDevicePlatform;
+  status: "ACTIVE" | "REVOKED";
+  created_by: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  updated_at: string;
+};
+
+type RenameScannerDeviceRpcResponse =
+  | {
+      status: "SUCCESS";
+      scannerDeviceId: string;
+      label: string;
+    }
+  | {
+      status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
+    };
+
+type RevokeScannerDeviceRpcResponse =
+  | {
+      status: "SUCCESS";
+      scannerDeviceId: string;
+      statusValue: "REVOKED";
+    }
+  | {
+      status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
+    };
+
+export type BusinessScannerDeviceSummary = {
+  id: string;
+  businessId: string;
+  label: string;
+  platform: ScannerDevicePlatform;
+  status: "ACTIVE" | "REVOKED";
+  createdBy: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  updatedAt: string;
+};
+
+export type RenameBusinessScannerDeviceParams = {
+  businessId: string;
+  scannerDeviceId: string;
+  label: string;
+};
+
+export type RevokeBusinessScannerDeviceParams = {
+  businessId: string;
+  scannerDeviceId: string;
 };
 
 const isBrowserStorageAvailable = (): boolean =>
@@ -123,7 +185,7 @@ const isRegisterScannerDeviceRpcResponse = (value: unknown): value is RegisterSc
   }
 
   return (
-    candidate.status === "SUCCESS" &&
+    (candidate.status === "SUCCESS" || candidate.status === "DEVICE_REVOKED") &&
     typeof candidate.scannerDeviceId === "string" &&
     typeof candidate.label === "string" &&
     (candidate.platform === "IOS" ||
@@ -131,6 +193,115 @@ const isRegisterScannerDeviceRpcResponse = (value: unknown): value is RegisterSc
       candidate.platform === "WEB" ||
       candidate.platform === "UNKNOWN")
   );
+};
+
+const isRenameScannerDeviceRpcResponse = (value: unknown): value is RenameScannerDeviceRpcResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (candidate.status === "ACTOR_NOT_ALLOWED" || candidate.status === "DEVICE_NOT_FOUND") {
+    return true;
+  }
+
+  return (
+    candidate.status === "SUCCESS" &&
+    typeof candidate.scannerDeviceId === "string" &&
+    typeof candidate.label === "string"
+  );
+};
+
+const isRevokeScannerDeviceRpcResponse = (value: unknown): value is RevokeScannerDeviceRpcResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  if (candidate.status === "ACTOR_NOT_ALLOWED" || candidate.status === "DEVICE_NOT_FOUND") {
+    return true;
+  }
+
+  return (
+    candidate.status === "SUCCESS" &&
+    typeof candidate.scannerDeviceId === "string" &&
+    candidate.statusValue === "REVOKED"
+  );
+};
+
+const mapBusinessScannerDeviceRow = (row: BusinessScannerDeviceRow): BusinessScannerDeviceSummary => ({
+  id: row.id,
+  businessId: row.business_id,
+  label: row.label,
+  platform: row.platform,
+  status: row.status,
+  createdBy: row.created_by,
+  firstSeenAt: row.first_seen_at,
+  lastSeenAt: row.last_seen_at,
+  updatedAt: row.updated_at,
+});
+
+export const businessScannerDevicesQueryKey = (businessId: string) =>
+  ["business-scanner-devices", businessId] as const;
+
+const fetchBusinessScannerDevicesAsync = async (businessId: string): Promise<BusinessScannerDeviceSummary[]> => {
+  const { data, error } = await supabase
+    .from("business_scanner_devices")
+    .select("id,business_id,label,platform,status,created_by,first_seen_at,last_seen_at,updated_at")
+    .eq("business_id", businessId)
+    .order("status", { ascending: true })
+    .order("last_seen_at", { ascending: false })
+    .returns<BusinessScannerDeviceRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load scanner devices for business ${businessId}: ${error.message}`);
+  }
+
+  return data.map(mapBusinessScannerDeviceRow);
+};
+
+const renameBusinessScannerDeviceAsync = async ({
+  scannerDeviceId,
+  label,
+}: RenameBusinessScannerDeviceParams): Promise<void> => {
+  const { data, error } = await supabase.rpc("rename_business_scanner_device", {
+    p_scanner_device_id: scannerDeviceId,
+    p_label: label,
+  });
+
+  if (error !== null) {
+    throw new Error(`Failed to rename scanner device ${scannerDeviceId}: ${error.message}`);
+  }
+
+  if (!isRenameScannerDeviceRpcResponse(data)) {
+    throw new Error(`Rename scanner device returned an invalid response for ${scannerDeviceId}.`);
+  }
+
+  if (data.status !== "SUCCESS") {
+    throw new Error(`Rename scanner device ${scannerDeviceId} failed with status ${data.status}.`);
+  }
+};
+
+const revokeBusinessScannerDeviceAsync = async ({
+  scannerDeviceId,
+}: RevokeBusinessScannerDeviceParams): Promise<void> => {
+  const { data, error } = await supabase.rpc("revoke_business_scanner_device", {
+    p_scanner_device_id: scannerDeviceId,
+  });
+
+  if (error !== null) {
+    throw new Error(`Failed to revoke scanner device ${scannerDeviceId}: ${error.message}`);
+  }
+
+  if (!isRevokeScannerDeviceRpcResponse(data)) {
+    throw new Error(`Revoke scanner device returned an invalid response for ${scannerDeviceId}.`);
+  }
+
+  if (data.status !== "SUCCESS") {
+    throw new Error(`Revoke scanner device ${scannerDeviceId} failed with status ${data.status}.`);
+  }
 };
 
 export const registerBusinessScannerDeviceAsync = async ({
@@ -159,9 +330,60 @@ export const registerBusinessScannerDeviceAsync = async ({
     throw new Error(`Current user is not allowed to register a scanner device for business ${businessId}.`);
   }
 
+  if (data.status === "DEVICE_REVOKED") {
+    throw new Error(`Scanner device ${data.label} was revoked for business ${businessId}.`);
+  }
+
   return {
     scannerDeviceId: data.scannerDeviceId,
     label: data.label,
     platform: data.platform,
   };
+};
+
+export const useBusinessScannerDevicesQuery = ({
+  businessId,
+  isEnabled,
+}: {
+  businessId: string;
+  isEnabled: boolean;
+}): UseQueryResult<BusinessScannerDeviceSummary[], Error> =>
+  useQuery({
+    enabled: isEnabled,
+    queryFn: async () => fetchBusinessScannerDevicesAsync(businessId),
+    queryKey: businessScannerDevicesQueryKey(businessId),
+  });
+
+export const useRenameBusinessScannerDeviceMutation = (): UseMutationResult<
+  void,
+  Error,
+  RenameBusinessScannerDeviceParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params) => renameBusinessScannerDeviceAsync(params),
+    onSuccess: async (_, params) => {
+      await queryClient.invalidateQueries({
+        queryKey: businessScannerDevicesQueryKey(params.businessId),
+      });
+    },
+  });
+};
+
+export const useRevokeBusinessScannerDeviceMutation = (): UseMutationResult<
+  void,
+  Error,
+  RevokeBusinessScannerDeviceParams
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params) => revokeBusinessScannerDeviceAsync(params),
+    onSuccess: async (_, params) => {
+      await queryClient.invalidateQueries({
+        queryKey: businessScannerDevicesQueryKey(params.businessId),
+      });
+    },
+  });
 };
