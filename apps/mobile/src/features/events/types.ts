@@ -49,9 +49,13 @@ export type EventVenueSummary = {
   businessId: string;
   name: string;
   city: string;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
   venueOrder: number | null;
   stampLabel: string | null;
   customInstructions: string | null;
+  stampStatus: "COLLECTED" | "PENDING";
+  stampedAt: string | null;
 };
 
 export type RewardTierSummary = {

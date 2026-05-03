@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/organizer-profile-rls-keyboard-polish`
-- **Scope:** Fix organizer media/profile RLS, Finnish organizer profile copy, and keyboard coverage around club profile/event editing inputs.
+- **Branch:** `feature/business-scanner-role-policy-review`
+- **Scope:** Clarify scanner-role profile permissions, audit relevant business/club policies, and improve student visibility into joined venues and collected leimat.
 
 ## Affected Files
 
@@ -14,25 +14,26 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/components/app-screen.tsx`
-- `apps/mobile/src/app/club/profile.tsx`
-- `apps/mobile/src/app/club/events.tsx`
-- `supabase/migrations/20260503223000_harden_club_media_profile_policies.sql`
+- `apps/mobile/src/app/business/profile.tsx`
+- `apps/mobile/src/app/student/events/[eventId].tsx`
+- `apps/mobile/src/features/events/student-event-detail.ts`
+- `apps/mobile/src/features/events/types.ts`
 
 ## Existing Logic Checked
 
-- Club profile cover/logo upload writes to the `event-media` storage bucket under `clubs/{clubId}/...`.
-- Existing storage policy routes through `public.is_event_media_object_manager(name)`, and the club profile update routes through `public.clubs` update RLS.
-- Organizer profile Finnish copy still had Turkish text for the announcement label.
-- `AppScreen` uses `automaticallyAdjustKeyboardInsets`, but club event date/time modal inputs are inside a plain modal card.
+- Business profile editing is intentionally limited to `OWNER` and `MANAGER` via `canManageBusinessProfile` and `public.is_business_manager_for`.
+- `SCANNER` staff can read profile context and scan joined events, but should not update business identity or media.
+- Business event joining/leaving is available through `/business/events`; scanner/home surfaces active joined events.
+- Student event detail already lists joined venues, but lacks business logos/covers and per-venue stamp status.
+- Club event/profile policies are owner/organizer/admin scoped after the previous migration; scanner business policies remain manager scoped.
 
 ## Risks
 
-- Storage and table policies must remain role-bound, not public writable.
-- Policy functions must avoid unsafe UUID casts on malformed storage paths.
-- Keyboard changes must not break normal scrolling or modal layout.
-- Remote Supabase must receive the migration because the reported RLS error happens on-device against hosted backend.
+- Do not open profile writes to `SCANNER`; it would let counter staff change official business identity.
+- Student venue status must only use the signed-in student's own stamp rows.
+- Public business/event venue reads should not expose private business-only fields beyond already public profile basics.
+- Avoid N+1 queries for venue stamp state.
 
 ## Review Outcome
 
-Recreate club profile/media policies with owner/organizer/platform admin checks, keep event-media public read-only, fix Finnish text, and make organizer form inputs keyboard-aware.
+Keep the RLS model role-based, make scanner read-only behavior explicit in UI, add an event-management shortcut from business profile, and enrich student venue rows with logo/cover plus collected/pending leima status.

@@ -5,22 +5,22 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/organizer-profile-rls-keyboard-polish`
-- **Goal:** Remove organizer profile cover update RLS failures and polish Finnish copy plus keyboard-safe editing.
+- **Branch:** `feature/business-scanner-role-policy-review`
+- **Goal:** Make scanner permissions understandable, verify business/club policy intent, and show event venues/leima status properly to students.
 
 ## Architectural Decisions
 
-- Add an idempotent Supabase migration that recreates club profile update and event-media storage policies.
-- Let only club owners/organizers or platform admins update club profile rows and upload/update/delete media under the matching club storage folder.
-- Keep `event-media` select public because event covers/logos are user-visible public assets.
-- Fix Finnish organizer profile labels from Turkish/incorrect text to natural Finnish.
-- Wrap the shared app screen and club event date/time modal in keyboard-aware containers.
+- Keep business profile editing limited to business `OWNER` and `MANAGER`; do not allow `SCANNER` to edit identity/media.
+- Add clear read-only copy and a direct event-management/scanner shortcut for scanner accounts.
+- Extend student event venue read model to fetch business logo/cover and the current student's valid/manual-review stamp rows for the event.
+- Render joined businesses as richer cards with collected/pending state.
+- Treat the organizer RLS issue as a smoke-test/data-role issue unless a concrete failing policy is found; previous owner/organizer policies are retained.
 
 ## Edge Cases
 
-- Malformed storage paths must evaluate false instead of throwing.
-- Existing public media URLs must remain readable.
-- Date/time modal must remain scrollable on small screens when the keyboard is open.
+- If the student is not registered, venue rows can still show public venue list but stamp status remains pending.
+- `VALID` and `MANUAL_REVIEW` stamps count as collected display; `REVOKED` does not.
+- Scanner role sees events through `/business/events`, but profile fields stay disabled.
 - Local unrelated changes must remain untouched.
 
 ## Ordered Follow-Up Queue
@@ -35,6 +35,6 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
-  - `npx supabase@2.95.4 db push`
+  - `npx supabase@2.95.4 db lint --linked`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

@@ -6,14 +6,13 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, and scanner location consent slices recorded in `PROGRESS.md`.
 
-## Current Todos (Organizer RLS And Keyboard Polish)
+## Current Todos (Business Scanner Policy And Student Venue Polish)
 
 - [x] Start a dedicated feature branch.
-- [x] Inspect club profile media upload, club profile update, event edit modal, and current RLS policies.
-- [x] Add hardened club media/profile RLS migration.
-- [x] Fix Finnish organizer profile copy.
-- [x] Make shared app screens and event date/time modal keyboard-aware.
-- [x] Push Supabase migration and run mobile validation commands.
+- [x] Inspect business profile role gates, event join flow, student venue detail, and related policies.
+- [x] Make scanner read-only profile state explicit and add event/scanner shortcuts.
+- [x] Add student venue logo/cover plus leima collected/pending status.
+- [x] Run mobile validation and Supabase policy lint.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 

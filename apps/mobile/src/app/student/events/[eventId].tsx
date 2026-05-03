@@ -544,14 +544,48 @@ export default function StudentEventDetailScreen() {
             {event.venues.length > 0 ? (
               <View style={themeStyles.listGroup}>
                 {event.venues.map((venue) => (
-                  <View key={venue.id} style={themeStyles.listRow}>
-                    <View style={themeStyles.venueHeader}>
-                      <View style={themeStyles.venueOrderBubble}>
-                        <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
+                  <View key={venue.id} style={themeStyles.venueCard}>
+                    <CoverImageSurface
+                      imageStyle={themeStyles.venueCoverImage}
+                      source={venue.coverImageUrl === null ? null : { uri: venue.coverImageUrl }}
+                      style={themeStyles.venueCover}
+                    >
+                      <View style={themeStyles.venueCoverOverlay} />
+                      <View style={themeStyles.venueStatusRow}>
+                        <View style={themeStyles.venueOrderBubble}>
+                          <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
+                        </View>
+                        <StatusBadge
+                          label={
+                            venue.stampStatus === "COLLECTED"
+                              ? language === "fi"
+                                ? "Leima saatu"
+                                : "Collected"
+                              : language === "fi"
+                                ? "Odottaa"
+                                : "Pending"
+                          }
+                          state={venue.stampStatus === "COLLECTED" ? "ready" : "pending"}
+                        />
                       </View>
+                    </CoverImageSurface>
+                    <View style={themeStyles.venueHeader}>
+                      <CoverImageSurface
+                        imageStyle={themeStyles.venueLogoImage}
+                        source={venue.logoUrl === null ? null : { uri: venue.logoUrl }}
+                        style={themeStyles.venueLogo}
+                      >
+                        {venue.logoUrl === null ? (
+                          <AppIcon color={theme.colors.textPrimary} name="business" size={17} />
+                        ) : null}
+                      </CoverImageSurface>
                       <View style={themeStyles.venueCopy}>
                         <Text style={themeStyles.listTitle}>{venue.name}</Text>
-                        <Text style={themeStyles.metaLine}>{venue.city}</Text>
+                        <Text style={themeStyles.metaLine}>
+                          {venue.stampedAt === null
+                            ? venue.city
+                            : `${venue.city} · ${language === "fi" ? "haettu" : "scanned"} ${formatter.format(new Date(venue.stampedAt))}`}
+                        </Text>
                       </View>
                     </View>
                     {venue.stampLabel ? (
@@ -790,14 +824,49 @@ const createStyles = (theme: MobileTheme) => {
       flex: 1,
       gap: 4,
     },
+    venueCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: theme.radius.card,
+      gap: 12,
+      overflow: "hidden",
+      padding: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    venueCover: {
+      borderRadius: theme.radius.inner,
+      minHeight: 116,
+      overflow: "hidden",
+      position: "relative",
+    },
+    venueCoverImage: {
+      borderRadius: theme.radius.inner,
+    },
+    venueCoverOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.28)" : "rgba(0, 0, 0, 0.14)",
+    },
     venueHeader: {
       alignItems: "center",
       flexDirection: "row",
       gap: 12,
     },
-    venueOrderBubble: {
+    venueLogo: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 42,
+      justifyContent: "center",
+      overflow: "hidden",
+      width: 42,
+    },
+    venueLogoImage: {
+      borderRadius: 999,
+    },
+    venueOrderBubble: {
+      alignItems: "center",
+      backgroundColor: theme.mode === "dark" ? "rgba(8, 9, 14, 0.78)" : "rgba(255, 255, 255, 0.86)",
       borderRadius: 999,
       height: 34,
       justifyContent: "center",
@@ -807,6 +876,12 @@ const createStyles = (theme: MobileTheme) => {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.caption,
+    },
+    venueStatusRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      padding: 10,
     },
   });
 
