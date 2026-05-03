@@ -9,6 +9,7 @@ import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
+import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -116,11 +117,11 @@ export default function ClubHomeScreen() {
   );
 
   const events = useMemo(
-    () => dashboardQuery.data?.events ?? [],
+    () => sortClubEventsForOrganizer(dashboardQuery.data?.events ?? []),
     [dashboardQuery.data?.events]
   );
   const liveEvents = useMemo(
-    () => events.filter((event) => event.timelineState === "LIVE"),
+    () => sortClubEventsForOrganizer(events.filter((event) => event.timelineState === "LIVE")),
     [events]
   );
   const primaryClub = dashboardQuery.data?.memberships[0] ?? null;
