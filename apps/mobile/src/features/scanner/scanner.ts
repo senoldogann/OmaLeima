@@ -8,6 +8,7 @@ type ScanQrRequestParams = {
   qrToken: string;
   businessId: string;
   scannerDeviceId: string | null;
+  scannerPin: string | null;
   scannerLocation: ScannerLocationPayload;
 };
 
@@ -15,6 +16,7 @@ export const invokeScanQrAsync = async ({
   qrToken,
   businessId,
   scannerDeviceId,
+  scannerPin,
   scannerLocation,
 }: ScanQrRequestParams, signal: AbortSignal): Promise<ScannerAttemptResult> => {
   const sessionResult = await supabase.auth.getSession();
@@ -35,6 +37,7 @@ export const invokeScanQrAsync = async ({
     qrToken,
     businessId,
     scannerDeviceId,
+    scannerPin,
     scannerLocation,
     signal,
   });

@@ -24,9 +24,11 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import {
   type BusinessScannerDeviceSummary,
+  useClearBusinessScannerDevicePinMutation,
   useBusinessScannerDevicesQuery,
   useRenameBusinessScannerDeviceMutation,
   useRevokeBusinessScannerDeviceMutation,
+  useSetBusinessScannerDevicePinMutation,
 } from "@/features/scanner/scanner-device";
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import type { BusinessSupportOption } from "@/features/support/types";
@@ -161,11 +163,15 @@ export default function BusinessProfileScreen() {
   const [draft, setDraft] = useState<BusinessProfileDraft | null>(null);
   const [editingScannerDeviceId, setEditingScannerDeviceId] = useState<string | null>(null);
   const [editingScannerDeviceLabel, setEditingScannerDeviceLabel] = useState<string>("");
+  const [editingScannerPinDeviceId, setEditingScannerPinDeviceId] = useState<string | null>(null);
+  const [editingScannerPin, setEditingScannerPin] = useState<string>("");
   const [uploadingMediaKind, setUploadingMediaKind] = useState<BusinessMediaKind | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const updateBusinessProfileMutation = useUpdateBusinessProfileMutation();
   const renameScannerDeviceMutation = useRenameBusinessScannerDeviceMutation();
   const revokeScannerDeviceMutation = useRevokeBusinessScannerDeviceMutation();
+  const setScannerPinMutation = useSetBusinessScannerDevicePinMutation();
+  const clearScannerPinMutation = useClearBusinessScannerDevicePinMutation();
 
   const homeOverviewQuery = useBusinessHomeOverviewQuery({
     userId: userId ?? "",
@@ -279,6 +285,43 @@ export default function BusinessProfileScreen() {
       businessId: selectedMembership.businessId,
       scannerDeviceId: device.id,
     });
+  };
+
+  const handleEditScannerPinPress = (device: BusinessScannerDeviceSummary): void => {
+    setEditingScannerPinDeviceId(device.id);
+    setEditingScannerPin("");
+  };
+
+  const handleCancelScannerPinPress = (): void => {
+    setEditingScannerPinDeviceId(null);
+    setEditingScannerPin("");
+  };
+
+  const handleSaveScannerPinPress = async (device: BusinessScannerDeviceSummary): Promise<void> => {
+    const pin = editingScannerPin.trim();
+
+    if (selectedMembership === null || pin.length === 0) {
+      return;
+    }
+
+    await setScannerPinMutation.mutateAsync({
+      businessId: selectedMembership.businessId,
+      scannerDeviceId: device.id,
+      pin,
+    });
+    handleCancelScannerPinPress();
+  };
+
+  const handleClearScannerPinPress = async (device: BusinessScannerDeviceSummary): Promise<void> => {
+    if (selectedMembership === null) {
+      return;
+    }
+
+    await clearScannerPinMutation.mutateAsync({
+      businessId: selectedMembership.businessId,
+      scannerDeviceId: device.id,
+    });
+    handleCancelScannerPinPress();
   };
 
   const handleMediaPress = async (kind: BusinessMediaKind): Promise<void> => {
@@ -518,11 +561,16 @@ export default function BusinessProfileScreen() {
             <View style={styles.scannerDeviceList}>
               {(scannerDevicesQuery.data ?? []).map((device) => {
                 const isEditing = editingScannerDeviceId === device.id;
+                const isPinEditing = editingScannerPinDeviceId === device.id;
                 const canRenameDevice =
                   device.createdBy === userId || canEditSelectedMembership;
+                const canManagePin = device.status === "ACTIVE" && canRenameDevice;
                 const canRevokeDevice = canEditSelectedMembership && device.status === "ACTIVE";
                 const isMutationPending =
-                  renameScannerDeviceMutation.isPending || revokeScannerDeviceMutation.isPending;
+                  renameScannerDeviceMutation.isPending ||
+                  revokeScannerDeviceMutation.isPending ||
+                  setScannerPinMutation.isPending ||
+                  clearScannerPinMutation.isPending;
 
                 return (
                   <View key={device.id} style={styles.scannerDeviceRow}>
@@ -551,6 +599,15 @@ export default function BusinessProfileScreen() {
                           {language === "fi" ? "nähty" : "seen"}{" "}
                           {formatScannerDeviceTime(scannerDeviceTimeFormatter, device.lastSeenAt)}
                         </Text>
+                        <Text style={styles.scannerDeviceMeta}>
+                          {device.pinRequired
+                            ? language === "fi"
+                              ? "PIN käytössä"
+                              : "PIN enabled"
+                            : language === "fi"
+                              ? "Ei PIN-koodia"
+                              : "No PIN"}
+                        </Text>
                       </View>
                       <View
                         style={[
@@ -570,7 +627,43 @@ export default function BusinessProfileScreen() {
                       </View>
                     </View>
 
-                    {canRenameDevice || canRevokeDevice ? (
+                    {isPinEditing ? (
+                      <View style={styles.scannerPinEditor}>
+                        <TextInput
+                          editable={!isMutationPending}
+                          keyboardType="number-pad"
+                          maxLength={8}
+                          onChangeText={setEditingScannerPin}
+                          placeholder={language === "fi" ? "4-8 numeroa" : "4-8 digits"}
+                          placeholderTextColor={theme.colors.textDim}
+                          secureTextEntry
+                          style={styles.scannerDeviceInput}
+                          value={editingScannerPin}
+                        />
+                        <View style={styles.scannerDeviceActions}>
+                          <Pressable
+                            disabled={isMutationPending || editingScannerPin.trim().length === 0}
+                            onPress={() => void handleSaveScannerPinPress(device)}
+                            style={[styles.scannerDeviceActionButton, styles.scannerDevicePrimaryAction]}
+                          >
+                            <Text style={styles.scannerDevicePrimaryActionText}>
+                              {language === "fi" ? "Tallenna PIN" : "Save PIN"}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            disabled={isMutationPending}
+                            onPress={handleCancelScannerPinPress}
+                            style={styles.scannerDeviceActionButton}
+                          >
+                            <Text style={styles.scannerDeviceActionText}>
+                              {language === "fi" ? "Peruuta" : "Cancel"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    {!isPinEditing && (canRenameDevice || canRevokeDevice || canManagePin) ? (
                       <View style={styles.scannerDeviceActions}>
                         {isEditing ? (
                           <>
@@ -606,6 +699,32 @@ export default function BusinessProfileScreen() {
                                 </Text>
                               </Pressable>
                             ) : null}
+                            {canManagePin ? (
+                              <Pressable
+                                disabled={isMutationPending}
+                                onPress={() => handleEditScannerPinPress(device)}
+                                style={styles.scannerDeviceActionButton}
+                              >
+                                <Text style={styles.scannerDeviceActionText}>
+                                  {device.pinRequired
+                                    ? language === "fi"
+                                      ? "Vaihda PIN"
+                                      : "Change PIN"
+                                    : "PIN"}
+                                </Text>
+                              </Pressable>
+                            ) : null}
+                            {canManagePin && device.pinRequired ? (
+                              <Pressable
+                                disabled={isMutationPending}
+                                onPress={() => void handleClearScannerPinPress(device)}
+                                style={styles.scannerDeviceActionButton}
+                              >
+                                <Text style={styles.scannerDeviceDangerText}>
+                                  {language === "fi" ? "Poista PIN" : "Clear PIN"}
+                                </Text>
+                              </Pressable>
+                            ) : null}
                             {canRevokeDevice ? (
                               <Pressable
                                 disabled={isMutationPending}
@@ -631,6 +750,12 @@ export default function BusinessProfileScreen() {
             ) : null}
             {revokeScannerDeviceMutation.error ? (
               <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
+            ) : null}
+            {setScannerPinMutation.error ? (
+              <Text style={styles.errorText}>{setScannerPinMutation.error.message}</Text>
+            ) : null}
+            {clearScannerPinMutation.error ? (
+              <Text style={styles.errorText}>{clearScannerPinMutation.error.message}</Text>
             ) : null}
           </InfoCard>
 
@@ -1171,6 +1296,9 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    scannerPinEditor: {
+      gap: 10,
     },
     successText: {
       color: theme.colors.success,

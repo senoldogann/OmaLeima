@@ -21,6 +21,7 @@ type ScanQrRequest = {
   qrToken: string;
   businessId: string | undefined;
   scannerDeviceId: string | null;
+  scannerPin: string | null;
   scannerLocation: ScannerLocation;
 };
 
@@ -76,6 +77,8 @@ const responseMessages: Record<string, string> = {
   VENUE_JOINED_TOO_LATE: "Venue joined this event too late.",
   BUSINESS_STAFF_NOT_ALLOWED: "Scanner is not allowed to scan for this business.",
   SCANNER_DEVICE_NOT_ALLOWED: "Scanner device is not registered for this business.",
+  SCANNER_PIN_REQUIRED: "Scanner staff PIN is required.",
+  SCANNER_PIN_INVALID: "Scanner staff PIN is invalid.",
   QR_ALREADY_USED_OR_REPLAYED: "QR code was already used.",
   ALREADY_STAMPED: "This student already has a leima from this venue for this event.",
 };
@@ -320,10 +323,19 @@ const parseRequestBody = (body: Record<string, unknown>): ScanQrRequest => {
     throw new Error("scannerDeviceId must be a valid UUID when provided.");
   }
 
+  if (
+    typeof body.scannerPin !== "undefined" &&
+    body.scannerPin !== null &&
+    (!isString(body.scannerPin) || body.scannerPin.length > 32)
+  ) {
+    throw new Error("scannerPin must be a short string when provided.");
+  }
+
   return {
     qrToken: body.qrToken,
     businessId: body.businessId,
     scannerDeviceId: body.scannerDeviceId ?? null,
+    scannerPin: typeof body.scannerPin === "string" ? body.scannerPin : null,
     scannerLocation: parseScannerLocation(body.scannerLocation),
   };
 };
@@ -410,6 +422,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       p_business_id: businessId,
       p_scanner_user_id: user.id,
       p_scanner_device_id: body.scannerDeviceId,
+      p_scanner_pin: body.scannerPin,
       p_scanner_latitude: body.scannerLocation.latitude,
       p_scanner_longitude: body.scannerLocation.longitude,
       p_ip: getClientIp(request),

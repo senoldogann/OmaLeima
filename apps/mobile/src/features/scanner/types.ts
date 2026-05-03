@@ -12,6 +12,8 @@ export type BusinessScanStatus =
   | "VENUE_JOINED_TOO_LATE"
   | "BUSINESS_STAFF_NOT_ALLOWED"
   | "SCANNER_DEVICE_NOT_ALLOWED"
+  | "SCANNER_PIN_REQUIRED"
+  | "SCANNER_PIN_INVALID"
   | "NOT_BUSINESS_STAFF"
   | "BUSINESS_CONTEXT_REQUIRED";
 
@@ -43,4 +45,5 @@ export type ScannerDeviceRegistration = {
   scannerDeviceId: string;
   label: string;
   platform: ScannerDevicePlatform;
+  pinRequired: boolean;
 };

@@ -10,6 +10,7 @@ type ScanQrTransportParams = {
   qrToken: string;
   businessId: string;
   scannerDeviceId: string | null;
+  scannerPin: string | null;
   scannerLocation: ScannerLocationPayload;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
@@ -38,6 +39,8 @@ const knownScanStatuses = [
   "VENUE_JOINED_TOO_LATE",
   "BUSINESS_STAFF_NOT_ALLOWED",
   "SCANNER_DEVICE_NOT_ALLOWED",
+  "SCANNER_PIN_REQUIRED",
+  "SCANNER_PIN_INVALID",
   "NOT_BUSINESS_STAFF",
   "BUSINESS_CONTEXT_REQUIRED",
 ] as const satisfies readonly ScanQrResponse["status"][];
@@ -56,6 +59,8 @@ const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["to
   VENUE_JOINED_TOO_LATE: "danger",
   BUSINESS_STAFF_NOT_ALLOWED: "danger",
   SCANNER_DEVICE_NOT_ALLOWED: "danger",
+  SCANNER_PIN_REQUIRED: "warning",
+  SCANNER_PIN_INVALID: "danger",
   NOT_BUSINESS_STAFF: "danger",
   BUSINESS_CONTEXT_REQUIRED: "warning",
 };
@@ -88,6 +93,7 @@ export const requestScanQrAsync = async ({
   qrToken,
   businessId,
   scannerDeviceId,
+  scannerPin,
   scannerLocation,
   fetchImpl = fetch,
   signal,
@@ -103,6 +109,7 @@ export const requestScanQrAsync = async ({
       qrToken,
       businessId,
       scannerDeviceId,
+      scannerPin,
       scannerLocation,
     }),
   });

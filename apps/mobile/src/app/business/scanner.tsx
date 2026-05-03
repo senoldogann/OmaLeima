@@ -189,6 +189,10 @@ const createScanResultTitles = (
     language === "fi" ? "Skanneritiliä ei hyväksytty" : "Scanner account not allowed",
   SCANNER_DEVICE_NOT_ALLOWED:
     language === "fi" ? "Skannerilaite ei kelpaa" : "Scanner device not allowed",
+  SCANNER_PIN_REQUIRED:
+    language === "fi" ? "Skannerin PIN puuttuu" : "Scanner PIN required",
+  SCANNER_PIN_INVALID:
+    language === "fi" ? "Skannerin PIN ei kelpaa" : "Scanner PIN invalid",
   NOT_BUSINESS_STAFF:
     language === "fi" ? "Yritysoikeus puuttuu" : "Business access missing",
   BUSINESS_CONTEXT_REQUIRED:
@@ -251,6 +255,14 @@ const createScanResultDetails = (
     language === "fi"
       ? "Tämä skannerilaite ei ole aktiivinen valitulle yritykselle. Päivitä skanneri tai kirjaudu uudelleen."
       : "This scanner device is not active for the selected business. Refresh the scanner or sign in again.",
+  SCANNER_PIN_REQUIRED:
+    language === "fi"
+      ? "Syötä tämän skannerilaitteen henkilökunnan PIN ennen leiman kirjausta."
+      : "Enter this scanner device staff PIN before recording a stamp.",
+  SCANNER_PIN_INVALID:
+    language === "fi"
+      ? "PIN ei täsmännyt tähän skannerilaitteeseen. Tarkista koodi ja yritä uudelleen."
+      : "PIN did not match this scanner device. Check the code and try again.",
   NOT_BUSINESS_STAFF:
     language === "fi"
       ? "Nykyinen istunto ei ole enää sidottu aktiiviseen henkilökuntatiliin."
@@ -381,6 +393,16 @@ export default function BusinessScannerScreen() {
       scannerDeviceReady: language === "fi" ? "Laite valmis" : "Device ready",
       scannerDeviceIdle: language === "fi" ? "Odotetaan tapahtumapistettä" : "Waiting for checkpoint",
       scannerDeviceError: language === "fi" ? "Laite ei rekisteröitynyt" : "Device did not register",
+      scannerPin: language === "fi" ? "Henkilökunnan PIN" : "Staff PIN",
+      scannerPinRequired:
+        language === "fi"
+          ? "Tämä laite vaatii PIN-koodin ennen skannausta."
+          : "This device requires a PIN before scanning.",
+      scannerPinPlaceholder: language === "fi" ? "4-8 numeroa" : "4-8 digits",
+      scannerPinMissing:
+        language === "fi"
+          ? "Syötä skannerin PIN ennen skannausta."
+          : "Enter the scanner PIN before scanning.",
       scannerDeviceRequired:
         language === "fi"
           ? "Skannerilaite täytyy rekisteröidä ennen leiman kirjausta."
@@ -410,6 +432,7 @@ export default function BusinessScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [selectedEventVenueId, setSelectedEventVenueId] = useState<string | null>(null);
   const [manualToken, setManualToken] = useState<string>("");
+  const [scannerPin, setScannerPin] = useState<string>("");
   const [isScannerLocked, setIsScannerLocked] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -471,15 +494,18 @@ export default function BusinessScannerScreen() {
   const selectedBusinessId = selectedEvent?.businessId ?? null;
   const selectedBusinessName = selectedEvent?.businessName ?? null;
   const isScannerDeviceReady = scannerDeviceState.status === "ready";
+  const isScannerPinRequired = scannerDeviceState.status === "ready" && scannerDeviceState.device.pinRequired;
 
   useEffect(() => {
     if (selectedBusinessId === null || selectedBusinessName === null) {
       setScannerDeviceState(createInitialScannerDeviceState());
+      setScannerPin("");
       return;
     }
 
     let isActive = true;
 
+    setScannerPin("");
     setScannerDeviceState({
       device: null,
       error: null,
@@ -582,6 +608,11 @@ export default function BusinessScannerScreen() {
       return;
     }
 
+    if (scannerDeviceState.device.pinRequired && scannerPin.trim().length === 0) {
+      setSubmitError(labels.scannerPinMissing);
+      return;
+    }
+
     setIsScannerLocked(true);
     setIsSubmitting(true);
     setSubmitError(null);
@@ -593,6 +624,7 @@ export default function BusinessScannerScreen() {
           qrToken,
           businessId: selectedEvent.businessId,
           scannerDeviceId: scannerDeviceState.device.scannerDeviceId,
+          scannerPin: scannerDeviceState.device.pinRequired ? scannerPin.trim() : null,
           scannerLocation: locationProof.location,
         },
         scanTimeoutMs
@@ -805,6 +837,23 @@ export default function BusinessScannerScreen() {
                     >
                       <Text style={styles.secondaryButtonText}>{labels.retryScannerDevice}</Text>
                     </Pressable>
+                  ) : null}
+                  {isScannerPinRequired ? (
+                    <View style={styles.scannerPinBlock}>
+                      <Text style={styles.eventDayEyebrow}>{labels.scannerPin}</Text>
+                      <Text style={styles.metaText}>{labels.scannerPinRequired}</Text>
+                      <TextInput
+                        editable={!isSubmitting && !isScannerLocked}
+                        keyboardType="number-pad"
+                        maxLength={8}
+                        onChangeText={setScannerPin}
+                        placeholder={labels.scannerPinPlaceholder}
+                        placeholderTextColor={theme.colors.textDim}
+                        secureTextEntry
+                        style={styles.pinInput}
+                        value={scannerPin}
+                      />
+                    </View>
                   ) : null}
                 </View>
               ) : null}
@@ -1340,6 +1389,18 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    pinInput: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      minHeight: 46,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
     resultHeroCard: {
       alignItems: "center",
       borderRadius: theme.radius.inner,
@@ -1393,6 +1454,9 @@ const createStyles = (theme: MobileTheme) => {
       borderTopWidth: 2,
       right: 16,
       top: 16,
+    },
+    scannerPinBlock: {
+      gap: 8,
     },
     screenTitle: {
       color: theme.colors.textPrimary,
