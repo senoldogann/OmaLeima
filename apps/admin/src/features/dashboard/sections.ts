@@ -18,6 +18,10 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     label: "Department tags",
   },
   {
+    href: "/admin/announcements",
+    label: "Announcements",
+  },
+  {
     href: "/forbidden",
     label: "Access policy",
   },
@@ -47,6 +51,10 @@ export const getClubDashboardNavigationItems = (canManageRewards: boolean): Dash
       href: "/club/fraud",
       label: "Fraud review",
     },
+    {
+      href: "/club/announcements",
+      label: "Announcements",
+    },
     canManageRewards
       ? {
           href: "/club/rewards",
@@ -63,7 +71,7 @@ export const adminDashboardSections: DashboardSection[] = [
   {
     title: "Operations",
     tone: "accent",
-    items: ["Platform oversight", "Business applications", "Fraud signals"],
+    items: ["Platform oversight", "Business applications", "Fraud signals", "Announcements"],
   },
   {
     title: "Catalog",
@@ -87,8 +95,8 @@ export const getClubDashboardSections = (canManageRewards: boolean): DashboardSe
     title: "Event operations",
     tone: "accent",
     items: canManageRewards
-      ? ["Club events", "Department tags", "Reward claims", "Reward tiers"]
-      : ["Club events", "Reward claims", "Manage venues"],
+      ? ["Club events", "Department tags", "Reward claims", "Reward tiers", "Announcements"]
+      : ["Club events", "Reward claims", "Manage venues", "Announcements"],
   },
   {
     title: "Attendance",

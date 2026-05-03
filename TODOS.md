@@ -6,18 +6,19 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, and scanner location consent slices recorded in `PROGRESS.md`.
 
-## Current Todos (Club Event Preview Flow)
+## Current Todos (Announcements Foundation)
 
-- [x] Interpret the corrected slider placement request.
-- [x] Inspect club home/upcoming image click behavior and event edit routing.
-- [x] Add shared club event preview modal.
-- [x] Change organizer event images to open preview first.
-- [x] Keep event editing behind an explicit preview action.
-- [x] Run mobile validation commands.
+- [x] Start a dedicated feature branch.
+- [x] Inspect existing notification, auth, admin, club, and mobile provider patterns.
+- [x] Define announcement scope and defer push opt-in/read receipt fan-out to the next slice.
+- [x] Add Supabase announcement tables, indexes, and RLS.
+- [x] Add admin/club web authoring pages and create route.
+- [x] Add mobile active announcement popup bridge and dismissal mutation.
+- [x] Run Supabase, mobile, and admin validation commands.
 - [x] Update `PROGRESS.md` with handoff.
 - [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
-- [ ] Design platform and organizer announcement model with push opt-in/read receipts.
+- [ ] Add announcement push opt-in/read receipts and organizer follow preferences.
 - [ ] Add scanner PIN reset audit review in admin/club tools if needed.

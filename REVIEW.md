@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-03
-- **Branch:** `feature/club-event-preview-flow`
-- **Scope:** Make club event images open a lightweight in-club preview before explicit editing.
+- **Branch:** `feature/announcements-foundation`
+- **Scope:** Add the first platform/club announcement foundation with RLS, admin/club authoring, and mobile popup delivery.
 
 ## Affected Files
 
@@ -15,26 +15,29 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `TODOS.md`
 - `PROGRESS.md`
 - `apps/mobile/src/app/club/home.tsx`
-- `apps/mobile/src/app/club/events.tsx`
-- `apps/mobile/src/app/club/upcoming.tsx`
-- `apps/mobile/src/features/club/components/club-event-preview-modal.tsx`
-- `apps/mobile/src/features/club/types.ts`
+- `apps/mobile/src/providers/app-providers.tsx`
+- `apps/mobile/src/features/announcements/*`
+- `apps/admin/src/app/admin/announcements/page.tsx`
+- `apps/admin/src/app/club/announcements/page.tsx`
+- `apps/admin/src/app/api/announcements/create/route.ts`
+- `apps/admin/src/features/announcements/*`
+- `apps/admin/src/features/dashboard/sections.ts`
+- `supabase/migrations/*_announcements_foundation.sql`
 
 ## Existing Logic Checked
 
-- Club home currently shows a separate `Klubit` card even when the organizer has one active club; the user wants the club name surfaced in the opening header instead.
-- The active/live slider belongs under the `Hallinnoi tapahtumia` action area and should show only active events.
-- Club schema has `logo_url` but no cover image or announcement field; mobile profile has no edit/upload controls for club identity.
-- `event-media` storage now has safe club-scoped policies and can be reused for club-owned logo/cover uploads under club paths.
-- Club event images in organizer home/upcoming currently route directly into editing; the corrected UX should first show an in-club event preview and make editing a deliberate action.
+- Existing push/notification tables are user-delivery records, not a source-of-truth authoring model for announcements.
+- Admin web already uses server read models plus route handlers for privileged mutations.
+- Mobile already has app-level providers for global UX bridges such as reward celebrations and push diagnostics.
+- Club organizers can be authorized with `is_club_event_editor_for`; platform admins use `is_platform_admin`.
 
 ## Risks
 
-- Club media update must remain RLS-protected by `is_club_staff_for`.
-- Do not reintroduce a noisy multi-club card on the home page.
-- Event image navigation should not create an unhandled back/go-back state.
-- Preview should reuse the same event summary read model and avoid new backend fetches.
+- Announcement reads must not leak draft/archived rows to normal users.
+- Club authors must not publish platform-wide announcements.
+- Mobile popup must be dismissible and should not reappear after local user dismissal.
+- Push delivery/opt-in is intentionally a later slice; this foundation should not fake push success.
 
 ## Review Outcome
 
-Add a shared organizer event preview modal for home/upcoming images, with a clear edit action that reuses `/club/events?eventId=...`.
+Create announcement source tables and acknowledgement tracking, add admin/club authoring pages, and mount a mobile announcement popup bridge that reads active published announcements.
