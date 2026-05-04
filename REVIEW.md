@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/club-event-date-constraints`
-- **Scope:** Fix organizer event date picker off-by-one behavior and replace raw event constraint errors with explicit client validation.
+- **Branch:** `bug/media-url-resilience`
+- **Scope:** Harden mobile media upload/rendering after reports that role profile/event images can upload to black/empty screens and broken Supabase public image URLs keep warning during prefetch.
 
 ## Affected Files
 
@@ -14,22 +14,25 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/club/events.tsx`
-- `apps/mobile/src/features/club/club-event-mutations.ts`
+- `apps/mobile/src/features/media/storage-upload.ts`
+- `apps/mobile/src/features/media/remote-image-health.ts`
+- `apps/mobile/src/components/cover-image-surface.tsx`
+- `apps/mobile/src/features/events/event-visuals.ts`
 
 ## Existing Logic Checked
 
-- Organizer event calendar dates are generated with `Date#toISOString().slice(0, 10)`.
-- In Europe/Helsinki, local midnight converted to UTC can become the previous calendar day, which explains selecting 4 and seeing 3.
-- Event update path writes directly to `events`; if `end_at <= start_at` or `join_deadline_at > start_at`, Postgres returns a raw check constraint error.
-- Initial schema shows unnamed event checks: `end_at > start_at` and `join_deadline_at <= start_at`; the reported `events_check1` maps to the join deadline relation in hosted DB naming.
+- Business, club, and club event media uploads already route through the shared `storage-upload` helper.
+- The helper asks the picker for base64, but decoding currently depends on `globalThis.atob`; native runtime availability is not a good enough assumption for this upload-critical path.
+- `CoverImageSurface` renders a fallback asset behind a remote image, but broken remote URLs can still be retried across screens.
+- `prefetchEventCoverUrls` catches image prefetch errors once per URL, but it does not detect zero-byte Supabase objects before asking React Native to decode the image.
+- The reported Supabase event cover URL returns `content-length: 0`, so old stored objects can remain broken even after upload code is fixed.
 
 ## Risks
 
-- Date utilities must stay local-date based for the calendar grid while mutation payloads still convert local datetime to ISO for Supabase.
-- Manual date/time text inputs can still be invalid; mutation validation should fail before DB writes.
-- Join deadline equal to start is allowed by DB, but after start is not.
+- HEAD checks must not reject valid images when servers omit `content-length`.
+- Broken URL quarantine should be in-memory only; real persisted URLs still need re-upload or DB cleanup.
+- Upload body decoding must preserve binary bytes exactly and keep errors explicit.
 
 ## Review Outcome
 
-Replace ISO slicing with local date formatting for organizer calendar days/months and add explicit temporal validation before create/update RPC/table writes.
+Add a pure base64 decoder for native image uploads, centralize remote image health tracking, skip known broken/zero-byte cover URLs during prefetch, and let every `CoverImageSurface` mark failed remote images as broken so fallbacks stop fighting failed URLs.

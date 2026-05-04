@@ -1,6 +1,14 @@
 import type { ImageSourcePropType } from "react-native";
 import { Image } from "react-native";
 
+import {
+  createRemoteImageSource,
+  isKnownBrokenRemoteImageUrl,
+  markRemoteImageUrlBroken,
+  normalizeRemoteImageUrl,
+  verifyPublicImageUrlAsync,
+} from "@/features/media/remote-image-health";
+
 export type FallbackCoverPurpose =
   | "authOnboarding"
   | "clubControl"
@@ -72,17 +80,7 @@ export const getOffsetFallbackCoverSourceByIndex = (
 ): ImageSourcePropType => getFallbackCoverSourceByIndex(index + offset);
 
 const createRemoteCoverSource = (coverImageUrl: string | null): ImageSourcePropType | null => {
-  if (coverImageUrl === null) {
-    return null;
-  }
-
-  const normalizedCoverImageUrl = coverImageUrl.trim();
-
-  if (normalizedCoverImageUrl.length === 0) {
-    return null;
-  }
-
-  return { uri: normalizedCoverImageUrl };
+  return createRemoteImageSource(coverImageUrl);
 };
 
 export const getEventCoverSource = (
@@ -115,15 +113,20 @@ export const prefetchEventCoverUrls = async (
   coverImageUrls: readonly (string | null)[]
 ): Promise<void> => {
   const uniqueUrls = [...new Set(coverImageUrls)]
+    .map((value) => normalizeRemoteImageUrl(value))
     .filter((value): value is string => value !== null)
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+    .filter((value) => !isKnownBrokenRemoteImageUrl(value));
 
   await Promise.all(
     uniqueUrls.map(async (url) => {
       try {
+        await verifyPublicImageUrlAsync({
+          context: "event cover prefetch",
+          publicUrl: url,
+        });
         await Image.prefetch(url);
       } catch (error: unknown) {
+        markRemoteImageUrlBroken(url);
         if (!warnedCoverPrefetchUrls.has(url)) {
           warnedCoverPrefetchUrls.add(url);
           console.warn("Failed to prefetch event cover image.", { error, url });
