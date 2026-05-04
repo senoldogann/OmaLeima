@@ -14,6 +14,7 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
+import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -288,6 +289,13 @@ export default function StudentProfileScreen() {
       ) : null}
 
       {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
+
+      <AnnouncementFeedSection
+        compact={true}
+        maxItems={4}
+        title={language === "fi" ? "Ajankohtaista" : "Latest updates"}
+        userId={studentId}
+      />
 
       <InfoCard
         eyebrow={language === "fi" ? "Asetukset" : "Preferences"}

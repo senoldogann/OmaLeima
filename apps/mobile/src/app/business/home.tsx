@@ -7,6 +7,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { BusinessJoinedEventSummary } from "@/features/business/types";
 import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
@@ -300,6 +301,13 @@ export default function BusinessHomeScreen() {
           </Pressable>
         </InfoCard>
       ) : null}
+
+      <AnnouncementFeedSection
+        compact={true}
+        maxItems={4}
+        title={language === "fi" ? "Yrityksen tiedotteet" : "Business updates"}
+        userId={userId}
+      />
 
     </AppScreen>
   );
