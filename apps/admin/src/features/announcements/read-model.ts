@@ -19,6 +19,7 @@ type AnnouncementRow = {
   cta_url: string | null;
   ends_at: string | null;
   id: string;
+  image_url: string | null;
   priority: number;
   starts_at: string;
   status: AnnouncementStatus;
@@ -68,6 +69,7 @@ const mapRows = (rows: AnnouncementRow[], creatorEmails: Map<string, string>): A
     ctaLabel: row.cta_label,
     ctaUrl: row.cta_url,
     endsAt: row.ends_at,
+    imageUrl: row.image_url,
     priority: row.priority,
     startsAt: row.starts_at,
     status: row.status,
@@ -90,6 +92,7 @@ const fetchAnnouncementsAsync = async (
       body,
       cta_label,
       cta_url,
+      image_url,
       status,
       priority,
       starts_at,

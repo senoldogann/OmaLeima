@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       ctaLabel: body.ctaLabel.length === 0 ? null : body.ctaLabel,
       ctaUrl: body.ctaUrl.length === 0 ? null : body.ctaUrl,
       endsAt: body.endsAtValue,
+      imageUrl: body.imageUrlValue,
       priority: body.priorityValue,
       startsAt: body.startsAtValue,
       status: body.statusValue,

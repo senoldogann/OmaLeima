@@ -18,6 +18,7 @@ export type AnnouncementRecord = {
   ctaLabel: string | null;
   ctaUrl: string | null;
   endsAt: string | null;
+  imageUrl: string | null;
   priority: number;
   startsAt: string;
   status: AnnouncementStatus;
@@ -37,6 +38,7 @@ export type AnnouncementCreatePayload = {
   ctaLabel: string;
   ctaUrl: string;
   endsAt: string;
+  imageUrl: string;
   priority: string;
   startsAt: string;
   status: AnnouncementStatus;

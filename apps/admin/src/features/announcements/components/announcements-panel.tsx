@@ -35,6 +35,7 @@ const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreat
     ctaLabel: "",
     ctaUrl: "",
     endsAt: "",
+    imageUrl: "",
     priority: "0",
     startsAt,
     status: "PUBLISHED",
@@ -153,6 +154,13 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
             <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
           </div>
           <h3 className="section-title">{announcement.title}</h3>
+          {announcement.imageUrl !== null ? (
+            <div
+              aria-hidden="true"
+              className="announcement-card-image"
+              style={{ backgroundImage: `url(${announcement.imageUrl})` }}
+            />
+          ) : null}
           <p className="muted-text">{announcement.body}</p>
           <div className="meta-grid">
             <span>{announcement.audience}</span>
@@ -314,6 +322,16 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
               onChange={(event) => setPayload((current) => ({ ...current, ctaUrl: event.target.value }))}
               placeholder="https://..."
               value={payload.ctaUrl}
+            />
+          </label>
+
+          <label className="field-stack form-grid-full">
+            <span className="field-label">Image URL</span>
+            <input
+              disabled={!canCreate || isPending}
+              onChange={(event) => setPayload((current) => ({ ...current, imageUrl: event.target.value }))}
+              placeholder="https://..."
+              value={payload.imageUrl}
             />
           </label>
 

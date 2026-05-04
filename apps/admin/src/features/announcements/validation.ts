@@ -47,6 +47,32 @@ const parseOptionalIsoDateTimeOrThrow = (value: string, fieldName: string): stri
   return parseIsoDateTimeOrThrow(value, fieldName);
 };
 
+const parseOptionalUrlOrThrow = (value: string, fieldName: string): string | null => {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    return null;
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(trimmedValue);
+  } catch {
+    throw new AnnouncementValidationError(`${fieldName} must be a valid absolute URL.`);
+  }
+
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw new AnnouncementValidationError(`${fieldName} must use http or https.`);
+  }
+
+  if (trimmedValue.length > 500) {
+    throw new AnnouncementValidationError(`${fieldName} must be 500 characters or shorter.`);
+  }
+
+  return trimmedValue;
+};
+
 const parsePriorityOrThrow = (value: string): number => {
   if (!integerPattern.test(value.trim())) {
     throw new AnnouncementValidationError("priority must be a valid integer.");
@@ -68,6 +94,7 @@ export const parseAnnouncementCreatePayloadOrThrow = (
   clubIdValue: string | null;
   endsAtValue: string | null;
   priorityValue: number;
+  imageUrlValue: string | null;
   startsAtValue: string;
   statusValue: AnnouncementStatus;
 } => {
@@ -92,6 +119,7 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     typeof body.ctaLabel !== "string" ||
     typeof body.ctaUrl !== "string" ||
     typeof body.endsAt !== "string" ||
+    typeof body.imageUrl !== "string" ||
     typeof body.priority !== "string" ||
     typeof body.startsAt !== "string"
   ) {
@@ -112,6 +140,7 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     throw new AnnouncementValidationError("ctaUrl must be a full URL when provided.");
   }
 
+  const imageUrlValue = parseOptionalUrlOrThrow(body.imageUrl, "imageUrl");
   const startsAtValue = parseIsoDateTimeOrThrow(body.startsAt, "startsAt");
   const endsAtValue = parseOptionalIsoDateTimeOrThrow(body.endsAt, "endsAt");
 
@@ -129,6 +158,8 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     ctaUrl: body.ctaUrl.trim(),
     endsAt: body.endsAt,
     endsAtValue,
+    imageUrl: body.imageUrl.trim(),
+    imageUrlValue,
     priority: body.priority,
     priorityValue: parsePriorityOrThrow(body.priority),
     startsAt: body.startsAt,

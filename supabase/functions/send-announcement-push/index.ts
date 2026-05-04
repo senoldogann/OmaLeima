@@ -22,6 +22,7 @@ type AnnouncementRow = {
   cta_label: string | null;
   cta_url: string | null;
   ends_at: string | null;
+  image_url: string | null;
   starts_at: string;
   status: "ARCHIVED" | "DRAFT" | "PUBLISHED";
   title: string;
@@ -198,7 +199,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     const { data: announcement, error: announcementError } = await supabase
       .from("announcements")
-      .select("id,club_id,audience,title,body,cta_label,cta_url,status,starts_at,ends_at")
+      .select("id,club_id,audience,title,body,cta_label,cta_url,image_url,status,starts_at,ends_at")
       .eq("id", body.announcementId)
       .maybeSingle<AnnouncementRow>();
 
@@ -539,6 +540,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
             announcementId: announcement.id,
             clubId: announcement.club_id,
             ctaUrl: announcement.cta_url,
+            imageUrl: announcement.image_url,
           },
         });
         pushMessageOwners.push(pushTarget.userId);
