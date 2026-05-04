@@ -6,6 +6,8 @@ type VerifyPublicImageUrlParams = {
 };
 
 const knownBrokenRemoteImageUrls = new Set<string>();
+const verifyAttemptCount = 3;
+const verifyRetryDelayMs = 350;
 
 export const normalizeRemoteImageUrl = (publicUrl: string | null | undefined): string | null => {
   if (typeof publicUrl !== "string") {
@@ -29,6 +31,16 @@ export const markRemoteImageUrlBroken = (publicUrl: string): void => {
   }
 
   knownBrokenRemoteImageUrls.add(normalizedPublicUrl);
+};
+
+const markRemoteImageUrlHealthy = (publicUrl: string): void => {
+  const normalizedPublicUrl = normalizeRemoteImageUrl(publicUrl);
+
+  if (normalizedPublicUrl === null) {
+    return;
+  }
+
+  knownBrokenRemoteImageUrls.delete(normalizedPublicUrl);
 };
 
 export const isKnownBrokenRemoteImageUrl = (publicUrl: string | null | undefined): boolean => {
@@ -67,7 +79,51 @@ export const createRemoteImageSource = (publicUrl: string | null | undefined): I
   return { uri: normalizedPublicUrl };
 };
 
-export const verifyPublicImageUrlAsync = async ({
+const sleepAsync = (durationMs: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+
+const readPublicImageContentLengthAsync = async (publicUrl: string): Promise<number | null> => {
+  const headResponse = await fetch(publicUrl, {
+    method: "HEAD",
+  });
+
+  if (!headResponse.ok) {
+    throw new Error(`Status: ${headResponse.status}.`);
+  }
+
+  const rawHeadContentLength = headResponse.headers.get("content-length");
+
+  if (rawHeadContentLength !== null) {
+    const headContentLength = Number.parseInt(rawHeadContentLength, 10);
+
+    if (Number.isNaN(headContentLength)) {
+      throw new Error(`Invalid content-length header: ${rawHeadContentLength}.`);
+    }
+
+    if (headContentLength > 0) {
+      return headContentLength;
+    }
+  }
+
+  const rangeResponse = await fetch(publicUrl, {
+    headers: {
+      Range: "bytes=0-0",
+    },
+    method: "GET",
+  });
+
+  if (!rangeResponse.ok && rangeResponse.status !== 206) {
+    throw new Error(`Range status: ${rangeResponse.status}.`);
+  }
+
+  const rangeBody = await rangeResponse.arrayBuffer();
+
+  return rangeBody.byteLength;
+};
+
+const verifyPublicImageUrlOnceAsync = async ({
   context,
   publicUrl,
 }: VerifyPublicImageUrlParams): Promise<void> => {
@@ -77,31 +133,50 @@ export const verifyPublicImageUrlAsync = async ({
     throw new Error(`Uploaded image for ${context} has an empty public URL.`);
   }
 
-  const response = await fetch(normalizedPublicUrl, {
-    method: "HEAD",
-  });
+  const contentLength = await readPublicImageContentLengthAsync(normalizedPublicUrl);
 
-  if (!response.ok) {
-    markRemoteImageUrlBroken(normalizedPublicUrl);
-    throw new Error(`Uploaded image for ${context} is not publicly readable. URL: ${normalizedPublicUrl}. Status: ${response.status}.`);
-  }
-
-  const rawContentLength = response.headers.get("content-length");
-
-  if (rawContentLength === null) {
+  if (contentLength === null) {
+    markRemoteImageUrlHealthy(normalizedPublicUrl);
     return;
-  }
-
-  const contentLength = Number.parseInt(rawContentLength, 10);
-
-  if (Number.isNaN(contentLength)) {
-    throw new Error(
-      `Uploaded image for ${context} returned an invalid content-length. URL: ${normalizedPublicUrl}. Header: ${rawContentLength}.`
-    );
   }
 
   if (contentLength <= 0) {
     markRemoteImageUrlBroken(normalizedPublicUrl);
     throw new Error(`Uploaded image for ${context} is empty in storage. URL: ${normalizedPublicUrl}.`);
   }
+
+  markRemoteImageUrlHealthy(normalizedPublicUrl);
+};
+
+export const verifyPublicImageUrlAsync = async ({
+  context,
+  publicUrl,
+}: VerifyPublicImageUrlParams): Promise<void> => {
+  const normalizedPublicUrl = normalizeRemoteImageUrl(publicUrl);
+  let lastError: Error | null = null;
+
+  if (normalizedPublicUrl === null) {
+    throw new Error(`Uploaded image for ${context} has an empty public URL.`);
+  }
+
+  for (let attempt = 1; attempt <= verifyAttemptCount; attempt += 1) {
+    try {
+      await verifyPublicImageUrlOnceAsync({
+        context,
+        publicUrl: normalizedPublicUrl,
+      });
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < verifyAttemptCount) {
+        await sleepAsync(verifyRetryDelayMs * attempt);
+      }
+    }
+  }
+
+  markRemoteImageUrlBroken(normalizedPublicUrl);
+  throw new Error(
+    `Uploaded image for ${context} is not publicly readable after ${verifyAttemptCount} attempts. URL: ${normalizedPublicUrl}. ${lastError?.message ?? "Unknown verification error."}`
+  );
 };
