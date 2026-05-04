@@ -5,24 +5,25 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/mobile-actionable-errors-event-visibility`
-- **Goal:** Make student event joining and organizer event save failures behave like product UI instead of development crashes.
+- **Branch:** `feature/mobile-club-announcement-management`
+- **Goal:** Give club organizers a native mobile announcement management screen for posts/updates that students and businesses can already read.
 
 ## Architectural Decisions
 
-- Keep server-side registration rules authoritative; the UI only removes misleading join CTAs from active/live cards.
-- Treat active/live events as non-joinable in student list preview and detail CTA rendering.
-- Catch `mutateAsync` errors at each user action boundary.
-- Map known validation strings to localized Finnish/English product copy inside the screen, while preserving unknown error text for debugging.
-- Do not introduce new global error infrastructure in this bugfix; broader toast/alert architecture can be a later product polish slice.
+- Use direct Supabase client access because existing announcement RLS is already scoped to platform admins and club event editors.
+- Add a mobile read model for club memberships and latest club announcements.
+- Treat delete as archive: update `status = 'ARCHIVED'` instead of deleting rows.
+- Reuse storage upload patterns from club event covers, but target `announcement-media` and `clubs/{clubId}/announcements/...`.
+- Keep push sending out of this first native slice unless there is an existing mobile-safe function route; publishing makes announcements visible in feed/popup immediately.
+- Add a route-level screen under `/club/announcements` and expose it from club home.
 
 ## Edge Cases
 
-- Student taps a live event card: they can open details, but no join button is shown.
-- Student taps upcoming join and the RPC returns a non-success state or throws: an inline localized error is shown.
-- Organizer saves an event with `endAt <= startAt`: no red overlay; form shows a localized actionable error.
-- Organizer save/cancel DB policy failures remain visible as errors.
-- QR start-time copy is reviewed but not changed unless a code bug is found.
+- Organizer manages multiple clubs: form needs a club picker and must refresh after club changes.
+- DRAFT, PUBLISHED and ARCHIVED states should be visible; archived rows can be edited back only if RLS allows update.
+- Ends at can be empty; when present it must be after starts at.
+- Image upload cancelled by user should not show an error.
+- Invalid image type/permission/storage policy errors must show inline.
 
 ## Validation Plan
 

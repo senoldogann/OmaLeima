@@ -224,6 +224,12 @@ export default function ClubHomeScreen() {
                 {language === "fi" ? "Hallinnoi tapahtumia" : "Manage events"}
               </Text>
             </Pressable>
+            <Pressable onPress={() => router.push("/club/announcements")} style={styles.secondaryButton}>
+              <AppIcon color={theme.colors.textPrimary} name="bell" size={18} />
+              <Text style={styles.secondaryButtonText}>
+                {language === "fi" ? "Tiedotteet" : "Announcements"}
+              </Text>
+            </Pressable>
             <Pressable
               disabled={isSigningOut}
               onPress={() => void handleSignOutPress()}
@@ -602,6 +608,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     quickActionRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 10,
     },
     sectionHeaderAction: {
@@ -617,6 +624,8 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
       borderRadius: theme.radius.button,
+      flexDirection: "row",
+      gap: 8,
       minHeight: 46,
       paddingHorizontal: 16,
       paddingVertical: 13,
