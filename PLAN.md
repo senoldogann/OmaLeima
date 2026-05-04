@@ -5,29 +5,30 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-club-announcement-management`
-- **Goal:** Give club organizers a native mobile announcement management screen for posts/updates that students and businesses can already read.
+- **Branch:** `bug/scanner-duplicate-and-kiosk-home`
+- **Goal:** Make business scanner accounts land in a simple camera-first flow and make duplicate leima outcomes clear on real devices.
 
 ## Architectural Decisions
 
-- Use direct Supabase client access because existing announcement RLS is already scoped to platform admins and club event editors.
-- Add a mobile read model for club memberships and latest club announcements.
-- Treat delete as archive: update `status = 'ARCHIVED'` instead of deleting rows.
-- Reuse storage upload patterns from club event covers, but target `announcement-media` and `clubs/{clubId}/announcements/...`.
-- Keep push sending out of this first native slice unless there is an existing mobile-safe function route; publishing makes announcements visible in feed/popup immediately.
-- Add a route-level screen under `/club/announcements` and expose it from club home.
+- Preserve the atomic `scan_stamp_atomic` duplicate guard. A second scan for the same event/business/student remains non-mutating.
+- Return existing valid stamp context for `ALREADY_STAMPED` so the client can show an operational "already recorded" state instead of a vague error.
+- Treat `ALREADY_STAMPED` as a calm warning/success-adjacent result in scanner UI.
+- In business home, auto-route scanner-only users to `/business/scanner` when a live joined event exists.
+- In scanner route, prioritize event selector, device/PIN state, camera and result. Hide business profile/location proof/long event-day explanatory panels from the event-day surface.
 
 ## Edge Cases
 
-- Organizer manages multiple clubs: form needs a club picker and must refresh after club changes.
-- DRAFT, PUBLISHED and ARCHIVED states should be visible; archived rows can be edited back only if RLS allows update.
-- Ends at can be empty; when present it must be after starts at.
-- Image upload cancelled by user should not show an error.
-- Invalid image type/permission/storage policy errors must show inline.
+- No active joined event: show a short standby message and route managers to event management, but scanner-only users should not see fake camera state.
+- Multiple active joined events: keep a compact selector before the camera.
+- PIN-required scanner devices: PIN input must stay visible before scanning and not be buried under nonessential panels.
+- Duplicate scan: no second stamp is created; staff sees that the leima was already recorded and can continue scanning.
+- Location proof remains optional and can be reintroduced later in a compact QA/security drawer.
 
 ## Validation Plan
 
 - Run:
+  - `npx supabase@2.95.4 db lint --linked`
+  - `npx supabase@2.95.4 functions deploy scan-qr`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`

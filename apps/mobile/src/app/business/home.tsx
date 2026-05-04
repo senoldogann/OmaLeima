@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
@@ -70,8 +70,8 @@ export default function BusinessHomeScreen() {
       scannerStandbyTitle: language === "fi" ? "Ei käynnissä olevia tapahtumia" : "No active events",
       scannerReadyBody:
         language === "fi"
-          ? "Avaa skanneri ja pidä jono liikkeessä."
-          : "Open the scanner and keep the line moving.",
+          ? "Skanneritili avaa kameran automaattisesti, kun tapahtuma on käynnissä."
+          : "Scanner accounts open the camera automatically while an event is live.",
       scannerStandbyBody:
         language === "fi"
           ? "Skanneri avautuu, kun liittymäsi tapahtuma on käynnissä."
@@ -97,12 +97,32 @@ export default function BusinessHomeScreen() {
   const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
   const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
+  const memberships = homeOverviewQuery.data?.memberships ?? [];
+  const isScannerOnlyBusinessUser =
+    memberships.length > 0 && memberships.every((membership) => membership.role === "SCANNER");
   const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
   const eventRailWidth = Math.min(340, Math.max(260, windowWidth - 96));
   const eventRailContentStyle = [
     styles.eventRailContent,
     joinedEvents.length === 1 ? styles.eventRailContentSingle : null,
   ];
+
+  useEffect(() => {
+    if (homeOverviewQuery.isLoading || homeOverviewQuery.error || !isScannerOnlyBusinessUser) {
+      return;
+    }
+
+    if (activeJoinedEvents.length > 0) {
+      router.replace("/business/scanner");
+    }
+  }, [
+    activeJoinedEvents.length,
+    homeOverviewQuery.error,
+    homeOverviewQuery.isLoading,
+    isScannerOnlyBusinessUser,
+    router,
+  ]);
+
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
     setSignOutError(null);
@@ -193,35 +213,44 @@ export default function BusinessHomeScreen() {
               : labels.scannerStandbyBody}
           </Text>
 
-          <View style={styles.actionRow}>
-            <Pressable
-              style={[styles.primaryButton, styles.actionFlex]}
-              onPress={() =>
-                router.push(
-                  activeJoinedEvents.length > 0 ? "/business/scanner" : "/business/events"
-                )
-              }
-            >
-              <AppIcon
-                color={theme.colors.actionPrimaryText}
-                name={activeJoinedEvents.length > 0 ? "scan" : "calendar"}
-                size={18}
-              />
-              <Text style={styles.primaryButtonText}>
-                {activeJoinedEvents.length > 0 ? copy.business.openScanner : copy.business.manageEvents}
+          {isScannerOnlyBusinessUser && activeJoinedEvents.length > 0 ? (
+            <View style={styles.scannerAutoRow}>
+              <ActivityIndicator color={theme.colors.lime} size="small" />
+              <Text style={styles.metaText}>
+                {language === "fi" ? "Avataan kameraa…" : "Opening camera…"}
               </Text>
-            </Pressable>
+            </View>
+          ) : (
+            <View style={styles.actionRow}>
+              <Pressable
+                style={[styles.primaryButton, styles.actionFlex]}
+                onPress={() =>
+                  router.push(
+                    activeJoinedEvents.length > 0 ? "/business/scanner" : "/business/events"
+                  )
+                }
+              >
+                <AppIcon
+                  color={theme.colors.actionPrimaryText}
+                  name={activeJoinedEvents.length > 0 ? "scan" : "calendar"}
+                  size={18}
+                />
+                <Text style={styles.primaryButtonText}>
+                  {activeJoinedEvents.length > 0 ? copy.business.openScanner : copy.business.manageEvents}
+                </Text>
+              </Pressable>
 
-            <Pressable
-              onPress={() => router.push("/business/history")}
-              style={[styles.secondaryButton, styles.actionFlex]}
-            >
-              <AppIcon color={theme.colors.textPrimary} name="history" size={17} />
-              <Text adjustsFontSizeToFit numberOfLines={1} style={styles.secondaryButtonText}>
-                {labels.historyShort}
-              </Text>
-            </Pressable>
-          </View>
+              <Pressable
+                onPress={() => router.push("/business/history")}
+                style={[styles.secondaryButton, styles.actionFlex]}
+              >
+                <AppIcon color={theme.colors.textPrimary} name="history" size={17} />
+                <Text adjustsFontSizeToFit numberOfLines={1} style={styles.secondaryButtonText}>
+                  {labels.historyShort}
+                </Text>
+              </Pressable>
+            </View>
+          )}
         </InfoCard>
       ) : null}
 
@@ -495,6 +524,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    scannerAutoRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+      minHeight: 48,
     },
     summaryCard: {
       backgroundColor: theme.colors.surfaceL2,

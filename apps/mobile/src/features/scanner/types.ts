@@ -25,6 +25,7 @@ export type ScannerAttemptResult = {
   tone: ScannerResultTone;
   stampId?: string;
   stampCount?: number;
+  existingStampedAt?: string;
 };
 
 export type ScannerLocationPayload = {
@@ -37,6 +38,7 @@ export type ScanQrResponse = {
   message: string;
   stampId?: string;
   stampCount?: number;
+  existingStampedAt?: string;
 };
 
 export type ScannerDevicePlatform = "IOS" | "ANDROID" | "WEB" | "UNKNOWN";

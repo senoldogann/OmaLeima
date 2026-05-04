@@ -33,6 +33,10 @@ type DeviceTokenRow = {
   expo_push_token: string;
 };
 
+type ExistingStampRow = {
+  scanned_at: string;
+};
+
 type NotificationInsertRow = {
   user_id: string;
   event_id: string;
@@ -56,6 +60,7 @@ type ScanStampResult = {
   stampId?: string;
   stampCount?: number;
   eventName?: string;
+  existingStampedAt?: string;
   unlockedRewardTiers?: UnlockedRewardTier[];
 };
 
@@ -80,7 +85,7 @@ const responseMessages: Record<string, string> = {
   SCANNER_PIN_REQUIRED: "Scanner staff PIN is required.",
   SCANNER_PIN_INVALID: "Scanner staff PIN is invalid.",
   QR_ALREADY_USED_OR_REPLAYED: "QR code was already used.",
-  ALREADY_STAMPED: "This student already has a leima from this venue for this event.",
+  ALREADY_STAMPED: "Leima is already recorded for this student at this venue.",
 };
 
 const serializeTokenResults = (results: ExpoPushSendResult[]): Record<string, unknown>[] =>
@@ -353,6 +358,39 @@ const resolveBusinessId = (rows: BusinessStaffRow[], requestedBusinessId: string
   return null;
 };
 
+const readExistingValidStampAsync = async (
+  supabase: ReturnType<typeof createServiceClient>,
+  eventId: string,
+  studentId: string,
+  businessId: string
+): Promise<ExistingStampRow | null> => {
+  const { data, error } = await supabase
+    .from("stamps")
+    .select("scanned_at")
+    .eq("event_id", eventId)
+    .eq("student_id", studentId)
+    .eq("business_id", businessId)
+    .eq("validation_status", "VALID")
+    .order("scanned_at", { ascending: false })
+    .limit(1)
+    .returns<ExistingStampRow[]>()
+    .maybeSingle();
+
+  if (error !== null) {
+    console.warn("existing_stamp_lookup_failed", {
+      eventId,
+      studentId,
+      businessId,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
+
+    return null;
+  }
+
+  return data;
+};
+
 Deno.serve(async (request: Request): Promise<Response> => {
   const methodResponse = assertPostRequest(request);
 
@@ -437,17 +475,30 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const result = rpcResult as ScanStampResult;
-    const unlockedRewardTiers = result.unlockedRewardTiers ?? [];
+    const existingStamp =
+      result.status === "ALREADY_STAMPED"
+        ? await readExistingValidStampAsync(
+            supabase,
+            verifiedQrToken.payload.eventId,
+            verifiedQrToken.payload.sub,
+            businessId
+          )
+        : null;
+    const responseResult: ScanStampResult = {
+      ...result,
+      existingStampedAt: existingStamp?.scanned_at,
+    };
+    const unlockedRewardTiers = responseResult.unlockedRewardTiers ?? [];
     let rewardUnlockPush = createRewardUnlockPushSummary(
-      unlockedRewardTiers.length === 0 || result.status !== "SUCCESS" ? "NONE" : "QUEUED",
+      unlockedRewardTiers.length === 0 || responseResult.status !== "SUCCESS" ? "NONE" : "QUEUED",
       unlockedRewardTiers.length,
       0,
       0,
       0,
-      unlockedRewardTiers.length === 0 || result.status !== "SUCCESS"
+      unlockedRewardTiers.length === 0 || responseResult.status !== "SUCCESS"
     );
 
-    if (result.status === "SUCCESS" && unlockedRewardTiers.length > 0) {
+    if (responseResult.status === "SUCCESS" && unlockedRewardTiers.length > 0) {
       try {
         EdgeRuntime.waitUntil((async (): Promise<void> => {
           try {
@@ -457,7 +508,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
               env.expoPushAccessToken,
               verifiedQrToken.payload.sub,
               verifiedQrToken.payload.eventId,
-              result.eventName ?? "this event",
+              responseResult.eventName ?? "this event",
               unlockedRewardTiers
             );
           } catch (error) {
@@ -481,9 +532,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     return jsonResponse({
-      ...result,
+      ...responseResult,
       rewardUnlockPush,
-      message: responseMessages[result.status] ?? "QR scan completed.",
+      message: responseMessages[responseResult.status] ?? "QR scan completed.",
     }, 200);
   } catch (error) {
     return errorResponse(400, "VALIDATION_ERROR", "Failed to scan QR token.", {
