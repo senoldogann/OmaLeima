@@ -16,7 +16,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Apply the new Supabase migration and deploy the updated function.
 - [x] Run mobile/admin validation commands.
 - [x] Update `PROGRESS.md` with handoff.
-- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
