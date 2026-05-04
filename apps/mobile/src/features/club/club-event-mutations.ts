@@ -33,7 +33,25 @@ type ClubEventCancelVariables = {
 
 const localDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
-const parseLocalDateTimeToIsoOrThrow = (value: string, fieldName: string): string => {
+type ParsedClubEventDraft = {
+  city: string;
+  coverImageUrl: string;
+  description: string;
+  endAtIso: string;
+  endAtTime: number;
+  joinDeadlineAtIso: string;
+  joinDeadlineAtTime: number;
+  maxParticipants: number | null;
+  minimumStampsRequired: number;
+  name: string;
+  startAtIso: string;
+  startAtTime: number;
+};
+
+const parseLocalDateTimeOrThrow = (
+  value: string,
+  fieldName: string
+): { isoValue: string; timeValue: number } => {
   const normalizedValue = value.trim();
 
   if (!localDateTimePattern.test(normalizedValue)) {
@@ -46,7 +64,10 @@ const parseLocalDateTimeToIsoOrThrow = (value: string, fieldName: string): strin
     throw new Error(`${fieldName} must be a valid local datetime.`);
   }
 
-  return parsedDate.toISOString();
+  return {
+    isoValue: parsedDate.toISOString(),
+    timeValue: parsedDate.getTime(),
+  };
 };
 
 const parseOptionalPositiveIntegerOrThrow = (value: string, fieldName: string): number | null => {
@@ -90,19 +111,33 @@ const assertDraftFields = (draft: ClubEventFormDraft): void => {
   }
 };
 
-const parseDraft = (draft: ClubEventFormDraft) => {
+const parseDraft = (draft: ClubEventFormDraft): ParsedClubEventDraft => {
   assertDraftFields(draft);
+  const startAt = parseLocalDateTimeOrThrow(draft.startAt, "startAt");
+  const endAt = parseLocalDateTimeOrThrow(draft.endAt, "endAt");
+  const joinDeadlineAt = parseLocalDateTimeOrThrow(draft.joinDeadlineAt, "joinDeadlineAt");
+
+  if (endAt.timeValue <= startAt.timeValue) {
+    throw new Error("endAt must be after startAt.");
+  }
+
+  if (joinDeadlineAt.timeValue > startAt.timeValue) {
+    throw new Error("joinDeadlineAt must be before or equal to startAt.");
+  }
 
   return {
     city: draft.city.trim(),
     coverImageUrl: draft.coverImageUrl.trim(),
     description: draft.description.trim(),
-    endAtIso: parseLocalDateTimeToIsoOrThrow(draft.endAt, "endAt"),
-    joinDeadlineAtIso: parseLocalDateTimeToIsoOrThrow(draft.joinDeadlineAt, "joinDeadlineAt"),
+    endAtIso: endAt.isoValue,
+    endAtTime: endAt.timeValue,
+    joinDeadlineAtIso: joinDeadlineAt.isoValue,
+    joinDeadlineAtTime: joinDeadlineAt.timeValue,
     maxParticipants: parseOptionalPositiveIntegerOrThrow(draft.maxParticipants, "maxParticipants"),
     minimumStampsRequired: parseMinimumStampsOrThrow(draft.minimumStampsRequired),
     name: draft.name.trim(),
-    startAtIso: parseLocalDateTimeToIsoOrThrow(draft.startAt, "startAt"),
+    startAtIso: startAt.isoValue,
+    startAtTime: startAt.timeValue,
   };
 };
 

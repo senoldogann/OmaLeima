@@ -190,13 +190,19 @@ const splitLocalDateTime = (value: string): { date: string; time: string } => {
 
 const buildLocalDateTime = (date: string, time: string): string => `${date.trim()}T${time.trim()}`;
 
-const formatDateInput = (date: Date): string => date.toISOString().slice(0, 10);
+const formatLocalDateInput = (date: Date): string => {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const getMonthStartInput = (dateInput: string): string => {
   const date = dateInput.length > 0 ? new Date(`${dateInput}T00:00:00`) : new Date();
 
   if (Number.isNaN(date.getTime())) {
-    return formatDateInput(new Date());
+    return formatLocalDateInput(new Date());
   }
 
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
@@ -206,7 +212,7 @@ const shiftMonthInput = (monthInput: string, offset: number): string => {
   const month = new Date(`${monthInput}T00:00:00`);
   month.setMonth(month.getMonth() + offset);
 
-  return getMonthStartInput(formatDateInput(month));
+  return getMonthStartInput(formatLocalDateInput(month));
 };
 
 const createCalendarDays = (visibleMonth: string, selectedDate: string): CalendarDay[] => {
@@ -218,7 +224,7 @@ const createCalendarDays = (visibleMonth: string, selectedDate: string): Calenda
   return Array.from({ length: 42 }, (_, index) => {
     const day = new Date(calendarStart);
     day.setDate(calendarStart.getDate() + index);
-    const date = formatDateInput(day);
+    const date = formatLocalDateInput(day);
 
     return {
       date,
