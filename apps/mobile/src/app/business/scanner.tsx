@@ -543,23 +543,106 @@ export default function BusinessScannerScreen() {
           ) : (
             <>
               {selectedEvent ? (
-                <View style={styles.kioskHeader}>
-                  <View style={styles.kioskIcon}>
-                    <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={20} />
-                  </View>
-                  <View style={styles.kioskCopy}>
-                    <Text style={styles.eventDayEyebrow}>{labels.selectedCheckpoint}</Text>
-                    <Text numberOfLines={1} style={styles.kioskTitle}>
-                      {selectedEvent.eventName}
-                    </Text>
-                    <Text numberOfLines={1} style={styles.metaText}>
-                      {selectedEvent.businessName} · {labels.endsLabel}{" "}
-                      {formatDateTime(formatter, selectedEvent.endAt)}
-                    </Text>
-                  </View>
-                  <View style={styles.kioskState}>
-                    <View style={styles.eventDayDot} />
-                    <Text style={styles.kioskStateText}>{labels.queueReady}</Text>
+                <View style={styles.scannerKiosk}>
+                  {isScannerPinRequired ? (
+                    <View style={styles.scannerPinBlock}>
+                      <Text style={styles.eventDayEyebrow}>{labels.scannerPin}</Text>
+                      <Text style={styles.metaText}>{labels.scannerPinRequired}</Text>
+                      <TextInput
+                        editable={!isSubmitting && !isScannerLocked}
+                        keyboardType="number-pad"
+                        maxLength={8}
+                        onChangeText={setScannerPin}
+                        placeholder={labels.scannerPinPlaceholder}
+                        placeholderTextColor={theme.colors.textDim}
+                        secureTextEntry
+                        style={styles.pinInput}
+                        value={scannerPin}
+                      />
+                    </View>
+                  ) : null}
+
+                  {permission === null ? (
+                    <Text style={styles.bodyText}>{labels.cameraPermissionLoading}</Text>
+                  ) : permission.granted && isScannerDeviceReady ? (
+                    <View style={styles.cameraStack}>
+                      <View
+                        style={[
+                          styles.cameraOuter,
+                          isScannerLocked ? styles.cameraOuterLocked : null,
+                        ]}
+                      >
+                        {!isScannerLocked ? (
+                          <>
+                            <View style={[styles.scanBracket, styles.scanBracketTL]} />
+                            <View style={[styles.scanBracket, styles.scanBracketTR]} />
+                            <View style={[styles.scanBracket, styles.scanBracketBL]} />
+                            <View style={[styles.scanBracket, styles.scanBracketBR]} />
+                          </>
+                        ) : null}
+
+                        <CameraView
+                          active={!isScannerLocked}
+                          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                          onBarcodeScanned={isScannerLocked ? undefined : handleBarcodeScanned}
+                          style={styles.cameraView}
+                        />
+
+                        {isScannerLocked ? (
+                          <View style={styles.lockedOverlay}>
+                            <Text style={styles.lockedOverlayText}>
+                              {isSubmitting ? labels.processing : labels.reviewState}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      <Text style={styles.cameraHint}>
+                        {isScannerLocked ? labels.reviewHint : labels.aimHint}
+                      </Text>
+                    </View>
+                  ) : permission.granted && !isScannerDeviceReady ? (
+                    <View style={styles.cameraStack}>
+                      <Text style={styles.bodyText}>
+                        {scannerDeviceState.status === "registering"
+                          ? labels.scannerDeviceRegistering
+                          : scannerDeviceState.status === "error"
+                            ? scannerDeviceState.error
+                            : labels.scannerDeviceRequired}
+                      </Text>
+                      {scannerDeviceState.status === "error" ? (
+                        <Pressable
+                          disabled={isSubmitting}
+                          onPress={() => setScannerDeviceRetryNonce((value) => value + 1)}
+                          style={[styles.secondaryButton, isSubmitting ? styles.disabledButton : null]}
+                        >
+                          <Text style={styles.secondaryButtonText}>{labels.retryScannerDevice}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : (
+                    <View style={styles.cameraStack}>
+                      <Text style={styles.bodyText}>{labels.cameraPermissionMissing}</Text>
+                      <Pressable onPress={() => void requestPermission()} style={styles.primaryButton}>
+                        <Text style={styles.primaryButtonText}>{labels.grantCameraAccess}</Text>
+                      </Pressable>
+                    </View>
+                  )}
+
+                  <View style={styles.scannerStatusBar}>
+                    <View style={styles.scannerStatusCopy}>
+                      <Text numberOfLines={1} style={styles.scannerStatusTitle}>
+                        {selectedEvent.businessName}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.scannerStatusMeta}>
+                        {selectedEvent.eventName} · {labels.endsLabel}{" "}
+                        {formatDateTime(formatter, selectedEvent.endAt)}
+                      </Text>
+                    </View>
+                    <View style={styles.scannerReadyPill}>
+                      <View style={styles.eventDayDot} />
+                      <Text style={styles.scannerReadyText}>{labels.queueReady}</Text>
+                    </View>
                   </View>
                 </View>
               ) : null}
@@ -590,117 +673,6 @@ export default function BusinessScannerScreen() {
                     );
                   })}
                 </View>
-              ) : null}
-
-              {selectedEvent ? (
-                <View style={styles.devicePanel}>
-                  <View style={styles.deviceHeader}>
-                    <View style={styles.deviceCopy}>
-                      <Text style={styles.eventDayEyebrow}>{labels.scannerDevice}</Text>
-                      <Text numberOfLines={2} style={styles.bodyText}>
-                        {scannerDeviceState.status === "ready"
-                          ? scannerDeviceState.device.label
-                          : scannerDeviceState.status === "registering"
-                            ? labels.scannerDeviceRegistering
-                            : scannerDeviceState.status === "error"
-                              ? scannerDeviceState.error
-                              : labels.scannerDeviceIdle}
-                      </Text>
-                    </View>
-                    <View style={[styles.deviceStatus, scannerDeviceState.status === "ready" ? styles.deviceStatusReady : null]}>
-                      <Text
-                        style={[
-                          styles.deviceStatusText,
-                          scannerDeviceState.status === "ready" ? styles.deviceStatusTextReady : null,
-                        ]}
-                      >
-                        {scannerDeviceState.status === "ready"
-                          ? labels.scannerDeviceReady
-                          : scannerDeviceState.status}
-                      </Text>
-                    </View>
-                  </View>
-                  {scannerDeviceState.status === "error" ? (
-                    <Pressable
-                      disabled={isSubmitting}
-                      onPress={() => setScannerDeviceRetryNonce((value) => value + 1)}
-                      style={[styles.secondaryButton, isSubmitting ? styles.disabledButton : null]}
-                    >
-                      <Text style={styles.secondaryButtonText}>{labels.retryScannerDevice}</Text>
-                    </Pressable>
-                  ) : null}
-                  {isScannerPinRequired ? (
-                    <View style={styles.scannerPinBlock}>
-                      <Text style={styles.eventDayEyebrow}>{labels.scannerPin}</Text>
-                      <Text style={styles.metaText}>{labels.scannerPinRequired}</Text>
-                      <TextInput
-                        editable={!isSubmitting && !isScannerLocked}
-                        keyboardType="number-pad"
-                        maxLength={8}
-                        onChangeText={setScannerPin}
-                        placeholder={labels.scannerPinPlaceholder}
-                        placeholderTextColor={theme.colors.textDim}
-                        secureTextEntry
-                        style={styles.pinInput}
-                        value={scannerPin}
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {selectedEvent ? (
-                permission === null ? (
-                  <Text style={styles.bodyText}>{labels.cameraPermissionLoading}</Text>
-                ) : permission.granted && isScannerDeviceReady ? (
-                  <View style={styles.cameraStack}>
-                    <View
-                      style={[
-                        styles.cameraOuter,
-                        isScannerLocked ? styles.cameraOuterLocked : null,
-                      ]}
-                    >
-                      {!isScannerLocked ? (
-                        <>
-                          <View style={[styles.scanBracket, styles.scanBracketTL]} />
-                          <View style={[styles.scanBracket, styles.scanBracketTR]} />
-                          <View style={[styles.scanBracket, styles.scanBracketBL]} />
-                          <View style={[styles.scanBracket, styles.scanBracketBR]} />
-                        </>
-                      ) : null}
-
-                      <CameraView
-                        active={!isScannerLocked}
-                        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                        onBarcodeScanned={isScannerLocked ? undefined : handleBarcodeScanned}
-                        style={styles.cameraView}
-                      />
-
-                      {isScannerLocked ? (
-                        <View style={styles.lockedOverlay}>
-                          <Text style={styles.lockedOverlayText}>
-                            {isSubmitting ? labels.processing : labels.reviewState}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-
-                    <Text style={styles.cameraHint}>
-                      {isScannerLocked ? labels.reviewHint : labels.aimHint}
-                    </Text>
-                  </View>
-                ) : permission.granted && !isScannerDeviceReady ? (
-                  <View style={styles.cameraStack}>
-                    <Text style={styles.bodyText}>{labels.scannerDeviceRequired}</Text>
-                  </View>
-                ) : (
-                  <View style={styles.cameraStack}>
-                    <Text style={styles.bodyText}>{labels.cameraPermissionMissing}</Text>
-                    <Pressable onPress={() => void requestPermission()} style={styles.primaryButton}>
-                      <Text style={styles.primaryButtonText}>{labels.grantCameraAccess}</Text>
-                    </Pressable>
-                  </View>
-                )
               ) : null}
             </>
           )}
@@ -1264,6 +1236,54 @@ const createStyles = (theme: MobileTheme) => {
     },
     scannerPinBlock: {
       gap: 8,
+    },
+    scannerKiosk: {
+      gap: 12,
+    },
+    scannerReadyPill: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    scannerReadyText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 10,
+      lineHeight: 13,
+      textTransform: "uppercase",
+    },
+    scannerStatusBar: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    scannerStatusCopy: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    scannerStatusMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    scannerStatusTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     screenTitle: {
       color: theme.colors.textPrimary,
