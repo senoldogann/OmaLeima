@@ -5,32 +5,35 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-announcement-feed`
-- **Goal:** Make organizer/admin announcements persistently visible in the mobile app for all relevant roles.
+- **Branch:** `feature/announcement-preferences-analytics`
+- **Goal:** Make announcement push delivery user-respectful and add lightweight feed view analytics.
 
 ## Architectural Decisions
 
-- Update the Supabase read helper so feed announcements are readable even when they are not popups.
-- Preserve popup behavior by keeping `show_as_popup = true` inside `fetchActiveAnnouncementsAsync`.
-- Add a role-agnostic `useAnnouncementFeedQuery` that reads active published announcements plus the current user's acknowledgement rows.
-- Treat acknowledgements as read receipts in the feed instead of filtering those rows away.
-- Add a compact reusable feed section component with title/body/source/date/read state, CTA, mark-read, refresh, empty and error states.
-- Embed the same section in student profile, business home, and club home to avoid adding another crowded tab.
+- Add a user-owned source preference table keyed by `PLATFORM` or a specific `CLUB`.
+- Default missing preference rows to push enabled so existing behavior remains intact.
+- Add a separate impressions table for passive feed visibility; keep acknowledgements as explicit read/dismiss state.
+- Update `send-announcement-push` to filter recipients after audience resolution and before device-token fan-out.
+- Extend the mobile feed query with source preference state and expose one compact source mute/unmute action per card.
+- Record impressions for visible feed items with a non-blocking mutation.
 
 ## Edge Cases
 
-- Users who dismissed a popup still see the announcement in feed with a read marker.
-- Announcements with future `starts_at`, expired `ends_at`, draft, or archived status remain hidden by both query and RLS.
-- Platform announcements have no club source; club announcements show the club name.
-- If a CTA URL exists, it opens only after the user taps the CTA.
+- If a user has no preference row for the source, push remains enabled.
+- Platform and club preferences are independent.
+- Impression recording is idempotent with `seen_count` and last-seen updates.
+- Push sending reports skipped users due to disabled source preferences in the audit metadata and response.
 
 ## Validation Plan
 
 - Run:
   - `supabase db push`
   - `supabase migration list --linked`
+  - `npx supabase@2.95.4 functions deploy send-announcement-push`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run lint`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
@@ -5,6 +6,8 @@ import { InfoCard } from "@/components/info-card";
 import {
   useAcknowledgeAnnouncementMutation,
   useAnnouncementFeedQuery,
+  useRecordAnnouncementImpressionsMutation,
+  useSetAnnouncementNotificationPreferenceMutation,
   type AnnouncementFeedItem,
 } from "@/features/announcements/announcements";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -36,7 +39,14 @@ export const AnnouncementFeedSection = ({
     userId: userId ?? "",
   });
   const acknowledgeMutation = useAcknowledgeAnnouncementMutation();
+  const preferenceMutation = useSetAnnouncementNotificationPreferenceMutation();
+  const impressionMutation = useRecordAnnouncementImpressionsMutation();
+  const recordedAnnouncementIdsRef = useRef<Set<string>>(new Set<string>());
   const visibleItems = (feedQuery.data ?? []).slice(0, maxItems);
+  const visibleAnnouncementIds = useMemo(
+    () => visibleItems.map((announcement) => announcement.announcementId),
+    [visibleItems]
+  );
 
   const labels = {
     ctaFallback: language === "fi" ? "Avaa" : "Open",
@@ -48,10 +58,36 @@ export const AnnouncementFeedSection = ({
     loading: language === "fi" ? "Haetaan tiedotteita." : "Loading updates.",
     markRead: language === "fi" ? "Merkitse luetuksi" : "Mark read",
     new: language === "fi" ? "Uusi" : "New",
+    notificationsOff: language === "fi" ? "Ilmoitukset pois" : "Push off",
+    notificationsOn: language === "fi" ? "Ilmoitukset päällä" : "Push on",
+    seen: language === "fi" ? "näyttöä" : "views",
     platform: "OmaLeima",
     read: language === "fi" ? "Luettu" : "Read",
     retry: language === "fi" ? "Yritä uudelleen" : "Retry",
   };
+
+  useEffect(() => {
+    if (userId === null || visibleAnnouncementIds.length === 0) {
+      return;
+    }
+
+    const unrecordedAnnouncementIds = visibleAnnouncementIds.filter(
+      (announcementId) => !recordedAnnouncementIdsRef.current.has(announcementId)
+    );
+
+    if (unrecordedAnnouncementIds.length === 0) {
+      return;
+    }
+
+    unrecordedAnnouncementIds.forEach((announcementId) => {
+      recordedAnnouncementIdsRef.current.add(announcementId);
+    });
+
+    void impressionMutation.mutateAsync({
+      announcementIds: unrecordedAnnouncementIds,
+      userId,
+    });
+  }, [impressionMutation, userId, visibleAnnouncementIds]);
 
   const handleMarkReadPress = async (announcement: AnnouncementFeedItem): Promise<void> => {
     if (userId === null || announcement.isRead) {
@@ -70,6 +106,19 @@ export const AnnouncementFeedSection = ({
     }
 
     await Linking.openURL(announcement.ctaUrl);
+  };
+
+  const handlePreferencePress = async (announcement: AnnouncementFeedItem): Promise<void> => {
+    if (userId === null) {
+      return;
+    }
+
+    await preferenceMutation.mutateAsync({
+      clubId: announcement.clubId,
+      pushEnabled: !announcement.isPushEnabled,
+      sourceType: announcement.sourceType,
+      userId,
+    });
   };
 
   if (userId === null) {
@@ -108,7 +157,12 @@ export const AnnouncementFeedSection = ({
                     <Text numberOfLines={1} style={styles.sourceName}>
                       {announcement.clubName ?? labels.platform}
                     </Text>
-                    <Text style={styles.dateText}>{formatFeedDate(localeTag, announcement.startsAt)}</Text>
+                    <Text style={styles.dateText}>
+                      {formatFeedDate(localeTag, announcement.startsAt)}
+                      {announcement.impressionSeenCount > 0
+                        ? ` · ${announcement.impressionSeenCount} ${labels.seen}`
+                        : ""}
+                    </Text>
                   </View>
                 </View>
                 <View style={[styles.readPill, announcement.isRead ? styles.readPillMuted : null]}>
@@ -144,6 +198,29 @@ export const AnnouncementFeedSection = ({
                     <AppIcon color={theme.colors.actionPrimaryText} name="chevron-right" size={15} />
                   </Pressable>
                 ) : null}
+                <Pressable
+                  disabled={preferenceMutation.isPending}
+                  onPress={() => void handlePreferencePress(announcement)}
+                  style={[
+                    styles.preferenceButton,
+                    announcement.isPushEnabled ? null : styles.preferenceButtonMuted,
+                    preferenceMutation.isPending ? styles.disabledButton : null,
+                  ]}
+                >
+                  <AppIcon
+                    color={announcement.isPushEnabled ? theme.colors.lime : theme.colors.textMuted}
+                    name="bell"
+                    size={14}
+                  />
+                  <Text
+                    style={[
+                      styles.preferenceButtonText,
+                      announcement.isPushEnabled ? null : styles.preferenceButtonTextMuted,
+                    ]}
+                  >
+                    {announcement.isPushEnabled ? labels.notificationsOn : labels.notificationsOff}
+                  </Text>
+                </Pressable>
               </View>
             </View>
           ))}
@@ -152,6 +229,9 @@ export const AnnouncementFeedSection = ({
 
       {acknowledgeMutation.error ? (
         <Text selectable style={styles.errorText}>{acknowledgeMutation.error.message}</Text>
+      ) : null}
+      {preferenceMutation.error ? (
+        <Text selectable style={styles.errorText}>{preferenceMutation.error.message}</Text>
       ) : null}
     </InfoCard>
   );
@@ -256,6 +336,28 @@ const createStyles = (theme: MobileTheme) =>
       height: 34,
       justifyContent: "center",
       width: 34,
+    },
+    preferenceButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 16,
+      flexDirection: "row",
+      gap: 6,
+      justifyContent: "center",
+      minHeight: 42,
+      paddingHorizontal: 12,
+    },
+    preferenceButtonMuted: {
+      backgroundColor: theme.colors.surfaceL1,
+    },
+    preferenceButtonText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    preferenceButtonTextMuted: {
+      color: theme.colors.textMuted,
     },
     readPill: {
       backgroundColor: theme.colors.limeSurface,

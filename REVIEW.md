@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-announcement-feed`
-- **Scope:** Add a persistent mobile announcement feed on top of the existing popup/push announcement foundation.
+- **Branch:** `feature/announcement-preferences-analytics`
+- **Scope:** Add source-level announcement push preferences and lightweight feed impression analytics.
 
 ## Affected Files
 
@@ -16,26 +16,24 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PROGRESS.md`
 - `apps/mobile/src/features/announcements/announcements.ts`
 - `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/business/home.tsx`
-- `apps/mobile/src/app/club/home.tsx`
-- `supabase/migrations/20260504002053_announcement_feed_visibility.sql`
+- `supabase/functions/send-announcement-push/index.ts`
+- `supabase/migrations/20260504004359_announcement_preferences_analytics.sql`
 
 ## Existing Logic Checked
 
-- Existing `announcements` and `announcement_acknowledgements` tables exist with RLS.
-- `AnnouncementPopupBridge` only reads `show_as_popup = true` active published announcements and hides acknowledged rows.
-- `can_read_announcement` currently requires `show_as_popup = true` for ordinary users, so non-popup feed posts are not readable yet.
-- Admin and club web can already create announcements and trigger push delivery.
-- Mobile has no persistent feed surface for students, businesses, or club organizers.
+- Persistent mobile feed exists and reads active announcements through RLS.
+- `announcement_acknowledgements` currently represents read/dismiss state.
+- `send-announcement-push` resolves recipients by announcement audience and sends to all enabled device tokens.
+- No source-level mute/unmute preference exists for platform or club announcements.
+- No lightweight feed impression table exists, so read receipts are not separated from passive feed views.
 
 ## Risks
 
-- RLS must still enforce audience visibility; mobile filtering alone is not enough.
-- Popup acknowledgement should not remove a post from the persistent feed.
-- Feed should stay compact so it does not clutter primary role screens.
-- CTA links must remain explicit and not auto-open.
+- Push preference filtering must not weaken audience authorization.
+- Missing preference rows should mean enabled so existing users keep receiving opted-in pushes.
+- Impression writes must verify the announcement is readable and must not block feed rendering.
+- Club source preference must not accidentally mute platform announcements.
 
 ## Review Outcome
 
-Relax `can_read_announcement` from popup-only to active audience visibility, keep popup query popup-only, add a feed query with read state, and embed a compact feed section in student profile, business home, and club home.
+Add `announcement_notification_preferences` and `announcement_impressions` with user-owned RLS, update push fan-out to honor disabled source preferences, and let mobile feed record impressions plus expose a compact mute/unmute source action.
