@@ -5,35 +5,32 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/announcement-media-cards`
-- **Goal:** Make announcements support optional images across admin/organizer creation and mobile feed rendering.
+- **Branch:** `bug/media-business-scanner-audit`
+- **Goal:** Make profile/event photo upload reliable on native devices and verify scanner-only accounts cannot manage event memberships.
 
 ## Architectural Decisions
 
-- Add nullable `image_url` to `announcements` with length validation.
-- Keep URL input explicit in the current admin/organizer web form; storage upload for announcement media can remain a later slice.
-- Thread `imageUrl` through admin create/read types and the route handler.
-- Thread `imageUrl` through mobile active/feed announcement read models.
-- Render feed cards with `CoverImageSurface` and deterministic fallback image; render popup hero image only when an announcement has a real image.
-- Include `imageUrl` in announcement push data payload for future notification rich preview work.
+- Request base64 data from Expo Image Picker for business, club, and club-event media picks.
+- Extend the shared storage upload helper to decode base64 into a typed `ArrayBuffer` and still validate non-empty byte length.
+- Keep the existing file URI reader as the explicit path when a picker asset does not contain base64.
+- Auto-save club profile cover/logo uploads so users do not need a second hidden save step.
+- Keep event cover uploads draft-based for new events, because a new event row does not exist until submit; editing an existing event still persists on submit.
+- Keep scanner-only join/leave disabled in UI and protected by the existing Supabase RPC migrations.
+- Make remote cover prefetch warnings one-per-URL to avoid noisy repeated warnings from old zero-byte storage objects.
 
 ## Edge Cases
 
-- Existing announcements with null `image_url` still render as text cards.
-- Broken remote image URLs show fallback artwork instead of a black surface.
-- Club organizers can only create image-backed announcements for clubs they already manage because existing announcement RLS still applies.
-- CTA and image URL are independent; one can exist without the other.
+- Picker cancellation keeps current draft untouched.
+- Unsupported MIME types still raise actionable upload errors.
+- Empty base64 or empty file URI read raises before a public URL is saved.
+- Club media auto-save can fail after upload; the error must stay visible and the URL must not be silently assumed saved.
+- Scanner accounts must still see joined live events for scanning but not join/leave/manage actions.
 
 ## Validation Plan
 
 - Run:
-  - `supabase db push`
-  - `supabase migration list --linked`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
-  - `npm --prefix apps/admin run typecheck`
-  - `npm --prefix apps/admin run lint`
-  - `npm --prefix apps/admin run build`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

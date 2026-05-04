@@ -80,6 +80,7 @@ export const pickBusinessMediaAsync = async ({
   const result = await ImagePicker.launchImageLibraryAsync({
     allowsEditing: true,
     aspect: getPickerAspect(kind),
+    base64: true,
     mediaTypes: ["images"],
     quality: kind === "cover" ? 0.86 : 0.92,
   });
@@ -99,6 +100,7 @@ export const uploadBusinessMediaAsync = async ({
   const mimeType = getMediaType(asset);
   const storagePath = createStoragePath(businessId, kind, mimeType);
   const uploadBody = await readImageUploadBody({
+    base64: asset.base64 ?? null,
     context: `${kind} image for business ${businessId}`,
     uri: asset.uri,
   });

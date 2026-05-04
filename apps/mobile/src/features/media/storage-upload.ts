@@ -1,4 +1,5 @@
 type ReadImageUploadBodyParams = {
+  base64: string | null;
   context: string;
   uri: string;
 };
@@ -8,10 +9,46 @@ type VerifyPublicImageUrlParams = {
   publicUrl: string;
 };
 
+const decodeBase64ToArrayBuffer = ({
+  base64,
+  context,
+}: {
+  base64: string;
+  context: string;
+}): ArrayBuffer => {
+  const decodeBase64 = (globalThis as { atob?: (value: string) => string }).atob;
+
+  if (typeof decodeBase64 !== "function") {
+    throw new Error(`Cannot decode selected image for ${context}: base64 decoder is unavailable.`);
+  }
+
+  const binaryString = decodeBase64(base64);
+  const uploadBody = new ArrayBuffer(binaryString.length);
+  const uploadBytes = new Uint8Array(uploadBody);
+
+  for (let index = 0; index < binaryString.length; index += 1) {
+    uploadBytes[index] = binaryString.charCodeAt(index);
+  }
+
+  if (uploadBody.byteLength === 0) {
+    throw new Error(`Selected image for ${context} produced an empty base64 upload body.`);
+  }
+
+  return uploadBody;
+};
+
 const readImageUploadBodyAsync = async ({
+  base64,
   context,
   uri,
 }: ReadImageUploadBodyParams): Promise<ArrayBuffer> => {
+  if (base64 !== null && base64.trim().length > 0) {
+    return decodeBase64ToArrayBuffer({
+      base64,
+      context,
+    });
+  }
+
   const response = await fetch(uri);
 
   if (!response.ok) {

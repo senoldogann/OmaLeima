@@ -78,6 +78,7 @@ export const pickClubMediaAsync = async ({
   const result = await ImagePicker.launchImageLibraryAsync({
     allowsEditing: true,
     aspect: getPickerAspect(kind),
+    base64: true,
     mediaTypes: ["images"],
     quality: kind === "logo" ? 0.92 : 0.88,
   });
@@ -97,6 +98,7 @@ export const uploadClubMediaAsync = async ({
   const mimeType = getMediaType(asset);
   const storagePath = createStoragePath(clubId, kind, mimeType);
   const uploadBody = await readImageUploadBody({
+    base64: asset.base64 ?? null,
     context: `${kind} image for club ${clubId}`,
     uri: asset.uri,
   });

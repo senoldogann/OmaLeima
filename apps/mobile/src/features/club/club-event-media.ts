@@ -63,6 +63,7 @@ export const pickClubEventCoverAsync = async (): Promise<ImagePicker.ImagePicker
   const result = await ImagePicker.launchImageLibraryAsync({
     allowsEditing: true,
     aspect: [16, 9],
+    base64: true,
     mediaTypes: ["images"],
     quality: 0.88,
   });
@@ -81,6 +82,7 @@ export const uploadClubEventCoverAsync = async ({
   const mimeType = getMediaType(asset);
   const storagePath = createStoragePath(clubId, mimeType);
   const uploadBody = await readImageUploadBody({
+    base64: asset.base64 ?? null,
     context: `event cover for club ${clubId}`,
     uri: asset.uri,
   });
