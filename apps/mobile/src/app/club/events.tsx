@@ -68,6 +68,11 @@ type DateTimeEditorState = {
   visibleMonth: string;
 } | null;
 
+type ActionNotice = {
+  body: string;
+  title: string;
+};
+
 type CalendarDay = {
   date: string;
   dayLabel: string;
@@ -176,6 +181,65 @@ const createDateTimeFieldConfigs = (language: "fi" | "en"): DateTimeFieldConfig[
   },
 ];
 
+const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice => {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("endAt must be after startAt") || message.includes("EVENT_END_BEFORE_START")) {
+    return {
+      body:
+        language === "fi"
+          ? "Päättymisajan täytyy olla aloitusajan jälkeen."
+          : "End time must be after the start time.",
+      title: language === "fi" ? "Tarkista ajat" : "Check event times",
+    };
+  }
+
+  if (message.includes("joinDeadlineAt must be before or equal to startAt") || message.includes("EVENT_JOIN_DEADLINE_INVALID")) {
+    return {
+      body:
+        language === "fi"
+          ? "Ilmoittautumisen takaraja ei voi olla tapahtuman aloituksen jälkeen."
+          : "Join deadline cannot be after the event start.",
+      title: language === "fi" ? "Tarkista ilmoittautuminen" : "Check join deadline",
+    };
+  }
+
+  if (message.includes("Event name must contain")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtuman nimessä täytyy olla vähintään kolme merkkiä."
+          : "Event name must contain at least three characters.",
+      title: language === "fi" ? "Nimi puuttuu" : "Name is too short",
+    };
+  }
+
+  if (message.includes("Event city must contain")) {
+    return {
+      body:
+        language === "fi"
+          ? "Lisää tapahtumalle kaupunki."
+          : "Add a city for the event.",
+      title: language === "fi" ? "Kaupunki puuttuu" : "City is missing",
+    };
+  }
+
+  if (message.includes("positive whole number") || message.includes("zero or a positive whole number")) {
+    return {
+      body:
+        language === "fi"
+          ? "Numeroiden täytyy olla kokonaislukuja. Jätä osallistujakatto tyhjäksi, jos rajaa ei ole."
+          : "Numbers must be whole numbers. Leave max participants empty when there is no cap.",
+      title: language === "fi" ? "Tarkista numerot" : "Check numbers",
+    };
+  }
+
+  return {
+    body: message.length > 0 ? message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+    title: language === "fi" ? "Tallennus epäonnistui" : "Save failed",
+  };
+};
+
 const canEditEvent = (event: ClubDashboardEventSummary | null): boolean =>
   event !== null && (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
 
@@ -270,6 +334,7 @@ export default function ClubEventsScreen() {
   const [dateTimeEditor, setDateTimeEditor] = useState<DateTimeEditorState>(null);
   const [coverUploadError, setCoverUploadError] = useState<string | null>(null);
   const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
   const formatter = useMemo(
@@ -385,12 +450,14 @@ export default function ClubEventsScreen() {
   const handleSelectCreateMode = (): void => {
     const selectedMembership = creatableMemberships[0] ?? null;
     setMode("create");
+    setActionNotice(null);
     setDraft(createNewDraft(selectedMembership?.clubId ?? "", selectedMembership?.city ?? null));
   };
 
   const handleSelectEvent = (event: ClubDashboardEventSummary): void => {
     setSelectedEventId(event.eventId);
     setMode("edit");
+    setActionNotice(null);
     setDraft(createDraftFromEvent(event));
   };
 
@@ -399,16 +466,22 @@ export default function ClubEventsScreen() {
       return;
     }
 
-    if (mode === "create") {
-      const result = await createMutation.mutateAsync({ draft, userId });
+    setActionNotice(null);
 
-      if (result.status === "SUCCESS") {
-        handleSelectCreateMode();
+    try {
+      if (mode === "create") {
+        const result = await createMutation.mutateAsync({ draft, userId });
+
+        if (result.status === "SUCCESS") {
+          handleSelectCreateMode();
+        }
+        return;
       }
-      return;
-    }
 
-    await updateMutation.mutateAsync({ draft, userId });
+      await updateMutation.mutateAsync({ draft, userId });
+    } catch (error) {
+      setActionNotice(createClubEventActionNotice(error, language));
+    }
   };
 
   const handleCancelPress = async (): Promise<void> => {
@@ -416,7 +489,13 @@ export default function ClubEventsScreen() {
       return;
     }
 
-    await cancelMutation.mutateAsync({ eventId: selectedEvent.eventId, userId });
+    setActionNotice(null);
+
+    try {
+      await cancelMutation.mutateAsync({ eventId: selectedEvent.eventId, userId });
+    } catch (error) {
+      setActionNotice(createClubEventActionNotice(error, language));
+    }
   };
 
   const latestMessage =
@@ -424,11 +503,7 @@ export default function ClubEventsScreen() {
     updateMutation.data?.message ??
     cancelMutation.data?.message ??
     null;
-  const latestError =
-    createMutation.error?.message ??
-    updateMutation.error?.message ??
-    cancelMutation.error?.message ??
-    null;
+  const latestError = actionNotice;
   const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
   const submitButtonLabel = (() => {
     if (isPending) {
@@ -688,7 +763,12 @@ export default function ClubEventsScreen() {
             ) : null}
 
             {latestMessage !== null ? <Text style={styles.successText}>{latestMessage}</Text> : null}
-            {latestError !== null ? <Text style={styles.errorText}>{latestError}</Text> : null}
+            {latestError !== null ? (
+              <View style={styles.errorCard}>
+                <Text style={styles.errorTitle}>{latestError.title}</Text>
+                <Text style={styles.errorText}>{latestError.body}</Text>
+              </View>
+            ) : null}
           </InfoCard>
         </>
       ) : null}
@@ -987,6 +1067,21 @@ const createStyles = (theme: MobileTheme) =>
     errorText: {
       color: theme.colors.danger,
       fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    errorCard: {
+      backgroundColor: theme.colors.dangerSurface,
+      borderColor: theme.colors.danger,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    errorTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },

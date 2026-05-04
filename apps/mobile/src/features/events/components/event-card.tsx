@@ -55,6 +55,9 @@ const getRegistrationBadge = (
   return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
+const canJoinEventFromCard = (event: StudentEventSummary, onJoinPress: (() => void) | undefined): boolean =>
+  onJoinPress !== undefined && event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
+
 export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress, motionIndex }: EventCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
@@ -62,7 +65,7 @@ export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress, 
   const timelineBadge = getTimelineBadge(event, language);
   const registrationBadge = getRegistrationBadge(event, language);
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
-  const canJoinFromCard = onJoinPress !== undefined && event.registrationState === "NOT_REGISTERED";
+  const canJoinFromCard = canJoinEventFromCard(event, onJoinPress);
   const handleJoinPress = (pressEvent: GestureResponderEvent): void => {
     pressEvent.stopPropagation();
     onJoinPress?.();
