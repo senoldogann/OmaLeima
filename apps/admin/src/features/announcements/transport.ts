@@ -44,6 +44,7 @@ export const createAnnouncementAsync = async (
     ctaLabel: string | null;
     ctaUrl: string | null;
     endsAt: string | null;
+    imageUrl: string | null;
     priority: number;
     startsAt: string;
     status: AnnouncementStatus;
@@ -60,6 +61,7 @@ export const createAnnouncementAsync = async (
       cta_label: payload.ctaLabel,
       cta_url: payload.ctaUrl,
       ends_at: payload.endsAt,
+      image_url: payload.imageUrl,
       priority: payload.priority,
       starts_at: payload.startsAt,
       status: payload.status,

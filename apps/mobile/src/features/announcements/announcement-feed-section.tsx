@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import {
   useAcknowledgeAnnouncementMutation,
@@ -11,6 +12,7 @@ import {
   type AnnouncementFeedItem,
 } from "@/features/announcements/announcements";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 
 type AnnouncementFeedSectionProps = {
@@ -148,6 +150,13 @@ export const AnnouncementFeedSection = ({
         <View style={styles.feedStack}>
           {visibleItems.map((announcement) => (
             <View key={announcement.announcementId} style={styles.feedItem}>
+              <CoverImageSurface
+                fallbackSource={getFallbackCoverSource("eventDiscovery")}
+                source={announcement.imageUrl === null ? null : { uri: announcement.imageUrl }}
+                style={styles.feedImage}
+              >
+                <View style={styles.feedImageOverlay} />
+              </CoverImageSurface>
               <View style={styles.feedHeader}>
                 <View style={styles.sourceRow}>
                   <View style={styles.iconBubble}>
@@ -311,6 +320,15 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 10,
       justifyContent: "space-between",
+    },
+    feedImage: {
+      borderRadius: theme.radius.inner,
+      height: 148,
+      overflow: "hidden",
+    },
+    feedImageOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.mode === "light" ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)",
     },
     feedItem: {
       backgroundColor: theme.colors.surfaceL2,

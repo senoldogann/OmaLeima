@@ -296,6 +296,17 @@ button {
   border-color: var(--primary-border);
 }
 
+.announcement-card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-position: center;
+  background-size: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--surface-soft);
+}
+
 .panel-warning {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 70%),

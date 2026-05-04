@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/announcement-preferences-analytics`
-- **Scope:** Add source-level announcement push preferences and lightweight feed impression analytics.
+- **Branch:** `feature/announcement-media-cards`
+- **Scope:** Add optional announcement images so the mobile feed can feel like richer post cards.
 
 ## Affected Files
 
@@ -16,24 +16,29 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PROGRESS.md`
 - `apps/mobile/src/features/announcements/announcements.ts`
 - `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
-- `supabase/functions/send-announcement-push/index.ts`
-- `supabase/migrations/20260504004359_announcement_preferences_analytics.sql`
+- `apps/mobile/src/features/announcements/announcement-popup-bridge.tsx`
+- `apps/admin/src/features/announcements/types.ts`
+- `apps/admin/src/features/announcements/validation.ts`
+- `apps/admin/src/features/announcements/transport.ts`
+- `apps/admin/src/features/announcements/read-model.ts`
+- `apps/admin/src/features/announcements/components/announcements-panel.tsx`
+- `apps/admin/src/app/api/announcements/create/route.ts`
+- `supabase/migrations/20260504005808_announcement_media_cards.sql`
 
 ## Existing Logic Checked
 
-- Persistent mobile feed exists and reads active announcements through RLS.
-- `announcement_acknowledgements` currently represents read/dismiss state.
-- `send-announcement-push` resolves recipients by announcement audience and sends to all enabled device tokens.
-- No source-level mute/unmute preference exists for platform or club announcements.
-- No lightweight feed impression table exists, so read receipts are not separated from passive feed views.
+- Persistent mobile feed and popup bridge exist, but both only render text/CTA.
+- Admin and organizer web announcement form can create title/body/audience/CTA/status, but has no image field.
+- Announcement read model, transport, and validation use explicit typed payloads.
+- Mobile already has `CoverImageSurface` and event fallback assets that can safely render remote or fallback imagery.
 
 ## Risks
 
-- Push preference filtering must not weaken audience authorization.
-- Missing preference rows should mean enabled so existing users keep receiving opted-in pushes.
-- Impression writes must verify the announcement is readable and must not block feed rendering.
-- Club source preference must not accidentally mute platform announcements.
+- Optional image URL must not be required for existing announcements.
+- Mobile must fall back to curated local imagery if the remote image fails.
+- Admin URL validation should reject invalid values before writing them.
+- Push notification payload can include the image URL as data, but should not depend on it.
 
 ## Review Outcome
 
-Add `announcement_notification_preferences` and `announcement_impressions` with user-owned RLS, update push fan-out to honor disabled source preferences, and let mobile feed record impressions plus expose a compact mute/unmute source action.
+Add nullable `image_url` to `announcements`, thread it through admin creation/read models and mobile feed/popup models, and show image-backed announcement cards with safe fallback imagery.

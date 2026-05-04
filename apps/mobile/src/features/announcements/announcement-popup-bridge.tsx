@@ -1,6 +1,7 @@
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
+import { CoverImageSurface } from "@/components/cover-image-surface";
 import {
   useAcknowledgeAnnouncementMutation,
   useActiveAnnouncementsQuery,
@@ -54,6 +55,13 @@ export const AnnouncementPopupBridge = () => {
             <View style={styles.iconBubble}>
               <AppIcon color={theme.colors.lime} name="bell" size={24} />
             </View>
+            {announcement.imageUrl !== null ? (
+              <CoverImageSurface
+                fallbackSource={null}
+                source={{ uri: announcement.imageUrl }}
+                style={styles.heroImage}
+              />
+            ) : null}
             <View style={styles.copyStack}>
               <Text style={styles.eyebrow}>{announcement.clubName ?? labels.eyebrow}</Text>
               <Text style={styles.title}>{announcement.title}</Text>
@@ -131,6 +139,12 @@ const createStyles = (theme: MobileTheme) =>
       height: 58,
       justifyContent: "center",
       width: 58,
+    },
+    heroImage: {
+      alignSelf: "stretch",
+      borderRadius: 22,
+      height: 160,
+      overflow: "hidden",
     },
     primaryButton: {
       alignItems: "center",

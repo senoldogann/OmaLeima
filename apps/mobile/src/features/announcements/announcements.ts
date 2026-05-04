@@ -9,6 +9,7 @@ export type ActiveAnnouncement = {
   clubName: string | null;
   ctaLabel: string | null;
   ctaUrl: string | null;
+  imageUrl: string | null;
   priority: number;
   startsAt: string;
   title: string;
@@ -33,6 +34,7 @@ type AnnouncementRow = {
   cta_label: string | null;
   cta_url: string | null;
   id: string;
+  image_url: string | null;
   priority: number;
   starts_at: string;
   status: "ARCHIVED" | "DRAFT" | "PUBLISHED";
@@ -95,6 +97,7 @@ const mapAnnouncements = (rows: AnnouncementRow[], acknowledgedIds: Set<string>)
       clubName: row.club?.name ?? null,
       ctaLabel: row.cta_label,
       ctaUrl: row.cta_url,
+      imageUrl: row.image_url,
       priority: row.priority,
       startsAt: row.starts_at,
       title: row.title,
@@ -120,6 +123,7 @@ const mapAnnouncementFeedItems = (
         ctaLabel: row.cta_label,
         ctaUrl: row.cta_url,
         impressionSeenCount: impression?.seen_count ?? 0,
+        imageUrl: row.image_url,
         isPushEnabled: preference?.push_enabled ?? true,
         isRead: acknowledgedIds.has(row.id),
         preferenceId: preference?.id ?? null,
@@ -144,6 +148,7 @@ const fetchActiveAnnouncementsAsync = async (userId: string): Promise<ActiveAnno
           body,
           cta_label,
           cta_url,
+          image_url,
           status,
           priority,
           starts_at,
@@ -197,6 +202,7 @@ const fetchAnnouncementFeedAsync = async (userId: string): Promise<AnnouncementF
           body,
           cta_label,
           cta_url,
+          image_url,
           status,
           priority,
           starts_at,
