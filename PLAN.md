@@ -5,23 +5,24 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/club-event-date-constraints`
-- **Goal:** Make organizer event date selection calendar-safe in local time and prevent raw `events_check1` constraint failures.
+- **Branch:** `bug/media-url-resilience`
+- **Goal:** Make profile/event media uploads and image rendering more resilient, especially for native runtimes and old zero-byte Supabase public objects.
 
 ## Architectural Decisions
 
-- Add local calendar date formatting helper that never uses UTC ISO conversion for date-only values.
-- Use the helper for month start fallback, month shifting, and calendar day generation.
-- Keep datetime mutation conversion through local `new Date(YYYY-MM-DDTHH:mm)` so stored `timestamptz` stays correct.
-- Add parsed temporal validation in `club-event-mutations`: `endAt > startAt` and `joinDeadlineAt <= startAt`.
-- Return clear actionable errors before Supabase writes.
+- Keep one shared upload helper for business, club profile, and event cover images.
+- Replace runtime-dependent `atob` decoding with a deterministic pure TypeScript base64 decoder.
+- Add a small media health module that normalizes URLs, tracks known broken remote image URLs, and validates public URLs with HEAD when possible.
+- Make `CoverImageSurface` consult and update the broken URL registry so any failed remote image consistently falls back.
+- Update event cover prefetch to HEAD-check URL readability and zero-byte content before `Image.prefetch`.
 
 ## Edge Cases
 
-- Selecting day 4 must store day 4, including in positive timezones.
-- Month navigation must not drift across DST/month boundaries.
-- Manual invalid date or time still raises a validation error.
-- Join deadline at the exact start time remains valid because DB allows equality.
+- Base64 strings with whitespace or data URI prefixes should decode correctly.
+- Invalid base64 must raise a clear upload error instead of silently producing a bad file.
+- `content-length` can be missing; that should not be treated as failure.
+- `content-length: 0` must be treated as a broken image and skipped.
+- Existing zero-byte rows still require re-upload; the app should show fallback instead of black/empty UI.
 
 ## Validation Plan
 
@@ -29,5 +30,7 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run lint`
   - `git --no-pager diff --check`
 - Record the handoff in `PROGRESS.md`.

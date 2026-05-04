@@ -5,6 +5,11 @@ import { StyleSheet, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
 import type { MobileTheme } from "@/features/foundation/theme";
+import {
+  getRemoteImageSourceUri,
+  isKnownBrokenRemoteImageSource,
+  markRemoteImageUrlBroken,
+} from "@/features/media/remote-image-health";
 import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 type CoverImageSurfaceProps = PropsWithChildren<{
@@ -44,7 +49,7 @@ export const CoverImageSurface = ({
   const styles = useThemeStyles(createStyles);
   const sourceKey = useMemo(() => createSourceKey(source), [source]);
   const [hasImageError, setHasImageError] = useState(false);
-  const shouldRenderImage = source !== null && source !== undefined && !hasImageError;
+  const shouldRenderImage = source !== null && source !== undefined && !hasImageError && !isKnownBrokenRemoteImageSource(source);
 
   useEffect(() => {
     setHasImageError(false);
@@ -66,6 +71,12 @@ export const CoverImageSurface = ({
           cachePolicy="memory-disk"
           contentFit="cover"
           onError={() => {
+            const remoteSourceUri = getRemoteImageSourceUri(source);
+
+            if (remoteSourceUri !== null) {
+              markRemoteImageUrlBroken(remoteSourceUri);
+            }
+
             setHasImageError(true);
           }}
           source={source}
