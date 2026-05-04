@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-04
+- **Branch:** `chore/native-build-smoke-blocker`
+- **Yapılan iş:** iOS native reinstall hedefi için repo ve cihaz durumu yeniden doğrulandı. `apps/mobile/app.config.ts` ve local `apps/mobile/ios/OmaLeima/Info.plist` içinde `NSCameraUsageDescription` mevcut. `xcrun xctrace list devices` fiziksel iPhone cihazlarını offline gösterdi. `npm --prefix apps/mobile run ios -- --device 00008110-000A5C521A38401E` denendi; Xcode build planlamasına kadar ilerledi fakat `xcodebuild` error 70 ile cihaz destination hazır olmadığı için durdu.
+- **Neden yapıldı:** Kamera permission fix'i native plist gerektirdiği için Metro reload yeterli değil; fiziksel iPhone'a yeniden kurulumun gerçekten yapılabilir olup olmadığını kanıtlamak gerekiyordu.
+- **Doğrulama:** Build çıktısı `Timed out waiting for all destinations matching the provided destination specifier to become available` ve `Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac. The device must be opted into Developer Mode to connect wirelessly.` mesajını verdi. Admin build, admin typecheck/lint, mobile typecheck/lint/export ve Supabase linked migration list önceki dalgalarda geçti; remote bozuk örnek cover URL'i `content-length: 0` olarak doğrulandı.
+- **Sıradaki önerilen adım:** Kullanıcı iPhone'u kilitsiz, Developer Mode açık ve kabloyla bağlı hale getirmeli veya aynı LAN üstünde güvenilir wireless pairing sağlamalı; sonra `cd apps/mobile && npm run ios -- --device 00008110-000A5C521A38401E` yeniden çalıştırılmalı. Kurulumdan sonra scanner kamera izni, organizer/business media re-upload ve business slider/popup smoke testleri yapılmalı.
+- **Açık risk/blokaj:** Native reinstall ve gerçek cihaz smoke testleri cihaz offline olduğu için tamamlanmadı. Eski zero-byte Supabase object'ler kodla dolmaz; organizer/business görselleri yeniden upload edilmelidir. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakılıyor.
+
+- **Tarih:** 2026-05-04
 - **Branch:** `bug/club-event-actionable-errors`
 - **Yapılan iş:** Club event update/status/cancel DB hata yolu daha anlaşılır hale getirildi. `events_check*` veya ham `violates check constraint` mesajı Supabase'den yine de gelirse artık organizer'a doğrudan raw Postgres metni göstermek yerine event zaman ilişkisinin geçersiz olduğunu, end time'ın start'tan sonra ve join deadline'ın start'tan sonra olmaması gerektiğini açıklayan actionable hata üretiliyor; orijinal DB mesajı debug bağlamı olarak korunuyor.
 - **Neden yapıldı:** Date/constraint fix'i temel sebebi kapatsa da taramada club event update path'inin Supabase hata mesajını hâlâ ham sarmaladığı görüldü. Kullanıcının gördüğü `events_check1` benzeri mesajların tekrar çıplak şekilde UI'a düşmemesi için ek güvenlik katmanı eklendi.
