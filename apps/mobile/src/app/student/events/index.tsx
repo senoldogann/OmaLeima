@@ -27,6 +27,60 @@ type DiscoverySlide = {
   title: string;
 };
 
+type ActionNotice = {
+  body: string;
+  title: string;
+};
+
+const createJoinActionNotice = (status: string, language: "fi" | "en"): ActionNotice | null => {
+  if (status === "SUCCESS" || status === "ALREADY_REGISTERED") {
+    return null;
+  }
+
+  const notices: Record<string, ActionNotice> = {
+    EVENT_FULL: {
+      body: language === "fi" ? "Tapahtuma on saavuttanut kapasiteettinsa." : "The event has reached capacity.",
+      title: language === "fi" ? "Tapahtuma täynnä" : "Event is full",
+    },
+    EVENT_NOT_AVAILABLE: {
+      body:
+        language === "fi"
+          ? "Tapahtuma ei ole enää avoin ilmoittautumiselle."
+          : "This event is no longer available for registration.",
+      title: language === "fi" ? "Ilmoittautuminen suljettu" : "Registration closed",
+    },
+    EVENT_REGISTRATION_CLOSED: {
+      body:
+        language === "fi"
+          ? "Liittymisaika tai tapahtuman aloitus on jo mennyt."
+          : "The join deadline or event start time has already passed.",
+      title: language === "fi" ? "Liittymisaika päättynyt" : "Join window closed",
+    },
+    STUDENT_BANNED: {
+      body:
+        language === "fi"
+          ? "Tällä profiililla ei voi liittyä tähän tapahtumaan."
+          : "This profile is restricted for this event.",
+      title: language === "fi" ? "Liittyminen estetty" : "Registration blocked",
+    },
+  };
+
+  return (
+    notices[status] ?? {
+      body: language === "fi" ? `Palautuskoodi ${status}.` : `Registration returned ${status}.`,
+      title: language === "fi" ? "Liittyminen epäonnistui" : "Could not join event",
+    }
+  );
+};
+
+const createErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice => ({
+  body: error instanceof Error ? error.message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+  title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
+});
+
+const canShowJoinAction = (event: StudentEventSummary): boolean =>
+  event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
+
 const getRegistrationLabel = (
   registrationState: StudentEventSummary["registrationState"],
   language: "fi" | "en"
@@ -64,6 +118,7 @@ export default function StudentEventsScreen() {
   const styles = useThemeStyles(createStyles);
   const studentId = session?.user.id ?? null;
   const [previewEvent, setPreviewEvent] = useState<StudentEventSummary | null>(null);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const eventsQuery = useStudentEventsQuery({
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
@@ -137,20 +192,34 @@ export default function StudentEventsScreen() {
     });
   };
 
-  const joinEventFromCard = async (eventId: string): Promise<void> => {
+  const joinEventFromCard = async (eventId: string): Promise<boolean> => {
     if (studentId === null) {
-      return;
+      return false;
     }
 
-    await joinMutation.mutateAsync({
-      eventId,
-      studentId,
-    });
+    setActionNotice(null);
+
+    try {
+      const result = await joinMutation.mutateAsync({
+        eventId,
+        studentId,
+      });
+      const notice = createJoinActionNotice(result.status, language);
+      setActionNotice(notice);
+
+      return notice === null;
+    } catch (error) {
+      setActionNotice(createErrorNotice(error, language));
+      return false;
+    }
   };
 
   const handlePreviewJoinPress = async (event: StudentEventSummary): Promise<void> => {
-    await joinEventFromCard(event.id);
-    setPreviewEvent(null);
+    const didJoin = await joinEventFromCard(event.id);
+
+    if (didJoin) {
+      setPreviewEvent(null);
+    }
   };
 
   const handlePreviewDetailPress = (event: StudentEventSummary): void => {
@@ -225,13 +294,11 @@ export default function StudentEventsScreen() {
         </View>
       ) : null}
 
-      {joinMutation.error ? (
+      {actionNotice !== null ? (
         <View style={styles.messageCard}>
           <Text style={styles.messageEyebrow}>{copy.common.error}</Text>
-          <Text style={styles.messageTitle}>
-            {language === "fi" ? "Liittyminen epäonnistui" : "Could not join event"}
-          </Text>
-          <Text style={styles.bodyText}>{joinMutation.error.message}</Text>
+          <Text style={styles.messageTitle}>{actionNotice.title}</Text>
+          <Text style={styles.bodyText}>{actionNotice.body}</Text>
         </View>
       ) : null}
 
@@ -258,7 +325,7 @@ export default function StudentEventsScreen() {
               isJoinPending={joinMutation.isPending}
               key={event.id}
               motionIndex={index + 1}
-              onJoinPress={() => void joinEventFromCard(event.id)}
+              onJoinPress={canShowJoinAction(event) ? () => void joinEventFromCard(event.id) : undefined}
               onPress={() => setPreviewEvent(event)}
             />
           ))}
@@ -383,7 +450,7 @@ export default function StudentEventsScreen() {
                       {language === "fi" ? "Avaa tiedot" : "Open details"}
                     </Text>
                   </Pressable>
-                  {previewEvent.registrationState === "NOT_REGISTERED" ? (
+                  {canShowJoinAction(previewEvent) ? (
                     <Pressable
                       disabled={joinMutation.isPending}
                       onPress={() => void handlePreviewJoinPress(previewEvent)}

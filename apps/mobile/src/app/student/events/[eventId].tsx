@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
@@ -46,6 +46,11 @@ type CancelAvailability = {
   label: string;
   detail: string;
   state: AppReadinessState;
+};
+
+type ActionNotice = {
+  body: string;
+  title: string;
 };
 
 const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
@@ -304,6 +309,11 @@ const getCancelResultPresentation = (
   }
 };
 
+const createActionErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice => ({
+  body: error instanceof Error ? error.message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+  title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
+});
+
 const getRewardInventoryCopy = (rewardTier: RewardTierSummary, language: "fi" | "en"): string => {
   if (rewardTier.inventoryTotal === null) {
     return language === "fi" ? "Rajoittamaton määrä" : "Unlimited reward stock";
@@ -360,6 +370,7 @@ export default function StudentEventDetailScreen() {
 
   const joinMutation = useJoinEventMutation();
   const cancelRegistrationMutation = useCancelEventRegistrationMutation();
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
 
   useEffect(() => {
     void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
@@ -393,10 +404,16 @@ export default function StudentEventDetailScreen() {
       return;
     }
 
-    await joinMutation.mutateAsync({
-      eventId: event.id,
-      studentId,
-    });
+    setActionNotice(null);
+
+    try {
+      await joinMutation.mutateAsync({
+        eventId: event.id,
+        studentId,
+      });
+    } catch (error) {
+      setActionNotice(createActionErrorNotice(error, language));
+    }
   };
 
   const handleCancelRegistrationPress = async (): Promise<void> => {
@@ -404,10 +421,16 @@ export default function StudentEventDetailScreen() {
       return;
     }
 
-    await cancelRegistrationMutation.mutateAsync({
-      eventId: event.id,
-      studentId,
-    });
+    setActionNotice(null);
+
+    try {
+      await cancelRegistrationMutation.mutateAsync({
+        eventId: event.id,
+        studentId,
+      });
+    } catch (error) {
+      setActionNotice(createActionErrorNotice(error, language));
+    }
   };
 
   const handleBackPress = (): void => {
@@ -501,22 +524,29 @@ export default function StudentEventDetailScreen() {
                 <Text style={themeStyles.metaText}>{cancelPresentation.body}</Text>
               </View>
             ) : null}
-            <Pressable
-              disabled={!joinAvailability?.canJoin || joinMutation.isPending}
-              onPress={() => void handleJoinPress()}
-              style={[
-                themeStyles.primaryButton,
-                !joinAvailability?.canJoin || joinMutation.isPending ? themeStyles.disabledButton : null,
-              ]}
-            >
-              <Text style={themeStyles.primaryButtonText}>
-                {joinMutation.isPending
-                  ? language === "fi"
-                    ? "Liitytään..."
-                    : "Joining..."
-                  : joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}
-              </Text>
-            </Pressable>
+            {actionNotice !== null ? (
+              <View style={themeStyles.inlineStatusRow}>
+                <StatusBadge label={language === "fi" ? "virhe" : "error"} state="error" />
+                <Text style={themeStyles.metaText}>
+                  {actionNotice.title}: {actionNotice.body}
+                </Text>
+              </View>
+            ) : null}
+            {joinAvailability?.canJoin ? (
+              <Pressable
+                disabled={joinMutation.isPending}
+                onPress={() => void handleJoinPress()}
+                style={[themeStyles.primaryButton, joinMutation.isPending ? themeStyles.disabledButton : null]}
+              >
+                <Text style={themeStyles.primaryButtonText}>
+                  {joinMutation.isPending
+                    ? language === "fi"
+                      ? "Liitytään..."
+                      : "Joining..."
+                    : joinAvailability.label}
+                </Text>
+              </Pressable>
+            ) : null}
             {cancelAvailability ? (
               <>
                 <Text style={themeStyles.metaText}>{cancelAvailability.detail}</Text>
