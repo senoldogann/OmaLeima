@@ -13,7 +13,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Map known event check constraint errors to actionable messages.
 - [x] Validate mobile/admin checks and diff check.
 - [x] Update `PROGRESS.md` with handoff.
-- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
