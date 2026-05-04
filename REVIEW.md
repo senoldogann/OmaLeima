@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-announcement-feed-routes`
-- **Scope:** Productize the existing announcement system as a fuller mobile feed surface for student and business roles.
+- **Branch:** `chore/full-role-review-handoff`
+- **Scope:** Capture the current evidence-based role/platform review state after scanner, media, and announcement feed work.
 
 ## Affected Files
 
@@ -14,27 +14,24 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
-- `apps/mobile/src/app/student/_layout.tsx`
-- `apps/mobile/src/app/student/profile.tsx`
-- `apps/mobile/src/app/student/updates.tsx`
-- `apps/mobile/src/app/business/_layout.tsx`
-- `apps/mobile/src/app/business/home.tsx`
-- `apps/mobile/src/app/business/updates.tsx`
 
 ## Existing Logic Checked
 
-- Announcement backend, RLS, acknowledgements, impressions, notification preferences, popup bridge, and push sender already exist.
-- `AnnouncementFeedSection` already reads published announcements, records impressions, toggles push preferences, marks read, and renders image cards.
-- Student profile and business home already embed a compact feed, but there was no full feed destination for normal browsing.
-- Club organizers already have `/club/announcements` for authoring announcements.
+- `apps/mobile/src/app/_layout.tsx` registers `club`, so the old report item about missing club root stack registration is no longer valid.
+- `cancel_event_registration_atomic` exists and student detail uses `useCancelEventRegistrationMutation`, so student event cancellation is no longer missing.
+- `qr_token_uses` select policies for platform admins, event managers, and business staff exist in `20260503103000_report_verified_integrity_fixes.sql`.
+- Business application insert policy is now limited to authenticated users instead of anonymous public inserts.
+- Scan stamp paths now call `update_event_leaderboard`, and `scan-qr` counts successful push results with `filter(...).length`.
+- Announcement feed backend includes published visibility, acknowledgements, impressions, notification preferences, popup bridge, push sender, mobile organizer authoring, and full student/business feed routes.
+- iOS native permission strings exist in `apps/mobile/app.config.ts` and `apps/mobile/ios/OmaLeima/Info.plist`, but physical devices are still offline in `xcrun xctrace list devices`.
 
 ## Risks
 
-- Student tab navigation should not gain a sixth visible tab just because the route exists.
-- Full feed route should reuse the same secure read model instead of creating a new query path.
-- Compact embedded feed should remain lightweight and simply link to the full feed.
+- Native iOS camera permission cannot be verified until a physical iPhone is online and the app is rebuilt/reinstalled.
+- Media upload/render fixes are code and data-cleanup verified, but real organizer/business smoke still needs a physical device session.
+- Business slider/popup behavior is implemented and export-verified, but final visual acceptance needs user/device review.
+- Full role review cannot be considered complete until physical scanner/media smoke results are available.
 
 ## Review Outcome
 
-Add dedicated student and business updates routes that reuse `AnnouncementFeedSection` in full mode, and add compact feed CTA links from profile/home. Hide the student updates route from the bottom tab bar.
+No new code defect was found in the current static review. The remaining goal blockers are device availability and physical smoke evidence, not an obvious missing code path.

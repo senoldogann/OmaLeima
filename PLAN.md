@@ -5,29 +5,29 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-announcement-feed-routes`
-- **Goal:** Give students and business users a real mobile announcement feed screen without changing the trusted backend model.
+- **Branch:** `chore/full-role-review-handoff`
+- **Goal:** Keep the project handoff truthful after the latest static role review and validation gates.
 
 ## Architectural Decisions
 
-- Reuse `AnnouncementFeedSection` for compact and full feed surfaces.
-- Add optional `onViewAllPress` and `viewAllLabel` props to the shared component instead of duplicating feed cards.
-- Add `/student/updates` as a hidden tab route so it is navigable but not a bottom navigation item.
-- Add `/business/updates` as a normal business stack route.
-- Keep feed data, read state, impressions, CTA, and push preference behavior in the existing query/mutation module.
+- Do not add new schema or UI changes without a concrete defect; the latest static review did not reveal a safe code fix to make.
+- Record which older report findings have already been fixed so future agents do not repeat stale work.
+- Keep physical iOS reinstall and media smoke as explicit blockers instead of pretending automated checks cover them.
+- Use existing `PROGRESS.md`, `REVIEW.md`, `PLAN.md`, and `TODOS.md` rather than creating another standalone report.
 
 ## Edge Cases
 
-- Signed-out or missing session: `AnnouncementFeedSection` returns `null`, matching existing behavior.
-- Empty feed: full and compact screens keep the same empty state.
-- Student tab count: the updates route is explicitly hidden from tabs with `href: null`.
-- Back navigation: update screens use deterministic role home/profile routes instead of `router.back()`.
+- User-local files remain outside commits: `apps/mobile/package.json`, `RAPOR.md`, and `apps/mobile/src/app/student/events/.idea/`.
+- Supabase lint validates schema shape and policies, but it does not replace live role smoke testing.
+- Expo web export validates route registration, but it does not validate native camera permission strings on installed iOS builds.
 
 ## Validation Plan
 
-- Run:
-  - `npm --prefix apps/mobile run typecheck`
-  - `npm --prefix apps/mobile run lint`
-  - `npm --prefix apps/mobile run export:web`
-  - `git --no-pager diff --check`
-- Record the handoff in `PROGRESS.md`.
+- Record validation evidence:
+  - `npm --prefix apps/admin run typecheck`
+  - `npm --prefix apps/admin run lint`
+  - `supabase db lint --linked`
+  - prior mobile `typecheck`, `lint`, and `export:web` from the latest merged mobile slices
+  - `xcrun xctrace list devices`
+- Run `git --no-pager diff --check`.
+- Update `PROGRESS.md`.
