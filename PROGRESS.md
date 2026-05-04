@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-04
+- **Branch:** `bug/club-event-actionable-errors`
+- **Yapılan iş:** Club event update/status/cancel DB hata yolu daha anlaşılır hale getirildi. `events_check*` veya ham `violates check constraint` mesajı Supabase'den yine de gelirse artık organizer'a doğrudan raw Postgres metni göstermek yerine event zaman ilişkisinin geçersiz olduğunu, end time'ın start'tan sonra ve join deadline'ın start'tan sonra olmaması gerektiğini açıklayan actionable hata üretiliyor; orijinal DB mesajı debug bağlamı olarak korunuyor.
+- **Neden yapıldı:** Date/constraint fix'i temel sebebi kapatsa da taramada club event update path'inin Supabase hata mesajını hâlâ ham sarmaladığı görüldü. Kullanıcının gördüğü `events_check1` benzeri mesajların tekrar çıplak şekilde UI'a düşmemesi için ek güvenlik katmanı eklendi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint` ve `git --no-pager diff --check` geçti.
+- **Sıradaki önerilen adım:** Organizer event formunda start/end/join deadline senaryoları fiziksel cihazda smoke edilmeli. Özellikle join deadline start'tan sonraya alınırsa artık açık validation/actionable error görülmeli. Ardından iOS native rebuild ve medya smoke test hedefleri devam ediyor.
+- **Açık risk/blokaj:** Bu branch yeni DB migration gerektirmiyor. Fiziksel iPhone cihazları Xcode listesinde offline göründüğü için native reinstall ve kamera/media smoke hâlâ kullanıcı tarafında cihaz bağlıyken yapılmalı. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakılıyor.
+
+- **Tarih:** 2026-05-04
 - **Branch:** `bug/club-event-date-constraints`
 - **Yapılan iş:** Organizer mobile event formundaki tarih seçimi düzeltildi. Takvim grid'i artık date-only değerleri `toISOString().slice(0, 10)` ile UTC'ye çevirerek üretmiyor; local yıl/ay/gün parçalarıyla formatlıyor, bu yüzden Finlandiya saat diliminde ayın 4'ünü seçince 3'e düşme problemi kapanıyor. Club event create/update mutation path'ine DB yazısından önce açık zaman ilişkisi doğrulaması eklendi: `endAt` mutlaka `startAt` sonrasında olmalı, `joinDeadlineAt` ise `startAt` ile aynı veya öncesinde olmalı. Böylece `events_check1` gibi ham Postgres constraint mesajı yerine kullanıcıya/debug'a açık hata üretiliyor.
 - **Neden yapıldı:** Kullanıcı organizer tarafında Starts/Ends/Join deadline seçiminde seçilen günün bir gün geri geldiğini ve event update sırasında `new row for relation "events" violates check constraint events_check1` hatası aldığını bildirdi.

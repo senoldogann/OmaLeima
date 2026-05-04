@@ -165,6 +165,28 @@ const buildCreateMessage = (status: string): string => {
   return messages[status] ?? "Club event creation request completed.";
 };
 
+const createClubEventDatabaseErrorMessage = ({
+  action,
+  eventId,
+  message,
+  userId,
+}: {
+  action: string;
+  eventId: string;
+  message: string;
+  userId: string;
+}): string => {
+  if (message.includes("events_check") || message.includes("violates check constraint")) {
+    return [
+      `Failed to ${action} club event ${eventId} for ${userId}: event timing is invalid.`,
+      "Make sure the end time is after the start time and the join deadline is not after the start time.",
+      `Database message: ${message}`,
+    ].join(" ");
+  }
+
+  return `Failed to ${action} club event ${eventId} for ${userId}: ${message}`;
+};
+
 const updateCreatedEventStatusAsync = async ({
   eventId,
   status,
@@ -185,7 +207,14 @@ const updateCreatedEventStatusAsync = async ({
     .maybeSingle<UpdatedEventRow>();
 
   if (error !== null) {
-    throw new Error(`Failed to set created club event ${eventId} status for ${userId}: ${error.message}`);
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "set created",
+        eventId,
+        message: error.message,
+        userId,
+      })
+    );
   }
 
   if (data === null) {
@@ -271,7 +300,14 @@ const updateClubEventAsync = async ({
     .maybeSingle<UpdatedEventRow>();
 
   if (error !== null) {
-    throw new Error(`Failed to update club event ${draft.eventId} for ${userId}: ${error.message}`);
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "update",
+        eventId: draft.eventId,
+        message: error.message,
+        userId,
+      })
+    );
   }
 
   if (data === null) {
@@ -304,7 +340,14 @@ const cancelClubEventAsync = async ({
     .maybeSingle<UpdatedEventRow>();
 
   if (error !== null) {
-    throw new Error(`Failed to cancel club event ${eventId} for ${userId}: ${error.message}`);
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "cancel",
+        eventId,
+        message: error.message,
+        userId,
+      })
+    );
   }
 
   if (data === null) {
