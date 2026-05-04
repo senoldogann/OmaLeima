@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -114,6 +115,7 @@ const createPushPreferenceSummary = (
 };
 
 export default function StudentProfileScreen() {
+  const router = useRouter();
   const theme = useAppTheme();
   const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
@@ -293,8 +295,10 @@ export default function StudentProfileScreen() {
       <AnnouncementFeedSection
         compact={true}
         maxItems={4}
+        onViewAllPress={() => router.push("/student/updates")}
         title={language === "fi" ? "Ajankohtaista" : "Latest updates"}
         userId={studentId}
+        viewAllLabel={language === "fi" ? "Avaa tiedotevirta" : "Open update feed"}
       />
 
       <InfoCard

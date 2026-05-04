@@ -334,8 +334,10 @@ export default function BusinessHomeScreen() {
       <AnnouncementFeedSection
         compact={true}
         maxItems={4}
+        onViewAllPress={() => router.push("/business/updates")}
         title={language === "fi" ? "Yrityksen tiedotteet" : "Business updates"}
         userId={userId}
+        viewAllLabel={language === "fi" ? "Avaa tiedotevirta" : "Open update feed"}
       />
 
     </AppScreen>

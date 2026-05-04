@@ -18,8 +18,10 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 type AnnouncementFeedSectionProps = {
   compact: boolean;
   maxItems: number;
+  onViewAllPress?: () => void;
   title: string;
   userId: string | null;
+  viewAllLabel?: string;
 };
 
 const formatFeedDate = (localeTag: string, value: string): string =>
@@ -31,8 +33,10 @@ const formatFeedDate = (localeTag: string, value: string): string =>
 export const AnnouncementFeedSection = ({
   compact,
   maxItems,
+  onViewAllPress,
   title,
   userId,
+  viewAllLabel,
 }: AnnouncementFeedSectionProps) => {
   const styles = useThemeStyles(createStyles);
   const { language, localeTag, theme } = useUiPreferences();
@@ -66,6 +70,7 @@ export const AnnouncementFeedSection = ({
     platform: "OmaLeima",
     read: language === "fi" ? "Luettu" : "Read",
     retry: language === "fi" ? "Yritä uudelleen" : "Retry",
+    viewAll: viewAllLabel ?? (language === "fi" ? "Avaa koko feed" : "Open full feed"),
   };
 
   useEffect(() => {
@@ -241,6 +246,11 @@ export const AnnouncementFeedSection = ({
       ) : null}
       {preferenceMutation.error ? (
         <Text selectable style={styles.errorText}>{preferenceMutation.error.message}</Text>
+      ) : null}
+      {onViewAllPress ? (
+        <Pressable onPress={onViewAllPress} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>{labels.viewAll}</Text>
+        </Pressable>
       ) : null}
     </InfoCard>
   );

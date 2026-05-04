@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-04
+- **Branch:** `feature/mobile-announcement-feed-routes`
+- **Yapılan iş:** Mobil duyuru/feed altyapısı daha ürünleşmiş bir yüzeye taşındı. Ortak `AnnouncementFeedSection` bileşenine tam feed CTA desteği eklendi. Öğrenciler için `/student/updates` tam ekran duyuru akışı oluşturuldu ve bottom tab'da görünmemesi için hidden tab route olarak kaydedildi. Business tarafı için `/business/updates` stack route'u eklendi. Student profile ve business home üzerindeki kompakt duyuru kartları artık tam feed ekranına yönleniyor. Yeni ekranlar mevcut RLS'li announcement read modelini, read/seen/impression, CTA ve push preference davranışlarını aynen kullanıyor.
+- **Neden yapıldı:** Kullanıcının istediği “Instagram post akışı gibi herkesin görebileceği duyuru feed'i” için temel backend/popup/push köprüsü vardı; eksik olan student ve business için normal kullanılabilir tam ekran feed yüzeyiydi. Bu branch backend güvenlik modelini büyütmeden ilk ürünleşmiş feed adımını tamamladı.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web` ve `git --no-pager diff --check` geçti. Web export statik route listesinde `/student/updates` ve `/business/updates` göründü.
+- **Sıradaki önerilen adım:** Fiziksel cihaz online olduğunda native reinstall ve scanner/media smoke devam etmeli. Duyuru tarafında sonraki küçük ürün slice'i, event/club detay ekranlarında ilgili duyuruları bağlam içinde göstermek ve organizer duyurularında hedef kitle seçimini daha görünür yapmak olmalı.
+- **Açık risk/blokaj:** Bu branch yeni migration veya push fan-out değişikliği yapmadı; mevcut announcement query/policy'lere güvenir. iOS native rebuild hâlâ Xcode'da offline görünen cihazlar nedeniyle bloklu. `apps/mobile/package.json`, `RAPOR.md` ve `.idea/` yerel/kullanıcı değişiklikleri commit dışında bırakılıyor.
+
+- **Tarih:** 2026-05-04
 - **Branch:** `feature/business-event-slider-popup-polish`
 - **Yapılan iş:** Business scanner route kamera odaklı kiosk akışına yaklaştırıldı. Scanner-only hesapların business home'dan aktif joined event varsa otomatik scanner'a yönlenmesi korunurken, `/business/scanner` içinde kamera artık seçili checkpoint/device bilgi panellerinin arkasında kalmıyor. PIN zorunlu cihazlar dışında kamera ilk ana yüzey; seçili işletme/event, bitiş zamanı ve hazır durumu kompakt bir status bar'a taşındı. Scanner device registration hata/yeniden deneme ve çoklu aktif event seçimi korunuyor, join/leave davranışlarına dokunulmadı.
 - **Neden yapıldı:** Kullanıcı iki fiziksel iPhone testinden sonra işletme scanner tarafında yalnızca QR okutulacak kamera alanının öne çıkmasını, işletmenin event join/leave yönetimiyle uğraşmamasını ve scanner UX'in gereksiz bilgilerden arınmasını istedi.

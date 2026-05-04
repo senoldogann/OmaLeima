@@ -155,6 +155,7 @@ export default function StudentTabsLayout() {
       <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
       <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
       <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
+      <Tabs.Screen name="updates" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/business-event-slider-popup-polish`
-- **Scope:** Make the business scanner route more event-day/kiosk friendly after the duplicate scan and media recovery fixes.
+- **Branch:** `feature/mobile-announcement-feed-routes`
+- **Scope:** Productize the existing announcement system as a fuller mobile feed surface for student and business roles.
 
 ## Affected Files
 
@@ -14,21 +14,27 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
+- `apps/mobile/src/app/student/_layout.tsx`
+- `apps/mobile/src/app/student/profile.tsx`
+- `apps/mobile/src/app/student/updates.tsx`
+- `apps/mobile/src/app/business/_layout.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/updates.tsx`
 
 ## Existing Logic Checked
 
-- Business home already redirects scanner-only staff with an active joined event to `/business/scanner`.
-- Business event membership restrictions are already backend-backed: scanner staff cannot join or leave events.
-- Business home and business events already use horizontal event rails and preview modal behavior.
-- Scanner route still showed checkpoint/device panels before the camera, which made event-day scanning feel like a management screen.
+- Announcement backend, RLS, acknowledgements, impressions, notification preferences, popup bridge, and push sender already exist.
+- `AnnouncementFeedSection` already reads published announcements, records impressions, toggles push preferences, marks read, and renders image cards.
+- Student profile and business home already embed a compact feed, but there was no full feed destination for normal browsing.
+- Club organizers already have `/club/announcements` for authoring announcements.
 
 ## Risks
 
-- The scanner still needs enough context for staff to confirm the selected venue and device state.
-- PIN-required scanner devices must keep a visible PIN input before scanning.
-- Device registration failures must stay actionable without pushing the camera below unnecessary content.
+- Student tab navigation should not gain a sixth visible tab just because the route exists.
+- Full feed route should reuse the same secure read model instead of creating a new query path.
+- Compact embedded feed should remain lightweight and simply link to the full feed.
 
 ## Review Outcome
 
-Keep the existing scan transport and backend checks intact, but move the camera to the primary scanner surface. Collapse selected event and device state into a compact status bar and show detailed controls only when required.
+Add dedicated student and business updates routes that reuse `AnnouncementFeedSection` in full mode, and add compact feed CTA links from profile/home. Hide the student updates route from the bottom tab bar.
