@@ -5,28 +5,30 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/media-url-resilience`
-- **Goal:** Make profile/event media uploads and image rendering more resilient, especially for native runtimes and old zero-byte Supabase public objects.
+- **Branch:** `feature/announcement-storage-upload`
+- **Goal:** Let admin and organizer announcement authors upload an image file directly to Supabase Storage instead of relying only on pasted URLs.
 
 ## Architectural Decisions
 
-- Keep one shared upload helper for business, club profile, and event cover images.
-- Replace runtime-dependent `atob` decoding with a deterministic pure TypeScript base64 decoder.
-- Add a small media health module that normalizes URLs, tracks known broken remote image URLs, and validates public URLs with HEAD when possible.
-- Make `CoverImageSurface` consult and update the broken URL registry so any failed remote image consistently falls back.
-- Update event cover prefetch to HEAD-check URL readability and zero-byte content before `Image.prefetch`.
+- Create a new public `announcement-media` storage bucket.
+- Use object paths `platform/<timestamp>-<file>` for platform admins and `clubs/<clubId>/<timestamp>-<file>` for club announcements.
+- Reuse existing `is_platform_admin()` and `is_club_event_editor_for()` helpers in storage policies.
+- Add a client-side `uploadAnnouncementImageAsync` helper in admin that validates image type and size, uploads to Supabase Storage, verifies public readability, and returns a public URL.
+- Keep the existing Image URL field so external URLs remain possible, but add a file picker as the primary path.
 
 ## Edge Cases
 
-- Base64 strings with whitespace or data URI prefixes should decode correctly.
-- Invalid base64 must raise a clear upload error instead of silently producing a bad file.
-- `content-length` can be missing; that should not be treated as failure.
-- `content-length: 0` must be treated as a broken image and skipped.
-- Existing zero-byte rows still require re-upload; the app should show fallback instead of black/empty UI.
+- DRAFT announcements can upload images before save because the object is public but only author-controlled by path policy.
+- Club form with no selected club must reject upload before hitting storage.
+- Unsupported file types and zero-byte files must fail explicitly.
+- Platform admins and club organizers must not be able to write into each other's storage prefixes.
 
 ## Validation Plan
 
 - Run:
+  - `npx supabase@2.95.4 db push --yes`
+  - `npx supabase@2.95.4 db lint --linked`
+  - `npx supabase@2.95.4 migration list`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`

@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { createClient } from "@/lib/supabase/client";
 import {
   submitAnnouncementCreateRequestAsync,
   submitAnnouncementPushRequestAsync,
 } from "@/features/announcements/client";
+import { uploadAnnouncementImageAsync } from "@/features/announcements/media-upload";
 import type {
   AnnouncementActionState,
   AnnouncementCreatePayload,
@@ -63,6 +65,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   const router = useRouter();
   const [payload, setPayload] = useState<AnnouncementCreatePayload>(createInitialPayload(snapshot));
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [pendingPushAnnouncementId, setPendingPushAnnouncementId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<AnnouncementActionState>({
     code: null,
@@ -75,6 +78,56 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
     () => (snapshot.scope === "ADMIN" ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"] : ["ALL", "STUDENTS", "CLUBS"]),
     [snapshot.scope]
   );
+  const isFormDisabled = !canCreate || isPending || isImageUploading;
+
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const selectedFile = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (selectedFile === null) {
+      return;
+    }
+
+    setIsImageUploading(true);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const supabase = createClient();
+      const uploadedImage = await uploadAnnouncementImageAsync({
+        file: selectedFile,
+        scope:
+          snapshot.scope === "ADMIN"
+            ? { scope: "ADMIN" }
+            : {
+                clubId: payload.clubId,
+                scope: "CLUB",
+              },
+        supabase,
+      });
+
+      setPayload((current) => ({
+        ...current,
+        imageUrl: uploadedImage.publicUrl,
+      }));
+      setActionState({
+        code: "IMAGE_UPLOADED",
+        message: "Announcement image uploaded successfully.",
+        tone: "success",
+      });
+    } catch (error) {
+      setActionState({
+        code: "IMAGE_UPLOAD_ERROR",
+        message: error instanceof Error ? error.message : "Unknown announcement image upload error.",
+        tone: "error",
+      });
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -202,7 +255,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
             <label className="field-stack">
               <span className="field-label">Club</span>
               <select
-                disabled={!canCreate || isPending}
+                disabled={isFormDisabled}
                 value={payload.clubId}
                 onChange={(event) => setPayload((current) => ({ ...current, clubId: event.target.value }))}
               >
@@ -218,7 +271,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">Audience</span>
             <select
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               value={payload.audience}
               onChange={(event) =>
                 setPayload((current) => ({
@@ -238,7 +291,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">Status</span>
             <select
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               value={payload.status}
               onChange={(event) =>
                 setPayload((current) => ({
@@ -255,7 +308,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">Priority</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               max="10"
               min="0"
               onChange={(event) => setPayload((current) => ({ ...current, priority: event.target.value }))}
@@ -267,7 +320,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack form-grid-full">
             <span className="field-label">Title</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, title: event.target.value }))}
               placeholder="Uusi appropäivän ohje"
               value={payload.title}
@@ -277,7 +330,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack form-grid-full">
             <span className="field-label">Message</span>
             <textarea
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, body: event.target.value }))}
               placeholder="Kirjoita lyhyt, selkeä viesti opiskelijoille."
               rows={5}
@@ -288,7 +341,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">Starts at</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, startsAt: event.target.value }))}
               type="datetime-local"
               value={payload.startsAt}
@@ -298,7 +351,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">Ends at</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, endsAt: event.target.value }))}
               type="datetime-local"
               value={payload.endsAt}
@@ -308,7 +361,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">CTA label</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, ctaLabel: event.target.value }))}
               placeholder="Avaa tapahtuma"
               value={payload.ctaLabel}
@@ -318,27 +371,46 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           <label className="field-stack">
             <span className="field-label">CTA URL</span>
             <input
-              disabled={!canCreate || isPending}
+              disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, ctaUrl: event.target.value }))}
               placeholder="https://..."
               value={payload.ctaUrl}
             />
           </label>
 
-          <label className="field-stack form-grid-full">
-            <span className="field-label">Image URL</span>
-            <input
-              disabled={!canCreate || isPending}
-              onChange={(event) => setPayload((current) => ({ ...current, imageUrl: event.target.value }))}
-              placeholder="https://..."
-              value={payload.imageUrl}
-            />
-          </label>
+          <div className="field-stack form-grid-full">
+            <span className="field-label">Image</span>
+            <label className="upload-dropzone">
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                disabled={isFormDisabled}
+                onChange={(event) => void handleImageFileChange(event)}
+                type="file"
+              />
+              <span>{isImageUploading ? "Uploading image..." : "Upload announcement image"}</span>
+            </label>
+            {payload.imageUrl.trim().length > 0 ? (
+              <div
+                aria-label="Announcement image preview"
+                className="announcement-image-preview"
+                style={{ backgroundImage: `url(${payload.imageUrl})` }}
+              />
+            ) : null}
+            <label className="field-stack">
+              <span className="field-label">Image URL</span>
+              <input
+                disabled={isFormDisabled}
+                onChange={(event) => setPayload((current) => ({ ...current, imageUrl: event.target.value }))}
+                placeholder="https://..."
+                value={payload.imageUrl}
+              />
+            </label>
+          </div>
 
           <div className="form-grid-full stack-sm">
             {renderState(actionState)}
-            <button className="primary-action" disabled={!canCreate || isPending} type="submit">
-              {isPending ? "Saving..." : "Save announcement"}
+            <button className="primary-action" disabled={isFormDisabled} type="submit">
+              {isImageUploading ? "Uploading image..." : isPending ? "Saving..." : "Save announcement"}
             </button>
           </div>
         </form>

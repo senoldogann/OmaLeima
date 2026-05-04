@@ -307,6 +307,47 @@ button {
   background-color: var(--surface-soft);
 }
 
+.announcement-image-preview {
+  width: min(520px, 100%);
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-soft);
+  background-position: center;
+  background-size: cover;
+}
+
+.upload-dropzone {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--primary-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.upload-dropzone:hover {
+  border-color: var(--primary);
+  background: rgba(200, 255, 71, 0.14);
+  transform: translateY(-1px);
+}
+
+.upload-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .panel-warning {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 70%),
