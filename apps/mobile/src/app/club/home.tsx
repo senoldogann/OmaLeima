@@ -7,6 +7,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
 import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
@@ -235,6 +236,13 @@ export default function ClubHomeScreen() {
               )}
             </Pressable>
           </View>
+
+          <AnnouncementFeedSection
+            compact={true}
+            maxItems={4}
+            title={language === "fi" ? "Klubin tiedotteet" : "Club updates"}
+            userId={userId}
+          />
 
           {liveEvents.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveRail}>

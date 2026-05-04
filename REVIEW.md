@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/media-storage-business-scanner-fixes`
-- **Scope:** Fix empty Supabase Storage uploads from native image pickers, keep business event rails centered for single-card categories, and prevent scanner-only accounts from joining or leaving events.
+- **Branch:** `feature/mobile-announcement-feed`
+- **Scope:** Add a persistent mobile announcement feed on top of the existing popup/push announcement foundation.
 
 ## Affected Files
 
@@ -14,31 +14,28 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/features/media/storage-upload.ts`
-- `apps/mobile/src/features/business/business-media.ts`
-- `apps/mobile/src/features/club/club-media.ts`
-- `apps/mobile/src/features/club/club-event-media.ts`
-- `apps/mobile/src/features/business/business-home.ts`
-- `apps/mobile/src/features/business/types.ts`
+- `apps/mobile/src/features/announcements/announcements.ts`
+- `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
+- `apps/mobile/src/app/student/profile.tsx`
 - `apps/mobile/src/app/business/home.tsx`
-- `apps/mobile/src/app/business/events.tsx`
-- `supabase/migrations/20260504000604_restrict_scanner_event_management.sql`
+- `apps/mobile/src/app/club/home.tsx`
+- `supabase/migrations/20260504002053_announcement_feed_visibility.sql`
 
 ## Existing Logic Checked
 
-- The reported event-media URL returns `200 OK` with `content-length: 0`, proving the stored object exists but has no image bytes.
-- Business, club profile, and club event cover helpers all used `response.blob()` from native file URIs before upload; this can produce an empty body on React Native.
-- Business home already has an image-backed rail, but single items are left-aligned.
-- Business events screen exposes join/leave actions to all business memberships; scanner-only accounts should scan only.
-- Existing join/leave RPCs validate active business staff membership but do not reject `SCANNER` role explicitly.
+- Existing `announcements` and `announcement_acknowledgements` tables exist with RLS.
+- `AnnouncementPopupBridge` only reads `show_as_popup = true` active published announcements and hides acknowledged rows.
+- `can_read_announcement` currently requires `show_as_popup = true` for ordinary users, so non-popup feed posts are not readable yet.
+- Admin and club web can already create announcements and trigger push delivery.
+- Mobile has no persistent feed surface for students, businesses, or club organizers.
 
 ## Risks
 
-- Existing zero-byte uploaded objects cannot be repaired client-side; affected covers/logos must be re-uploaded after the helper fix.
-- HEAD verification after upload can fail if storage public policies are wrong; surfacing that error is preferred over silently saving a broken URL.
-- UI hiding is not sufficient for scanner permissions, so RPC hardening is required.
-- Single-card centering should not break multi-card horizontal scrolling.
+- RLS must still enforce audience visibility; mobile filtering alone is not enough.
+- Popup acknowledgement should not remove a post from the persistent feed.
+- Feed should stay compact so it does not clutter primary role screens.
+- CTA links must remain explicit and not auto-open.
 
 ## Review Outcome
 
-Replace native image upload bodies with non-empty `ArrayBuffer` reads plus public URL verification, add server-side role checks to business join/leave RPCs, filter joinable opportunities to manager roles, hide leave actions for scanners, and center single-card rails.
+Relax `can_read_announcement` from popup-only to active audience visibility, keep popup query popup-only, add a feed query with read state, and embed a compact feed section in student profile, business home, and club home.

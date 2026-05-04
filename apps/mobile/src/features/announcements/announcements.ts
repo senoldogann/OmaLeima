@@ -13,6 +13,10 @@ export type ActiveAnnouncement = {
   title: string;
 };
 
+export type AnnouncementFeedItem = ActiveAnnouncement & {
+  isRead: boolean;
+};
+
 type AnnouncementRow = {
   body: string;
   club: {
@@ -37,6 +41,7 @@ type UseActiveAnnouncementsQueryParams = {
 };
 
 export const activeAnnouncementsQueryKey = (userId: string) => ["active-announcements", userId] as const;
+export const announcementFeedQueryKey = (userId: string) => ["announcement-feed", userId] as const;
 
 const mapAnnouncements = (rows: AnnouncementRow[], acknowledgedIds: Set<string>): ActiveAnnouncement[] =>
   rows
@@ -47,6 +52,21 @@ const mapAnnouncements = (rows: AnnouncementRow[], acknowledgedIds: Set<string>)
       clubName: row.club?.name ?? null,
       ctaLabel: row.cta_label,
       ctaUrl: row.cta_url,
+      priority: row.priority,
+      startsAt: row.starts_at,
+      title: row.title,
+    }));
+
+const mapAnnouncementFeedItems = (rows: AnnouncementRow[], acknowledgedIds: Set<string>): AnnouncementFeedItem[] =>
+  rows
+    .filter((row) => row.status === "PUBLISHED")
+    .map((row) => ({
+      announcementId: row.id,
+      body: row.body,
+      clubName: row.club?.name ?? null,
+      ctaLabel: row.cta_label,
+      ctaUrl: row.cta_url,
+      isRead: acknowledgedIds.has(row.id),
       priority: row.priority,
       startsAt: row.starts_at,
       title: row.title,
@@ -100,6 +120,53 @@ const fetchActiveAnnouncementsAsync = async (userId: string): Promise<ActiveAnno
   );
 };
 
+const fetchAnnouncementFeedAsync = async (userId: string): Promise<AnnouncementFeedItem[]> => {
+  const nowIso = new Date().toISOString();
+  const [{ data: announcementRows, error: announcementError }, { data: acknowledgementRows, error: acknowledgementError }] =
+    await Promise.all([
+      supabase
+        .from("announcements")
+        .select(
+          `
+          id,
+          title,
+          body,
+          cta_label,
+          cta_url,
+          status,
+          priority,
+          starts_at,
+          club:clubs(name)
+        `
+        )
+        .eq("status", "PUBLISHED")
+        .lte("starts_at", nowIso)
+        .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
+        .order("priority", { ascending: false })
+        .order("starts_at", { ascending: false })
+        .limit(15)
+        .returns<AnnouncementRow[]>(),
+      supabase
+        .from("announcement_acknowledgements")
+        .select("announcement_id")
+        .eq("user_id", userId)
+        .returns<AnnouncementAcknowledgementRow[]>(),
+    ]);
+
+  if (announcementError !== null) {
+    throw new Error(`Failed to load announcement feed for ${userId}: ${announcementError.message}`);
+  }
+
+  if (acknowledgementError !== null) {
+    throw new Error(`Failed to load announcement feed acknowledgements for ${userId}: ${acknowledgementError.message}`);
+  }
+
+  return mapAnnouncementFeedItems(
+    announcementRows,
+    new Set<string>(acknowledgementRows.map((row) => row.announcement_id))
+  );
+};
+
 const acknowledgeAnnouncementAsync = async ({
   announcementId,
   userId,
@@ -135,6 +202,16 @@ export const useActiveAnnouncementsQuery = ({
     queryKey: activeAnnouncementsQueryKey(userId),
   });
 
+export const useAnnouncementFeedQuery = ({
+  isEnabled,
+  userId,
+}: UseActiveAnnouncementsQueryParams): UseQueryResult<AnnouncementFeedItem[], Error> =>
+  useQuery({
+    enabled: isEnabled,
+    queryFn: async () => fetchAnnouncementFeedAsync(userId),
+    queryKey: announcementFeedQueryKey(userId),
+  });
+
 export const useAcknowledgeAnnouncementMutation = (): UseMutationResult<
   void,
   Error,
@@ -150,6 +227,9 @@ export const useAcknowledgeAnnouncementMutation = (): UseMutationResult<
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({
         queryKey: activeAnnouncementsQueryKey(variables.userId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: announcementFeedQueryKey(variables.userId),
       });
     },
   });
