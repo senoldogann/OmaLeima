@@ -52,6 +52,11 @@ type DeviceTokenRow = {
   user_id: string;
 };
 
+type AnnouncementPreferenceRow = {
+  push_enabled: boolean;
+  user_id: string;
+};
+
 type ExistingNotificationRow = {
   payload: Record<string, unknown>;
 };
@@ -435,6 +440,51 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const activeProfileIds = new Set(activeProfiles.map((activeProfile) => activeProfile.id));
     recipientUserIds = recipientUserIds.filter((recipientUserId) => activeProfileIds.has(recipientUserId));
 
+    let recipientsSkippedPreferenceDisabled = 0;
+
+    if (recipientUserIds.length > 0) {
+      let preferenceQuery = supabase
+        .from("announcement_notification_preferences")
+        .select("user_id,push_enabled")
+        .in("user_id", recipientUserIds);
+
+      if (announcement.club_id === null) {
+        preferenceQuery = preferenceQuery.eq("source_type", "PLATFORM").is("club_id", null);
+      } else {
+        preferenceQuery = preferenceQuery.eq("source_type", "CLUB").eq("club_id", announcement.club_id);
+      }
+
+      const { data: preferenceRows, error: preferenceError } =
+        await preferenceQuery.returns<AnnouncementPreferenceRow[]>();
+
+      if (preferenceError !== null) {
+        return errorResponse(500, "INTERNAL_ERROR", "Failed to read announcement notification preferences.", {
+          announcementId: announcement.id,
+          announcementSourceClubId: announcement.club_id,
+          preferenceError: preferenceError.message,
+          preferenceErrorCode: preferenceError.code,
+        });
+      }
+
+      const disabledUserIds = new Set(
+        preferenceRows
+          .filter((preference) => !preference.push_enabled)
+          .map((preference) => preference.user_id)
+      );
+
+      recipientsSkippedPreferenceDisabled = recipientUserIds.filter((recipientUserId) =>
+        disabledUserIds.has(recipientUserId)
+      ).length;
+      recipientUserIds = recipientUserIds.filter((recipientUserId) => !disabledUserIds.has(recipientUserId));
+    }
+
+    if (recipientUserIds.length === 0) {
+      return errorResponse(404, "NOTIFICATION_RECIPIENTS_NOT_FOUND", "All announcement recipients have disabled this push source.", {
+        announcementId: announcement.id,
+        recipientsSkippedPreferenceDisabled,
+      });
+    }
+
     const { data: deviceTokens, error: deviceTokensError } = await supabase
       .from("device_tokens")
       .select("user_id,expo_push_token")
@@ -563,6 +613,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
           notificationsCreated: notificationRows.length,
           notificationsFailed,
           notificationsSent,
+          recipientsSkippedPreferenceDisabled,
           recipientsSkippedNoDeviceToken,
         },
         resource_id: announcement.id,
@@ -585,6 +636,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       notificationsCreated: notificationRows.length,
       notificationsFailed,
       notificationsSent,
+      recipientsSkippedPreferenceDisabled,
       recipientsSkippedNoDeviceToken,
       status: notificationsFailed > 0 ? "PARTIAL_SUCCESS" : "SUCCESS",
       type: "ANNOUNCEMENT",
