@@ -5,24 +5,23 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/business-event-slider-popup-polish`
-- **Goal:** Make scanner accounts land on a camera-first business scanning experience while preserving venue/device safety.
+- **Branch:** `feature/mobile-announcement-feed-routes`
+- **Goal:** Give students and business users a real mobile announcement feed screen without changing the trusted backend model.
 
 ## Architectural Decisions
 
-- Keep scanner-only auto-redirect on business home; this branch only refines the scanner route.
-- Keep `scanQrWithTimeoutAsync`, scanner device registration, PIN checks, and duplicate behavior unchanged.
-- Put the camera before auxiliary event/device details so the scanner account behaves like a desk kiosk.
-- Collapse selected venue and readiness into a compact status row below the camera.
-- Keep multi-event selection visible only when there is more than one active joined event.
+- Reuse `AnnouncementFeedSection` for compact and full feed surfaces.
+- Add optional `onViewAllPress` and `viewAllLabel` props to the shared component instead of duplicating feed cards.
+- Add `/student/updates` as a hidden tab route so it is navigable but not a bottom navigation item.
+- Add `/business/updates` as a normal business stack route.
+- Keep feed data, read state, impressions, CTA, and push preference behavior in the existing query/mutation module.
 
 ## Edge Cases
 
-- No active joined event: keep the existing empty state instead of opening a blank camera.
-- Camera permission missing: show the permission action in the camera slot.
-- Scanner device registering/error: show a short inline state and retry button only when needed.
-- PIN-required device: show the PIN input before the camera because scanning cannot succeed without it.
-- Scan locked after result: keep the locked camera overlay and explicit `Scan again` action.
+- Signed-out or missing session: `AnnouncementFeedSection` returns `null`, matching existing behavior.
+- Empty feed: full and compact screens keep the same empty state.
+- Student tab count: the updates route is explicitly hidden from tabs with `href: null`.
+- Back navigation: update screens use deterministic role home/profile routes instead of `router.back()`.
 
 ## Validation Plan
 
