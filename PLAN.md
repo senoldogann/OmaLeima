@@ -5,29 +5,28 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/media-upload-render-recovery`
-- **Goal:** Stop old zero-byte media URLs from poisoning role/profile/event image surfaces and make upload verification reliable after native picker uploads.
+- **Branch:** `feature/business-event-slider-popup-polish`
+- **Goal:** Make scanner accounts land on a camera-first business scanning experience while preserving venue/device safety.
 
 ## Architectural Decisions
 
-- Keep upload paths unique and keep existing bucket policies intact.
-- Strengthen `verifyPublicImageUrlAsync` instead of weakening validation: retry verification, use HEAD first, then a tiny range GET to prove bytes are readable.
-- Remove a URL from the in-memory broken set when it verifies successfully.
-- Add a migration that clears only DB references to known zero-byte storage objects; fallback artwork then appears instead of black/broken media.
-- Avoid hard-coded host names in migration by matching the storage public path suffix.
+- Keep scanner-only auto-redirect on business home; this branch only refines the scanner route.
+- Keep `scanQrWithTimeoutAsync`, scanner device registration, PIN checks, and duplicate behavior unchanged.
+- Put the camera before auxiliary event/device details so the scanner account behaves like a desk kiosk.
+- Collapse selected venue and readiness into a compact status row below the camera.
+- Keep multi-event selection visible only when there is more than one active joined event.
 
 ## Edge Cases
 
-- Zero-byte event cover: `events.cover_image_url` becomes `null`, preserving event row and letting UI fallback render.
-- Zero-byte club/business cover or logo: only the broken field becomes `null`; the other valid field remains.
-- HEAD returns no content length: range GET proves at least one byte before accepting.
-- Upload verification fails repeatedly: mark the URL broken and raise a clear error with the URL and last verification failure.
+- No active joined event: keep the existing empty state instead of opening a blank camera.
+- Camera permission missing: show the permission action in the camera slot.
+- Scanner device registering/error: show a short inline state and retry button only when needed.
+- PIN-required device: show the PIN input before the camera because scanning cannot succeed without it.
+- Scan locked after result: keep the locked camera overlay and explicit `Scan again` action.
 
 ## Validation Plan
 
 - Run:
-  - `npx supabase@2.95.4 db push --yes`
-  - `npx supabase@2.95.4 db lint --linked`
   - `npm --prefix apps/mobile run typecheck`
   - `npm --prefix apps/mobile run lint`
   - `npm --prefix apps/mobile run export:web`
