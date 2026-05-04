@@ -5,26 +5,23 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan
 
 - **Date:** 2026-05-04
-- **Branch:** `bug/media-business-scanner-audit`
-- **Goal:** Make profile/event photo upload reliable on native devices and verify scanner-only accounts cannot manage event memberships.
+- **Branch:** `bug/club-event-date-constraints`
+- **Goal:** Make organizer event date selection calendar-safe in local time and prevent raw `events_check1` constraint failures.
 
 ## Architectural Decisions
 
-- Request base64 data from Expo Image Picker for business, club, and club-event media picks.
-- Extend the shared storage upload helper to decode base64 into a typed `ArrayBuffer` and still validate non-empty byte length.
-- Keep the existing file URI reader as the explicit path when a picker asset does not contain base64.
-- Auto-save club profile cover/logo uploads so users do not need a second hidden save step.
-- Keep event cover uploads draft-based for new events, because a new event row does not exist until submit; editing an existing event still persists on submit.
-- Keep scanner-only join/leave disabled in UI and protected by the existing Supabase RPC migrations.
-- Make remote cover prefetch warnings one-per-URL to avoid noisy repeated warnings from old zero-byte storage objects.
+- Add local calendar date formatting helper that never uses UTC ISO conversion for date-only values.
+- Use the helper for month start fallback, month shifting, and calendar day generation.
+- Keep datetime mutation conversion through local `new Date(YYYY-MM-DDTHH:mm)` so stored `timestamptz` stays correct.
+- Add parsed temporal validation in `club-event-mutations`: `endAt > startAt` and `joinDeadlineAt <= startAt`.
+- Return clear actionable errors before Supabase writes.
 
 ## Edge Cases
 
-- Picker cancellation keeps current draft untouched.
-- Unsupported MIME types still raise actionable upload errors.
-- Empty base64 or empty file URI read raises before a public URL is saved.
-- Club media auto-save can fail after upload; the error must stay visible and the URL must not be silently assumed saved.
-- Scanner accounts must still see joined live events for scanning but not join/leave/manage actions.
+- Selecting day 4 must store day 4, including in positive timezones.
+- Month navigation must not drift across DST/month boundaries.
+- Manual invalid date or time still raises a validation error.
+- Join deadline at the exact start time remains valid because DB allows equality.
 
 ## Validation Plan
 
