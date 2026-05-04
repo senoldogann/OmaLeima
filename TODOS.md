@@ -14,7 +14,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Add pre-write event time relation validation.
 - [x] Validate mobile typecheck, lint, web export, and diff check.
 - [x] Update `PROGRESS.md` with handoff.
-- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
