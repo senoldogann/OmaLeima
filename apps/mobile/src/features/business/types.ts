@@ -40,6 +40,7 @@ export type BusinessJoinedEventSummary = {
   timelineState: BusinessTimelineState;
   stampLabel: string | null;
   venueOrder: number | null;
+  staffRole: "OWNER" | "MANAGER" | "SCANNER";
 };
 
 export type BusinessOpportunitySummary = {
@@ -54,6 +55,7 @@ export type BusinessOpportunitySummary = {
   endAt: string;
   joinDeadlineAt: string;
   status: "PUBLISHED" | "ACTIVE";
+  staffRole: "OWNER" | "MANAGER";
 };
 
 export type BusinessHomeOverview = {

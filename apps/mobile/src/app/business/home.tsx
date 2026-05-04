@@ -98,6 +98,10 @@ export default function BusinessHomeScreen() {
   const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
   const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
   const eventRailWidth = Math.min(340, Math.max(260, windowWidth - 96));
+  const eventRailContentStyle = [
+    styles.eventRailContent,
+    joinedEvents.length === 1 ? styles.eventRailContentSingle : null,
+  ];
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
     setSignOutError(null);
@@ -223,7 +227,7 @@ export default function BusinessHomeScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
         <InfoCard eyebrow={copy.common.events} title={labels.joinedEventsTitle}>
           <AutoAdvancingRail
-            contentContainerStyle={styles.eventRailContent}
+            contentContainerStyle={eventRailContentStyle}
             intervalMs={3500}
             itemGap={12}
             items={joinedEvents}
@@ -334,6 +338,11 @@ const createStyles = (theme: MobileTheme) =>
     },
     eventRailContent: {
       paddingHorizontal: 2,
+    },
+    eventRailContentSingle: {
+      flexGrow: 1,
+      justifyContent: "center",
+      paddingHorizontal: 0,
     },
     eventVisualCard: {
       backgroundColor: theme.colors.surfaceL2,
