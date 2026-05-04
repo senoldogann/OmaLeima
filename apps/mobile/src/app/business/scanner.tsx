@@ -11,11 +11,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
-import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
-import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { registerBusinessScannerDeviceAsync } from "@/features/scanner/scanner-device";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
@@ -28,7 +26,6 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 import { useSession } from "@/providers/session-provider";
 
 const scanTimeoutMs = 4_000;
-const isWeb = process.env.EXPO_OS === "web";
 const scannerKeepAwakeTag = "omaleima-event-day-scanner";
 
 type ToneMeta = {
@@ -38,18 +35,6 @@ type ToneMeta = {
   accentColor: string;
   icon: string;
 };
-
-type LocationProofState =
-  | {
-      detail: string;
-      location: ScannerLocationPayload;
-      status: "idle" | "unsupported" | "denied" | "error";
-    }
-  | {
-      detail: string;
-      location: ScannerLocationPayload;
-      status: "capturing" | "ready";
-    };
 
 type ScannerDeviceState =
   | {
@@ -68,21 +53,6 @@ type ScannerDeviceState =
       status: "error";
     };
 
-type ScannerLocationModule = {
-  Accuracy?: {
-    Balanced?: number;
-  };
-  getCurrentPositionAsync?: (options: { accuracy?: number }) => Promise<{
-    coords: {
-      latitude: number;
-      longitude: number;
-    };
-  }>;
-  requestForegroundPermissionsAsync?: () => Promise<{
-    granted: boolean;
-  }>;
-};
-
 const emptyScannerLocation = {
   latitude: null,
   longitude: null,
@@ -91,70 +61,11 @@ const emptyScannerLocation = {
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
 
-const createInitialLocationProofState = (language: "fi" | "en"): LocationProofState => ({
-  detail:
-    language === "fi"
-      ? "Sijaintitodiste on pois päältä. Skannaus toimii silti normaalisti."
-      : "Location proof is off. Scanning still works normally.",
-  location: emptyScannerLocation,
-  status: "idle",
-});
-
 const createInitialScannerDeviceState = (): ScannerDeviceState => ({
   device: null,
   error: null,
   status: "idle",
 });
-
-const readWebScannerLocationAsync = (): Promise<ScannerLocationPayload> =>
-  new Promise((resolve, reject) => {
-    if (typeof navigator === "undefined" || typeof navigator.geolocation === "undefined") {
-      reject(new Error("Browser geolocation is not available."));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => reject(new Error(error.message)),
-      {
-        enableHighAccuracy: true,
-        maximumAge: 30_000,
-        timeout: 4_000,
-      }
-    );
-  });
-
-const readNativeScannerLocationAsync = async (): Promise<ScannerLocationPayload> => {
-  const Location = (await import("expo-location").catch(() => null)) as ScannerLocationModule | null;
-
-  if (
-    Location === null ||
-    typeof Location.requestForegroundPermissionsAsync !== "function" ||
-    typeof Location.getCurrentPositionAsync !== "function"
-  ) {
-    throw new Error("LOCATION_PROOF_UNSUPPORTED");
-  }
-
-  const permission = await Location.requestForegroundPermissionsAsync();
-
-  if (!permission.granted) {
-    throw new Error("Location permission was not granted.");
-  }
-
-  const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy?.Balanced,
-  });
-
-  return {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-  };
-};
 
 const createToneConfig = (
   theme: MobileTheme,
@@ -422,18 +333,7 @@ export default function BusinessScannerScreen() {
           : "Scanner device must be registered before recording a stamp.",
       retryScannerDevice:
         language === "fi" ? "Yritä laiterekisteröintiä uudelleen" : "Retry device registration",
-      locationProof: language === "fi" ? "Sijaintitodiste" : "Location proof",
-      locationProofBody:
-        language === "fi"
-          ? "Lisää skannaukseen sijainti, jos laite antaa luvan. Tämä auttaa havaitsemaan etä- tai väärän pisteen skannaukset."
-          : "Attach location when the device allows it. This helps flag remote or wrong-checkpoint scans.",
-      locationProofAction: language === "fi" ? "Lisää sijainti" : "Attach location",
-      locationProofReady: language === "fi" ? "Sijainti mukana" : "Location attached",
-      locationProofCapturing: language === "fi" ? "Haetaan sijaintia…" : "Getting location…",
-      locationProofNativePending:
-        language === "fi"
-          ? "Salli sijainti vain, jos haluat liittää tämän skannauksen pisteeseen."
-          : "Allow location only when you want to attach this scan to the checkpoint.",
+      alreadyStampedAt: language === "fi" ? "Kirjattu aiemmin" : "Already recorded",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -453,19 +353,6 @@ export default function BusinessScannerScreen() {
   const [scannerDeviceState, setScannerDeviceState] = useState<ScannerDeviceState>(
     createInitialScannerDeviceState
   );
-  const [locationProof, setLocationProof] = useState<LocationProofState>(() =>
-    createInitialLocationProofState(language)
-  );
-
-  useEffect(() => {
-    setLocationProof((currentState) => {
-      if (currentState.status !== "idle") {
-        return currentState;
-      }
-
-      return createInitialLocationProofState(language);
-    });
-  }, [language]);
 
   const { scale: resultScale, opacity: resultOpacity } = useScanResultAnimation(lastResult);
 
@@ -560,60 +447,11 @@ export default function BusinessScannerScreen() {
     };
   }, [scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
 
-  const selectedBusinessDetails = useMemo(() => {
-    if (selectedEvent === null) {
-      return [];
-    }
-
-    return [
-      selectedEvent.businessAddress,
-      selectedEvent.businessOpeningHours,
-      selectedEvent.businessPhone,
-    ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-  }, [selectedEvent]);
-
   const resetScanner = (): void => {
     setIsScannerLocked(false);
     setIsSubmitting(false);
     setSubmitError(null);
     setLastResult(null);
-  };
-
-  const handleAttachLocationPress = async (): Promise<void> => {
-    setLocationProof({
-      detail: labels.locationProofCapturing,
-      location: emptyScannerLocation,
-      status: "capturing",
-    });
-
-    try {
-      const location = isWeb ? await readWebScannerLocationAsync() : await readNativeScannerLocationAsync();
-
-      setLocationProof({
-        detail:
-          language === "fi"
-            ? "Sijainti liitetään seuraavaan skannaukseen."
-            : "Location will be attached to the next scan.",
-        location,
-        status: "ready",
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "unknown error";
-      const isUnsupportedLocationProof = errorMessage === "LOCATION_PROOF_UNSUPPORTED";
-
-      setLocationProof({
-        detail:
-          isUnsupportedLocationProof
-            ? language === "fi"
-              ? "Sijaintitodiste vaatii uuden dev buildin. Skannaus toimii normaalisti ilman sijaintia."
-              : "Location proof needs a rebuilt dev app. Scanning still works normally without location."
-            : language === "fi"
-            ? `Sijaintia ei voitu liittää: ${error instanceof Error ? error.message : "tuntematon virhe"}`
-            : `Could not attach location: ${error instanceof Error ? error.message : "unknown error"}`,
-        location: emptyScannerLocation,
-        status: isUnsupportedLocationProof ? "unsupported" : "error",
-      });
-    }
   };
 
   const submitScanAsync = async (qrToken: string): Promise<void> => {
@@ -643,7 +481,7 @@ export default function BusinessScannerScreen() {
           businessId: selectedEvent.businessId,
           scannerDeviceId: scannerDeviceState.device.scannerDeviceId,
           scannerPin: scannerDeviceState.device.pinRequired ? scannerPin.trim() : null,
-          scannerLocation: locationProof.location,
+          scannerLocation: emptyScannerLocation,
         },
         scanTimeoutMs
       );
@@ -704,124 +542,62 @@ export default function BusinessScannerScreen() {
             <Text style={styles.bodyText}>{labels.noActiveBody}</Text>
           ) : (
             <>
-              <View style={styles.eventSelectorStack}>
-                {activeJoinedEvents.map((event) => {
-                  const isSelected = selectedEventVenueId === event.eventVenueId;
-
-                  return (
-                    <Pressable
-                      key={event.eventVenueId}
-                      disabled={isScannerLocked || isSubmitting}
-                      onPress={() => setSelectedEventVenueId(event.eventVenueId)}
-                      style={[
-                        styles.eventSelectorCard,
-                        isSelected ? styles.eventSelectorCardSelected : null,
-                        isScannerLocked || isSubmitting ? styles.disabledButton : null,
-                      ]}
-                    >
-                      <Text style={styles.eventSelectorTitle}>{event.eventName}</Text>
-                      <Text style={styles.eventSelectorMeta}>
-                        {event.businessName} · {event.city}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
               {selectedEvent ? (
-                <CoverImageSurface
-                  fallbackSource={getFallbackCoverSource("clubControl")}
-                  source={
-                    selectedEvent.businessCoverImageUrl
-                      ? { uri: selectedEvent.businessCoverImageUrl }
-                      : getFallbackCoverSource("clubControl")
-                  }
-                  style={styles.businessHero}
-                >
-                  <View style={styles.businessHeroOverlay} />
-                  <View style={styles.businessHeroContent}>
-                    <CoverImageSurface
-                      fallbackSource={getFallbackCoverSource("qrPass")}
-                      source={
-                        selectedEvent.businessLogoUrl
-                          ? { uri: selectedEvent.businessLogoUrl }
-                          : null
-                      }
-                      style={styles.businessLogo}
-                    >
-                      {selectedEvent.businessLogoUrl === null ? (
-                        <AppIcon color={theme.colors.textPrimary} name="business" size={22} />
-                      ) : null}
-                    </CoverImageSurface>
-                    <View style={styles.businessHeroCopy}>
-                      <Text numberOfLines={1} style={styles.businessHeroTitle}>
-                        {selectedEvent.businessName}
-                      </Text>
-                      <Text numberOfLines={2} style={styles.businessHeroMeta}>
-                        {selectedEvent.businessAnnouncement ?? selectedEvent.city}
-                      </Text>
-                    </View>
+                <View style={styles.kioskHeader}>
+                  <View style={styles.kioskIcon}>
+                    <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={20} />
                   </View>
-                </CoverImageSurface>
-              ) : null}
-
-              {selectedBusinessDetails.length > 0 ? (
-                <View style={styles.businessDetailStack}>
-                  {selectedBusinessDetails.map((detail) => (
-                    <Text key={detail} numberOfLines={2} style={styles.businessDetailText}>
-                      {detail}
+                  <View style={styles.kioskCopy}>
+                    <Text style={styles.eventDayEyebrow}>{labels.selectedCheckpoint}</Text>
+                    <Text numberOfLines={1} style={styles.kioskTitle}>
+                      {selectedEvent.eventName}
                     </Text>
-                  ))}
-                </View>
-              ) : null}
-
-              {selectedEvent ? (
-                <View style={styles.selectedMetaRow}>
-                  <Text style={styles.metaText}>
-                    {labels.endsLabel} {formatDateTime(formatter, selectedEvent.endAt)}
-                  </Text>
-                  {selectedEvent.stampLabel ? (
-                    <Text style={styles.stampLabel}>{selectedEvent.stampLabel}</Text>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {selectedEvent ? (
-                <View style={styles.eventDayPanel}>
-                  <View style={styles.eventDayHeader}>
-                    <View style={styles.eventDayIcon}>
-                      <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
-                    </View>
-                    <View style={styles.eventDayCopy}>
-                      <Text style={styles.eventDayEyebrow}>{labels.eventDayEyebrow}</Text>
-                      <Text style={styles.eventDayTitle}>{labels.eventDayTitle}</Text>
-                    </View>
-                    <View style={styles.eventDayState}>
-                      <View style={styles.eventDayDot} />
-                      <Text style={styles.eventDayStateText}>{labels.screenAwake}</Text>
-                    </View>
+                    <Text numberOfLines={1} style={styles.metaText}>
+                      {selectedEvent.businessName} · {labels.endsLabel}{" "}
+                      {formatDateTime(formatter, selectedEvent.endAt)}
+                    </Text>
                   </View>
-                  <Text style={styles.eventDayBody}>{labels.eventDayBody}</Text>
-                  <View style={styles.eventDayFooter}>
-                    <View style={styles.eventDayPill}>
-                      <Text style={styles.eventDayPillLabel}>{labels.selectedCheckpoint}</Text>
-                      <Text numberOfLines={1} style={styles.eventDayPillValue}>
-                        {selectedEvent.businessName}
-                      </Text>
-                    </View>
-                    <View style={styles.eventDayReady}>
-                      <Text style={styles.eventDayReadyText}>{labels.queueReady}</Text>
-                    </View>
+                  <View style={styles.kioskState}>
+                    <View style={styles.eventDayDot} />
+                    <Text style={styles.kioskStateText}>{labels.queueReady}</Text>
                   </View>
                 </View>
               ) : null}
 
+              {activeJoinedEvents.length > 1 ? (
+                <View style={styles.eventSelectorStack}>
+                  {activeJoinedEvents.map((event) => {
+                    const isSelected = selectedEventVenueId === event.eventVenueId;
+
+                    return (
+                      <Pressable
+                        key={event.eventVenueId}
+                        disabled={isScannerLocked || isSubmitting}
+                        onPress={() => setSelectedEventVenueId(event.eventVenueId)}
+                        style={[
+                          styles.eventSelectorCard,
+                          isSelected ? styles.eventSelectorCardSelected : null,
+                          isScannerLocked || isSubmitting ? styles.disabledButton : null,
+                        ]}
+                      >
+                        <Text numberOfLines={1} style={styles.eventSelectorTitle}>
+                          {event.eventName}
+                        </Text>
+                        <Text numberOfLines={1} style={styles.eventSelectorMeta}>
+                          {event.businessName} · {event.city}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+
               {selectedEvent ? (
-                <View style={styles.locationProofPanel}>
-                  <View style={styles.locationProofHeader}>
-                    <View style={styles.locationProofCopy}>
+                <View style={styles.devicePanel}>
+                  <View style={styles.deviceHeader}>
+                    <View style={styles.deviceCopy}>
                       <Text style={styles.eventDayEyebrow}>{labels.scannerDevice}</Text>
-                      <Text style={styles.bodyText}>
+                      <Text numberOfLines={2} style={styles.bodyText}>
                         {scannerDeviceState.status === "ready"
                           ? scannerDeviceState.device.label
                           : scannerDeviceState.status === "registering"
@@ -831,16 +607,11 @@ export default function BusinessScannerScreen() {
                               : labels.scannerDeviceIdle}
                       </Text>
                     </View>
-                    <View
-                      style={[
-                        styles.locationProofStatus,
-                        scannerDeviceState.status === "ready" ? styles.locationProofStatusReady : null,
-                      ]}
-                    >
+                    <View style={[styles.deviceStatus, scannerDeviceState.status === "ready" ? styles.deviceStatusReady : null]}>
                       <Text
                         style={[
-                          styles.locationProofStatusText,
-                          scannerDeviceState.status === "ready" ? styles.locationProofStatusTextReady : null,
+                          styles.deviceStatusText,
+                          scannerDeviceState.status === "ready" ? styles.deviceStatusTextReady : null,
                         ]}
                       >
                         {scannerDeviceState.status === "ready"
@@ -874,49 +645,6 @@ export default function BusinessScannerScreen() {
                         value={scannerPin}
                       />
                     </View>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {selectedEvent ? (
-                <View style={styles.locationProofPanel}>
-                  <View style={styles.locationProofHeader}>
-                    <View style={styles.locationProofCopy}>
-                      <Text style={styles.eventDayEyebrow}>{labels.locationProof}</Text>
-                      <Text style={styles.bodyText}>{labels.locationProofBody}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.locationProofStatus,
-                        locationProof.status === "ready" ? styles.locationProofStatusReady : null,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.locationProofStatusText,
-                          locationProof.status === "ready" ? styles.locationProofStatusTextReady : null,
-                        ]}
-                      >
-                        {locationProof.status === "ready" ? labels.locationProofReady : locationProof.status}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.metaText}>{locationProof.detail}</Text>
-                  {locationProof.status !== "unsupported" ? (
-                    <Pressable
-                      disabled={isSubmitting || locationProof.status === "capturing"}
-                      onPress={() => void handleAttachLocationPress()}
-                      style={[
-                        styles.secondaryButton,
-                        isSubmitting || locationProof.status === "capturing" ? styles.disabledButton : null,
-                      ]}
-                    >
-                      <Text style={styles.secondaryButtonText}>
-                        {locationProof.status === "capturing"
-                          ? labels.locationProofCapturing
-                          : labels.locationProofAction}
-                      </Text>
-                    </Pressable>
                   ) : null}
                 </View>
               ) : null}
@@ -1023,6 +751,11 @@ export default function BusinessScannerScreen() {
             </View>
 
             <Text style={styles.bodyText}>{scanResultDetails[lastResult.status]}</Text>
+            {lastResult.status === "ALREADY_STAMPED" && typeof lastResult.existingStampedAt === "string" ? (
+              <Text style={styles.metaText}>
+                {labels.alreadyStampedAt} {formatDateTime(formatter, lastResult.existingStampedAt)}
+              </Text>
+            ) : null}
             <View style={styles.actionRow}>
               <Pressable onPress={resetScanner} style={[styles.primaryButton, styles.actionFlex]}>
                 <Text style={styles.primaryButtonText}>{labels.scanAgain}</Text>
@@ -1189,6 +922,43 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    deviceCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    deviceHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+    },
+    devicePanel: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 12,
+      padding: 14,
+    },
+    deviceStatus: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+    },
+    deviceStatusReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    deviceStatusText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      lineHeight: 13,
+      textTransform: "uppercase",
+    },
+    deviceStatusTextReady: {
+      color: theme.colors.actionPrimaryText,
+    },
     eventDayBody: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.medium,
@@ -1297,6 +1067,51 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    kioskCopy: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    kioskHeader: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 12,
+      padding: 14,
+    },
+    kioskIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 44,
+      justifyContent: "center",
+      width: 44,
+    },
+    kioskState: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    kioskStateText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      lineHeight: 13,
+      textTransform: "uppercase",
+    },
+    kioskTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     ghostButton: {
       alignItems: "center",

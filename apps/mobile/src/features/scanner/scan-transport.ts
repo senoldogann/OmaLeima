@@ -48,7 +48,7 @@ const knownScanStatuses = [
 const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["tone"]> = {
   SUCCESS: "success",
   QR_ALREADY_USED_OR_REPLAYED: "warning",
-  ALREADY_STAMPED: "warning",
+  ALREADY_STAMPED: "success",
   EVENT_NOT_FOUND: "neutral",
   INVALID_QR: "danger",
   INVALID_QR_TYPE: "danger",
@@ -71,6 +71,7 @@ const mapScanResponse = (response: ScanQrResponse): ScannerAttemptResult => ({
   tone: scanResultTones[response.status],
   stampId: response.stampId,
   stampCount: response.stampCount,
+  existingStampedAt: response.existingStampedAt,
 });
 
 const isKnownScanResponse = (value: unknown): value is ScanQrResponse => {

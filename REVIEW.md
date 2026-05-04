@@ -5,8 +5,8 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review
 
 - **Date:** 2026-05-04
-- **Branch:** `feature/mobile-club-announcement-management`
-- **Scope:** Add mobile organizer announcement authoring so organizers can create, update, archive, and publish/push announcements without leaving the native app.
+- **Branch:** `bug/scanner-duplicate-and-kiosk-home`
+- **Scope:** Fix the physical-device scanner duplicate confusion and reduce the scanner account experience to an event-day camera-first flow.
 
 ## Affected Files
 
@@ -14,27 +14,26 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 - `PLAN.md`
 - `TODOS.md`
 - `PROGRESS.md`
-- `apps/mobile/src/app/club/_layout.tsx`
-- `apps/mobile/src/app/club/home.tsx`
-- `apps/mobile/src/app/club/announcements.tsx`
-- `apps/mobile/src/features/announcements/club-announcements.ts`
-- `apps/mobile/src/features/announcements/club-announcement-media.ts`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/business/scanner.tsx`
+- `apps/mobile/src/features/scanner/scan-transport.ts`
+- `apps/mobile/src/features/scanner/types.ts`
+- `supabase/functions/scan-qr/index.ts`
 
 ## Existing Logic Checked
 
-- `announcements` table already supports club-owned announcements, audience, status, priority, popup flag, active window, CTA and `image_url`.
-- RLS already allows `public.is_club_event_editor_for(club_id)` to manage own club announcements.
-- `announcement-media` storage bucket already allows club authors to upload under `clubs/{clubId}/*`.
-- Mobile feed/popup already renders visible announcements for students, businesses and club users.
-- Web admin/club panel can create announcements, but native organizer mobile has no create/edit/archive UI yet.
+- Remote DB inspection shows the reported physical-device scan produced a valid stamp for the student/event/business before the duplicate result, so the backend duplicate guard is protecting a real existing stamp.
+- `scan_stamp_atomic` counts only `validation_status = 'VALID'` stamps and uses the event rules per-business limit, so revoked/manual review stamps are not causing this report.
+- Scanner route still shows business/event/device/location panels before the camera; this is too busy for an event-day scanner account.
+- Business home still asks scanner users to press `Open scanner`, even though scanner-only staff should land straight in the camera workflow when a live joined event exists.
 
 ## Risks
 
-- Mobile direct Supabase mutations must stay inside existing RLS boundaries.
-- Archiving should be the mobile "delete" action; hard delete would erase audit/history.
-- Image upload must validate permission/type and surface storage policy errors clearly.
-- Push sending is currently exposed via admin web API; mobile can publish/feed first and leave push send as follow-up unless a safe mobile edge function route already exists.
+- Duplicate scans must not create a second valid stamp; the backend guard should remain atomic and strict.
+- The duplicate result should be operationally clear, not look like a broken scan when a valid stamp already exists.
+- Auto-opening the scanner should apply only to scanner-only business staff, not managers/owners who need the management home.
+- Camera permissions and scanner PIN/device registration must still block scans before a request is sent.
 
 ## Review Outcome
 
-Add a native club announcements route with scoped read/create/update/archive mutations and storage-backed image picker. Link it from club home next to existing feed so organizers know where announcements are authored and students/businesses keep reading them through the existing feed/popup surfaces.
+Keep the backend duplicate protection, add existing-stamp context to the duplicate response, simplify the native scanner route so the camera is the primary surface, and make scanner-only users with a live joined event land directly on that scanner route from business home.
