@@ -16,9 +16,8 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Apply and lint Supabase migration.
 - [x] Validate mobile/admin checks and diff check.
 - [x] Update `PROGRESS.md` with handoff.
-- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
-- [ ] Add storage-backed announcement media upload instead of URL input.
 - [ ] Add scanner PIN reset audit review in admin/club tools if needed.
