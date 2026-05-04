@@ -33,6 +33,8 @@ const fallbackCoverPurposeIndexes = {
   rewards: 6,
 } as const satisfies Record<FallbackCoverPurpose, number>;
 
+const warnedCoverPrefetchUrls = new Set<string>();
+
 const createDeterministicIndex = (value: string, modulo: number): number => {
   let hash = 0;
 
@@ -122,7 +124,10 @@ export const prefetchEventCoverUrls = async (
       try {
         await Image.prefetch(url);
       } catch (error: unknown) {
-        console.warn("Failed to prefetch event cover image.", { error, url });
+        if (!warnedCoverPrefetchUrls.has(url)) {
+          warnedCoverPrefetchUrls.add(url);
+          console.warn("Failed to prefetch event cover image.", { error, url });
+        }
         return false;
       }
 

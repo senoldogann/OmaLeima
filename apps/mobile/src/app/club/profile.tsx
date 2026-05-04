@@ -83,7 +83,7 @@ export default function ClubProfileScreen() {
   }, [selectedClub]);
 
   const handleClubMediaPress = async (kind: ClubMediaKind): Promise<void> => {
-    if (clubDraft.clubId.trim().length === 0 || uploadingMediaKind !== null) {
+    if (clubDraft.clubId.trim().length === 0 || uploadingMediaKind !== null || userId === null) {
       return;
     }
 
@@ -104,10 +104,16 @@ export default function ClubProfileScreen() {
         kind,
       });
 
-      setClubDraft((currentDraft) => ({
-        ...currentDraft,
+      const nextDraft = {
+        ...clubDraft,
         [kind === "cover" ? "coverImageUrl" : "logoUrl"]: uploadedMedia.publicUrl,
-      }));
+      };
+
+      setClubDraft(nextDraft);
+      await updateClubProfileMutation.mutateAsync({
+        draft: nextDraft,
+        userId,
+      });
     } catch (error) {
       setMediaError(error instanceof Error ? error.message : "Unknown club media upload error.");
     } finally {
