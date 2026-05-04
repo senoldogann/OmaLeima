@@ -18,7 +18,7 @@ import type {
   BusinessOpportunitySummary,
   BusinessJoinedEventSummary,
 } from "@/features/business/types";
-import { getEventCoverSource } from "@/features/events/event-visuals";
+import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -230,8 +230,8 @@ export default function BusinessEventsScreen() {
           : "No upcoming joined event yet.",
       availableEmptyBody:
         language === "fi"
-          ? "Liitetyissä kaupungeissa ei ole juuri nyt avoimia julkisia tapahtumia."
-          : "No joinable public event is visible in the linked business cities right now.",
+          ? "Tällä tunnuksella ei ole hallittavia tapahtumaliittymisiä juuri nyt."
+          : "This account does not have manageable event joins right now.",
       pastJoinedTitle: language === "fi" ? "Aiemmat tapahtumat" : "Past joined events",
       pastJoinedEmptyBody:
         language === "fi"
@@ -268,6 +268,8 @@ export default function BusinessEventsScreen() {
   const upcomingJoinedEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
   const completedJoinedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
   const cityOpportunities = homeOverviewQuery.data?.cityOpportunities ?? [];
+  const canManageEventMemberships =
+    homeOverviewQuery.data?.memberships.some((membership) => membership.role !== "SCANNER") ?? false;
 
   const activeJoinKey = joinMutation.variables
     ? `${joinMutation.variables.businessId}:${joinMutation.variables.eventId}`
@@ -298,6 +300,7 @@ export default function BusinessEventsScreen() {
       <View key={event.eventVenueId} style={styles.railCard}>
         <Pressable onPress={() => setPreview({ event, kind: "joined" })} style={styles.cardPreviewButton}>
           <CoverImageSurface
+            fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
             source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
             style={styles.cardCover}
@@ -333,6 +336,7 @@ export default function BusinessEventsScreen() {
       <View key={joinKey} style={styles.railCard}>
         <Pressable onPress={() => setPreview({ event, kind: "opportunity" })} style={styles.cardPreviewButton}>
           <CoverImageSurface
+            fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
             source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
             style={styles.cardCover}
@@ -422,29 +426,33 @@ export default function BusinessEventsScreen() {
           {activeJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.queueEmptyBody}</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.railContent}>
+            <ScrollView
+              contentContainerStyle={activeJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={[styles.railContent, activeJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
                 {activeJoinedEvents.map((event) =>
                   renderJoinedEventCard(
                     event,
                     <View style={styles.actionRow}>
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: "/business/scanner",
-                          params: { eventVenueId: event.eventVenueId },
-                        })
-                      }
-                      style={[styles.primaryButton, styles.actionFlex]}
-                    >
-                      <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push("/business/history")}
-                      style={[styles.secondaryButton, styles.actionFlex]}
-                    >
-                      <Text style={styles.secondaryButtonText}>{labels.openHistory}</Text>
-                    </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/business/scanner",
+                            params: { eventVenueId: event.eventVenueId },
+                          })
+                        }
+                        style={[styles.primaryButton, styles.actionFlex]}
+                      >
+                        <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => router.push("/business/history")}
+                        style={[styles.secondaryButton, styles.actionFlex]}
+                      >
+                        <Text style={styles.secondaryButtonText}>{labels.openHistory}</Text>
+                      </Pressable>
                     </View>
                   )
                 )}
@@ -459,33 +467,39 @@ export default function BusinessEventsScreen() {
           {upcomingJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.joinedNextEmptyBody}</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.railContent}>
+            <ScrollView
+              contentContainerStyle={upcomingJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={[styles.railContent, upcomingJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
                 {upcomingJoinedEvents.map((event) => {
-                const leaveKey = `${event.businessId}:${event.eventId}`;
-                const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
+                  const leaveKey = `${event.businessId}:${event.eventId}`;
+                  const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
 
                   return renderJoinedEventCard(
                     event,
-                    <Pressable
-                      disabled={userId === null || isLeaving}
-                      onPress={() => {
-                        if (userId === null) {
-                          return;
-                        }
+                    event.staffRole === "SCANNER" ? null : (
+                      <Pressable
+                        disabled={userId === null || isLeaving}
+                        onPress={() => {
+                          if (userId === null) {
+                            return;
+                          }
 
-                        void leaveMutation.mutateAsync({
-                          eventId: event.eventId,
-                          businessId: event.businessId,
-                          staffUserId: userId,
-                        });
-                      }}
-                      style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
-                    >
-                      <Text style={styles.secondaryButtonText}>
-                        {isLeaving ? labels.leavingEvent : labels.leaveEvent}
-                      </Text>
-                    </Pressable>
+                          void leaveMutation.mutateAsync({
+                            eventId: event.eventId,
+                            businessId: event.businessId,
+                            staffUserId: userId,
+                          });
+                        }}
+                        style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
+                      >
+                        <Text style={styles.secondaryButtonText}>
+                          {isLeaving ? labels.leavingEvent : labels.leaveEvent}
+                        </Text>
+                      </Pressable>
+                    )
                   );
                 })}
               </View>
@@ -494,13 +508,17 @@ export default function BusinessEventsScreen() {
         </InfoCard>
       ) : null}
 
-      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && canManageEventMemberships ? (
         <InfoCard eyebrow={copy.common.manage} title={copy.business.availableToJoin}>
           {cityOpportunities.length === 0 ? (
             <Text style={styles.bodyText}>{labels.availableEmptyBody}</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.railContent}>
+            <ScrollView
+              contentContainerStyle={cityOpportunities.length === 1 ? styles.railScrollSingle : null}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={[styles.railContent, cityOpportunities.length === 1 ? styles.railContentSingle : null]}>
                 {cityOpportunities.map((event) => renderOpportunityCard(event))}
               </View>
             </ScrollView>
@@ -513,8 +531,12 @@ export default function BusinessEventsScreen() {
           {completedJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.pastJoinedEmptyBody}</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.railContent}>
+            <ScrollView
+              contentContainerStyle={completedJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={[styles.railContent, completedJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
                 {completedJoinedEvents.map((event) => renderJoinedEventCard(event, null))}
               </View>
             </ScrollView>
@@ -531,6 +553,7 @@ export default function BusinessEventsScreen() {
           {previewEvent !== null && previewBadge !== null ? (
             <Pressable onPress={() => undefined} style={styles.modalSheet}>
               <CoverImageSurface
+                fallbackSource={getFallbackCoverSource("eventDiscovery")}
                 imageStyle={styles.modalCoverImage}
                 source={getEventCoverSource(
                   previewEvent.coverImageUrl,
@@ -801,6 +824,14 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 12,
       paddingRight: 4,
+    },
+    railContentSingle: {
+      justifyContent: "center",
+      minWidth: "100%",
+      paddingRight: 0,
+    },
+    railScrollSingle: {
+      flexGrow: 1,
     },
     screenTitle: {
       color: theme.colors.textPrimary,

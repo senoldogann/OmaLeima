@@ -205,18 +205,21 @@ const mapMemberships = (
 
 const mapJoinedEvents = (
   eventVenueRows: EventVenueRow[],
+  memberships: BusinessMembershipSummary[],
   businesses: BusinessRow[],
   events: EventRow[],
   now: number
 ): BusinessJoinedEventSummary[] => {
   const businessById = new Map(businesses.map((business) => [business.id, business] as const));
   const eventById = new Map(events.map((event) => [event.id, event] as const));
+  const membershipByBusinessId = new Map(memberships.map((membership) => [membership.businessId, membership] as const));
 
   return eventVenueRows.flatMap((eventVenue) => {
     const business = businessById.get(eventVenue.business_id);
     const event = eventById.get(eventVenue.event_id);
+    const membership = membershipByBusinessId.get(eventVenue.business_id);
 
-    if (typeof business === "undefined" || typeof event === "undefined") {
+    if (typeof business === "undefined" || typeof event === "undefined" || typeof membership === "undefined") {
       return [];
     }
 
@@ -243,6 +246,7 @@ const mapJoinedEvents = (
         timelineState: deriveTimelineState(event.status, event.start_at, event.end_at, now),
         stampLabel: eventVenue.stamp_label,
         venueOrder: eventVenue.venue_order,
+        staffRole: membership.role,
       },
     ];
   });
@@ -253,8 +257,14 @@ const mapCityOpportunities = (
   joinedVenueKeys: Set<string>,
   memberships: BusinessMembershipSummary[]
 ): BusinessOpportunitySummary[] => {
-  return memberships.flatMap((membership) =>
-    events.flatMap((event) => {
+  return memberships.flatMap((membership) => {
+    if (membership.role === "SCANNER") {
+      return [];
+    }
+
+    const staffRole = membership.role;
+
+    return events.flatMap((event) => {
       if (event.status !== "PUBLISHED" && event.status !== "ACTIVE") {
         return [];
       }
@@ -276,10 +286,11 @@ const mapCityOpportunities = (
           endAt: event.end_at,
           joinDeadlineAt: event.join_deadline_at,
           status: event.status,
+          staffRole,
         },
       ];
-    })
-  );
+    });
+  });
 };
 
 const compareJoinedEvents = (left: BusinessJoinedEventSummary, right: BusinessJoinedEventSummary): number =>
@@ -304,7 +315,7 @@ export const fetchBusinessHomeOverviewAsync = async (userId: string): Promise<Bu
   ]);
 
   const now = Date.now();
-  const joinedEventSummaries = mapJoinedEvents(joinedEventVenueRows, businesses, joinedEvents, now).sort(compareJoinedEvents);
+  const joinedEventSummaries = mapJoinedEvents(joinedEventVenueRows, memberships, businesses, joinedEvents, now).sort(compareJoinedEvents);
   const joinedActiveEvents = joinedEventSummaries.filter((event) => event.timelineState === "ACTIVE");
   const joinedUpcomingEvents = joinedEventSummaries.filter((event) => event.timelineState === "UPCOMING");
   const joinedCompletedEvents = joinedEventSummaries

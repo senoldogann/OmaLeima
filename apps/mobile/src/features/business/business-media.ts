@@ -2,6 +2,8 @@ import * as ImagePicker from "expo-image-picker";
 
 import { supabase } from "@/lib/supabase";
 
+import { readImageUploadBody, verifyPublicImageUrlAsync } from "@/features/media/storage-upload";
+
 export type BusinessMediaKind = "cover" | "logo";
 
 type PickBusinessMediaParams = {
@@ -66,16 +68,6 @@ const createStoragePath = (businessId: string, kind: BusinessMediaKind, mimeType
   return `businesses/${businessId}/${kind}-${Date.now()}.${extension}`;
 };
 
-const fetchBlobAsync = async (uri: string): Promise<Blob> => {
-  const response = await fetch(uri);
-
-  if (!response.ok) {
-    throw new Error(`Failed to read selected image ${uri}: ${response.status}`);
-  }
-
-  return response.blob();
-};
-
 export const pickBusinessMediaAsync = async ({
   kind,
 }: PickBusinessMediaParams): Promise<ImagePicker.ImagePickerAsset | null> => {
@@ -106,8 +98,11 @@ export const uploadBusinessMediaAsync = async ({
 }: UploadBusinessMediaParams): Promise<UploadedBusinessMedia> => {
   const mimeType = getMediaType(asset);
   const storagePath = createStoragePath(businessId, kind, mimeType);
-  const imageBlob = await fetchBlobAsync(asset.uri);
-  const { error } = await supabase.storage.from(businessMediaBucketId).upload(storagePath, imageBlob, {
+  const uploadBody = await readImageUploadBody({
+    context: `${kind} image for business ${businessId}`,
+    uri: asset.uri,
+  });
+  const { error } = await supabase.storage.from(businessMediaBucketId).upload(storagePath, uploadBody, {
     cacheControl: "3600",
     contentType: mimeType,
     upsert: false,
@@ -118,6 +113,10 @@ export const uploadBusinessMediaAsync = async ({
   }
 
   const { data } = supabase.storage.from(businessMediaBucketId).getPublicUrl(storagePath);
+  await verifyPublicImageUrlAsync({
+    context: `${kind} image for business ${businessId}`,
+    publicUrl: data.publicUrl,
+  });
 
   return {
     publicUrl: data.publicUrl,

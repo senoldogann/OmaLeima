@@ -2,6 +2,8 @@ import * as ImagePicker from "expo-image-picker";
 
 import { supabase } from "@/lib/supabase";
 
+import { readImageUploadBody, verifyPublicImageUrlAsync } from "@/features/media/storage-upload";
+
 export type ClubMediaKind = "cover" | "logo";
 
 type UploadClubMediaParams = {
@@ -62,16 +64,6 @@ const createStoragePath = (clubId: string, kind: ClubMediaKind, mimeType: Suppor
   return `clubs/${clubId}/club-${kind}-${Date.now()}.${extension}`;
 };
 
-const fetchBlobAsync = async (uri: string): Promise<Blob> => {
-  const response = await fetch(uri);
-
-  if (!response.ok) {
-    throw new Error(`Failed to read selected club media ${uri}: ${response.status}`);
-  }
-
-  return response.blob();
-};
-
 export const pickClubMediaAsync = async ({
   kind,
 }: {
@@ -104,8 +96,11 @@ export const uploadClubMediaAsync = async ({
 }: UploadClubMediaParams): Promise<UploadedClubMedia> => {
   const mimeType = getMediaType(asset);
   const storagePath = createStoragePath(clubId, kind, mimeType);
-  const imageBlob = await fetchBlobAsync(asset.uri);
-  const { error } = await supabase.storage.from(eventMediaBucketId).upload(storagePath, imageBlob, {
+  const uploadBody = await readImageUploadBody({
+    context: `${kind} image for club ${clubId}`,
+    uri: asset.uri,
+  });
+  const { error } = await supabase.storage.from(eventMediaBucketId).upload(storagePath, uploadBody, {
     cacheControl: "3600",
     contentType: mimeType,
     upsert: false,
@@ -116,6 +111,10 @@ export const uploadClubMediaAsync = async ({
   }
 
   const { data } = supabase.storage.from(eventMediaBucketId).getPublicUrl(storagePath);
+  await verifyPublicImageUrlAsync({
+    context: `${kind} image for club ${clubId}`,
+    publicUrl: data.publicUrl,
+  });
 
   return {
     publicUrl: data.publicUrl,

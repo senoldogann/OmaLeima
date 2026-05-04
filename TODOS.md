@@ -6,19 +6,18 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 - [x] Complete the database, edge function, mobile MVP, scanner, admin, QA, push, hosted dry-run, support, theme/language, redesign foundation, business media upload, club mobile operations, reward cover slider, verified report fixes, scanner policy, media fallback, business timeline, and active event membership slices recorded in `PROGRESS.md`.
 
-## Current Todos (Business Media Scanner Home Polish)
+## Current Todos (Media Storage And Scanner Role Fixes)
 
 - [x] Start a dedicated feature branch.
-- [x] Inspect native plist, scanner location proof, media upload surfaces, business home events, and announcement state.
-- [x] Add camera/location usage strings to the checked-in iOS plist.
-- [x] Guard optional location proof API and avoid raw runtime method errors.
-- [x] Add image fallback support for uploaded media surfaces.
-- [x] Convert business home joined events to an image-backed auto rail.
-- [x] Make business profile details collapsible.
-- [x] Document the persistent announcement/feed gap as the next product slice.
+- [x] Inspect media upload helpers, storage policies, business event queries, and join/leave RPCs.
+- [x] Confirm the reported Supabase image URL is a zero-byte object.
+- [x] Replace native image upload bodies with non-empty ArrayBuffer uploads and public URL verification.
+- [x] Filter scanner-only accounts out of event join/leave UI paths.
+- [x] Add server-side join/leave RPC role checks for owner/manager only.
+- [x] Apply the new Supabase migration to the linked database.
 - [x] Run mobile validation commands.
 - [x] Update `PROGRESS.md` with handoff.
-- [x] Commit, push, merge to `main`, push `main`, and delete the feature branch.
+- [ ] Commit, push, merge to `main`, push `main`, and delete the feature branch.
 
 ## Next Queue
 
