@@ -949,6 +949,7 @@ button {
   color: var(--text-primary);
   font-size: 18px;
   font-weight: 800;
+  text-decoration: none;
 }
 
 .public-copy {
@@ -1542,12 +1543,10 @@ button {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    170deg,
-    rgba(0, 0, 0, 0.06) 0%,
-    rgba(0, 0, 0, 0.55) 55%,
-    rgba(0, 0, 0, 0.86) 100%
-  );
+  background: linear-gradient(170deg,
+      rgba(0, 0, 0, 0.06) 0%,
+      rgba(0, 0, 0, 0.55) 55%,
+      rgba(0, 0, 0, 0.86) 100%);
 }
 
 .public-timeline-card-content {
@@ -1631,12 +1630,10 @@ button {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(
-    170deg,
-    rgba(0, 0, 0, 0.04) 0%,
-    rgba(0, 0, 0, 0.54) 52%,
-    rgba(0, 0, 0, 0.88) 100%
-  );
+  background: linear-gradient(170deg,
+      rgba(0, 0, 0, 0.04) 0%,
+      rgba(0, 0, 0, 0.54) 52%,
+      rgba(0, 0, 0, 0.88) 100%);
 }
 
 .public-growth-card-content {

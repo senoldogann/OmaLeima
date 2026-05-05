@@ -85,7 +85,11 @@ export const PublicNavbar = ({
             data-scrolled={hasScrolled ? "true" : "false"}
           >
             <div className="public-brand-row">
-              <div className="public-brand">
+                <a
+                aria-label={locale === "fi" ? "Palaa sivun alkuun" : "Back to top"}
+                className="public-brand"
+                href="#top"
+              >
                 <span aria-hidden="true" className="brand-mark public-brand-mark">
                   <Image
                     alt=""
@@ -99,7 +103,7 @@ export const PublicNavbar = ({
                 <div className="public-brand-copy">
                   <span>OmaLeima</span>
                 </div>
-              </div>
+              </a>
 
               <button
                 aria-controls="public-mobile-menu"

@@ -117,7 +117,7 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
   const content = getPublicLandingContent(locale);
 
   return (
-    <main className="public-home public-home-v2">
+    <main className="public-home public-home-v2" id="top">
       <ScrollRevealProvider />
       <PublicNavbar
         contactHref={content.contactHref}
@@ -238,40 +238,8 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         </div>
       </section>
 
-      {/* Nasıl çalışır + Pilottimalli – birleşik bölüm */}
+      {/* Pilottimalli + Nasıl çalışır – birleşik bölüm (sıra değiştirildi) */}
       <section className="public-shell public-combined-section" id="flow">
-        {/* Adım akışı */}
-        <div className="public-combined-flow">
-          <div className="public-section-heading">
-            <p className="eyebrow">Flow</p>
-            <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
-          </div>
-
-          <div className="public-timeline">
-            {content.timelineItems.map((item, idx) => (
-              <article key={item.step} className="public-timeline-card">
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="public-timeline-card-bg"
-                  fill
-                  sizes="(max-width: 980px) 100vw, 33vw"
-                  src={timelineCardImages[idx as 0 | 1 | 2]}
-                />
-                <div aria-hidden="true" className="public-timeline-card-overlay" />
-                <div className="public-timeline-card-content">
-                  <span>{item.step}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        {/* Bölüm ayıraç çizgisi */}
-        <div className="public-combined-divider" aria-hidden="true" />
-
         {/* Pilottimalli */}
         <div className="public-combined-growth" id="model">
           <div className="public-growth-heading">
@@ -302,6 +270,38 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
           </div>
 
           <p className="public-growth-footnote">{content.growthModelFootnote}</p>
+        </div>
+
+        {/* Bölüm ayıraç çizgisi */}
+        <div className="public-combined-divider" aria-hidden="true" />
+
+        {/* Adım akışı */}
+        <div className="public-combined-flow">
+          <div className="public-section-heading">
+            <p className="eyebrow">Flow</p>
+            <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
+          </div>
+
+          <div className="public-timeline">
+            {content.timelineItems.map((item, idx) => (
+              <article key={item.step} className="public-timeline-card">
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="public-timeline-card-bg"
+                  fill
+                  sizes="(max-width: 980px) 100vw, 33vw"
+                  src={timelineCardImages[idx as 0 | 1 | 2]}
+                />
+                <div aria-hidden="true" className="public-timeline-card-overlay" />
+                <div className="public-timeline-card-content">
+                  <span>{item.step}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
