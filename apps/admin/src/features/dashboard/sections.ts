@@ -27,6 +27,11 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     iconName: "announcements",
     label: "Announcements",
   },
+  {
+    href: "/admin/contact-submissions",
+    iconName: "inbox",
+    label: "Contact submissions",
+  },
 ];
 
 export const getClubDashboardNavigationItems = (canManageRewards: boolean): DashboardNavItem[] =>
