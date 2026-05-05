@@ -5,11 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 
 import type { PublicLandingContent, PublicLocale } from "@/features/public-site/content";
-import { CloseIcon, ContactIcon, LanguageIcon, MenuIcon } from "@/features/public-site/public-icons";
+import { CloseIcon, ContactIcon, InstagramIcon, LanguageIcon, MenuIcon } from "@/features/public-site/public-icons";
 
 type PublicNavbarProps = {
   contactHref: string;
   contactLabel: string;
+  instagramHref: string;
   locale: PublicLocale;
   localeLabel: string;
   localeSwitchHref: string;
@@ -22,6 +23,7 @@ const mobileMenuBreakpoint = 640;
 export const PublicNavbar = ({
   contactHref,
   contactLabel,
+  instagramHref,
   locale,
   localeLabel,
   localeSwitchHref,
@@ -85,7 +87,7 @@ export const PublicNavbar = ({
             data-scrolled={hasScrolled ? "true" : "false"}
           >
             <div className="public-brand-row">
-                <a
+              <a
                 aria-label={locale === "fi" ? "Palaa sivun alkuun" : "Back to top"}
                 className="public-brand"
                 href="#top"
@@ -139,6 +141,15 @@ export const PublicNavbar = ({
                 <LanguageIcon className="public-inline-icon" />
                 <span>{localeLabel}</span>
                 <strong>{localeSwitchLabel}</strong>
+              </Link>
+              <Link
+                aria-label="OmaLeima Instagram"
+                className="public-nav-instagram"
+                href={instagramHref}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <InstagramIcon className="public-inline-icon" />
               </Link>
               <Link
                 className="button button-primary public-nav-contact"

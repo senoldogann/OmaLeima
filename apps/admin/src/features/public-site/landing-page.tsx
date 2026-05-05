@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getPublicLandingContent, type PublicLocale } from "@/features/public-site/content";
 import { PublicFooter } from "@/features/public-site/public-footer";
-import { ContactIcon, InstagramIcon } from "@/features/public-site/public-icons";
+import { ContactIcon, InstagramIcon, QrCodeIcon, StarIcon, ZapIcon, ShieldCheckIcon, UsersIcon } from "@/features/public-site/public-icons";
 import { PublicNavbar } from "@/features/public-site/public-navbar";
 import { ScrollRevealProvider } from "@/features/public-site/scroll-reveal";
 
@@ -116,12 +116,20 @@ const scenePhotos = [
 export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
   const content = getPublicLandingContent(locale);
 
+  /* Hikaye kartı ikonları – sırayla sabit */
+  const storyIcons = [ZapIcon, QrCodeIcon, ShieldCheckIcon] as const;
+  /* Destek kartı ikonları */
+  const supportIcons = [UsersIcon, StarIcon] as const;
+  /* İstatistik kartı ikonları */
+  const statIcons = [QrCodeIcon, ZapIcon, StarIcon] as const;
+
   return (
     <main className="public-home public-home-v2" id="top">
       <ScrollRevealProvider />
       <PublicNavbar
         contactHref={content.contactHref}
         contactLabel={content.contactLabel}
+        instagramHref={content.interestHref}
         locale={locale}
         localeLabel={content.localeLabel}
         localeSwitchHref={content.localeSwitchHref}
@@ -138,10 +146,6 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             <p className="public-hero-desc">{content.description}</p>
 
             <div className="public-actions">
-              <Link className="button button-primary" href={content.contactHref}>
-                <ContactIcon className="public-inline-icon" />
-                {content.contactLabel}
-              </Link>
               <Link className="button button-ghost" href={content.interestHref}>
                 <InstagramIcon className="public-inline-icon" />
                 {content.interestLabel}
@@ -149,12 +153,16 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             </div>
 
             <div aria-label={content.sectionLabel} className="public-stat-row">
-              {content.statItems.map((item) => (
-                <article key={item.label} className="public-stat-card">
-                  <strong>{item.value}</strong>
-                  <span>{item.label}</span>
-                </article>
-              ))}
+              {content.statItems.map((item, idx) => {
+                const StatIcon = statIcons[idx as 0 | 1 | 2];
+                return (
+                  <article key={item.label} className="public-stat-card">
+                    <StatIcon className="public-stat-icon" />
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                  </article>
+                );
+              })}
             </div>
           </div>
 
@@ -170,6 +178,34 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
               width={featureImages.hero.width}
             />
           </div>
+        </div>
+      </section>
+
+      {/* Flow – 3 ad\u0131m kart\u0131, hero'dan hemen sonra */}
+      <section className="public-shell public-flow-section" id="flow">
+        <div className="public-section-heading">
+          <p className="eyebrow">Flow</p>
+          <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
+        </div>
+        <div className="public-timeline">
+          {content.timelineItems.map((item, idx) => (
+            <article key={item.step} className="public-timeline-card">
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="public-timeline-card-bg"
+                fill
+                sizes="(max-width: 980px) 100vw, 33vw"
+                src={timelineCardImages[idx as 0 | 1 | 2]}
+              />
+              <div aria-hidden="true" className="public-timeline-card-overlay" />
+              <div className="public-timeline-card-content">
+                <span>{item.step}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -217,12 +253,18 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         <div className="public-stack">
           <p className="eyebrow">{content.sectionLabel}</p>
           <h2 className="public-lead-heading">{content.productTitle}</h2>
-          {content.storyItems.map((item) => (
-            <article key={item.title} className="public-story-card public-story-card-highlight">
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
+          {content.storyItems.map((item, idx) => {
+            const StoryIcon = storyIcons[idx as 0 | 1 | 2];
+            return (
+              <article key={item.title} className="public-story-card public-story-card-highlight">
+                <div className="public-card-icon-row">
+                  <StoryIcon className="public-card-icon" />
+                  <h3>{item.title}</h3>
+                </div>
+                <p>{item.body}</p>
+              </article>
+            );
+          })}
         </div>
 
         <div className="public-image-card public-image-card-scan public-image-surface public-media-soft">
@@ -238,10 +280,9 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         </div>
       </section>
 
-      {/* Pilottimalli + Nasıl çalışır – birleşik bölüm (sıra değiştirildi) */}
-      <section className="public-shell public-combined-section" id="flow">
-        {/* Pilottimalli */}
-        <div className="public-combined-growth" id="model">
+      {/* Pilottimalli – kendi bölümü */}
+      <section className="public-shell public-combined-section" id="model">
+        <div className="public-combined-growth">
           <div className="public-growth-heading">
             <p className="eyebrow">{locale === "fi" ? "Pilottimalli" : "Pilot model"}</p>
             <h2>{content.growthModelTitle}</h2>
@@ -271,38 +312,6 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
 
           <p className="public-growth-footnote">{content.growthModelFootnote}</p>
         </div>
-
-        {/* Bölüm ayıraç çizgisi */}
-        <div className="public-combined-divider" aria-hidden="true" />
-
-        {/* Adım akışı */}
-        <div className="public-combined-flow">
-          <div className="public-section-heading">
-            <p className="eyebrow">Flow</p>
-            <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
-          </div>
-
-          <div className="public-timeline">
-            {content.timelineItems.map((item, idx) => (
-              <article key={item.step} className="public-timeline-card">
-                <Image
-                  alt=""
-                  aria-hidden="true"
-                  className="public-timeline-card-bg"
-                  fill
-                  sizes="(max-width: 980px) 100vw, 33vw"
-                  src={timelineCardImages[idx as 0 | 1 | 2]}
-                />
-                <div aria-hidden="true" className="public-timeline-card-overlay" />
-                <div className="public-timeline-card-content">
-                  <span>{item.step}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Etkinlik günü bölümü – ödül görseli + destek kartları */}
@@ -331,12 +340,18 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             </h2>
           </div>
 
-          {content.supportItems.map((item) => (
-            <article key={item.title} className="public-story-card public-story-card-soft public-support-card">
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
+          {content.supportItems.map((item, idx) => {
+            const SupportIcon = supportIcons[idx as 0 | 1];
+            return (
+              <article key={item.title} className="public-story-card public-story-card-soft public-support-card">
+                <div className="public-card-icon-row">
+                  <SupportIcon className="public-card-icon" />
+                  <h3>{item.title}</h3>
+                </div>
+                <p>{item.body}</p>
+              </article>
+            );
+          })}
 
           <div className="public-contact-card public-support-contact-card" id="contact">
             <Image

@@ -40,6 +40,7 @@ export const PublicContactPage = ({ locale }: PublicContactPageProps) => {
             <PublicNavbar
                 contactHref={getContactPageHref(locale)}
                 contactLabel={landingContent.contactLabel}
+                instagramHref={landingContent.interestHref}
                 locale={locale}
                 localeLabel={landingContent.localeLabel}
                 localeSwitchHref={localeSwitchHref}

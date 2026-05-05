@@ -1079,11 +1079,12 @@ button {
   inset: 0 0 auto;
   z-index: 40;
   padding-inline: 0;
+  padding-top: env(safe-area-inset-top, 0px);
   pointer-events: none;
 }
 
 .public-navbar-spacer {
-  height: 64px;
+  height: calc(64px + env(safe-area-inset-top, 0px));
 }
 
 .public-navbar {
@@ -1152,6 +1153,26 @@ button {
   min-height: 36px;
   padding-inline: 16px;
   font-size: 13px;
+}
+
+.public-nav-instagram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.public-nav-instagram:hover {
+  color: var(--primary);
+}
+
+.public-nav-instagram .public-inline-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .public-menu-toggle {
@@ -1306,6 +1327,15 @@ button {
   background: rgba(255, 255, 255, 0.022);
 }
 
+.public-stat-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+  opacity: 0.75;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
 .public-stat-card strong {
   color: var(--text-primary);
   max-width: 100%;
@@ -1417,6 +1447,20 @@ button {
   background: rgba(255, 255, 255, 0.022);
 }
 
+/* İkon + başlık satırı */
+.public-card-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-card-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
 .public-story-card-soft {
   background:
     linear-gradient(180deg, rgba(200, 255, 71, 0.06), rgba(200, 255, 71, 0) 42%),
@@ -1486,6 +1530,14 @@ button {
   overflow: hidden;
 }
 
+/* Bağımsız Flow bölümü – hero'dan hemen sonra */
+.public-flow-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(24px, 3vw, 42px);
+}
+
 .public-combined-flow {
   display: flex;
   flex-direction: column;
@@ -1536,6 +1588,11 @@ button {
 .public-timeline-card-bg {
   object-fit: cover;
   object-position: center;
+  transition: transform 0.5s ease;
+}
+
+.public-timeline-card:hover .public-timeline-card-bg {
+  transform: scale(1.06);
 }
 
 /* Metin okunaklılığı için altı koyu gradient */
@@ -1623,6 +1680,11 @@ button {
 .public-growth-card-bg {
   object-fit: cover;
   object-position: center;
+  transition: transform 0.5s ease;
+}
+
+.public-growth-card:hover .public-growth-card-bg {
+  transform: scale(1.06);
 }
 
 /* Altından yukarı koyu gradient – metin okunaklılığı */
@@ -1786,6 +1848,11 @@ button {
   object-fit: cover;
   object-position: center;
   display: block;
+  transition: transform 0.5s ease;
+}
+
+.public-gallery-item:hover img {
+  transform: scale(1.06);
 }
 
 /* Landscape fotoğraflar 2 sütun kaplar – 2:1 oran normal item yüksekliğiyle eşleşir */

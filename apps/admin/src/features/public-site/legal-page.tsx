@@ -44,6 +44,7 @@ export const PublicLegalPage = ({ documentType, locale }: PublicLegalPageProps) 
       <PublicNavbar
         contactHref={landingContent.contactHref}
         contactLabel={landingContent.contactLabel}
+        instagramHref={landingContent.interestHref}
         locale={locale}
         localeLabel={landingContent.localeLabel}
         localeSwitchHref={localeSwitchHref}
