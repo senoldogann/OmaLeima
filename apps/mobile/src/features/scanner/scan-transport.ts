@@ -9,6 +9,8 @@ type ScanQrTransportParams = {
   accessToken: string;
   qrToken: string;
   businessId: string;
+  eventId: string;
+  eventVenueId: string;
   scannerDeviceId: string | null;
   scannerPin: string | null;
   scannerLocation: ScannerLocationPayload;
@@ -27,6 +29,8 @@ type ScanTimeoutError = {
 
 const knownScanStatuses = [
   "SUCCESS",
+  "EVENT_CONTEXT_REQUIRED",
+  "EVENT_CONTEXT_MISMATCH",
   "QR_ALREADY_USED_OR_REPLAYED",
   "ALREADY_STAMPED",
   "EVENT_NOT_FOUND",
@@ -47,6 +51,8 @@ const knownScanStatuses = [
 
 const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["tone"]> = {
   SUCCESS: "success",
+  EVENT_CONTEXT_REQUIRED: "warning",
+  EVENT_CONTEXT_MISMATCH: "danger",
   QR_ALREADY_USED_OR_REPLAYED: "warning",
   ALREADY_STAMPED: "success",
   EVENT_NOT_FOUND: "neutral",
@@ -93,6 +99,8 @@ export const requestScanQrAsync = async ({
   accessToken,
   qrToken,
   businessId,
+  eventId,
+  eventVenueId,
   scannerDeviceId,
   scannerPin,
   scannerLocation,
@@ -109,6 +117,8 @@ export const requestScanQrAsync = async ({
     body: JSON.stringify({
       qrToken,
       businessId,
+      eventId,
+      eventVenueId,
       scannerDeviceId,
       scannerPin,
       scannerLocation,
@@ -116,7 +126,17 @@ export const requestScanQrAsync = async ({
   });
 
   const responseText = await response.text();
-  const responseBody = responseText.length === 0 ? null : JSON.parse(responseText);
+  // Ag gecidi/Edge runtime bazen JSON yerine HTML hata govdesi dondurur; ham SyntaxError
+  // operatore anlamsiz gozukur. JSON parse'i guvenli hale getirip body'i null kabul ediyoruz;
+  // sonraki dogrulayici "invalid body" mesaji status koduyla birlikte gercek nedeni iletir.
+  let responseBody: unknown = null;
+  if (responseText.length > 0) {
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch {
+      responseBody = null;
+    }
+  }
 
   if (!response.ok) {
     if (isKnownScanResponse(responseBody)) {
@@ -154,10 +174,22 @@ export const runScanWithTimeoutAsync = async ({
 
     return await Promise.race([task(controller.signal), timeoutPromise]);
   } catch (error) {
-    if (
-      (error instanceof DOMException && error.name === "AbortError") ||
-      (typeof error === "object" && error !== null && "kind" in error && error.kind === "timeout")
-    ) {
+    // Hermes runtime'da `DOMException` her zaman global olarak tanimli degil; dogrudan
+    // `error instanceof DOMException` kontrolu `ReferenceError: Property 'DOMException'
+    // doesn't exist` atar ve scanner kilitli kalir. Once typeof ile guard ediyoruz,
+    // ardindan abort/timeout sinyallerini ortak bir uretici uzerinden tanitiyoruz.
+    const isAbortError =
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      (error as { name?: unknown }).name === "AbortError";
+    const isTimeoutError =
+      typeof error === "object" &&
+      error !== null &&
+      "kind" in error &&
+      (error as { kind?: unknown }).kind === "timeout";
+
+    if (isAbortError || isTimeoutError) {
       return {
         status: "NETWORK_TIMEOUT",
         message: "Network is slow. Try again or use manual fallback.",

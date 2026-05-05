@@ -52,10 +52,11 @@ const createSupabaseClient = () =>
     publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
       auth: {
-        storage,
         autoRefreshToken: true,
-        persistSession: true,
         detectSessionInUrl: false,
+        flowType: "pkce",
+        persistSession: true,
+        storage,
       },
     }
   );

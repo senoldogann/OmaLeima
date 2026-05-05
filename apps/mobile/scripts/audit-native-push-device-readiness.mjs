@@ -62,20 +62,11 @@ const main = async () => {
     diagnosticsSource.includes("clearLastNotificationResponse") &&
     diagnosticsSource.includes("lastNotification: responseCapture") &&
     diagnosticsSource.includes("lastNotificationResponse: responseCapture");
-  const profileSurfacePresent =
-    profileSource.includes("useNativePushDiagnostics") &&
-    profileSource.includes("refreshPushPermissionStateAsync") &&
-    profileSource.includes("lastPushDiagnosticsRefreshAt") &&
-    profileSource.includes("diagnostics.lastNotification?.source") &&
-    profileSource.includes("diagnostics.lastNotificationResponse?.source") &&
-    profileSource.includes("Last diagnostics refresh") &&
-    profileSource.includes("clearCapturedPushActivity") &&
-    profileSource.includes("Local notification activity does not prove remote APNs or FCM delivery yet.") &&
-    profileSource.includes("Push diagnostics") &&
-    profileSource.includes("Native push diagnostics") &&
-    profileSource.includes("Refresh push diagnostics") &&
-    profileSource.includes("Refreshing...") &&
-    profileSource.includes("Clear captured push activity");
+  const profileSurfaceHidden =
+    !profileSource.includes("Native push diagnostics") &&
+    !profileSource.includes("Refresh push diagnostics") &&
+    !profileSource.includes("Clear captured push activity") &&
+    !profileSource.includes("clearCapturedPushActivity");
 
   const normalizedReadmeSource = readmeSource.toLowerCase();
   const normalizedTestingDocSource = testingDocSource.toLowerCase();
@@ -84,19 +75,19 @@ const main = async () => {
     normalizedReadmeSource.includes("expo-dev-client") &&
     normalizedReadmeSource.includes("native push diagnostics") &&
     normalizedReadmeSource.includes("runtime label now classifies the current physical-device dev client as a development build") &&
-    normalizedReadmeSource.includes("remote source prove apns or fcm-backed delivery") &&
+    normalizedReadmeSource.includes("provider-owned diagnostics capture") &&
     normalizedTestingDocSource.includes("mobile native push device readiness") &&
     normalizedTestingDocSource.includes("physical-device requirement") &&
     normalizedTestingDocSource.includes("push diagnostics") &&
-    normalizedTestingDocSource.includes("show a remote source") &&
-    normalizedMasterPlanSource.includes("native push diagnostics surface is shipped");
+    normalizedTestingDocSource.includes("provider-owned diagnostics capture") &&
+    normalizedMasterPlanSource.includes("native push diagnostics capture stays provider-owned");
 
   if (
     !hasDevClientDependency ||
     !layoutImportsDevClient ||
     !providerWired ||
     !diagnosticsCapturePresent ||
-    !profileSurfacePresent ||
+    !profileSurfaceHidden ||
     !docsAligned
   ) {
     fail("mobile-native-push-device-readiness:failed", [
@@ -104,7 +95,7 @@ const main = async () => {
       `layoutImportsDevClient=${layoutImportsDevClient}`,
       `providerWired=${providerWired}`,
       `diagnosticsCapturePresent=${diagnosticsCapturePresent}`,
-      `profileSurfacePresent=${profileSurfacePresent}`,
+      `profileSurfaceHidden=${profileSurfaceHidden}`,
       `docsAligned=${docsAligned}`,
     ]);
   }

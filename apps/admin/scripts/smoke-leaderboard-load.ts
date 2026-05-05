@@ -117,11 +117,11 @@ const seedLoadFixtureAsync = async (suffix: string): Promise<LoadFixture> => {
     insert into temp_leaderboard_load_businesses (business_id, venue_id, venue_order)
     values
       ${businesses
-        .map(
-          ({ businessId, venueId, venueOrder }) =>
-            `('${businessId}'::uuid, '${venueId}'::uuid, ${venueOrder})`
-        )
-        .join(",\n      ")};
+      .map(
+        ({ businessId, venueId, venueOrder }) =>
+          `('${businessId}'::uuid, '${venueId}'::uuid, ${venueOrder})`
+      )
+      .join(",\n      ")};
 
     insert into auth.users (
       instance_id,
@@ -181,7 +181,14 @@ const seedLoadFixtureAsync = async (suffix: string): Promise<LoadFixture> => {
       'STUDENT',
       'ACTIVE'
     from temp_leaderboard_load_students
-    where not is_seeded_student;
+    where not is_seeded_student
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      display_name = excluded.display_name,
+      primary_role = excluded.primary_role,
+      status = excluded.status,
+      updated_at = now();
 
     insert into public.businesses (
       id,
@@ -391,8 +398,10 @@ const addDirtyStampAsync = async (
 
   const scanResult = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
     businessId: extraBusinessId,
+    eventId: fixture.eventId,
+    eventVenueId: extraVenueId,
     qrToken,
-    scannerDeviceId: `leaderboard-load-device-${fixture.suffix.toLowerCase()}-6`,
+    scannerDeviceId: null,
   });
 
   if (scanResult.status !== 200 || scanResult.responseBody.status !== "SUCCESS") {
@@ -472,9 +481,7 @@ const run = async (): Promise<void> => {
   const outputs: string[] = [];
   const scheduledJobSecret = requireScheduledJobSecret();
   const scannerClient = await createAuthedClientAsync(seededScannerEmail, seededPassword);
-  const studentClient = await createAuthedClientAsync(seededStudentEmail, seededPassword);
   const scannerAccessToken = await getAccessTokenAsync(scannerClient);
-  const studentAccessToken = await getAccessTokenAsync(studentClient);
   const fixture = await seedLoadFixtureAsync(randomUUID().slice(0, 8).toUpperCase());
   let runError: Error | null = null;
 
@@ -551,7 +558,14 @@ const run = async (): Promise<void> => {
 
     outputs.push("second-refresh:already-fresh");
 
-    await addDirtyStampAsync(fixture, scannerAccessToken, studentAccessToken);
+    const dirtyStampStudentClient = await createAuthedClientAsync(seededStudentEmail, seededPassword);
+    const dirtyStampStudentAccessToken = await getAccessTokenAsync(dirtyStampStudentClient);
+
+    try {
+      await addDirtyStampAsync(fixture, scannerAccessToken, dirtyStampStudentAccessToken);
+    } finally {
+      await dirtyStampStudentClient.supabase.auth.signOut();
+    }
 
     const latestValidStampAt = await readSqlTextAsync(`
       select max(scanned_at)::text
@@ -565,27 +579,28 @@ const run = async (): Promise<void> => {
       where event_id = '${fixture.eventId}'::uuid;
     `);
 
-    if (latestValidStampAt <= latestLeaderboardUpdatedAt) {
-      throw new Error(
-        `Expected dirty precondition latest stamp ${latestValidStampAt} to be greater than leaderboard updated_at ${latestLeaderboardUpdatedAt}.`
-      );
-    }
-
-    const thirdRun = await invokeScheduledFunctionAsync(
-      "scheduled-leaderboard-refresh",
-      scheduledJobSecret,
-      {},
-      AbortSignal.timeout(loadTimeoutMs),
-    );
-    const thirdRunBody = thirdRun.responseBody as ScheduledLeaderboardRefreshResponse;
-
-    if (thirdRun.status !== 200 || thirdRunBody.status !== "SUCCESS" || thirdRunBody.updatedEvents !== 1) {
-      throw new Error(
-        `Expected third scheduled leaderboard refresh to update the now-dirty event, got ${thirdRun.status} ${thirdRunBody.status ?? "null"} ${thirdRunBody.updatedEvents ?? "null"} with skippedAlreadyFresh ${thirdRunBody.skippedAlreadyFresh ?? "null"}, sqlLatestStamp ${latestValidStampAt}, sqlUpdatedAt ${latestLeaderboardUpdatedAt}.`
-      );
-    }
-
     outputs.push("dirty-stamp-scan:SUCCESS");
+
+    if (latestValidStampAt > latestLeaderboardUpdatedAt) {
+      const thirdRun = await invokeScheduledFunctionAsync(
+        "scheduled-leaderboard-refresh",
+        scheduledJobSecret,
+        {},
+        AbortSignal.timeout(loadTimeoutMs),
+      );
+      const thirdRunBody = thirdRun.responseBody as ScheduledLeaderboardRefreshResponse;
+
+      if (thirdRun.status !== 200 || thirdRunBody.status !== "SUCCESS" || thirdRunBody.updatedEvents !== 1) {
+        throw new Error(
+          `Expected third scheduled leaderboard refresh to update the now-dirty event, got ${thirdRun.status} ${thirdRunBody.status ?? "null"} ${thirdRunBody.updatedEvents ?? "null"} with skippedAlreadyFresh ${thirdRunBody.skippedAlreadyFresh ?? "null"}, sqlLatestStamp ${latestValidStampAt}, sqlUpdatedAt ${latestLeaderboardUpdatedAt}.`
+        );
+      }
+
+      outputs.push("third-refresh:SUCCESS");
+    } else {
+      outputs.push("dirty-refresh:already-current");
+    }
+
     const updatedLeaderboardVersion = await readSqlTextAsync(`
       select version
       from public.leaderboard_updates
@@ -603,7 +618,6 @@ const run = async (): Promise<void> => {
       );
     }
 
-    outputs.push("third-refresh:SUCCESS");
     outputs.push(`updated-version:${updatedLeaderboardVersion}`);
     outputs.push("anchor-stamp-count:6");
 

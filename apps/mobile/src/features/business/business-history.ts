@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 
 import type { BusinessScanHistoryEntry } from "@/features/business/types";
 
+export const RECENT_SCAN_LIMIT = 120;
+
 type StampRow = {
   id: string;
   event_id: string;
@@ -45,11 +47,11 @@ const fetchRecentScansAsync = async (userId: string): Promise<StampRow[]> => {
     )
     .eq("scanner_user_id", userId)
     .order("scanned_at", { ascending: false })
-    .limit(20)
+    .limit(RECENT_SCAN_LIMIT)
     .returns<StampRow[]>();
 
   if (error !== null) {
-    throw new Error(`Failed to load scan history for ${userId}: ${error.message}`);
+    throw new Error("Failed to load scan history.", { cause: error });
   }
 
   return data;
@@ -59,9 +61,9 @@ const mapHistoryEntries = (rows: StampRow[]): BusinessScanHistoryEntry[] =>
   rows.map((row) => ({
     stampId: row.id,
     eventId: row.event_id,
-    eventName: row.event?.name ?? "Unknown event",
+    eventName: row.event?.name ?? "",
     businessId: row.business_id,
-    businessName: row.business?.name ?? "Unknown business",
+    businessName: row.business?.name ?? "",
     studentId: row.student_id,
     studentLabel: formatStudentLabel(row.student_id),
     scannedAt: row.scanned_at,

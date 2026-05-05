@@ -25,6 +25,7 @@ export const ClubClaimsPanel = ({ snapshot }: ClubClaimsPanelProps) => {
     () => snapshot.recentClaims.filter((claim) => claim.eventId === effectiveSelectedEventId),
     [effectiveSelectedEventId, snapshot.recentClaims]
   );
+  const [activeTab, setActiveTab] = useState<"event-queue" | "recent-claims">("event-queue");
 
   return (
     <div className="stack-lg">
@@ -58,7 +59,12 @@ export const ClubClaimsPanel = ({ snapshot }: ClubClaimsPanelProps) => {
         </article>
       </section>
 
-      <section className="content-grid">
+      <div className="tab-nav">
+        <button className={activeTab === "event-queue" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-queue")} type="button">Event Queue</button>
+        <button className={activeTab === "recent-claims" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("recent-claims")} type="button">Recent Claims</button>
+      </div>
+
+      <section className="content-grid" style={{ display: activeTab !== "event-queue" ? "none" : undefined }}>
         <div className="stack-md">
           <div className="stack-sm">
             <div className="eyebrow">Event handoff queue</div>
@@ -131,7 +137,7 @@ export const ClubClaimsPanel = ({ snapshot }: ClubClaimsPanelProps) => {
         </div>
       </section>
 
-      <section className="stack-md">
+      <section className="stack-md" style={{ display: activeTab !== "recent-claims" ? "none" : undefined }}>
         <div className="stack-sm">
           <div className="eyebrow">Recent history</div>
           <h3 className="section-title">Reward claims</h3>

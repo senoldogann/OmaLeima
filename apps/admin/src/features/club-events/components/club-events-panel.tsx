@@ -116,6 +116,7 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isUpdatePending, setIsUpdatePending] = useState<boolean>(false);
   const [isCancelPending, setIsCancelPending] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"memberships" | "create-event" | "manage-events">("memberships");
 
   const handleSelectEvent = (event: ClubEventRecord): void => {
     setSelectedEventId(event.eventId);
@@ -266,8 +267,14 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
         </article>
       </section>
 
-      <section className="content-grid">
-        <div className="stack-md">
+      <div className="tab-nav">
+        <button className={activeTab === "memberships" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("memberships")} type="button">Memberships</button>
+        <button className={activeTab === "create-event" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("create-event")} type="button">Create Event</button>
+        <button className={activeTab === "manage-events" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("manage-events")} type="button">Manage Events</button>
+      </div>
+
+      <section className="content-grid" style={{ display: activeTab === "manage-events" ? "none" : undefined }}>
+        <div className="stack-md" style={activeTab === "memberships" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Club access</div>
             <h3 className="section-title">Active memberships</h3>
@@ -301,7 +308,7 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
           )}
         </div>
 
-        <div className="stack-md">
+        <div className="stack-md" style={activeTab === "create-event" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Create event</div>
             <h3 className="section-title">New club event</h3>
@@ -537,7 +544,7 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
         </div>
       </section>
 
-      <section className="panel panel-hero">
+      <section className="panel" style={{ display: activeTab !== "manage-events" ? "none" : undefined }}>
         <div className="review-card-header">
           <div className="stack-sm">
             <div className="eyebrow">Manage event</div>
@@ -588,9 +595,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            status: event.target.value as ClubEventUpdatePayload["status"],
-                          }
+                          ...currentPayload,
+                          status: event.target.value as ClubEventUpdatePayload["status"],
+                        }
                     )
                   }
                   value={updatePayload.status}
@@ -611,9 +618,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            visibility: event.target.value as ClubEventUpdatePayload["visibility"],
-                          }
+                          ...currentPayload,
+                          visibility: event.target.value as ClubEventUpdatePayload["visibility"],
+                        }
                     )
                   }
                   value={updatePayload.visibility}
@@ -636,9 +643,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            name: event.target.value,
-                          }
+                          ...currentPayload,
+                          name: event.target.value,
+                        }
                     )
                   }
                   value={updatePayload.name}
@@ -655,9 +662,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            city: event.target.value,
-                          }
+                          ...currentPayload,
+                          city: event.target.value,
+                        }
                     )
                   }
                   value={updatePayload.city}
@@ -675,9 +682,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                     currentPayload === null
                       ? null
                       : {
-                          ...currentPayload,
-                          description: event.target.value,
-                        }
+                        ...currentPayload,
+                        description: event.target.value,
+                      }
                   )
                 }
                 value={updatePayload.description}
@@ -695,9 +702,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            startAt: event.target.value,
-                          }
+                          ...currentPayload,
+                          startAt: event.target.value,
+                        }
                     )
                   }
                   type="datetime-local"
@@ -715,9 +722,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            endAt: event.target.value,
-                          }
+                          ...currentPayload,
+                          endAt: event.target.value,
+                        }
                     )
                   }
                   type="datetime-local"
@@ -735,9 +742,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            joinDeadlineAt: event.target.value,
-                          }
+                          ...currentPayload,
+                          joinDeadlineAt: event.target.value,
+                        }
                     )
                   }
                   type="datetime-local"
@@ -755,9 +762,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            coverImageUrl: event.target.value,
-                          }
+                          ...currentPayload,
+                          coverImageUrl: event.target.value,
+                        }
                     )
                   }
                   value={updatePayload.coverImageUrl}
@@ -774,9 +781,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            maxParticipants: event.target.value,
-                          }
+                          ...currentPayload,
+                          maxParticipants: event.target.value,
+                        }
                     )
                   }
                   type="number"
@@ -794,9 +801,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                       currentPayload === null
                         ? null
                         : {
-                            ...currentPayload,
-                            minimumStampsRequired: event.target.value,
-                          }
+                          ...currentPayload,
+                          minimumStampsRequired: event.target.value,
+                        }
                     )
                   }
                   type="number"
@@ -812,9 +819,9 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
                   currentPayload === null
                     ? null
                     : {
-                        ...currentPayload,
-                        rulesJson: value,
-                      }
+                      ...currentPayload,
+                      rulesJson: value,
+                    }
                 )
               }
               value={updatePayload.rulesJson}
@@ -843,7 +850,7 @@ export const ClubEventsPanel = ({ snapshot }: ClubEventsPanelProps) => {
         )}
       </section>
 
-      <section className="stack-md">
+      <section className="stack-md" style={{ display: activeTab !== "manage-events" ? "none" : undefined }}>
         <div className="stack-sm">
           <div className="eyebrow">Recent events</div>
           <h3 className="section-title">Latest visible club events</h3>

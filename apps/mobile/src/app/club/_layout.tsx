@@ -1,15 +1,33 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { GlassTabBarBackground } from "@/features/foundation/components/glass-tab-bar-background";
+import { TabIcon } from "@/features/foundation/components/tab-icon";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
+const getClubTabIconName = (routeName: string) => {
+  switch (routeName) {
+    case "home":
+      return { ios: "house.fill", android: "home", web: "home" } as const;
+    case "events":
+      return { ios: "calendar.badge.plus", android: "event", web: "event" } as const;
+    case "announcements":
+      return { ios: "megaphone.fill", android: "campaign", web: "campaign" } as const;
+    case "upcoming":
+      return { ios: "clock.badge.checkmark", android: "event-available", web: "event-available" } as const;
+    default:
+      return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
+  }
+};
+
 export default function ClubLayout() {
+  const theme = useAppTheme();
   const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
@@ -64,7 +82,7 @@ export default function ClubLayout() {
   }
 
   if (accessQuery.data?.area === "business") {
-    return <Redirect href="/business/home" />;
+    return <Redirect href={accessQuery.data.homeHref ?? "/business/home"} />;
   }
 
   if (accessQuery.data?.area !== "club") {
@@ -85,13 +103,47 @@ export default function ClubLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="home" />
-      <Stack.Screen name="announcements" />
-      <Stack.Screen name="events" />
-      <Stack.Screen name="upcoming" />
-      <Stack.Screen name="profile" />
-    </Stack>
+    <Tabs
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: theme.colors.textPrimary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontFamily: theme.typography.families.semibold,
+          fontSize: theme.typography.sizes.eyebrow,
+          marginBottom: 2,
+        },
+        tabBarItemStyle: {
+          paddingTop: 8,
+        },
+        tabBarStyle: {
+          backgroundColor: theme.colors.screenBase,
+          borderTopWidth: 0,
+          bottom: 0,
+          height: 78,
+          left: 16,
+          paddingBottom: 8,
+          paddingTop: 8,
+          position: "absolute",
+          right: 16,
+        },
+        tabBarBackground: GlassTabBarBackground,
+        tabBarIcon: ({ color, focused, size }) => (
+          <TabIcon color={color} focused={focused} name={getClubTabIconName(route.name)} size={size} />
+        ),
+        sceneStyle: {
+          backgroundColor: theme.colors.screenBase,
+        },
+      })}
+    >
+      <Tabs.Screen name="home" options={{ title: language === "fi" ? "Koti" : "Home" }} />
+      <Tabs.Screen name="events" options={{ title: copy.common.events }} />
+      <Tabs.Screen name="announcements" options={{ title: language === "fi" ? "Tiedotteet" : "Announcements" }} />
+      <Tabs.Screen name="upcoming" options={{ title: language === "fi" ? "Tulossa" : "Upcoming" }} />
+      <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
+      <Tabs.Screen name="announcement-detail" options={{ href: null }} />
+    </Tabs>
   );
 }
 

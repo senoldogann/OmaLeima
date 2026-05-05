@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
-
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
@@ -17,6 +16,7 @@ import {
   useStudentLeaderboardOverviewQuery,
 } from "@/features/leaderboard/student-leaderboard";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useStudentEventLeaderboardRealtime } from "@/features/realtime/student-realtime";
 import { useSession } from "@/providers/session-provider";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
@@ -44,82 +44,6 @@ const getFreshnessBadge = (
   refreshedAt === null
     ? { label: language === "fi" ? "päivitys odottaa" : "refresh pending", state: "pending" }
     : { label: language === "fi" ? "päivitetty" : "refreshed", state: "ready" };
-
-const getPodiumHeight = (rank: number): number => {
-  if (rank === 1) return 166;
-  if (rank === 2) return 134;
-  return 118;
-};
-
-const getPodiumInitials = (value: string | null, rank: number): string => {
-  const source = value?.trim() ?? `Student ${rank}`;
-  const parts = source.split(/\s+/).filter(Boolean);
-
-  if (parts.length === 0) {
-    return `${rank}`;
-  }
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-};
-
-const createLeaderboardHeroLabel = (
-  selectedEventName: string | null,
-  top10Count: number,
-  currentRank: number | null,
-  language: "fi" | "en"
-): string => {
-  if (selectedEventName === null) {
-    return language === "fi"
-      ? "Valitse tapahtuma nähdäksesi tilanteen."
-      : "Choose an event to see the live standings.";
-  }
-
-  if (top10Count === 0) {
-    return language === "fi"
-      ? `${selectedEventName} on käynnissä, mutta lista on vielä tyhjä.`
-      : `${selectedEventName} is live, but the standings are still empty.`;
-  }
-
-  if (currentRank !== null) {
-    return language === "fi"
-      ? `${selectedEventName} on käynnissä. Sijoituksesi on nyt #${currentRank}.`
-      : `${selectedEventName} top 10 is live. Your current place is #${currentRank}.`;
-  }
-
-  return language === "fi"
-    ? `${selectedEventName} top 10 on nyt auki.`
-    : `${selectedEventName} top 10 is live now.`;
-};
-
-const createTimelineMetaLabel = (
-  language: "fi" | "en",
-  formatter: Intl.DateTimeFormat,
-  selectedEvent: {
-    endAt: string;
-    startAt: string;
-    timelineState: "ACTIVE" | "UPCOMING" | "COMPLETED";
-  }
-): string => {
-  if (selectedEvent.timelineState === "ACTIVE") {
-    return language === "fi"
-      ? `Auki ${formatter.format(new Date(selectedEvent.endAt))} asti`
-      : `Live until ${formatter.format(new Date(selectedEvent.endAt))}`;
-  }
-
-  if (selectedEvent.timelineState === "UPCOMING") {
-    return language === "fi"
-      ? `Alkaa ${formatter.format(new Date(selectedEvent.startAt))}`
-      : `Starts ${formatter.format(new Date(selectedEvent.startAt))}`;
-  }
-
-  return language === "fi"
-    ? `Päättyi ${formatter.format(new Date(selectedEvent.endAt))}`
-    : `Ended ${formatter.format(new Date(selectedEvent.endAt))}`;
-};
 
 const createEventChipMeta = (
   language: "fi" | "en",
@@ -195,16 +119,39 @@ export default function StudentLeaderboardScreen() {
 
   const top10 = leaderboardQuery.data?.top10 ?? [];
   const currentUser = leaderboardQuery.data?.currentUser ?? null;
-  const podiumEntries = top10.slice(0, 3);
-  const standingsEntries = top10.slice(3);
   const leaderboardRefreshedAt = leaderboardQuery.data?.refreshedAt ?? null;
   const freshness = getFreshnessBadge(leaderboardRefreshedAt, language);
-  const heroLabel = createLeaderboardHeroLabel(selectedEvent?.name ?? null, top10.length, currentUser?.rank ?? null, language);
-  const selectedEventCover = selectedEvent
-    ? getEventCoverSource(selectedEvent.coverImageUrl, `${selectedEvent.id}:${selectedEvent.name}`)
-    : null;
-  const selectedEventTimelineLabel =
-    selectedEvent === null ? null : createTimelineMetaLabel(language, formatter, selectedEvent);
+  const selectedEventTimelineState = selectedEvent?.timelineState ?? null;
+  const currentUserSpotlightTitle =
+    currentUser === null
+      ? null
+      : selectedEventTimelineState === "COMPLETED"
+        ? language === "fi"
+          ? `Lopullinen sijasi oli #${currentUser.rank}`
+          : `You finished at #${currentUser.rank}`
+        : selectedEventTimelineState === "UPCOMING"
+          ? language === "fi"
+            ? `Tallennettu sijasi on #${currentUser.rank}`
+            : `Your saved rank is #${currentUser.rank}`
+          : language === "fi"
+            ? `Sija #${currentUser.rank} juuri nyt`
+            : `You are #${currentUser.rank} right now`;
+  const overviewErrorBody =
+    language === "fi"
+      ? "Tulostaulun tapahtumia ei saatu ladattua juuri nyt. Yritä uudelleen hetken kuluttua."
+      : "Could not load leaderboard events right now. Try again in a moment.";
+  const rankingErrorBody =
+    language === "fi"
+      ? "Valitun tapahtuman sijoitusta ei saatu ladattua juuri nyt. Yritä uudelleen hetken kuluttua."
+      : "Could not load standings for the selected event right now. Try again in a moment.";
+  const currentUserSpotlightMeta =
+    currentUser === null
+      ? null
+      : currentUser.lastStampAt === null
+        ? selectedEvent?.name ?? null
+        : language === "fi"
+          ? `Viimeisin leima ${formatter.format(new Date(currentUser.lastStampAt))}`
+          : `Latest stamp ${formatter.format(new Date(currentUser.lastStampAt))}`;
 
   const overviewState = overviewQuery.error
     ? "error"
@@ -220,15 +167,18 @@ export default function StudentLeaderboardScreen() {
         ? "error"
         : leaderboardQuery.isLoading
           ? "loading"
-          : top10.length === 0
+          : top10.length === 0 && currentUser === null
             ? "empty"
             : "ready";
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.common.leaderboard}</Text>
-        <Text style={styles.metaText}>{copy.student.leaderboardMeta}</Text>
+      <View style={styles.screenHeaderRow}>
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenEyebrow}>{language === "fi" ? "Tulostaulut" : "Rankings"}</Text>
+          <Text style={styles.screenTitle}>{copy.common.leaderboard}</Text>
+        </View>
+        <StudentProfileHeaderAction />
       </View>
 
       {overviewState !== "ready" ? (
@@ -249,19 +199,24 @@ export default function StudentLeaderboardScreen() {
           }
         >
           {overviewState === "error" ? (
-            <Text selectable style={styles.bodyText}>{overviewQuery.error?.message}</Text>
+            <>
+              <Text selectable style={styles.bodyText}>{overviewErrorBody}</Text>
+              <Pressable onPress={() => void overviewQuery.refetch()} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>{copy.common.retry}</Text>
+              </Pressable>
+            </>
           ) : overviewState === "loading" ? (
             <Text selectable style={styles.bodyText}>
               {language === "fi"
-                ? "Ladataan ilmoittautumiset ja valitaan sopivin tapahtuma."
-                : "Loading registered events and choosing the most relevant scope."}
+                ? "Ladataan julkisia tulostauluja ja omaa tilannetta."
+                : "Loading public leaderboards and your own ranking context."}
             </Text>
           ) : (
             <Text selectable style={styles.bodyText}>
               {registeredEventCount === 0
                 ? language === "fi"
-                  ? "Liity ensin tapahtumaan. Julkinen tulostaulu näkyy täällä, kun sellainen on käytössä."
-                  : "Join an event first. Once you are registered for a public event, its leaderboard appears here."
+                  ? "Yhtaan julkista tulostaulua ei ole saatavilla juuri nyt."
+                  : "No public leaderboard is available right now."
                 : language === "fi"
                   ? "Sinulla on ilmoittautumisia, mutta mikään niistä ei julkaise tulostaulua juuri nyt."
                   : "You still have registrations, but none of those events expose a public leaderboard right now."}
@@ -272,32 +227,19 @@ export default function StudentLeaderboardScreen() {
 
       {events.length > 0 ? (
         <>
-          {selectedEventCover ? (
-            <CoverImageSurface imageStyle={styles.heroImage} source={selectedEventCover} style={styles.heroBand}>
-              <View style={styles.heroOverlay} />
-              <View style={styles.heroContent}>
-                <View style={styles.heroCopy}>
-                  <Text style={styles.heroEyebrow}>{copy.student.liveStandings}</Text>
-                  <Text style={styles.heroTitle}>{selectedEvent?.name ?? copy.common.leaderboard}</Text>
-                  <Text style={styles.heroMeta}>{heroLabel}</Text>
-                  {selectedEventTimelineLabel ? <Text style={styles.heroTimeline}>{selectedEventTimelineLabel}</Text> : null}
-                </View>
-
-                <View style={styles.badges}>
-                  {selectedEvent ? (
+          <View style={styles.eventSelectorSection}>
+            <View style={styles.eventSelectorHeader}>
+              <View style={styles.selectorHeaderTop}>
+                <Text style={styles.sectionKicker}>{copy.student.chooseEvent}</Text>
+                {selectedEvent !== null ? (
+                  <View style={styles.selectorBadgeRow}>
                     <StatusBadge
                       label={
                         selectedEvent.timelineState === "ACTIVE"
-                          ? language === "fi"
-                            ? "käynnissä"
-                            : "active"
+                          ? language === "fi" ? "käynnissä" : "active"
                           : selectedEvent.timelineState === "UPCOMING"
-                            ? language === "fi"
-                              ? "tulossa"
-                              : "upcoming"
-                            : language === "fi"
-                              ? "päättynyt"
-                              : "completed"
+                            ? language === "fi" ? "tulossa" : "upcoming"
+                            : language === "fi" ? "päättynyt" : "completed"
                       }
                       state={
                         selectedEvent.timelineState === "ACTIVE"
@@ -307,20 +249,12 @@ export default function StudentLeaderboardScreen() {
                             : "warning"
                       }
                     />
-                  ) : null}
-                  <StatusBadge label={freshness.label} state={freshness.state} />
-                </View>
+                    <StatusBadge label={freshness.label} state={freshness.state} />
+                  </View>
+                ) : null}
               </View>
-            </CoverImageSurface>
-          ) : null}
-
-          <View style={styles.eventSelectorSection}>
-            <View style={styles.eventSelectorHeader}>
-              <Text style={styles.sectionKicker}>{copy.student.chooseEvent}</Text>
-              {leaderboardRefreshedAt !== null ? (
-                <Text style={styles.eventSelectorMeta}>
-                  {language === "fi" ? "Päivitetty" : "Refreshed"} {formatter.format(new Date(leaderboardRefreshedAt))}
-                </Text>
+              {selectedEvent !== null ? (
+                <Text style={styles.selectorEventTitle}>{selectedEvent.name}</Text>
               ) : null}
             </View>
 
@@ -401,7 +335,7 @@ export default function StudentLeaderboardScreen() {
         >
           <Text style={styles.bodyText}>
             {rankingState === "error"
-              ? leaderboardQuery.error?.message ?? ""
+              ? rankingErrorBody
               : rankingState === "loading"
                 ? language === "fi"
                   ? "Haetaan tämän tapahtuman top 10."
@@ -410,61 +344,47 @@ export default function StudentLeaderboardScreen() {
                   ? "Tähän tapahtumaan ei ole vielä kertynyt näkyviä sijoituksia."
                   : "No visible leaderboard entries yet for this event."}
           </Text>
+          {rankingState === "error" ? (
+            <Pressable onPress={() => void leaderboardQuery.refetch()} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>{copy.common.retry}</Text>
+            </Pressable>
+          ) : null}
         </InfoCard>
       ) : null}
 
       {rankingState === "ready" ? (
         <>
-          {podiumEntries.length > 0 ? (
-            <View style={styles.podiumSection}>
-              <Text style={styles.sectionKicker}>{language === "fi" ? "Podium" : "Podium"}</Text>
-              <View style={styles.podiumRow}>
-                {[1, 0, 2].map((podiumIndex) => {
-                  const entry = podiumEntries[podiumIndex] ?? null;
-
-                  if (entry === null) {
-                    return <View key={`empty-${podiumIndex}`} style={styles.podiumSpacer} />;
-                  }
-
-                  return (
-                    <View key={entry.studentId} style={[styles.podiumCard, { height: getPodiumHeight(entry.rank) }]}>
-                      <View style={styles.podiumBadge}>
-                        <Text style={styles.podiumBadgeText}>{entry.rank}</Text>
-                      </View>
-                      <View style={styles.podiumAvatar}>
-                        <Text style={styles.podiumAvatarText}>
-                          {getPodiumInitials(entry.displayName, entry.rank)}
-                        </Text>
-                      </View>
-                      <Text numberOfLines={1} style={styles.podiumName}>
-                        {entry.displayName ?? (language === "fi" ? "Opiskelija" : "Student")}
-                      </Text>
-                      <Text style={styles.podiumScore}>{entry.stampCount}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
-
-          {currentUser ? (
-            <View style={styles.currentUserBlock}>
-              <Text style={styles.sectionKicker}>{language === "fi" ? "Sinun tilanteesi" : "Your position"}</Text>
-              <LeaderboardEntryCard entry={currentUser} isCurrentUser />
-            </View>
-          ) : null}
-
-          {standingsEntries.length > 0 ? (
+          {top10.length > 0 ? (
             <View style={styles.standingsBlock}>
-              <Text style={styles.sectionKicker}>{language === "fi" ? "Muut sijoitukset" : "Standings"}</Text>
+              <Text style={styles.sectionKicker}>{language === "fi" ? "Sijoitukset" : "Standings"}</Text>
               <View style={styles.standingsList}>
-                {standingsEntries.map((entry) => (
+                {top10.map((entry) => (
                   <LeaderboardEntryCard
                     entry={entry}
                     isCurrentUser={currentUser?.studentId === entry.studentId}
                     key={entry.studentId}
                   />
                 ))}
+              </View>
+            </View>
+          ) : null}
+
+          {currentUser !== null && !top10.some((e) => e.studentId === currentUser.studentId) ? (
+            <View style={styles.currentUserBlock}>
+              <View style={styles.currentUserContent}>
+                <View style={styles.currentUserHeader}>
+                  <View style={styles.currentUserHeaderCopy}>
+                    <Text style={styles.currentUserKicker}>{language === "fi" ? "Sinun tilanteesi" : "Your position"}</Text>
+                    {currentUserSpotlightTitle ? <Text style={styles.currentUserTitle}>{currentUserSpotlightTitle}</Text> : null}
+                  </View>
+                  <View style={styles.currentUserStampPill}>
+                    <Text style={styles.currentUserStampPillText}>
+                      {currentUser.stampCount} {language === "fi" ? "leimaa" : "stamps"}
+                    </Text>
+                  </View>
+                </View>
+                {currentUserSpotlightMeta ? <Text style={styles.currentUserMeta}>{currentUserSpotlightMeta}</Text> : null}
+                <LeaderboardEntryCard entry={currentUser} isCurrentUser />
               </View>
             </View>
           ) : null}
@@ -476,11 +396,6 @@ export default function StudentLeaderboardScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    badges: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.regular,
@@ -488,7 +403,80 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     currentUserBlock: {
-      gap: 10,
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.scene,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      overflow: "hidden",
+      position: "relative",
+    },
+    currentUserContent: {
+      gap: 12,
+      padding: 18,
+    },
+    currentUserGlowPrimary: {
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 148,
+      opacity: 0.9,
+      position: "absolute",
+      right: -34,
+      top: -42,
+      width: 148,
+    },
+    currentUserGlowSecondary: {
+      backgroundColor: theme.colors.chromeTintIndigo,
+      borderRadius: 999,
+      height: 116,
+      left: -24,
+      opacity: 0.8,
+      position: "absolute",
+      top: 64,
+      width: 116,
+    },
+    currentUserHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    currentUserHeaderCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    currentUserKicker: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    currentUserMeta: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      maxWidth: 320,
+    },
+    currentUserStampPill: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    currentUserStampPillText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textTransform: "uppercase",
+    },
+    currentUserTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     eventChip: {
       backgroundColor: theme.colors.surfaceL1,
@@ -534,70 +522,29 @@ const createStyles = (theme: MobileTheme) =>
       paddingRight: 8,
     },
     eventSelectorHeader: {
-      gap: 4,
-    },
-    eventSelectorMeta: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
+      gap: 8,
     },
     eventSelectorSection: {
       gap: 12,
     },
-    heroBand: {
-      borderRadius: theme.radius.scene,
-      minHeight: 220,
-      overflow: "hidden",
-      position: "relative",
+    selectorHeaderTop: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "space-between",
     },
-    heroCopy: {
+    selectorBadgeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: 6,
     },
-    heroContent: {
-      flex: 1,
-      justifyContent: "space-between",
-      padding: 20,
-    },
-    heroEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.1,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
-    },
-    heroMeta: {
-      color: "#F8FAF5",
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-    },
-    heroImage: {
-      borderRadius: theme.radius.scene,
-    },
-    heroOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(2, 7, 4, 0.6)" : "rgba(5, 9, 5, 0.56)",
-    },
-    heroTimeline: {
-      color: "#D6E1D2",
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-    },
-    heroTitle: {
-      color: "#F8FAF5",
+    selectorEventTitle: {
+      color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
-    },
-    metaText: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.regular,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      maxWidth: 320,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     podiumAvatar: {
       alignItems: "center",
@@ -608,12 +555,6 @@ const createStyles = (theme: MobileTheme) =>
       height: 58,
       justifyContent: "center",
       width: 58,
-    },
-    podiumAvatarText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
     },
     podiumBadge: {
       alignItems: "center",
@@ -669,14 +610,55 @@ const createStyles = (theme: MobileTheme) =>
     podiumSpacer: {
       flex: 1,
     },
+    screenEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
     screenHeader: {
+      flex: 1,
       gap: 6,
+    },
+    screenHeaderRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
     },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
+    },
+    profileButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
+    retryButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      justifyContent: "center",
+      minHeight: 40,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    retryButtonText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     sectionKicker: {
       color: theme.colors.lime,

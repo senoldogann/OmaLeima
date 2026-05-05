@@ -62,8 +62,14 @@ type UseActiveAnnouncementsQueryParams = {
   userId: string;
 };
 
+type UseAnnouncementDetailQueryParams = UseActiveAnnouncementsQueryParams & {
+  announcementId: string;
+};
+
 export const activeAnnouncementsQueryKey = (userId: string) => ["active-announcements", userId] as const;
 export const announcementFeedQueryKey = (userId: string) => ["announcement-feed", userId] as const;
+export const announcementDetailQueryKey = (userId: string, announcementId: string) =>
+  ["announcement-detail", userId, announcementId] as const;
 
 const getAnnouncementSourceType = (clubId: string | null): AnnouncementSourceType =>
   clubId === null ? "PLATFORM" : "CLUB";
@@ -192,10 +198,10 @@ const fetchAnnouncementFeedAsync = async (userId: string): Promise<AnnouncementF
     { data: preferenceRows, error: preferenceError },
     { data: impressionRows, error: impressionError },
   ] = await Promise.all([
-      supabase
-        .from("announcements")
-        .select(
-          `
+    supabase
+      .from("announcements")
+      .select(
+        `
           id,
           club_id,
           title,
@@ -208,30 +214,30 @@ const fetchAnnouncementFeedAsync = async (userId: string): Promise<AnnouncementF
           starts_at,
           club:clubs(name)
         `
-        )
-        .eq("status", "PUBLISHED")
-        .lte("starts_at", nowIso)
-        .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
-        .order("priority", { ascending: false })
-        .order("starts_at", { ascending: false })
-        .limit(15)
-        .returns<AnnouncementRow[]>(),
-      supabase
-        .from("announcement_acknowledgements")
-        .select("announcement_id")
-        .eq("user_id", userId)
-        .returns<AnnouncementAcknowledgementRow[]>(),
-      supabase
-        .from("announcement_notification_preferences")
-        .select("id,source_type,club_id,push_enabled")
-        .eq("user_id", userId)
-        .returns<AnnouncementPreferenceRow[]>(),
-      supabase
-        .from("announcement_impressions")
-        .select("announcement_id,seen_count")
-        .eq("user_id", userId)
-        .returns<AnnouncementImpressionRow[]>(),
-    ]);
+      )
+      .eq("status", "PUBLISHED")
+      .lte("starts_at", nowIso)
+      .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
+      .order("priority", { ascending: false })
+      .order("starts_at", { ascending: false })
+      .limit(15)
+      .returns<AnnouncementRow[]>(),
+    supabase
+      .from("announcement_acknowledgements")
+      .select("announcement_id")
+      .eq("user_id", userId)
+      .returns<AnnouncementAcknowledgementRow[]>(),
+    supabase
+      .from("announcement_notification_preferences")
+      .select("id,source_type,club_id,push_enabled")
+      .eq("user_id", userId)
+      .returns<AnnouncementPreferenceRow[]>(),
+    supabase
+      .from("announcement_impressions")
+      .select("announcement_id,seen_count")
+      .eq("user_id", userId)
+      .returns<AnnouncementImpressionRow[]>(),
+  ]);
 
   if (announcementError !== null) {
     throw new Error(`Failed to load announcement feed for ${userId}: ${announcementError.message}`);
@@ -255,6 +261,85 @@ const fetchAnnouncementFeedAsync = async (userId: string): Promise<AnnouncementF
     preferenceRows,
     impressionRows
   );
+};
+
+const fetchAnnouncementDetailAsync = async (
+  userId: string,
+  announcementId: string
+): Promise<AnnouncementFeedItem | null> => {
+  const nowIso = new Date().toISOString();
+  const [
+    { data: announcementRows, error: announcementError },
+    { data: acknowledgementRows, error: acknowledgementError },
+    { data: preferenceRows, error: preferenceError },
+    { data: impressionRows, error: impressionError },
+  ] = await Promise.all([
+    supabase
+      .from("announcements")
+      .select(
+        `
+          id,
+          club_id,
+          title,
+          body,
+          cta_label,
+          cta_url,
+          image_url,
+          status,
+          priority,
+          starts_at,
+          club:clubs(name)
+        `
+      )
+      .eq("id", announcementId)
+      .eq("status", "PUBLISHED")
+      .lte("starts_at", nowIso)
+      .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
+      .limit(1)
+      .returns<AnnouncementRow[]>(),
+    supabase
+      .from("announcement_acknowledgements")
+      .select("announcement_id")
+      .eq("user_id", userId)
+      .eq("announcement_id", announcementId)
+      .returns<AnnouncementAcknowledgementRow[]>(),
+    supabase
+      .from("announcement_notification_preferences")
+      .select("id,source_type,club_id,push_enabled")
+      .eq("user_id", userId)
+      .returns<AnnouncementPreferenceRow[]>(),
+    supabase
+      .from("announcement_impressions")
+      .select("announcement_id,seen_count")
+      .eq("user_id", userId)
+      .eq("announcement_id", announcementId)
+      .returns<AnnouncementImpressionRow[]>(),
+  ]);
+
+  if (announcementError !== null) {
+    throw new Error(`Failed to load announcement detail ${announcementId} for ${userId}: ${announcementError.message}`);
+  }
+
+  if (acknowledgementError !== null) {
+    throw new Error(`Failed to load announcement detail acknowledgement ${announcementId} for ${userId}: ${acknowledgementError.message}`);
+  }
+
+  if (preferenceError !== null) {
+    throw new Error(`Failed to load announcement detail preferences ${announcementId} for ${userId}: ${preferenceError.message}`);
+  }
+
+  if (impressionError !== null) {
+    throw new Error(`Failed to load announcement detail impressions ${announcementId} for ${userId}: ${impressionError.message}`);
+  }
+
+  const [announcement] = mapAnnouncementFeedItems(
+    announcementRows,
+    new Set<string>(acknowledgementRows.map((row) => row.announcement_id)),
+    preferenceRows,
+    impressionRows
+  );
+
+  return announcement ?? null;
 };
 
 const recordAnnouncementImpressionsAsync = async ({
@@ -394,6 +479,17 @@ export const useAnnouncementFeedQuery = ({
     queryKey: announcementFeedQueryKey(userId),
   });
 
+export const useAnnouncementDetailQuery = ({
+  announcementId,
+  isEnabled,
+  userId,
+}: UseAnnouncementDetailQueryParams): UseQueryResult<AnnouncementFeedItem | null, Error> =>
+  useQuery({
+    enabled: isEnabled,
+    queryFn: async () => fetchAnnouncementDetailAsync(userId, announcementId),
+    queryKey: announcementDetailQueryKey(userId, announcementId),
+  });
+
 export const useRecordAnnouncementImpressionsMutation = (): UseMutationResult<
   void,
   Error,
@@ -424,6 +520,9 @@ export const useSetAnnouncementNotificationPreferenceMutation = (): UseMutationR
       await queryClient.invalidateQueries({
         queryKey: announcementFeedQueryKey(variables.userId),
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["announcement-detail", variables.userId],
+      });
     },
   });
 };
@@ -446,6 +545,9 @@ export const useAcknowledgeAnnouncementMutation = (): UseMutationResult<
       });
       await queryClient.invalidateQueries({
         queryKey: announcementFeedQueryKey(variables.userId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: announcementDetailQueryKey(variables.userId, variables.announcementId),
       });
     },
   });

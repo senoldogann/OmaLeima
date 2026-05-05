@@ -48,7 +48,11 @@ export type EventVenueSummary = {
   id: string;
   businessId: string;
   name: string;
+  address: string;
   city: string;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
   logoUrl: string | null;
   coverImageUrl: string | null;
   venueOrder: number | null;

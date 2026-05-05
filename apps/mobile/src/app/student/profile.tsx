@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -15,7 +14,6 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -34,8 +32,6 @@ import { SupportRequestSheet } from "@/features/support/components/support-reque
 import { useSession } from "@/providers/session-provider";
 
 type PreferenceSheet = "language" | "theme" | null;
-
-const createDiagnosticsValue = (value: string | null | undefined): string => value ?? "—";
 
 const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
   if (language === "fi") {
@@ -72,9 +68,6 @@ const createSuggestionMeta = (tag: DepartmentTagSuggestion): string => {
 
   return `${locationParts.join(" · ")} · ${tag.slug}`;
 };
-
-const createMutationError = (errors: (string | null)[]): string | null =>
-  errors.find((error): error is string => error !== null) ?? null;
 
 const createPushPreferenceSummary = (
   language: "fi" | "en",
@@ -114,22 +107,91 @@ const createPushPreferenceSummary = (
   }
 };
 
+const hasGrantedPushPermission = (
+  permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable"
+): boolean => permissionState === "granted" || permissionState === "provisional";
+
+const createPushRegistrationDetail = (
+  language: "fi" | "en",
+  pushState: PushDeviceRegistrationResult | null,
+  isPending: boolean
+): string | null => {
+  if (isPending) {
+    return language === "fi"
+      ? "Valmistellaan ilmoituksia talle laitteelle."
+      : "Preparing notifications for this device.";
+  }
+
+  if (pushState === null || pushState.state === "registered") {
+    return null;
+  }
+
+  if (language === "fi") {
+    switch (pushState.state) {
+      case "granted":
+        return "Ilmoituslupa on myonnetty. Viimeistellaan laitteen rekisterointia.";
+      case "denied":
+        return "Ilmoituslupaa ei myonnetty, joten laitetta ei voitu ottaa kayttoon.";
+      case "unavailable":
+        return "Ilmoitukset eivat ole kaytettavissa tassa ymparistossa.";
+      case "misconfigured":
+        return "Ilmoitusten asetukset ovat puutteelliset. Yrita uudelleen myohemmin.";
+      case "error":
+        return pushState.backendStatus === "UNAUTHORIZED"
+          ? "Istunto on vanhentunut. Kirjaudu uudelleen ja yrita uudelleen."
+          : "Laitteen ilmoitusrekisterointi ei onnistunut. Yrita uudelleen.";
+    }
+  }
+
+  switch (pushState.state) {
+    case "granted":
+      return "Notification permission is granted. Finalizing device registration.";
+    case "denied":
+      return "Notification permission was not granted, so this device could not be enabled.";
+    case "unavailable":
+      return "Notifications are unavailable in this runtime.";
+    case "misconfigured":
+      return "Notification configuration is incomplete. Try again later.";
+    case "error":
+      return pushState.backendStatus === "UNAUTHORIZED"
+        ? "Your session expired. Sign in again and retry."
+        : "Device notification registration failed. Try again.";
+  }
+};
+
+const getUserMetadataDisplayName = (metadata: unknown): string | null => {
+  if (typeof metadata !== "object" || metadata === null) {
+    return null;
+  }
+
+  const metadataRecord = metadata as Record<string, unknown>;
+  const candidateKeys = ["full_name", "name", "display_name"] as const;
+
+  for (const key of candidateKeys) {
+    const value = metadataRecord[key];
+
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};
+
 export default function StudentProfileScreen() {
-  const router = useRouter();
   const theme = useAppTheme();
   const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
-  const { clearCapturedPushActivity, diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
+  const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
   const studentId = session?.user.id ?? null;
   const [customTitle, setCustomTitle] = useState<string>("");
   const [pushState, setPushState] = useState<PushDeviceRegistrationResult | null>(null);
   const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
-  const [isPushDiagnosticsVisible, setIsPushDiagnosticsVisible] = useState<boolean>(false);
-  const [isPushDiagnosticsRefreshing, setIsPushDiagnosticsRefreshing] = useState<boolean>(false);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
-  const [lastPushDiagnosticsRefreshAt, setLastPushDiagnosticsRefreshAt] = useState<string | null>(null);
+  const tagModalScrollViewRef = useRef<ScrollView | null>(null);
+  const autoRegisterAttemptedRef = useRef<boolean>(false);
 
   const profileOverviewQuery = useStudentProfileOverviewQuery({
     studentId: studentId ?? "",
@@ -144,6 +206,11 @@ export default function StudentProfileScreen() {
   const profileOverview = profileOverviewQuery.data ?? null;
   const selectedTags = profileOverview?.selectedTags ?? [];
   const primaryTag = selectedTags.find((tag) => tag.isPrimary) ?? null;
+  const profileDisplayName =
+    getUserMetadataDisplayName(session?.user.user_metadata) ??
+    profileOverview?.displayName ??
+    session?.user.email ??
+    (language === "fi" ? "Opiskelija" : "Student");
   const suggestedTags = profileOverview?.suggestedTags ?? [];
   const remainingTagSlots = profileOverview?.remainingTagSlots ?? 3;
   const isTagMutationPending =
@@ -151,47 +218,77 @@ export default function StudentProfileScreen() {
     createCustomTagMutation.isPending ||
     setPrimaryTagMutation.isPending ||
     removeTagMutation.isPending;
-
-  const latestTagMutationError = useMemo(
-    () =>
-      createMutationError([
-        attachTagMutation.error?.message ?? null,
-        createCustomTagMutation.error?.message ?? null,
-        setPrimaryTagMutation.error?.message ?? null,
-        removeTagMutation.error?.message ?? null,
-      ]),
-    [
-      attachTagMutation.error?.message,
-      createCustomTagMutation.error?.message,
-      removeTagMutation.error?.message,
-      setPrimaryTagMutation.error?.message,
-    ]
-  );
   const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
   const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
+  const hasGrantedNotificationPermission = hasGrantedPushPermission(diagnostics.permissionState);
+  const hasRegisteredNotificationDevice = pushState?.state === "registered";
+  const notificationDetail = createPushRegistrationDetail(
+    language,
+    pushState,
+    registerPushMutation.isPending
+  );
+  const shouldShowNotificationAction =
+    !hasRegisteredNotificationDevice &&
+    (!hasGrantedNotificationPermission ||
+      pushState?.state === "error" ||
+      pushState?.state === "misconfigured" ||
+      pushState?.state === "unavailable");
+  const notificationActionLabel = registerPushMutation.isPending
+    ? language === "fi"
+      ? "Valmistellaan ilmoituksia..."
+      : "Preparing notifications..."
+    : pushState?.state === "error" ||
+      pushState?.state === "misconfigured" ||
+      pushState?.state === "unavailable"
+      ? language === "fi"
+        ? "Yrita uudelleen"
+        : "Retry setup"
+      : language === "fi"
+        ? "Ota ilmoitukset kayttoon"
+        : "Enable notifications";
+
+  useEffect(() => {
+    if (!hasGrantedNotificationPermission) {
+      autoRegisterAttemptedRef.current = false;
+      return;
+    }
+
+    if (hasRegisteredNotificationDevice || registerPushMutation.isPending || autoRegisterAttemptedRef.current) {
+      return;
+    }
+
+    const accessToken = session?.access_token ?? "";
+
+    if (accessToken.length === 0) {
+      return;
+    }
+
+    autoRegisterAttemptedRef.current = true;
+
+    void registerPushMutation.mutateAsync({ accessToken }).then(async (result) => {
+      setPushState(result);
+      await refreshPushPermissionStateAsync();
+    });
+  }, [
+    hasGrantedNotificationPermission,
+    hasRegisteredNotificationDevice,
+    refreshPushPermissionStateAsync,
+    registerPushMutation,
+    session?.access_token,
+  ]);
+
+  useEffect(() => {
+    autoRegisterAttemptedRef.current = false;
+    setPushState(null);
+  }, [session?.user.id]);
 
   const handleRegisterPushPress = async (): Promise<void> => {
+    autoRegisterAttemptedRef.current = true;
     const result = await registerPushMutation.mutateAsync({
       accessToken: session?.access_token ?? "",
     });
     setPushState(result);
     await refreshPushPermissionStateAsync();
-  };
-
-  const handleRefreshPushDiagnosticsPress = async (): Promise<void> => {
-    setIsPushDiagnosticsRefreshing(true);
-
-    try {
-      await refreshPushPermissionStateAsync();
-      setLastPushDiagnosticsRefreshAt(new Date().toISOString());
-    } finally {
-      setIsPushDiagnosticsRefreshing(false);
-    }
-  };
-
-  const handleClearPushDiagnosticsPress = (): void => {
-    clearCapturedPushActivity();
-    setLastPushDiagnosticsRefreshAt(new Date().toISOString());
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {
@@ -242,6 +339,12 @@ export default function StudentProfileScreen() {
     });
   };
 
+  const handleCustomTagInputFocus = (): void => {
+    globalThis.setTimeout(() => {
+      tagModalScrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+  };
+
   return (
     <AppScreen>
       <View style={styles.screenHeader}>
@@ -269,42 +372,27 @@ export default function StudentProfileScreen() {
       ) : null}
 
       {profileOverview ? (
-        <View style={styles.profileStage}>
-          <View style={styles.profileHero}>
-            <View style={styles.avatarShell}>
-              <View style={styles.avatarCore}>
-                <AppIcon color={theme.colors.screenBase} name="user" size={34} />
-              </View>
+        <View style={styles.profileHeroCard}>
+          <View style={styles.avatarShell}>
+            <View style={styles.avatarCore}>
+              <AppIcon color={theme.colors.screenBase} name="user" size={36} />
             </View>
-
-            <View style={styles.profileCopy}>
-              <Text selectable style={styles.profileName}>
-                {profileOverview.displayName ?? (language === "fi" ? "Opiskelijaprofiili" : "Student profile")}
-              </Text>
-              <Text selectable style={styles.accountEmail}>{profileOverview.email}</Text>
-              <Text selectable style={styles.roleLine}>
-                {primaryTag?.title ?? (language === "fi" ? "Opiskelija" : "Student")}
-              </Text>
-            </View>
+          </View>
+          <View style={styles.profileCopy}>
+            <Text style={styles.profileEyebrow}>{language === "fi" ? "Opiskelija" : "Student"}</Text>
+            <Text selectable style={styles.profileName}>
+              {profileDisplayName}
+            </Text>
+            <Text selectable style={styles.accountEmail}>{primaryTag?.title ?? session?.user.email ?? "—"}</Text>
           </View>
         </View>
       ) : null}
 
-      {latestTagMutationError ? <Text selectable style={styles.errorText}>{latestTagMutationError}</Text> : null}
-
-      <AnnouncementFeedSection
-        compact={true}
-        maxItems={4}
-        onViewAllPress={() => router.push("/student/updates")}
-        title={language === "fi" ? "Ajankohtaista" : "Latest updates"}
-        userId={studentId}
-        viewAllLabel={language === "fi" ? "Avaa tiedotevirta" : "Open update feed"}
-      />
-
-      <InfoCard
-        eyebrow={language === "fi" ? "Asetukset" : "Preferences"}
-        title={language === "fi" ? "Profiilin asetukset" : "Profile settings"}
-      >
+      <View style={styles.settingsCard}>
+        <View style={styles.settingsHeader}>
+          <Text style={styles.settingsEyebrow}>{language === "fi" ? "Asetukset" : "Preferences"}</Text>
+          <Text style={styles.settingsTitle}>{language === "fi" ? "Profiilin asetukset" : "Profile settings"}</Text>
+        </View>
         {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
           <>
             <View style={styles.preferenceSection}>
@@ -370,28 +458,30 @@ export default function StudentProfileScreen() {
               <Text selectable style={styles.metaText}>
                 {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
               </Text>
-              {pushState !== null ? (
-                <Text selectable style={pushState.state === "error" ? styles.errorText : styles.metaText}>
-                  {pushState.detail}
+              {notificationDetail !== null ? (
+                <Text selectable style={pushState?.state === "error" ? styles.errorText : styles.metaText}>
+                  {notificationDetail}
                 </Text>
               ) : null}
             </View>
+            {hasRegisteredNotificationDevice ? (
+              <View style={styles.preferenceSelectValue}>
+                <Text selectable style={styles.notificationReadyText}>
+                  {language === "fi" ? "Valmis" : "Ready"}
+                </Text>
+                <AppIcon color={theme.colors.success} name="check" size={16} />
+              </View>
+            ) : null}
           </View>
-          <Pressable
-            disabled={registerPushMutation.isPending}
-            onPress={handleRegisterPushPress}
-            style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {registerPushMutation.isPending
-                ? language === "fi"
-                  ? "Otetaan ilmoitukset käyttöön..."
-                  : "Enabling notifications..."
-                : language === "fi"
-                  ? "Ota ilmoitukset käyttöön"
-                  : "Enable notifications"}
-            </Text>
-          </Pressable>
+          {shouldShowNotificationAction ? (
+            <Pressable
+              disabled={registerPushMutation.isPending}
+              onPress={handleRegisterPushPress}
+              style={[styles.primaryButton, registerPushMutation.isPending ? styles.disabledButton : null]}
+            >
+              <Text style={styles.primaryButtonText}>{notificationActionLabel}</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -411,103 +501,12 @@ export default function StudentProfileScreen() {
           </Pressable>
         </View>
 
-        {__DEV__ ? (
-          <>
-            <View style={styles.preferenceDivider} />
-
-            <View style={styles.preferenceSection}>
-              <Pressable onPress={() => setIsPushDiagnosticsVisible(true)} style={styles.preferenceSelectRow}>
-                <View style={styles.preferenceIconWrap}>
-                  <AppIcon color={theme.colors.lime} name="tools" size={16} />
-                </View>
-                <View style={styles.preferenceHeaderCopy}>
-                  <Text selectable style={styles.preferenceTitle}>{copy.common.qaTools}</Text>
-                  <Text selectable style={styles.preferenceSummaryText}>Push diagnostics</Text>
-                </View>
-                <View style={styles.preferenceSelectValue}>
-                  <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
-                </View>
-              </Pressable>
-            </View>
-          </>
-        ) : null}
-
         <View style={styles.preferenceDivider} />
 
         <View style={styles.preferenceSection}>
           <SignOutButton />
         </View>
-      </InfoCard>
-
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setIsPushDiagnosticsVisible(false)}
-        transparent
-        visible={isPushDiagnosticsVisible}
-      >
-        <Pressable onPress={() => setIsPushDiagnosticsVisible(false)} style={styles.modalBackdrop}>
-          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>QA</Text>
-                <Text style={styles.modalTitle}>Native push diagnostics</Text>
-              </View>
-              <Pressable onPress={() => setIsPushDiagnosticsVisible(false)} style={styles.modalCloseButton}>
-                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.preferenceOptionList}>
-              <View style={styles.diagnosticsRow}>
-                <Text style={styles.preferenceTitle}>Runtime</Text>
-                <Text style={styles.preferenceSelectValueText}>{diagnostics.runtime}</Text>
-              </View>
-              <View style={styles.diagnosticsRow}>
-                <Text style={styles.preferenceTitle}>Permission</Text>
-                <Text style={styles.preferenceSelectValueText}>{diagnostics.permissionState}</Text>
-              </View>
-              <View style={styles.diagnosticsRow}>
-                <Text style={styles.preferenceTitle}>Project ID</Text>
-                <Text style={styles.preferenceSelectValueText}>
-                  {createDiagnosticsValue(diagnostics.projectId)}
-                </Text>
-              </View>
-              <View style={styles.diagnosticsBlock}>
-                <Text style={styles.preferenceTitle}>Last diagnostics refresh</Text>
-                <Text style={styles.preferenceSummaryText}>{createDiagnosticsValue(lastPushDiagnosticsRefreshAt)}</Text>
-              </View>
-              <View style={styles.diagnosticsBlock}>
-                <Text style={styles.preferenceTitle}>Last received notification</Text>
-                <Text style={styles.preferenceSummaryText}>
-                  {createDiagnosticsValue(diagnostics.lastNotification?.source)}
-                </Text>
-              </View>
-              <View style={styles.diagnosticsBlock}>
-                <Text style={styles.preferenceTitle}>Last notification response</Text>
-                <Text style={styles.preferenceSummaryText}>
-                  {createDiagnosticsValue(diagnostics.lastNotificationResponse?.source)}
-                </Text>
-              </View>
-              <Text style={styles.preferenceSummaryText}>
-                Local notification activity does not prove remote APNs or FCM delivery yet.
-              </Text>
-              <Pressable
-                disabled={isPushDiagnosticsRefreshing}
-                onPress={handleRefreshPushDiagnosticsPress}
-                style={[styles.primaryButton, isPushDiagnosticsRefreshing ? styles.disabledButton : null]}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {isPushDiagnosticsRefreshing ? "Refreshing..." : "Refresh push diagnostics"}
-                </Text>
-              </Pressable>
-              <Pressable onPress={handleClearPushDiagnosticsPress} style={styles.qaSecondaryButton}>
-                <Text style={styles.secondaryButtonText}>Clear captured push activity</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      </View>
 
       <SupportRequestSheet
         area="STUDENT"
@@ -524,7 +523,7 @@ export default function StudentProfileScreen() {
         visible={preferenceSheet !== null}
       >
         <Pressable onPress={() => setPreferenceSheet(null)} style={styles.preferenceModalBackdrop}>
-          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
+          <Pressable onPress={() => { }} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
@@ -595,10 +594,10 @@ export default function StudentProfileScreen() {
         <Pressable onPress={() => setIsTagModalVisible(false)} style={styles.modalBackdrop}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={0}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
             style={styles.modalKeyboardAvoidingView}
           >
-            <Pressable onPress={() => {}} style={styles.modalSheet}>
+            <Pressable onPress={() => { }} style={styles.modalSheet}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalHeaderCopy}>
                   <Text style={styles.modalEyebrow}>{copy.student.departmentTags}</Text>
@@ -616,6 +615,7 @@ export default function StudentProfileScreen() {
                 contentContainerStyle={styles.modalScrollContent}
                 keyboardDismissMode="interactive"
                 keyboardShouldPersistTaps="handled"
+                ref={tagModalScrollViewRef}
                 showsVerticalScrollIndicator={false}
               >
                 {selectedTags.length > 0 ? (
@@ -665,6 +665,7 @@ export default function StudentProfileScreen() {
                       autoCapitalize="words"
                       editable={!isTagMutationPending}
                       onChangeText={setCustomTitle}
+                      onFocus={handleCustomTagInputFocus}
                       placeholder={language === "fi" ? "Esim. Tieto- ja viestintätekniikka" : "Example: Information technology"}
                       placeholderTextColor={theme.colors.textDim}
                       style={styles.input}
@@ -687,7 +688,7 @@ export default function StudentProfileScreen() {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
-    </AppScreen>
+    </AppScreen >
   );
 }
 
@@ -732,6 +733,7 @@ const createStyles = (theme: MobileTheme) =>
     diagnosticsRow: {
       alignItems: "center",
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 12,
       justifyContent: "space-between",
     },
@@ -795,6 +797,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 4,
     },
     modalKeyboardAvoidingView: {
+      flex: 1,
       justifyContent: "flex-end",
       width: "100%",
     },
@@ -862,6 +865,13 @@ const createStyles = (theme: MobileTheme) =>
     preferenceOptionList: {
       gap: 10,
     },
+    notificationReadyText: {
+      color: theme.colors.success,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "right",
+    },
     preferenceOptionTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
@@ -878,6 +888,8 @@ const createStyles = (theme: MobileTheme) =>
     },
     preferenceSection: {
       gap: 12,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
     },
     preferenceSelectRow: {
       alignItems: "center",
@@ -933,30 +945,59 @@ const createStyles = (theme: MobileTheme) =>
     },
     profileCopy: {
       flex: 1,
-      gap: 6,
+      gap: 4,
     },
-    profileHero: {
+    profileEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    profileHeroCard: {
       alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
       flexDirection: "row",
-      gap: 14,
+      gap: 16,
+      padding: 20,
     },
     profileName: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
+      fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
-    profileStage: {
-      gap: 14,
-      paddingBottom: 4,
+    settingsCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 0,
+      overflow: "hidden",
     },
-    roleLine: {
+    settingsHeader: {
+      gap: 4,
+      paddingHorizontal: 18,
+      paddingTop: 18,
+      paddingBottom: 14,
+    },
+    settingsEyebrow: {
       color: theme.colors.lime,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.caption,
-      letterSpacing: 0.8,
-      lineHeight: theme.typography.lineHeights.caption,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
       textTransform: "uppercase",
+    },
+    settingsTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     screenHeader: {
       gap: 6,

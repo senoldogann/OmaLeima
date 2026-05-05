@@ -2,6 +2,66 @@
 
 Bu proje kesin ve katı bir "faz bazlı" (phased) ve "özellik bazlı" (feature-by-feature) geliştirme disiplini izler. Projeye katkı sağlayan tüm AI Ajanları (LLM'ler) aşağıdaki kurallara **kesinlikle** uymak zorundadır.
 
+---
+
+## 0. SPDD — Yapılandırılmış Prompt Odaklı Geliştirme (Structured Prompt-Driven Development)
+
+> **Temel İlke:** Kod yazmadan önce ne yapacağını netleştir, nasıl yapacağını tasarla, sınırları belirle — ve bunu prompt'un içine yaz. "Şunu düzelt" demek yetmez; kod var ama mantık yok, hız var ama kontrol yok sonucunu doğurur.
+
+Bu proje Thoughtworks'ün SPDD yaklaşımını benimser. **Prompt'lar birincil geliştirme varlıklarıdır.** Kod gibi versiyonlanır, birikir ve her iterasyonda yeniden kullanılarak değer üretmeye devam eder.
+
+### Geliştirme Döngüsü
+
+Her görev şu üç aşamadan geçer:
+
+```
+İŞ AMACI  →  YAPILANDIRILMIŞ PROMPT  →  KOD & TESTLER
+   ↑                                          |
+   └──── birikmiş prompt + kod varlıkları ────┘
+              (bir sonraki iterasyona taşınır)
+```
+
+1. **İş Amacı:** Neyi, neden yapıyorsun? İş ihtiyacını ve hedefi net olarak tanımla.
+2. **Yapılandırılmış Prompt:** Kodu üretmeden önce aşağıdaki REASONS şablonuyla prompt'u yaz.
+3. **Kod & Testler:** Ancak yukarıdaki iki adım tamamlandıktan sonra kod üretimine geç.
+
+### REASONS Prompt Şablonu
+
+Her özellik için prompt yazarken şu başlıkları doldur:
+
+| Harf | Anlamı | Açıklama |
+|------|--------|----------|
+| **R** | Role (Rol) | Ajanın üstleneceği uzmanlık rolü (Örn: "Supabase Edge Function güvenlik uzmanısın") |
+| **E** | End Goal (Hedef) | Tam olarak ne üretilecek? Somut çıktıyı tanımla. |
+| **A** | Architecture (Mimari) | Hangi yapı, pattern veya katman kullanılacak? (Örn: Controller→Service→Repository) |
+| **S** | Scope (Kapsam) | Neleri yapacak, neleri kesinlikle yapmayacak? Sınırları çiz. |
+| **O** | Output Format (Çıktı Formatı) | TypeScript mi? SQL mi? Hangi dosyaya? Tip tanımları dahil mi? |
+| **N** | Negative Constraints (Yasaklar) | Ne yapılmamalı? (Örn: `any` tipi yok, fallback yok, mock yok) |
+| **S** | Standards (Standartlar) | Projenin kod stili, güvenlik kuralları, RLS gereksinimleri |
+
+### Kötü Prompt vs. İyi Prompt
+
+❌ **Kötü:** `"scan-qr edge function yaz"`
+
+✅ **İyi (REASONS uygulanmış):**
+```
+Sen bir Supabase güvenlik uzmanısın.
+Hedef: QR token'ı atomik olarak doğrulayan ve stamp ekleyen bir Edge Function.
+Mimari: tek bir PostgreSQL RPC çağrısı (race condition önlemi), JWT ile kullanıcı doğrulama.
+Kapsam: sadece scan-qr fonksiyonu — QR üretimi veya ödül akışına dokunma.
+Çıktı: TypeScript, supabase/functions/scan-qr/index.ts dosyasına, tam tip tanımlarıyla.
+Yasaklar: any tipi yok, sessiz hata yutma yok, fallback davranış yok.
+Standartlar: AGENTS.md §5 güvenlik kuralları, mevcut _shared/cors.ts kullan.
+```
+
+### Prompt Varlıklarının Birikimi
+
+- Her özellik için yazılan REASONS prompt'u **`PLAN.md`** içinde `## Prompt` başlığı altında saklanır.
+- Bir sonraki iterasyonda benzer özellik geliştirilirken bu prompt şablonu başlangıç noktası olarak alınır ve rafine edilir.
+- Prompt'lar kod commit'leriyle birlikte versiyonlanır; "neden böyle yazıldı" sorusunun cevabı prompt'ta bulunur.
+
+---
+
 ## 1. Git İş Akışı ve İzolasyon (Strict Git Workflow)
 - **Asla Doğrudan Main'e Yazma:** Yeni bir özellik, veritabanı tablosu veya arayüz ekranı geliştirilirken kesinlikle doğrudan `main` (veya `master`) dalına kod yazılmaz. 
 - **Her Özellik İçin Yeni Branch:** Geliştirilecek her modül için kendi branch'i açılmalıdır (Örn: `feature/db-schema`, `feature/qr-edge-function`, `feature/student-login`).
@@ -40,6 +100,7 @@ Her ajan kod yazmadan önce ve iş boyunca aşağıdaki dosyaları güncel tutma
    - Mimari kararları belirt.
    - Değerlendirilen alternatifleri ve neden seçilmediklerini yaz.
    - Edge-case'leri açıkça listele.
+   - **`## Prompt` başlığı altında bu özellik için REASONS şablonuyla yazılmış yapılandırılmış prompt'u ekle.** Bu prompt sonraki iterasyonlarda yeniden kullanılır.
 
 3. **`TODOS.md` - Her zaman küçük uygulanabilir adımlar**
    - Planı küçük, sıralı ve doğrulanabilir görevlere böl.
@@ -60,3 +121,67 @@ Bu proje 2 yıl sonra binlerce anlık kullanıcının yükü altında çökmeyec
 - **Performans ve N+1 Sorguları:** İhtiyaç duyulan veriyi çekmek için döngü içinde veritabanına istek atmayın (N+1 problemi). Verileri Join/Select ile tek seferde alın. Gereksiz payload boyutlarından kaçının.
 - **Sadelik ve Bakım Kolaylığı:** Kodun geleceğe dönük olması karmaşık olması demek değildir. Spagetti kod yazmayın. Fonksiyonlar kısa, modüler ve Tek Sorumluluk Prensibi'ne (Single Responsibility) uygun olmalıdır.
 - **Odaklı Değişiklikler:** Yalnızca sizden istenen özellikle ilgili dosyaları güncelleyin. Sistemin geri kalanını, sizden istenmediği sürece "daha iyi yazabilirim" diyerek refactor etmeye kalkışmayın.
+
+## 6. Proje Bağlamı ve Hakimiyet (Project Context Mastery)
+
+> **Temel Kural:** Ajan, projenin ne olduğunu, kimin için yapıldığını ve nerede durduğunu bilmeden tek satır kod yazamaz. Bağlamı tahmin etmek yasaktır — her zaman dosyadan okunur.
+
+### Oturum Başında Zorunlu Okuma Sırası
+
+Her yeni oturumda (veya yeni bir göreve başlarken) ajan şu dosyaları **bu sırayla** okumalıdır:
+
+```
+1. AGENTS.md          → kurallar ve çalışma disiplini
+2. <MASTER_PLAN>      → projenin vizyonu, hedef kitlesi, iş mantığı
+3. PROGRESS.md        → projenin şu anki durumu, tamamlananlar, açık riskler
+4. TODOS.md           → devam eden görevler ve sıradaki adımlar
+5. PLAN.md            → aktif özelliğin tasarım kararları ve REASONS prompt'u
+```
+
+> `<MASTER_PLAN>` her projede farklı adda olabilir. Bu projede: `LEIMA_APP_MASTER_PLAN.md`.
+> Eğer böyle bir dosya yoksa README.md veya projenin ana ürün dokümanı onun yerini alır.
+> **Dosya adı ne olursa olsun bu adım atlanamaz.**
+
+Bu beş dosya okunmadan herhangi bir dosya oluşturma, düzenleme veya terminal komutu çalıştırma yapılamaz.
+
+### Proje Kimliği (Hızlı Başvuru)
+
+> Bu bölüm her projede farklı doldurulur. Aşağıdaki format şablondur; mevcut projenin değerleriyle güncel tutulmalıdır.
+
+- **Proje:** OmaLeima — Finlandiya'daki Türk öğrenci topluluğuna özel dijital damga kartı (leima) sistemi.
+- **Kullanıcılar:** Öğrenciler (damga toplar, ödül alır) + İşletmeler/Kulüpler (QR üretir, etkinlik açar) + Admin (onay, yönetim).
+- **Altyapı:** Supabase (DB + Auth + Edge Functions) + Expo React Native (mobil) + Next.js (admin panel).
+- **Kritik Konseptler:** Atomik QR tarama, stamp kazanma, ödül kilidi açma, leaderboard.
+- **Tek kaynak (source of truth):** `LEIMA_APP_MASTER_PLAN.md`
+
+---
+
+## 7. Uzun Oturum ve Compact Koruması (Long Session & Compact Guard)
+
+> **Problem:** Uzun oturumlarda bağlam sıkıştırması (compact) yaşandığında ajan, daha önce okuduğu bilgileri "hatırladığını sanarak" halüsinasyon üretir. Gerçekte hafıza silinmiş, ama güven duygusu kalmıştır.
+
+### Compact Sonrası Zorunlu Yeniden Yükleme
+
+Oturumda bir compact (bağlam sıkıştırması) gerçekleştiğini fark eden veya şüphelenen ajan şunları yapmalıdır:
+
+1. **Dur.** Devam etme.
+2. **§6'daki beş dosyayı tekrar oku** — bellekten değil, diskten.
+3. Çalıştığın dosyanın son halini oku — compact öncesi yaptığın değişiklikleri varsayma.
+4. `TODOS.md` içindeki son tamamlanmış adımı bul — nereden devam edeceğini oradan belirle.
+5. Ancak bunları yaptıktan sonra devam et.
+
+### Halüsinasyon Risk Sinyalleri
+
+Ajan aşağıdaki durumlardan birini fark ederse **kesinlikle durmalı ve dosyaları yeniden okumalıdır:**
+
+- "Bunu daha önce yazmıştım" veya "bu dosya şöyle görünüyordu" gibi bir varsayımla hareket ediyorsa
+- Bir değişkenin, fonksiyonun veya API endpoint'inin var olduğunu hatırlıyor ama dosyada göremiyorsa
+- Görevin nerede durduğunu hatırlamıyor ama tahmin edebileceğini düşünüyorsa
+- İki mesaj önce yapılan bir kararı hatırlamıyorsa
+
+### Uzun Oturumda Aktif Önlemler
+
+- Her **5 anlamlı adımdan** sonra `TODOS.md`'yi oku ve tamamlananları kontrol et.
+- Bir dosyayı düzenlemeden önce her zaman o dosyanın güncel halini oku — compact öncesi okunan versiyonu geçersizdir.
+- "Bence şöyle olmalı" yerine her zaman "dosya şunu söylüyor" ile karar ver.
+- Emin olmadığın her şeyi kullanıcıya sor — tahmin etmek yasaktır.

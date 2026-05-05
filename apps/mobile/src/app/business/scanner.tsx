@@ -1,12 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import {
   CameraView,
   type BarcodeScanningResult,
   useCameraPermissions,
 } from "expo-camera";
 import { useKeepAwake } from "expo-keep-awake";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppIcon } from "@/components/app-icon";
@@ -23,6 +35,7 @@ import type {
   ScannerLocationPayload,
 } from "@/features/scanner/types";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
 
 const scanTimeoutMs = 4_000;
@@ -38,20 +51,20 @@ type ToneMeta = {
 
 type ScannerDeviceState =
   | {
-      device: null;
-      error: null;
-      status: "idle" | "registering";
-    }
+    device: null;
+    error: null;
+    status: "idle" | "registering";
+  }
   | {
-      device: ScannerDeviceRegistration;
-      error: null;
-      status: "ready";
-    }
+    device: ScannerDeviceRegistration;
+    error: null;
+    status: "ready";
+  }
   | {
-      device: null;
-      error: string;
-      status: "error";
-    };
+    device: null;
+    error: string;
+    status: "error";
+  };
 
 const emptyScannerLocation = {
   latitude: null,
@@ -105,6 +118,10 @@ const createScanResultTitles = (
   language: "fi" | "en"
 ): Record<ScannerAttemptResult["status"], string> => ({
   SUCCESS: language === "fi" ? "Leima kirjattiin" : "Stamp recorded",
+  EVENT_CONTEXT_REQUIRED:
+    language === "fi" ? "Tapahtumavalinta puuttuu" : "Event selection missing",
+  EVENT_CONTEXT_MISMATCH:
+    language === "fi" ? "QR kuuluu toiseen tapahtumaan" : "QR belongs to another event",
   QR_ALREADY_USED_OR_REPLAYED: language === "fi" ? "QR on jo käytetty" : "QR already used",
   ALREADY_STAMPED:
     language === "fi" ? "Opiskelija on jo leimattu" : "Student already stamped",
@@ -142,6 +159,14 @@ const createScanResultDetails = (
     language === "fi"
       ? "Skanneri lukittuu onnistuneen luvun jälkeen, jotta tulos voidaan tarkistaa ennen jatkoa."
       : "Scanner locks after a successful read so staff can confirm the result before continuing.",
+  EVENT_CONTEXT_REQUIRED:
+    language === "fi"
+      ? "Päivitä skanneri ja valitse käynnissä oleva tapahtumakortti ennen uutta lukua."
+      : "Refresh the scanner and choose a live event card before scanning again.",
+  EVENT_CONTEXT_MISMATCH:
+    language === "fi"
+      ? "Vaihda skannerissa sama tapahtuma, jonka opiskelija näyttää QR-sivullaan, ja skannaa uusi QR."
+      : "Switch the scanner to the same event the student is showing on the QR screen, then scan a fresh QR.",
   QR_ALREADY_USED_OR_REPLAYED:
     language === "fi"
       ? "Pyydä opiskelijaa päivittämään QR-koodi."
@@ -243,10 +268,10 @@ const useScanResultAnimation = (result: ScannerAttemptResult | null) => {
 };
 
 export default function BusinessScannerScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ eventVenueId?: string }>();
   const queryClient = useQueryClient();
   const styles = useThemeStyles(createStyles);
+  const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
@@ -293,7 +318,7 @@ export default function BusinessScannerScreen() {
       grantCameraAccess:
         language === "fi" ? "Myönnä kameran käyttöoikeus" : "Grant camera access",
       reviewHint:
-        language === "fi" ? "Tarkista tulos alta." : "Review the result below.",
+        language === "fi" ? "Kamera avautuu uudelleen hetken kuluttua." : "Camera reopens in a moment.",
       aimHint:
         language === "fi" ? "Kohdista kamera opiskelijan QR-koodiin." : "Aim the camera at the student QR.",
       processing: language === "fi" ? "KÄSITELLÄÄN" : "PROCESSING",
@@ -334,6 +359,23 @@ export default function BusinessScannerScreen() {
       retryScannerDevice:
         language === "fi" ? "Yritä laiterekisteröintiä uudelleen" : "Retry device registration",
       alreadyStampedAt: language === "fi" ? "Kirjattu aiemmin" : "Already recorded",
+      chooseEventTitle: language === "fi" ? "Valitse skannattava tapahtuma" : "Choose event to scan",
+      chooseEventMeta:
+        language === "fi"
+          ? "Useampi tapahtuma on käynnissä. Valitse oikea ennen QR-lukua."
+          : "Multiple events are live. Choose the right one before reading a QR.",
+      selectedEventLabel: language === "fi" ? "Valittu" : "Selected",
+      manualTokenTitle: "Manual token scan",
+      manualTokenBody:
+        language === "fi"
+          ? "Käytä vain testissä tai jos kamera ei ole käytettävissä. Token luetaan samalla turvatulla scanner-kontekstilla."
+          : "Use this only for smoke tests or when camera scanning is not practical. The token uses the same secured scanner context.",
+      manualTokenPlaceholder: "Paste LEIMA_STAMP_QR token",
+      manualTokenSubmit: language === "fi" ? "Skannaa token" : "Scan token",
+      manualTokenMissing:
+        language === "fi"
+          ? "Liitä LEIMA_STAMP_QR token ennen manuaalista skannausta."
+          : "Paste a LEIMA_STAMP_QR token before manual scanning.",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -344,12 +386,18 @@ export default function BusinessScannerScreen() {
   });
   const [permission, requestPermission] = useCameraPermissions();
   const [selectedEventVenueId, setSelectedEventVenueId] = useState<string | null>(null);
+  const [isEventSelectorMoving, setIsEventSelectorMoving] = useState<boolean>(false);
   const [scannerPin, setScannerPin] = useState<string>("");
   const [isScannerLocked, setIsScannerLocked] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [manualQrToken, setManualQrToken] = useState<string>("");
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
   const [scannerDeviceRetryNonce, setScannerDeviceRetryNonce] = useState<number>(0);
+  const scanInFlightRef = useRef<boolean>(false);
+  const eventSelectorScrollRef = useRef<ScrollView | null>(null);
   const [scannerDeviceState, setScannerDeviceState] = useState<ScannerDeviceState>(
     createInitialScannerDeviceState
   );
@@ -390,10 +438,28 @@ export default function BusinessScannerScreen() {
       activeJoinedEvents.find((event) => event.eventVenueId === selectedEventVenueId) ?? null,
     [activeJoinedEvents, selectedEventVenueId]
   );
+  const selectedEventIndex = useMemo(() => {
+    const foundIndex = activeJoinedEvents.findIndex((event) => event.eventVenueId === selectedEventVenueId);
+
+    return foundIndex < 0 ? 0 : foundIndex;
+  }, [activeJoinedEvents, selectedEventVenueId]);
+  const eventSelectorCardWidth = Math.min(300, Math.max(238, windowWidth - 112));
+  const eventSelectorStride = eventSelectorCardWidth + 12;
   const selectedBusinessId = selectedEvent?.businessId ?? null;
   const selectedBusinessName = selectedEvent?.businessName ?? null;
   const isScannerDeviceReady = scannerDeviceState.status === "ready";
   const isScannerPinRequired = scannerDeviceState.status === "ready" && scannerDeviceState.device.pinRequired;
+
+  const selectEventVenue = useCallback(
+    (eventVenueId: string): void => {
+      if (scanInFlightRef.current || isScannerLocked || isSubmitting) {
+        return;
+      }
+
+      setSelectedEventVenueId(eventVenueId);
+    },
+    [isScannerLocked, isSubmitting]
+  );
 
   useEffect(() => {
     if (selectedBusinessId === null || selectedBusinessName === null) {
@@ -447,15 +513,65 @@ export default function BusinessScannerScreen() {
     };
   }, [scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
 
-  const resetScanner = (): void => {
+  useEffect(() => {
+    if (activeJoinedEvents.length <= 1) {
+      return;
+    }
+
+    eventSelectorScrollRef.current?.scrollTo({
+      animated: true,
+      x: selectedEventIndex * eventSelectorStride,
+      y: 0,
+    });
+  }, [activeJoinedEvents.length, eventSelectorStride, selectedEventIndex]);
+
+  const handleEventSelectorScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+      setIsEventSelectorMoving(false);
+
+      if (activeJoinedEvents.length <= 1 || isScannerLocked || isSubmitting) {
+        return;
+      }
+
+      const nextIndex = Math.max(
+        0,
+        Math.min(activeJoinedEvents.length - 1, Math.round(event.nativeEvent.contentOffset.x / eventSelectorStride))
+      );
+      const nextEvent = activeJoinedEvents[nextIndex];
+
+      if (typeof nextEvent === "undefined" || nextEvent.eventVenueId === selectedEventVenueId) {
+        return;
+      }
+
+      selectEventVenue(nextEvent.eventVenueId);
+    },
+    [activeJoinedEvents, eventSelectorStride, isScannerLocked, isSubmitting, selectEventVenue, selectedEventVenueId]
+  );
+
+  const resetScanner = useCallback((): void => {
+    scanInFlightRef.current = false;
     setIsScannerLocked(false);
     setIsSubmitting(false);
     setSubmitError(null);
     setLastResult(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (lastResult === null || isSubmitting) {
+      return;
+    }
+
+    const resetTimeout = setTimeout(() => {
+      resetScanner();
+    }, 2000);
+
+    return () => {
+      clearTimeout(resetTimeout);
+    };
+  }, [isSubmitting, lastResult, resetScanner]);
 
   const submitScanAsync = async (qrToken: string): Promise<void> => {
-    if (selectedEvent === null || isScannerLocked || isSubmitting) {
+    if (scanInFlightRef.current || selectedEvent === null || isScannerLocked || isSubmitting) {
       return;
     }
 
@@ -469,6 +585,7 @@ export default function BusinessScannerScreen() {
       return;
     }
 
+    scanInFlightRef.current = true;
     setIsScannerLocked(true);
     setIsSubmitting(true);
     setSubmitError(null);
@@ -479,6 +596,8 @@ export default function BusinessScannerScreen() {
         {
           qrToken,
           businessId: selectedEvent.businessId,
+          eventId: selectedEvent.eventId,
+          eventVenueId: selectedEvent.eventVenueId,
           scannerDeviceId: scannerDeviceState.device.scannerDeviceId,
           scannerPin: scannerDeviceState.device.pinRequired ? scannerPin.trim() : null,
           scannerLocation: emptyScannerLocation,
@@ -494,6 +613,7 @@ export default function BusinessScannerScreen() {
         });
       }
     } catch (error) {
+      scanInFlightRef.current = false;
       setSubmitError(error instanceof Error ? error.message : "Unknown scanner error.");
       setIsScannerLocked(false);
     } finally {
@@ -502,23 +622,61 @@ export default function BusinessScannerScreen() {
   };
 
   const handleBarcodeScanned = (result: BarcodeScanningResult): void => {
-    if (isScannerLocked || result.data.trim().length === 0) {
+    if (isScannerLocked || isEventSelectorMoving || result.data.trim().length === 0) {
       return;
     }
 
     void submitScanAsync(result.data.trim());
   };
 
+  const scanPastedToken = async (): Promise<void> => {
+    const qrToken = manualQrToken.trim();
+
+    if (qrToken.length === 0) {
+      setSubmitError(labels.manualTokenMissing);
+      return;
+    }
+
+    await submitScanAsync(qrToken);
+  };
+
+  const handleSignOutPress = async (): Promise<void> => {
+    scanInFlightRef.current = false;
+    resetScanner();
+    setIsSigningOut(true);
+    setSignOutError(null);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error !== null) {
+      setSignOutError(error.message);
+      setIsSigningOut(false);
+      return;
+    }
+
+    setIsSigningOut(false);
+  };
+
   return (
-    <AppScreen>
+    <AppScreen contentContainerStyle={styles.scannerScreenContent}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
-          <Text style={styles.metaText}>{copy.business.scannerMeta}</Text>
+          <Text style={styles.metaText}>{labels.eventDayBody}</Text>
         </View>
+        <Pressable
+          accessibilityLabel={isSigningOut ? copy.common.signingOut : copy.common.signOut}
+          disabled={isSigningOut}
+          onPress={() => void handleSignOutPress()}
+          style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
+        >
+          {isSigningOut ? (
+            <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+          ) : (
+            <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
+          )}
+        </Pressable>
       </View>
 
       {homeOverviewQuery.isLoading ? (
@@ -542,6 +700,79 @@ export default function BusinessScannerScreen() {
             <Text style={styles.bodyText}>{labels.noActiveBody}</Text>
           ) : (
             <>
+              {activeJoinedEvents.length > 1 ? (
+                <View style={styles.eventSelectorStack}>
+                  <ScrollView
+                    decelerationRate="fast"
+                    horizontal
+                    onMomentumScrollEnd={handleEventSelectorScrollEnd}
+                    onScrollBeginDrag={() => setIsEventSelectorMoving(true)}
+                    onScrollEndDrag={handleEventSelectorScrollEnd}
+                    ref={eventSelectorScrollRef}
+                    scrollEnabled={!isScannerLocked && !isSubmitting}
+                    showsHorizontalScrollIndicator={false}
+                    snapToAlignment="start"
+                    snapToInterval={eventSelectorStride}
+                    contentContainerStyle={styles.eventSelectorRailContent}
+                  >
+                    {activeJoinedEvents.map((event) => {
+                      const isSelected = selectedEventVenueId === event.eventVenueId;
+
+                      return (
+                        <Pressable
+                          accessibilityHint={labels.chooseEventMeta}
+                          accessibilityLabel={`${event.eventName}, ${event.businessName}, ${event.city}. ${isSelected ? labels.selectedEventLabel : labels.chooseEventTitle}`}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isSelected }}
+                          key={event.eventVenueId}
+                          disabled={isScannerLocked || isSubmitting}
+                          onPress={() => selectEventVenue(event.eventVenueId)}
+                          style={[
+                            styles.eventSelectorCard,
+                            { width: eventSelectorCardWidth },
+                            isSelected ? styles.eventSelectorCardSelected : null,
+                            isScannerLocked || isSubmitting ? styles.disabledButton : null,
+                          ]}
+                        >
+                          <View style={styles.eventSelectorCardHeader}>
+                            <View style={styles.eventSelectorIconBubble}>
+                              <AppIcon color={theme.colors.lime} name="scan" size={18} />
+                            </View>
+                            <View style={styles.eventSelectorTitleGroup}>
+                              <Text numberOfLines={1} style={styles.eventSelectorTitle}>
+                                {event.eventName}
+                              </Text>
+                              <Text numberOfLines={1} style={styles.eventSelectorMeta}>
+                                {event.businessName} · {event.city}
+                              </Text>
+                            </View>
+                            {isSelected ? (
+                              <View style={styles.eventSelectorSelectedPill}>
+                                <Text style={styles.eventSelectorSelectedText}>{labels.selectedEventLabel}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <Text numberOfLines={1} style={styles.eventSelectorMeta}>
+                            {labels.endsLabel} {formatDateTime(formatter, event.endAt)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <View style={styles.eventSelectorDots}>
+                    {activeJoinedEvents.map((event) => (
+                      <View
+                        key={event.eventVenueId}
+                        style={[
+                          styles.eventSelectorDot,
+                          event.eventVenueId === selectedEventVenueId ? styles.eventSelectorDotActive : null,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
               {selectedEvent ? (
                 <View style={styles.scannerKiosk}>
                   {isScannerPinRequired ? (
@@ -549,6 +780,7 @@ export default function BusinessScannerScreen() {
                       <Text style={styles.eventDayEyebrow}>{labels.scannerPin}</Text>
                       <Text style={styles.metaText}>{labels.scannerPinRequired}</Text>
                       <TextInput
+                        accessibilityLabel={labels.scannerPin}
                         editable={!isSubmitting && !isScannerLocked}
                         keyboardType="number-pad"
                         maxLength={8}
@@ -582,24 +814,62 @@ export default function BusinessScannerScreen() {
                         ) : null}
 
                         <CameraView
-                          active={!isScannerLocked}
+                          active={!isScannerLocked && !isEventSelectorMoving}
                           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                          onBarcodeScanned={isScannerLocked ? undefined : handleBarcodeScanned}
+                          onBarcodeScanned={isScannerLocked || isEventSelectorMoving ? undefined : handleBarcodeScanned}
                           style={styles.cameraView}
                         />
 
                         {isScannerLocked ? (
                           <View style={styles.lockedOverlay}>
-                            <Text style={styles.lockedOverlayText}>
-                              {isSubmitting ? labels.processing : labels.reviewState}
-                            </Text>
+                            {lastResult === null ? (
+                              <Text style={styles.lockedOverlayText}>
+                                {isSubmitting ? labels.processing : labels.reviewState}
+                              </Text>
+                            ) : (
+                              <Animated.View
+                                style={[
+                                  styles.lockedResultCard,
+                                  {
+                                    backgroundColor: toneConfig[lastResult.tone].backgroundColor,
+                                    borderColor: toneConfig[lastResult.tone].borderColor,
+                                    opacity: resultOpacity,
+                                    transform: [{ scale: resultScale }],
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.lockedResultIcon,
+                                    { color: toneConfig[lastResult.tone].accentColor },
+                                  ]}
+                                >
+                                  {toneConfig[lastResult.tone].icon}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.lockedResultTitle,
+                                    { color: toneConfig[lastResult.tone].accentColor },
+                                  ]}
+                                >
+                                  {scanResultTitles[lastResult.status]}
+                                </Text>
+                                {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
+                                  <Text style={styles.lockedResultMeta}>
+                                    {lastResult.stampCount} {labels.stampCountLabel}
+                                  </Text>
+                                ) : null}
+                                <Text style={styles.lockedResultMessage} numberOfLines={2}>
+                                  {lastResult.message}
+                                </Text>
+                                <Text style={styles.lockedResultDetail} numberOfLines={2}>
+                                  {scanResultDetails[lastResult.status]}
+                                </Text>
+                              </Animated.View>
+                            )}
                           </View>
                         ) : null}
                       </View>
-
-                      <Text style={styles.cameraHint}>
-                        {isScannerLocked ? labels.reviewHint : labels.aimHint}
-                      </Text>
                     </View>
                   ) : permission.granted && !isScannerDeviceReady ? (
                     <View style={styles.cameraStack}>
@@ -629,49 +899,29 @@ export default function BusinessScannerScreen() {
                     </View>
                   )}
 
-                  <View style={styles.scannerStatusBar}>
-                    <View style={styles.scannerStatusCopy}>
-                      <Text numberOfLines={1} style={styles.scannerStatusTitle}>
-                        {selectedEvent.businessName}
-                      </Text>
-                      <Text numberOfLines={1} style={styles.scannerStatusMeta}>
-                        {selectedEvent.eventName} · {labels.endsLabel}{" "}
-                        {formatDateTime(formatter, selectedEvent.endAt)}
-                      </Text>
-                    </View>
-                    <View style={styles.scannerReadyPill}>
-                      <View style={styles.eventDayDot} />
-                      <Text style={styles.scannerReadyText}>{labels.queueReady}</Text>
-                    </View>
+                  <View style={styles.manualTokenPanel}>
+                    <Text style={styles.eventDayEyebrow}>{labels.manualTokenTitle}</Text>
+                    <Text style={styles.metaText}>{labels.manualTokenBody}</Text>
+                    <TextInput
+                      accessibilityLabel={labels.manualTokenPlaceholder}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!isSubmitting && !isScannerLocked}
+                      multiline
+                      onChangeText={setManualQrToken}
+                      placeholder={labels.manualTokenPlaceholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.manualTokenInput}
+                      value={manualQrToken}
+                    />
+                    <Pressable
+                      disabled={isSubmitting || isScannerLocked}
+                      onPress={() => void scanPastedToken()}
+                      style={[styles.secondaryButton, isSubmitting || isScannerLocked ? styles.disabledButton : null]}
+                    >
+                      <Text style={styles.secondaryButtonText}>{labels.manualTokenSubmit}</Text>
+                    </Pressable>
                   </View>
-                </View>
-              ) : null}
-
-              {activeJoinedEvents.length > 1 ? (
-                <View style={styles.eventSelectorStack}>
-                  {activeJoinedEvents.map((event) => {
-                    const isSelected = selectedEventVenueId === event.eventVenueId;
-
-                    return (
-                      <Pressable
-                        key={event.eventVenueId}
-                        disabled={isScannerLocked || isSubmitting}
-                        onPress={() => setSelectedEventVenueId(event.eventVenueId)}
-                        style={[
-                          styles.eventSelectorCard,
-                          isSelected ? styles.eventSelectorCardSelected : null,
-                          isScannerLocked || isSubmitting ? styles.disabledButton : null,
-                        ]}
-                      >
-                        <Text numberOfLines={1} style={styles.eventSelectorTitle}>
-                          {event.eventName}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.eventSelectorMeta}>
-                          {event.businessName} · {event.city}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
                 </View>
               ) : null}
             </>
@@ -679,73 +929,15 @@ export default function BusinessScannerScreen() {
         </InfoCard>
       ) : null}
 
-      {lastResult !== null ? (
-        <Animated.View style={{ opacity: resultOpacity, transform: [{ scale: resultScale }] }}>
-          <InfoCard
-            eyebrow={toneConfig[lastResult.tone].eyebrow}
-            title={scanResultTitles[lastResult.status]}
-          >
-            <View
-              style={[
-                styles.resultHeroCard,
-                {
-                  backgroundColor: toneConfig[lastResult.tone].backgroundColor,
-                  borderColor: toneConfig[lastResult.tone].borderColor,
-                },
-              ]}
-            >
-              <Text style={[styles.resultIcon, { color: toneConfig[lastResult.tone].accentColor }]}>
-                {toneConfig[lastResult.tone].icon}
-              </Text>
-
-              {lastResult.status === "SUCCESS" && typeof lastResult.stampCount === "number" ? (
-                <View style={styles.stampCountBlock}>
-                  <Text
-                    style={[
-                      styles.stampCountNumber,
-                      { color: toneConfig[lastResult.tone].accentColor },
-                    ]}
-                  >
-                    {lastResult.stampCount}
-                  </Text>
-                  <Text style={styles.stampCountLabel}>{labels.stampCountLabel}</Text>
-                </View>
-              ) : null}
-
-              <Text
-                style={[
-                  styles.resultMessage,
-                  { color: toneConfig[lastResult.tone].accentColor },
-                ]}
-              >
-                {lastResult.message}
-              </Text>
-            </View>
-
-            <Text style={styles.bodyText}>{scanResultDetails[lastResult.status]}</Text>
-            {lastResult.status === "ALREADY_STAMPED" && typeof lastResult.existingStampedAt === "string" ? (
-              <Text style={styles.metaText}>
-                {labels.alreadyStampedAt} {formatDateTime(formatter, lastResult.existingStampedAt)}
-              </Text>
-            ) : null}
-            <View style={styles.actionRow}>
-              <Pressable onPress={resetScanner} style={[styles.primaryButton, styles.actionFlex]}>
-                <Text style={styles.primaryButtonText}>{labels.scanAgain}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push("/business/history")}
-                style={[styles.secondaryButton, styles.actionFlex]}
-              >
-                <Text style={styles.secondaryButtonText}>{copy.business.history}</Text>
-              </Pressable>
-            </View>
-          </InfoCard>
-        </Animated.View>
-      ) : null}
-
       {submitError !== null ? (
         <InfoCard eyebrow={copy.common.error} title={labels.requestFailedTitle}>
           <Text style={styles.bodyText}>{submitError}</Text>
+        </InfoCard>
+      ) : null}
+
+      {signOutError !== null ? (
+        <InfoCard eyebrow={copy.common.error} title={copy.common.signOut}>
+          <Text style={styles.bodyText}>{signOutError}</Text>
         </InfoCard>
       ) : null}
 
@@ -757,6 +949,10 @@ const createStyles = (theme: MobileTheme) => {
   const bracketColor = theme.colors.lime;
 
   return StyleSheet.create({
+    scannerScreenContent: {
+      gap: 12,
+      paddingTop: 8,
+    },
     actionFlex: {
       alignItems: "center",
       flex: 1,
@@ -771,16 +967,6 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
-    },
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
     },
     businessHero: {
       borderRadius: theme.radius.inner,
@@ -852,7 +1038,7 @@ const createStyles = (theme: MobileTheme) => {
       lineHeight: theme.typography.lineHeights.caption,
     },
     cameraOuter: {
-      aspectRatio: 3 / 4,
+      aspectRatio: 1,
       backgroundColor: theme.colors.screenBase,
       borderRadius: theme.radius.inner,
       overflow: "hidden",
@@ -872,12 +1058,83 @@ const createStyles = (theme: MobileTheme) => {
     },
     eventSelectorCard: {
       backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.inner,
-      gap: 4,
-      padding: 14,
+      borderWidth: 1,
+      gap: 8,
+      padding: 12,
+    },
+    eventSelectorCardHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
     },
     eventSelectorCardSelected: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    eventSelectorCount: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    eventSelectorEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    eventSelectorHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    eventSelectorHeaderCopy: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    eventSelectorHeading: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    eventSelectorHelp: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventSelectorDot: {
+      backgroundColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      height: 6,
+      width: 18,
+    },
+    eventSelectorDotActive: {
+      backgroundColor: theme.colors.lime,
+      width: 30,
+    },
+    eventSelectorDots: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 7,
+      justifyContent: "center",
+    },
+    eventSelectorIconBubble: {
+      alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 34,
+      justifyContent: "center",
+      width: 34,
     },
     eventSelectorMeta: {
       color: theme.colors.textMuted,
@@ -885,14 +1142,40 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
+    eventSelectorRailContent: {
+      gap: 10,
+      paddingRight: 4,
+    },
     eventSelectorStack: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.scene,
+      borderWidth: theme.mode === "light" ? 1 : 0,
       gap: 8,
+      padding: 10,
+    },
+    eventSelectorSelectedPill: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    eventSelectorSelectedText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     eventSelectorTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    eventSelectorTitleGroup: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
     },
     deviceCopy: {
       flex: 1,
@@ -1098,6 +1381,17 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    iconButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexShrink: 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
     lockedOverlay: {
       ...StyleSheet.absoluteFillObject,
       alignItems: "center",
@@ -1111,6 +1405,48 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: 16,
       letterSpacing: 2,
       lineHeight: 20,
+    },
+    lockedResultCard: {
+      alignItems: "center",
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 7,
+      marginHorizontal: 22,
+      paddingHorizontal: 18,
+      paddingVertical: 20,
+    },
+    lockedResultDetail: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    lockedResultIcon: {
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 42,
+      lineHeight: 46,
+    },
+    lockedResultMessage: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
+    },
+    lockedResultMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+      textTransform: "uppercase",
+    },
+    lockedResultTitle: {
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+      textAlign: "center",
     },
     locationProofCopy: {
       flex: 1,
@@ -1154,6 +1490,27 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    manualTokenInput: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      minHeight: 86,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      textAlignVertical: "top",
+    },
+    manualTokenPanel: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 10,
+      padding: 14,
     },
     primaryButton: {
       alignItems: "center",
@@ -1288,18 +1645,29 @@ const createStyles = (theme: MobileTheme) => {
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
     topBar: {
       alignItems: "flex-start",
       flexDirection: "row",
       gap: 12,
+      justifyContent: "space-between",
       marginBottom: 4,
+      paddingRight: 2,
     },
     topBarCopy: {
       flex: 1,
       gap: 6,
+      minWidth: 0,
     },
     secondaryButton: {
       alignItems: "center",

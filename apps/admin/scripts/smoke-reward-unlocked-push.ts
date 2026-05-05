@@ -35,8 +35,11 @@ type PushRequestMessage = {
 type RewardUnlockFixture = {
   eventId: string;
   firstBusinessId: string;
+  firstEventVenueId: string;
   secondBusinessId: string;
+  secondEventVenueId: string;
   thirdBusinessId: string;
+  thirdEventVenueId: string;
   firstRewardTierId: string;
   secondRewardTierId: string;
   soldOutRewardTierId: string;
@@ -205,8 +208,11 @@ const createPushMockServer = () => {
 const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnlockFixture> => {
   const eventId = randomUUID();
   const firstBusinessId = randomUUID();
+  const firstEventVenueId = randomUUID();
   const secondBusinessId = randomUUID();
+  const secondEventVenueId = randomUUID();
   const thirdBusinessId = randomUUID();
+  const thirdEventVenueId = randomUUID();
   const firstRewardTierId = randomUUID();
   const secondRewardTierId = randomUUID();
   const soldOutRewardTierId = randomUUID();
@@ -326,7 +332,7 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
       stamp_label
     ) values
       (
-        '${randomUUID()}',
+        '${firstEventVenueId}',
         '${eventId}',
         '${firstBusinessId}',
         'JOINED',
@@ -336,7 +342,7 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
         'Unlock Stamp 1'
       ),
       (
-        '${randomUUID()}',
+        '${secondEventVenueId}',
         '${eventId}',
         '${secondBusinessId}',
         'JOINED',
@@ -346,7 +352,7 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
         'Unlock Stamp 2'
       ),
       (
-        '${randomUUID()}',
+        '${thirdEventVenueId}',
         '${eventId}',
         '${thirdBusinessId}',
         'JOINED',
@@ -449,8 +455,11 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
   return {
     eventId,
     firstBusinessId,
+    firstEventVenueId,
     secondBusinessId,
+    secondEventVenueId,
     thirdBusinessId,
+    thirdEventVenueId,
     firstRewardTierId,
     secondRewardTierId,
     soldOutRewardTierId,
@@ -561,8 +570,10 @@ const run = async (): Promise<void> => {
 
     const firstScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: fixture.firstBusinessId,
+      eventId: fixture.eventId,
+      eventVenueId: fixture.firstEventVenueId,
       qrToken: firstQrToken,
-      scannerDeviceId: "reward-unlocked-device-a",
+      scannerDeviceId: null,
     });
 
     if (firstScan.status !== 200 || firstScan.responseBody.status !== "SUCCESS") {
@@ -600,8 +611,10 @@ const run = async (): Promise<void> => {
 
     const secondScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: fixture.secondBusinessId,
+      eventId: fixture.eventId,
+      eventVenueId: fixture.secondEventVenueId,
       qrToken: secondQrToken,
-      scannerDeviceId: "reward-unlocked-device-b",
+      scannerDeviceId: null,
     });
 
     if (secondScan.status !== 200 || secondScan.responseBody.status !== "SUCCESS") {
@@ -689,8 +702,10 @@ const run = async (): Promise<void> => {
 
     const thirdScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: fixture.thirdBusinessId,
+      eventId: fixture.eventId,
+      eventVenueId: fixture.thirdEventVenueId,
       qrToken: thirdQrToken,
-      scannerDeviceId: "reward-unlocked-device-c",
+      scannerDeviceId: null,
     });
 
     if (thirdScan.status !== 200 || thirdScan.responseBody.status !== "SUCCESS") {

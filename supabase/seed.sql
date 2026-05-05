@@ -188,7 +188,13 @@ values
   ('00000000-0000-0000-0000-000000000002', 'organizer@omaleima.test', 'Guild Organizer', 'CLUB_ORGANIZER'),
   ('00000000-0000-0000-0000-000000000003', 'scanner@omaleima.test', 'Venue Scanner', 'BUSINESS_STAFF'),
   ('00000000-0000-0000-0000-000000000004', 'student@omaleima.test', 'Student Tester', 'STUDENT')
-on conflict (id) do nothing;
+on conflict (id) do update
+set
+  email = excluded.email,
+  display_name = excluded.display_name,
+  primary_role = excluded.primary_role,
+  status = 'ACTIVE',
+  updated_at = now();
 
 insert into public.clubs (
   id,

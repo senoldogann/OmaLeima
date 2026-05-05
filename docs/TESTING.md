@@ -456,8 +456,7 @@ The audit is intentionally read-only. It verifies the current mobile repository 
 - provider-owned notification diagnostics are wired through `apps/mobile/src/providers/app-providers.tsx`
 - the runtime label recognizes the current physical-device dev client as a development build instead of falling back to `bare`
 - the diagnostics module captures the last received notification and the last notification response
-- the student profile route exposes a dev-only `Push diagnostics` modal for runtime mode, permission state, and captured push activity
-- the same profile route records `Last diagnostics refresh` so manual refresh now has visible UI feedback
+- provider-owned diagnostics capture records runtime mode, permission state, and captured push activity without exposing debug controls on the student profile route
 - docs still describe the physical-device requirement honestly
 
 Expected success output today:
@@ -471,10 +470,10 @@ This audit does not claim that a notification was really delivered on a device. 
 
 1. build and install a development build on a physical iPhone or Android device
 2. sign in as a student on that build
-3. enable notifications from the profile route
+3. enable notifications from the native permission prompt or device settings
 4. trigger a real remote push path such as reward unlock delivery
 5. confirm the profile diagnostics modal records the received notification and, after opening it, the notification response
-6. confirm those captured rows show a remote source, not only local foreground notification activity
+6. confirm provider-owned diagnostics capture shows a remote source, not only local foreground notification activity
 
 ## Mobile hosted business scan readiness
 

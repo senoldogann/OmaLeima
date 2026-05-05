@@ -33,11 +33,12 @@ export type SessionAccessArea = "student" | "business" | "club" | "unsupported";
 export type SessionAccess = {
   userId: string;
   area: SessionAccessArea;
-  homeHref: "/student/events" | "/business/home" | "/club/home" | null;
+  homeHref: "/student/events" | "/business/home" | "/business/scanner" | "/club/home" | null;
   primaryRole: ProfileRow["primary_role"];
   profileStatus: ProfileRow["status"];
   businessMembershipCount: number;
   clubMembershipCount: number;
+  isBusinessScannerOnly: boolean;
 };
 
 type UseSessionAccessQueryParams = {
@@ -148,9 +149,12 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
   );
   const activeBusinessIds = new Set(activeBusinesses.map((business) => business.id));
   const activeClubIds = new Set(activeClubs.map((club) => club.id));
-  const activeBusinessMembershipCount = businessMemberships.filter((membership) =>
+  const activeBusinessMemberships = businessMemberships.filter((membership) =>
     activeBusinessIds.has(membership.business_id)
-  ).length;
+  );
+  const activeBusinessMembershipCount = activeBusinessMemberships.length;
+  const isBusinessScannerOnly =
+    activeBusinessMemberships.length > 0 && activeBusinessMemberships.every((membership) => membership.role === "SCANNER");
   const activeClubMembershipCount = clubMemberships.filter((membership) =>
     activeClubIds.has(membership.club_id)
   ).length;
@@ -164,6 +168,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       profileStatus: profile.status,
       businessMembershipCount: activeBusinessMembershipCount,
       clubMembershipCount: activeClubMembershipCount,
+      isBusinessScannerOnly,
     };
   }
 
@@ -171,11 +176,12 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
     return {
       userId,
       area: "business",
-      homeHref: "/business/home",
+      homeHref: isBusinessScannerOnly ? "/business/scanner" : "/business/home",
       primaryRole: profile.primary_role,
       profileStatus: profile.status,
       businessMembershipCount: activeBusinessMembershipCount,
       clubMembershipCount: activeClubMembershipCount,
+      isBusinessScannerOnly,
     };
   }
 
@@ -188,6 +194,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       profileStatus: profile.status,
       businessMembershipCount: 0,
       clubMembershipCount: activeClubMembershipCount,
+      isBusinessScannerOnly: false,
     };
   }
 
@@ -200,6 +207,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       profileStatus: profile.status,
       businessMembershipCount: 0,
       clubMembershipCount: activeClubMembershipCount,
+      isBusinessScannerOnly: false,
     };
   }
 
@@ -211,6 +219,7 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
     profileStatus: profile.status,
     businessMembershipCount: 0,
     clubMembershipCount: activeClubMembershipCount,
+    isBusinessScannerOnly: false,
   };
 };
 

@@ -39,6 +39,10 @@ type RewardInventoryOverviewRealtimeParams = {
   isEnabled: boolean;
 };
 
+type StampCelebrationRealtimeParams = RealtimeHookParams & {
+  onValidStamp: (eventId: string) => void;
+};
+
 type StampRealtimeRow = {
   event_id: string;
   student_id: string;
@@ -53,6 +57,13 @@ type RewardClaimRealtimeRow = {
 type RewardTierRealtimeRow = {
   event_id: string;
 };
+
+const isStampRealtimeRow = (value: unknown): value is StampRealtimeRow =>
+  typeof value === "object" &&
+  value !== null &&
+  "event_id" in value &&
+  "student_id" in value &&
+  "validation_status" in value;
 
 const MAX_REALTIME_EVENT_FILTER_SIZE = 100;
 
@@ -121,13 +132,35 @@ const invalidateRewardProgressAsync = async (
   ]);
 };
 
+const invalidateActiveStampSurfaceAsync = async (
+  queryClient: QueryClient,
+  studentId: string,
+  eventId: string
+): Promise<void> => {
+  await Promise.all([
+    invalidateRewardOverviewAsync(queryClient, studentId),
+    queryClient.invalidateQueries({
+      queryKey: studentEventDetailQueryKey(eventId, studentId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: studentEventStampCountQueryKey(eventId, studentId),
+    }),
+  ]);
+};
+
 const subscribeToChannel = (
   channel: RealtimeChannel,
   scope: string,
   eventId: string,
-  studentId: string
+  studentId: string,
+  onSubscribed?: () => void
 ): void => {
   channel.subscribe((status, error) => {
+    if (status === "SUBSCRIBED") {
+      onSubscribed?.();
+      return;
+    }
+
     if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT") {
       return;
     }
@@ -289,6 +322,85 @@ export const useStudentEventLeaderboardRealtime = ({
       void supabase.removeChannel(channel);
     };
   }, [eventId, isEnabled, queryClient, studentId]);
+};
+
+export const useStudentStampCelebrationRealtime = ({
+  eventId,
+  studentId,
+  isEnabled,
+  onValidStamp,
+}: StampCelebrationRealtimeParams): void => {
+  const queryClient = useQueryClient();
+  const hasEnabledOnce = useRef<boolean>(false);
+  const previousEnabled = useRef<boolean>(false);
+
+  useEffect(() => {
+    const resumedIntoForeground = isEnabled && !previousEnabled.current && hasEnabledOnce.current;
+
+    previousEnabled.current = isEnabled;
+
+    if (!isEnabled) {
+      return;
+    }
+
+    hasEnabledOnce.current = true;
+
+    if (resumedIntoForeground) {
+      handleAsyncInvalidation(
+        invalidateActiveStampSurfaceAsync(queryClient, studentId, eventId),
+        "student-stamp-celebration-catch-up",
+        eventId,
+        studentId
+      );
+    }
+
+    const channel = supabase
+      .channel(createChannelName("student-stamp-celebration", eventId, studentId))
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stamps",
+          filter: `student_id=eq.${studentId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<StampRealtimeRow>) => {
+          const nextStamp = isStampRealtimeRow(payload.new) ? payload.new : null;
+
+          if (!stampPayloadAffectsRewardProgress(payload, eventId)) {
+            return;
+          }
+
+          if (
+            nextStamp !== null &&
+            nextStamp.event_id === eventId &&
+            nextStamp.validation_status === "VALID"
+          ) {
+            onValidStamp(nextStamp.event_id);
+          }
+
+          handleAsyncInvalidation(
+            invalidateActiveStampSurfaceAsync(queryClient, studentId, eventId),
+            "student-stamp-celebration",
+            eventId,
+            studentId
+          );
+        }
+      );
+
+    subscribeToChannel(channel, "student-stamp-celebration", eventId, studentId, () => {
+      handleAsyncInvalidation(
+        invalidateActiveStampSurfaceAsync(queryClient, studentId, eventId),
+        "student-stamp-celebration-subscribe-catch-up",
+        eventId,
+        studentId
+      );
+    });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [eventId, isEnabled, onValidStamp, queryClient, studentId]);
 };
 
 export const useStudentRewardOverviewRealtime = ({

@@ -30,6 +30,8 @@ export type FunctionJsonResponse = {
   details?: Record<string, unknown>;
   expiresAt?: string;
   message?: string;
+  notificationsCreated?: number;
+  notificationsSent?: number;
   qrPayload?: {
     token: string;
     type?: string;

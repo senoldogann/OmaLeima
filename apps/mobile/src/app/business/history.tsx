@@ -1,32 +1,98 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
-import { useBusinessScanHistoryQuery } from "@/features/business/business-history";
+import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { RECENT_SCAN_LIMIT, useBusinessScanHistoryQuery } from "@/features/business/business-history";
 import type { BusinessScanHistoryEntry } from "@/features/business/types";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
+
+type HistoryDateFilter = "ALL" | "TODAY" | "WEEK" | "MONTH";
 
 type HistoryStatusMeta = {
   eyebrow: string;
   detail: string;
   backgroundColor: string;
   borderColor: string;
+  chipBackgroundColor: string;
+  chipBorderColor: string;
+  chipTextColor: string;
 };
+
+type HistoryMetricCard = {
+  key: string;
+  label: string;
+  tone: "accent" | "warning" | "muted";
+  value: string;
+};
+
+type GroupedHistorySection = {
+  dayKey: string;
+  dayLabel: string;
+  entries: BusinessScanHistoryEntry[];
+};
+
+const historyDateFilters = ["ALL", "TODAY", "WEEK", "MONTH"] as const satisfies readonly HistoryDateFilter[];
+const allEventsFilterValue = "__ALL_EVENTS__";
+const emptyHistoryEntries: BusinessScanHistoryEntry[] = [];
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
+
+const createDayKey = (value: string): string => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const isInsideDateFilter = (
+  scannedAt: string,
+  dateFilter: HistoryDateFilter,
+  now: Date
+): boolean => {
+  if (dateFilter === "ALL") {
+    return true;
+  }
+
+  const scannedDate = new Date(scannedAt);
+
+  if (dateFilter === "TODAY") {
+    return createDayKey(scannedAt) === createDayKey(now.toISOString());
+  }
+
+  const dayWindow = dateFilter === "WEEK" ? 7 : 30;
+  const windowStart = new Date(now);
+  windowStart.setHours(0, 0, 0, 0);
+  windowStart.setDate(windowStart.getDate() - (dayWindow - 1));
+
+  return scannedDate >= windowStart;
+};
+
+const formatStudentLabel = (studentId: string, language: "fi" | "en"): string =>
+  language === "fi" ? `Opiskelija ...${studentId.slice(-4)}` : `Student ...${studentId.slice(-4)}`;
 
 export default function BusinessHistoryScreen() {
   const router = useRouter();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
+  const [dateFilter, setDateFilter] = useState<HistoryDateFilter>("ALL");
+  const [filterClock, setFilterClock] = useState<number>(() => Date.now());
+  const [selectedEventId, setSelectedEventId] = useState<string>(allEventsFilterValue);
   const userId = session?.user.id ?? null;
+  const accessQuery = useSessionAccessQuery({
+    userId: userId ?? "",
+    isEnabled: userId !== null,
+  });
 
   const formatter = useMemo(
     () =>
@@ -40,8 +106,43 @@ export default function BusinessHistoryScreen() {
     [localeTag]
   );
 
+  const sectionDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(localeTag, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+    [localeTag]
+  );
+
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(localeTag), [localeTag]);
+  const now = useMemo(() => new Date(filterClock), [filterClock]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setFilterClock(Date.now());
+    }, 60_000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const labels = useMemo(
     () => ({
+      allEvents: language === "fi" ? "Kaikki tapahtumat" : "All events",
+      currentView: language === "fi" ? "Näkymä nyt" : "Current view",
+      currentViewBody:
+        language === "fi"
+          ? "Suodata viimeisimpiä skannauksia päivän, ajan ja tapahtuman mukaan. Luvut päivittyvät aktiivisen näkymän mukaan."
+          : "Filter recent scans by time and event. The summary updates with the active view.",
+      dateFilters: {
+        ALL: language === "fi" ? "Viimeisimmät" : "Recent",
+        TODAY: language === "fi" ? "Tänään" : "Today",
+        WEEK: language === "fi" ? "7 päivää" : "7 days",
+        MONTH: language === "fi" ? "30 päivää" : "30 days",
+      } satisfies Record<HistoryDateFilter, string>,
       loadingTitle: language === "fi" ? "Avataan historiaa" : "Opening scan history",
       loadingBody:
         language === "fi"
@@ -49,12 +150,37 @@ export default function BusinessHistoryScreen() {
           : "Loading the latest operator-owned scan rows.",
       errorTitle:
         language === "fi" ? "Skannaushistoria ei avautunut" : "Could not load scan history",
-      latestTitle: language === "fi" ? "Viimeisimmät skannaukset" : "Latest scans",
+      errorBody:
+        language === "fi"
+          ? "Historiaa ei saatu haettua juuri nyt. Yritä uudelleen hetken kuluttua."
+          : "Could not load scan history right now. Try again in a moment.",
+      emptyFiltered:
+        language === "fi"
+          ? "Aktiivisilla suodattimilla ei löytynyt skannauksia. Vaihda aikaa tai tapahtumaa nähdäksesi lisää rivejä."
+          : "No scans matched the active filters. Change the date or event filter to see more rows.",
+      filters: language === "fi" ? "Suodattimet" : "Filters",
+      latestTitle: language === "fi" ? "Skannauspäivät" : "Scan days",
+      metrics: {
+        rows: language === "fi" ? "näkyvää riviä" : "visible rows",
+        review: language === "fi" ? "tarkistettavaa" : "needs review",
+        students: language === "fi" ? "opiskelijaa" : "students",
+        valid: language === "fi" ? "annettua leimaa" : "valid stamps",
+      },
       emptyBody:
         language === "fi"
           ? "Tällä tunnuksella ei ole vielä skannauksia. Hyväksytyt ja tarkistukseen jääneet skannaukset näkyvät täällä."
           : "No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.",
+      openScanner: language === "fi" ? "Avaa skanneri" : "Open scanner",
+      openEvents: language === "fi" ? "Tapahtumat" : "Events",
+      recentWindowNotice:
+        language === "fi"
+          ? `Historia perustuu viimeisimpään ${RECENT_SCAN_LIMIT} skannaukseen tältä käyttäjältä.`
+          : `History is based on the latest ${RECENT_SCAN_LIMIT} scans owned by this operator.`,
       scannedAt: language === "fi" ? "Skannattu" : "Scanned",
+      scanRows: language === "fi" ? "skannausta" : "scans",
+      unknownBusiness: language === "fi" ? "Tuntematon toimija" : "Unknown business",
+      unknownEvent: language === "fi" ? "Tuntematon tapahtuma" : "Unknown event",
+      studentIdShort: language === "fi" ? "Viite" : "Reference",
       studentReference: language === "fi" ? "Opiskelijaviite" : "Student reference",
       screenTitle: language === "fi" ? "Historia" : "History",
     }),
@@ -67,6 +193,9 @@ export default function BusinessHistoryScreen() {
         eyebrow: language === "fi" ? "Hyväksytty" : "Valid",
         borderColor: theme.colors.successBorder,
         backgroundColor: theme.colors.successSurface,
+        chipBackgroundColor: theme.colors.limeSurface,
+        chipBorderColor: theme.colors.limeBorder,
+        chipTextColor: theme.colors.lime,
         detail:
           language === "fi"
             ? "Leima hyväksyttiin ja se lasketaan mukaan opiskelijan etenemiseen."
@@ -76,6 +205,9 @@ export default function BusinessHistoryScreen() {
         eyebrow: language === "fi" ? "Tarkistus" : "Review",
         borderColor: theme.colors.warningBorder,
         backgroundColor: theme.colors.warningSurface,
+        chipBackgroundColor: theme.colors.warningSurface,
+        chipBorderColor: theme.colors.warningBorder,
+        chipTextColor: theme.colors.textPrimary,
         detail:
           language === "fi"
             ? "Tämä skannaus vaatii manuaalisen tarkistuksen ennen lopullista vahvistusta."
@@ -85,29 +217,158 @@ export default function BusinessHistoryScreen() {
         eyebrow: language === "fi" ? "Peruttu" : "Revoked",
         borderColor: theme.colors.dangerBorder,
         backgroundColor: theme.colors.dangerSurface,
+        chipBackgroundColor: theme.colors.surfaceL2,
+        chipBorderColor: theme.colors.borderDefault,
+        chipTextColor: theme.colors.textMuted,
         detail:
           language === "fi"
             ? "Tämä leima on myöhemmin peruttu eikä sitä lasketa aktiiviseksi leimaksi."
             : "This stamp was later revoked and should not be counted as an active stamp.",
       },
     }),
-    [language, theme.colors.dangerBorder, theme.colors.dangerSurface, theme.colors.successBorder, theme.colors.successSurface, theme.colors.warningBorder, theme.colors.warningSurface]
+    [
+      language,
+      theme.colors.borderDefault,
+      theme.colors.dangerBorder,
+      theme.colors.dangerSurface,
+      theme.colors.lime,
+      theme.colors.limeBorder,
+      theme.colors.limeSurface,
+      theme.colors.successBorder,
+      theme.colors.successSurface,
+      theme.colors.surfaceL2,
+      theme.colors.textMuted,
+      theme.colors.textPrimary,
+      theme.colors.warningBorder,
+      theme.colors.warningSurface,
+    ]
   );
 
   const historyQuery = useBusinessScanHistoryQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
   });
+  const manualRefresh = useManualRefresh(historyQuery.refetch);
 
-  const historyEntries = historyQuery.data ?? [];
+  const historyEntries = historyQuery.data ?? emptyHistoryEntries;
+  const isScannerOnlyBusinessUser = accessQuery.data?.isBusinessScannerOnly === true;
+  const showBusinessName = useMemo(
+    () => new Set(historyEntries.map((entry) => entry.businessId)).size > 1,
+    [historyEntries]
+  );
+
+  const eventOptions = useMemo(
+    () =>
+      Array.from(
+        historyEntries.reduce<Map<string, { eventId: string; eventName: string }>>((eventMap, entry) => {
+          if (!eventMap.has(entry.eventId)) {
+            eventMap.set(entry.eventId, {
+              eventId: entry.eventId,
+              eventName: entry.eventName.length > 0 ? entry.eventName : labels.unknownEvent,
+            });
+          }
+
+          return eventMap;
+        }, new Map()).values()
+      ),
+    [historyEntries, labels.unknownEvent]
+  );
+
+  useEffect(() => {
+    if (selectedEventId === allEventsFilterValue) {
+      return;
+    }
+
+    if (!eventOptions.some((eventOption) => eventOption.eventId === selectedEventId)) {
+      setSelectedEventId(allEventsFilterValue);
+    }
+  }, [eventOptions, selectedEventId]);
+
+  const isRecentWindowCapped = historyEntries.length >= RECENT_SCAN_LIMIT;
+
+  const filteredEntries = useMemo(
+    () =>
+      historyEntries.filter((entry) => {
+        if (!isInsideDateFilter(entry.scannedAt, dateFilter, now)) {
+          return false;
+        }
+
+        if (selectedEventId !== allEventsFilterValue && entry.eventId !== selectedEventId) {
+          return false;
+        }
+
+        return true;
+      }),
+    [dateFilter, historyEntries, now, selectedEventId]
+  );
+
+  const metricCards = useMemo<HistoryMetricCard[]>(() => {
+    const validCount = filteredEntries.filter((entry) => entry.validationStatus === "VALID").length;
+    const reviewCount = filteredEntries.filter((entry) => entry.validationStatus === "MANUAL_REVIEW").length;
+    const uniqueStudents = new Set(filteredEntries.map((entry) => entry.studentId)).size;
+
+    return [
+      {
+        key: "valid",
+        label: labels.metrics.valid,
+        tone: "accent",
+        value: numberFormatter.format(validCount),
+      },
+      {
+        key: "students",
+        label: labels.metrics.students,
+        tone: "muted",
+        value: numberFormatter.format(uniqueStudents),
+      },
+      {
+        key: "review",
+        label: labels.metrics.review,
+        tone: "warning",
+        value: numberFormatter.format(reviewCount),
+      },
+      {
+        key: "rows",
+        label: labels.metrics.rows,
+        tone: "muted",
+        value: numberFormatter.format(filteredEntries.length),
+      },
+    ];
+  }, [filteredEntries, labels.metrics.review, labels.metrics.rows, labels.metrics.students, labels.metrics.valid, numberFormatter]);
+
+  const groupedSections = useMemo<GroupedHistorySection[]>(() => {
+    const groupedMap = filteredEntries.reduce<Map<string, BusinessScanHistoryEntry[]>>((sectionsMap, entry) => {
+      const dayKey = createDayKey(entry.scannedAt);
+      const currentEntries = sectionsMap.get(dayKey);
+
+      if (currentEntries) {
+        currentEntries.push(entry);
+        return sectionsMap;
+      }
+
+      sectionsMap.set(dayKey, [entry]);
+      return sectionsMap;
+    }, new Map());
+
+    return Array.from(groupedMap.entries()).map(([dayKey, entries]) => ({
+      dayKey,
+      dayLabel: sectionDateFormatter.format(new Date(entries[0].scannedAt)),
+      entries,
+    }));
+  }, [filteredEntries, sectionDateFormatter]);
 
   return (
-    <AppScreen>
+    <AppScreen
+      refreshControl={
+        <RefreshControl
+          onRefresh={manualRefresh.refreshAsync}
+          refreshing={manualRefresh.isRefreshing}
+          tintColor={theme.colors.lime}
+        />
+      }
+    >
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{labels.screenTitle}</Text>
           <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
         </View>
@@ -116,12 +377,14 @@ export default function BusinessHistoryScreen() {
       <View style={styles.actionRow}>
         <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
           <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
-          <Text style={styles.primaryButtonText}>{copy.business.scanner}</Text>
+          <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
         </Pressable>
-        <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
-          <AppIcon color={theme.colors.textPrimary} name="calendar" size={17} />
-          <Text style={styles.secondaryButtonText}>{copy.common.events}</Text>
-        </Pressable>
+        {isScannerOnlyBusinessUser ? null : (
+          <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
+            <AppIcon color={theme.colors.textPrimary} name="calendar" size={17} />
+            <Text style={styles.secondaryButtonText}>{labels.openEvents}</Text>
+          </Pressable>
+        )}
       </View>
 
       {historyQuery.isLoading ? (
@@ -132,7 +395,7 @@ export default function BusinessHistoryScreen() {
 
       {historyQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{historyQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{labels.errorBody}</Text>
           <Pressable onPress={() => void historyQuery.refetch()} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -140,43 +403,147 @@ export default function BusinessHistoryScreen() {
       ) : null}
 
       {!historyQuery.isLoading && !historyQuery.error ? (
-        <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
+        <>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEyebrow}>{copy.business.history}</Text>
+              <Text style={styles.sectionTitle}>{labels.currentView}</Text>
+            </View>
+            <Text style={styles.bodyText}>{labels.currentViewBody}</Text>
+            {isRecentWindowCapped ? <Text style={styles.windowNotice}>{labels.recentWindowNotice}</Text> : null}
+            <View style={styles.metricGrid}>
+              {metricCards.map((metricCard) => (
+                <View
+                  key={metricCard.key}
+                  style={[
+                    styles.metricCard,
+                    metricCard.tone === "accent"
+                      ? styles.metricCardAccent
+                      : metricCard.tone === "warning"
+                        ? styles.metricCardWarning
+                        : null,
+                  ]}
+                >
+                  <Text style={styles.metricValue}>{metricCard.value}</Text>
+                  <Text style={styles.metricLabel}>{metricCard.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.filtersCard}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+              {historyDateFilters.map((filter) => (
+                <Pressable
+                  key={filter}
+                  onPress={() => setDateFilter(filter)}
+                  style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
+                >
+                  <Text style={styles.filterChipText}>{labels.dateFilters[filter]}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {eventOptions.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+                <Pressable
+                  onPress={() => setSelectedEventId(allEventsFilterValue)}
+                  style={[styles.filterChip, selectedEventId === allEventsFilterValue ? styles.filterChipActive : null]}
+                >
+                  <Text style={styles.filterChipText}>{labels.allEvents}</Text>
+                </Pressable>
+                {eventOptions.map((eventOption) => (
+                  <Pressable
+                    key={eventOption.eventId}
+                    onPress={() => setSelectedEventId(eventOption.eventId)}
+                    style={[styles.filterChip, selectedEventId === eventOption.eventId ? styles.filterChipActive : null]}
+                  >
+                    <Text style={styles.filterChipText}>{eventOption.eventName}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+          </View>
+
           {historyEntries.length === 0 ? (
             <Text style={styles.bodyText}>{labels.emptyBody}</Text>
+          ) : filteredEntries.length === 0 ? (
+            <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
+              <Text style={styles.bodyText}>{labels.emptyFiltered}</Text>
+            </InfoCard>
           ) : (
             <View style={styles.stack}>
-              {historyEntries.map((entry) => {
-                const statusMeta = historyStatusMeta[entry.validationStatus];
-
-                return (
-                  <View
-                    key={entry.stampId}
-                    style={[
-                      styles.rowCard,
-                      {
-                        backgroundColor: statusMeta.backgroundColor,
-                        borderColor: statusMeta.borderColor,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.eyebrowText}>{statusMeta.eyebrow}</Text>
-                    <Text style={styles.cardTitle}>{entry.studentLabel}</Text>
-                    <Text style={styles.metaText}>
-                      {entry.eventName} · {entry.businessName}
-                    </Text>
-                    <Text style={styles.metaText}>
-                      {labels.scannedAt} {formatDateTime(formatter, entry.scannedAt)}
-                    </Text>
-                    <Text style={styles.bodyText}>{statusMeta.detail}</Text>
-                    <Text style={styles.metaText}>
-                      {labels.studentReference}: {entry.studentId}
+              {groupedSections.map((section) => (
+                <View key={section.dayKey} style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>{section.dayLabel}</Text>
+                    <Text style={styles.sectionMeta}>
+                      {numberFormatter.format(section.entries.length)} {labels.scanRows}
                     </Text>
                   </View>
-                );
-              })}
+
+                  <View style={styles.sectionList}>
+                    {section.entries.map((entry) => {
+                      const statusMeta = historyStatusMeta[entry.validationStatus];
+
+                      return (
+                        <View
+                          key={entry.stampId}
+                          style={[
+                            styles.rowCard,
+                            {
+                              backgroundColor: statusMeta.backgroundColor,
+                              borderColor: statusMeta.borderColor,
+                            },
+                          ]}
+                        >
+                          <View style={styles.rowTop}>
+                            <View
+                              style={[
+                                styles.statusChip,
+                                {
+                                  backgroundColor: statusMeta.chipBackgroundColor,
+                                  borderColor: statusMeta.chipBorderColor,
+                                },
+                              ]}
+                            >
+                              <Text style={[styles.statusChipText, { color: statusMeta.chipTextColor }]}>
+                                {statusMeta.eyebrow}
+                              </Text>
+                            </View>
+                            <Text style={styles.rowTime}>
+                              {labels.scannedAt} {formatDateTime(formatter, entry.scannedAt)}
+                            </Text>
+                          </View>
+
+                          <View style={styles.rowCopy}>
+                            <Text style={styles.cardTitle}>{formatStudentLabel(entry.studentId, language)}</Text>
+                            <Text style={styles.eventTitle}>
+                              {entry.eventName.length > 0 ? entry.eventName : labels.unknownEvent}
+                            </Text>
+                          </View>
+
+                          <View style={styles.metaWrap}>
+                            {showBusinessName ? (
+                              <Text style={styles.metaPill}>
+                                {entry.businessName.length > 0 ? entry.businessName : labels.unknownBusiness}
+                              </Text>
+                            ) : null}
+                            <Text style={styles.metaPill}>
+                              {labels.studentIdShort} {entry.studentId.slice(-6)}
+                            </Text>
+                          </View>
+
+                          <Text style={styles.bodyText}>{statusMeta.detail}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
             </View>
           )}
-        </InfoCard>
+        </>
       ) : null}
     </AppScreen>
   );
@@ -191,18 +558,8 @@ const createStyles = (theme: MobileTheme) =>
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-    },
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     cardTitle: {
       color: theme.colors.textPrimary,
@@ -210,19 +567,97 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
-    eyebrowText: {
+    eventTitle: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterChip: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      justifyContent: "center",
+      minHeight: 38,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    filterChipActive: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    filterChipText: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.1,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterRail: {
+      gap: 10,
+      paddingRight: 4,
     },
     metaText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    metaPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      overflow: "hidden",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    metaWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    metricCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexGrow: 1,
+      gap: 4,
+      minWidth: 132,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    metricCardAccent: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    metricCardWarning: {
+      backgroundColor: theme.colors.warningSurface,
+      borderColor: theme.colors.warningBorder,
+    },
+    metricGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    metricLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    metricValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      fontVariant: ["tabular-nums"],
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     primaryButton: {
       alignItems: "center",
@@ -245,14 +680,83 @@ const createStyles = (theme: MobileTheme) =>
     rowCard: {
       borderRadius: theme.radius.card,
       borderWidth: 1,
-      gap: 5,
-      padding: 14,
+      gap: 10,
+      padding: 16,
+    },
+    rowCopy: {
+      gap: 4,
+    },
+    rowTime: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "right",
+    },
+    rowTop: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
     },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 14,
+      padding: 18,
+    },
+    filtersCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 12,
+      padding: 14,
+    },
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
+    },
+    section: {
+      gap: 10,
+    },
+    sectionList: {
+      gap: 10,
+    },
+    sectionMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     secondaryButton: {
       alignItems: "center",
@@ -273,7 +777,20 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     stack: {
-      gap: 12,
+      gap: 18,
+    },
+    statusChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    statusChipText: {
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 0.8,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
     },
     topBar: {
       alignItems: "flex-start",
@@ -284,5 +801,11 @@ const createStyles = (theme: MobileTheme) =>
     topBarCopy: {
       flex: 1,
       gap: 6,
+    },
+    windowNotice: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

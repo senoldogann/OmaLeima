@@ -153,6 +153,7 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
   const stampScale = useRef(new Animated.Value(1.5)).current;
   const stampRotate = useRef(new Animated.Value(-16)).current;
   const shimmerOpacity = useRef(new Animated.Value(0)).current;
+  const lastCelebrationRef = useRef<{ key: string; triggeredAt: number } | null>(null);
 
   const clearDismissTimeout = useCallback((): void => {
     if (timeoutRef.current === null) {
@@ -205,6 +206,23 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
       if (candidates.length === 0) {
         return;
       }
+
+      const celebrationKey = candidates.map((candidate) => candidate.key).join("|");
+      const previousCelebration = lastCelebrationRef.current;
+      const now = Date.now();
+
+      if (
+        previousCelebration !== null &&
+        previousCelebration.key === celebrationKey &&
+        now - previousCelebration.triggeredAt < 5000
+      ) {
+        return;
+      }
+
+      lastCelebrationRef.current = {
+        key: celebrationKey,
+        triggeredAt: now,
+      };
 
       clearDismissTimeout();
       setActiveCandidates(candidates);
@@ -313,9 +331,9 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
     heroCandidate === null
       ? null
       : getEventCoverSourceWithFallback(
-          heroCandidate.coverImageUrl,
-          "rewardCelebration"
-        );
+        heroCandidate.coverImageUrl,
+        "rewardCelebration"
+      );
 
   useEffect(() => {
     void prefetchEventCoverUrls([heroCandidate?.coverImageUrl ?? null]);
@@ -489,15 +507,15 @@ const createStyles = (theme: MobileTheme) =>
       backgroundColor: theme.colors.limeSurface,
       borderColor: theme.colors.limeBorder,
       borderRadius: 999,
-      borderStyle: "dashed",
-      borderWidth: 2,
-      bottom: 28,
-      height: 140,
+      borderStyle: "solid",
+      borderWidth: 1,
+      bottom: 24,
+      height: 116,
       justifyContent: "center",
-      paddingHorizontal: 18,
+      paddingHorizontal: 14,
       position: "absolute",
-      right: 18,
-      width: 140,
+      right: 20,
+      width: 116,
     },
     stampSealEyebrow: {
       color: theme.colors.lime,

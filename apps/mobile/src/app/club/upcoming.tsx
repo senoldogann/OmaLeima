@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
@@ -12,12 +11,16 @@ import { ClubEventPreviewModal } from "@/features/club/components/club-event-pre
 import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
+import { findOverlappingEvents } from "@/features/events/event-overlaps";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
-type StatusFilter = "ALL" | ClubDashboardTimelineState;
+type UpcomingTimelineState = Exclude<ClubDashboardTimelineState, "CANCELLED" | "COMPLETED">;
+type StatusFilter = "ALL" | UpcomingTimelineState;
 type DateFilter = "ALL" | "TODAY" | "WEEK";
+const statusFilters = ["ALL", "LIVE", "UPCOMING", "DRAFT"] as const satisfies readonly StatusFilter[];
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
@@ -74,6 +77,7 @@ export default function ClubUpcomingScreen() {
     userId: userId ?? "",
     isEnabled: userId !== null,
   });
+  const manualRefresh = useManualRefresh(dashboardQuery.refetch);
 
   const labels = useMemo(
     () => ({
@@ -102,8 +106,8 @@ export default function ClubUpcomingScreen() {
       } satisfies Record<ClubDashboardTimelineState, string>,
       subtitle:
         language === "fi"
-          ? "Suodata tapahtumat ajan ja tilan mukaan ennen muokkausta tai tapahtumapäivää."
-          : "Filter events by time and state before editing or event day.",
+          ? "Suodata tulevat, luonnokset ja käynnissä olevat tapahtumat ennen muokkausta tai tapahtumapäivää."
+          : "Filter upcoming, draft, and live events before editing or event day.",
       title: language === "fi" ? "Tulossa" : "Upcoming",
     }),
     [language]
@@ -124,11 +128,24 @@ export default function ClubUpcomingScreen() {
   const events = useMemo(() => {
     const sourceEvents = dashboardQuery.data?.events ?? [];
     const filteredEvents = sourceEvents
+      .filter((event) => event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED")
       .filter((event) => statusFilter === "ALL" || event.timelineState === statusFilter)
       .filter((event) => isInsideDateFilter(event, dateFilter));
 
     return sortClubEventsForOrganizer(filteredEvents);
   }, [dashboardQuery.data?.events, dateFilter, statusFilter]);
+  const overlappingEvents = useMemo(
+    () =>
+      findOverlappingEvents(
+        events.map((event) => ({
+          endAt: event.endAt,
+          id: event.eventId,
+          name: event.name,
+          startAt: event.startAt,
+        }))
+      ),
+    [events]
+  );
 
   const handleEditPreviewEventPress = (eventId: string): void => {
     setPreviewEvent(null);
@@ -139,20 +156,26 @@ export default function ClubUpcomingScreen() {
   };
 
   return (
-    <AppScreen>
+    <AppScreen
+      refreshControl={
+        <RefreshControl
+          onRefresh={manualRefresh.refreshAsync}
+          refreshing={manualRefresh.isRefreshing}
+          tintColor={theme.colors.lime}
+        />
+      }
+    >
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/club/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
           <Text style={styles.screenTitle}>{labels.title}</Text>
           <Text style={styles.metaText}>{labels.subtitle}</Text>
         </View>
       </View>
 
-      <InfoCard eyebrow="Club" title={labels.filters}>
+      <View style={styles.filtersCard}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
-          {(["ALL", "LIVE", "UPCOMING", "DRAFT", "COMPLETED", "CANCELLED"] as StatusFilter[]).map((filter) => (
+          {statusFilters.map((filter) => (
             <Pressable
               key={filter}
               onPress={() => setStatusFilter(filter)}
@@ -174,7 +197,7 @@ export default function ClubUpcomingScreen() {
             </Pressable>
           ))}
         </ScrollView>
-      </InfoCard>
+      </View>
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow="Club" title={language === "fi" ? "Tapahtumat eivät latautuneet" : "Events did not load"}>
@@ -185,6 +208,20 @@ export default function ClubUpcomingScreen() {
       {!dashboardQuery.isLoading && !dashboardQuery.error && events.length === 0 ? (
         <InfoCard eyebrow="Club" title={labels.title}>
           <Text style={styles.bodyText}>{labels.empty}</Text>
+        </InfoCard>
+      ) : null}
+
+      {!dashboardQuery.isLoading && !dashboardQuery.error && overlappingEvents.length > 1 ? (
+        <InfoCard
+          eyebrow={language === "fi" ? "Huomio" : "Heads up"}
+          title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
+          variant="subtle"
+        >
+          <Text style={styles.bodyText}>
+            {language === "fi"
+              ? "Useampi näkyvä tapahtuma osuu samaan aikaan. Tarkista viestit ja rastit, jotta osallistujat avaavat oikean QR:n."
+              : "Multiple visible events overlap. Check messaging and venues so participants open the correct QR."}
+          </Text>
         </InfoCard>
       ) : null}
 
@@ -233,16 +270,6 @@ export default function ClubUpcomingScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
-    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.medium,
@@ -254,7 +281,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     eventCard: {
       borderRadius: theme.radius.scene,
-      minHeight: 250,
+      height: 258,
       overflow: "hidden",
       position: "relative",
     },
@@ -332,8 +359,24 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    filtersCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 12,
+      padding: 14,
     },
     topBar: {
       alignItems: "flex-start",

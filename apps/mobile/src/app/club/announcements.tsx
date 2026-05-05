@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -29,12 +39,37 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
+type TextField = keyof Pick<ClubAnnouncementDraft, "body" | "ctaLabel" | "ctaUrl" | "priority" | "title">;
+
+type DateTimeField = keyof Pick<ClubAnnouncementDraft, "endsAt" | "startsAt">;
+
 type FieldConfig = {
-  field: keyof Pick<ClubAnnouncementDraft, "body" | "ctaLabel" | "ctaUrl" | "endsAt" | "priority" | "startsAt" | "title">;
+  field: TextField;
   keyboardType: "default" | "number-pad" | "url";
   label: string;
   multiline: boolean;
   placeholder: string;
+};
+
+type DateTimeFieldConfig = {
+  field: DateTimeField;
+  isOptional: boolean;
+  label: string;
+};
+
+type DateTimeEditorState = {
+  date: string;
+  field: DateTimeField;
+  label: string;
+  time: string;
+  visibleMonth: string;
+} | null;
+
+type CalendarDay = {
+  date: string;
+  dayLabel: string;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
 };
 
 type ActionNotice = {
@@ -61,20 +96,6 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
         : "Write a short update for students, businesses, or club staff.",
   },
   {
-    field: "startsAt",
-    keyboardType: "default",
-    label: language === "fi" ? "Näkyy alkaen" : "Visible from",
-    multiline: false,
-    placeholder: "2026-05-04T18:00",
-  },
-  {
-    field: "endsAt",
-    keyboardType: "default",
-    label: language === "fi" ? "Näkyy asti" : "Visible until",
-    multiline: false,
-    placeholder: language === "fi" ? "Tyhjä = ei päättymistä" : "Empty = no end",
-  },
-  {
     field: "priority",
     keyboardType: "number-pad",
     label: language === "fi" ? "Tärkeys 0-10" : "Priority 0-10",
@@ -94,6 +115,19 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
     label: language === "fi" ? "Linkki" : "Link",
     multiline: false,
     placeholder: "https://",
+  },
+];
+
+const createDateTimeFieldConfigs = (language: "fi" | "en"): DateTimeFieldConfig[] => [
+  {
+    field: "startsAt",
+    isOptional: false,
+    label: language === "fi" ? "Näkyy alkaen" : "Visible from",
+  },
+  {
+    field: "endsAt",
+    isOptional: true,
+    label: language === "fi" ? "Näkyy asti" : "Visible until",
   },
 ];
 
@@ -136,8 +170,112 @@ const createActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice
 const getCreatableMemberships = (memberships: ClubMembershipSummary[]): ClubMembershipSummary[] =>
   memberships.filter((membership) => membership.canCreateEvents);
 
+const splitLocalDateTime = (value: string): { date: string; time: string } => {
+  const [date = "", time = ""] = value.split("T");
+
+  return {
+    date,
+    time,
+  };
+};
+
+const buildLocalDateTime = (date: string, time: string): string => `${date.trim()}T${time.trim()}`;
+
+const localDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const localTimePattern = /^\d{2}:\d{2}$/;
+
+const formatLocalDateInput = (date: Date): string => {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getMonthStartInput = (dateInput: string): string => {
+  const date = dateInput.length > 0 ? new Date(`${dateInput}T00:00:00`) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return formatLocalDateInput(new Date());
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+};
+
+const shiftMonthInput = (monthInput: string, offset: number): string => {
+  const month = new Date(`${monthInput}T00:00:00`);
+  month.setMonth(month.getMonth() + offset);
+
+  return getMonthStartInput(formatLocalDateInput(month));
+};
+
+const createCalendarDays = (visibleMonth: string, selectedDate: string): CalendarDay[] => {
+  const monthStart = new Date(`${visibleMonth}T00:00:00`);
+  const calendarStart = new Date(monthStart);
+  const mondayBasedDay = (monthStart.getDay() + 6) % 7;
+  calendarStart.setDate(monthStart.getDate() - mondayBasedDay);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(calendarStart);
+    day.setDate(calendarStart.getDate() + index);
+    const date = formatLocalDateInput(day);
+
+    return {
+      date,
+      dayLabel: String(day.getDate()),
+      isCurrentMonth: day.getMonth() === monthStart.getMonth(),
+      isSelected: date === selectedDate,
+    };
+  });
+};
+
+const formatDraftDateTimeValue = (
+  formatter: Intl.DateTimeFormat,
+  value: string,
+  emptyLabel: string
+): string => {
+  if (value.trim().length === 0) {
+    return emptyLabel;
+  }
+
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return formatter.format(parsedDate);
+};
+
+const isValidLocalDateInput = (value: string): boolean => {
+  if (!localDatePattern.test(value)) {
+    return false;
+  }
+
+  const parsedDate = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  return formatLocalDateInput(parsedDate) === value;
+};
+
+const isValidLocalTimeInput = (value: string): boolean => {
+  if (!localTimePattern.test(value)) {
+    return false;
+  }
+
+  const [hours, minutes] = value.split(":").map((segment) => Number.parseInt(segment, 10));
+
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return false;
+  }
+
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+};
+
 export default function ClubAnnouncementsScreen() {
-  const router = useRouter();
   const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -158,9 +296,12 @@ export default function ClubAnnouncementsScreen() {
   const saveMutation = useSaveClubAnnouncementMutation();
   const archiveMutation = useArchiveClubAnnouncementMutation();
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
+  const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
   const [draft, setDraft] = useState<ClubAnnouncementDraft>(() => createEmptyClubAnnouncementDraft(null));
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [dateTimeEditor, setDateTimeEditor] = useState<DateTimeEditorState>(null);
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+  const [localAnnouncementImagePreviewUri, setLocalAnnouncementImagePreviewUri] = useState<string | null>(null);
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(localeTag, {
@@ -172,6 +313,44 @@ export default function ClubAnnouncementsScreen() {
     [localeTag]
   );
   const isPending = saveMutation.isPending || archiveMutation.isPending || isUploadingImage;
+  const localAnnouncementImagePreviewSource = useMemo(() => {
+    if (localAnnouncementImagePreviewUri === null || localAnnouncementImagePreviewUri.trim().length === 0) {
+      return null;
+    }
+
+    return { uri: localAnnouncementImagePreviewUri };
+  }, [localAnnouncementImagePreviewUri]);
+  const remoteAnnouncementImagePreviewSource = useMemo(() => {
+    const remoteImageUrl = draft.imageUrl.trim();
+
+    if (remoteImageUrl.length === 0) {
+      return null;
+    }
+
+    return { uri: remoteImageUrl };
+  }, [draft.imageUrl]);
+  const announcementImagePreviewSource = localAnnouncementImagePreviewSource ?? remoteAnnouncementImagePreviewSource;
+  const announcementImagePreviewFallbackSource =
+    localAnnouncementImagePreviewSource ?? getEventCoverSourceWithFallback(null, "clubControl");
+  const hasAnnouncementImagePreview =
+    localAnnouncementImagePreviewSource !== null || remoteAnnouncementImagePreviewSource !== null;
+  const calendarDays = useMemo(
+    () =>
+      dateTimeEditor === null
+        ? []
+        : createCalendarDays(dateTimeEditor.visibleMonth, dateTimeEditor.date),
+    [dateTimeEditor]
+  );
+  const monthTitle = useMemo(() => {
+    if (dateTimeEditor === null) {
+      return "";
+    }
+
+    return new Intl.DateTimeFormat(localeTag, {
+      month: "long",
+      year: "numeric",
+    }).format(new Date(`${dateTimeEditor.visibleMonth}T00:00:00`));
+  }, [dateTimeEditor, localeTag]);
 
   useEffect(() => {
     if (draft.clubId.trim().length > 0 || memberships.length === 0) {
@@ -188,14 +367,64 @@ export default function ClubAnnouncementsScreen() {
     }));
   };
 
+  const openDateTimeEditor = (config: DateTimeFieldConfig): void => {
+    const sourceValue = draft[config.field].trim().length > 0 ? draft[config.field] : draft.startsAt;
+    const parts = splitLocalDateTime(sourceValue);
+
+    setDateTimeEditor({
+      date: parts.date,
+      field: config.field,
+      label: config.label,
+      time: parts.time,
+      visibleMonth: getMonthStartInput(parts.date),
+    });
+  };
+
+  const handleConfirmDateTimePress = (): void => {
+    if (dateTimeEditor === null) {
+      return;
+    }
+
+    if (!isValidLocalDateInput(dateTimeEditor.date) || !isValidLocalTimeInput(dateTimeEditor.time)) {
+      setActionNotice({
+        body:
+          language === "fi"
+            ? "Valitse kalenterista tai syötä päivä muodossa YYYY-MM-DD ja aika muodossa HH:mm."
+            : "Use the calendar or enter the date as YYYY-MM-DD and the time as HH:mm.",
+        tone: "error",
+      });
+      return;
+    }
+
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      [dateTimeEditor.field]: buildLocalDateTime(dateTimeEditor.date, dateTimeEditor.time),
+    }));
+    setDateTimeEditor(null);
+  };
+
+  const handleClearDateTimePress = (): void => {
+    if (dateTimeEditor === null || dateTimeEditor.field !== "endsAt") {
+      return;
+    }
+
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      endsAt: "",
+    }));
+    setDateTimeEditor(null);
+  };
+
   const handleNewPress = (): void => {
     const selectedMembership = memberships.find((membership) => membership.clubId === draft.clubId) ?? memberships[0] ?? null;
     setActionNotice(null);
+    setLocalAnnouncementImagePreviewUri(null);
     setDraft(createEmptyClubAnnouncementDraft(selectedMembership));
   };
 
   const handleEditPress = (announcement: ClubAnnouncementRecord): void => {
     setActionNotice(null);
+    setLocalAnnouncementImagePreviewUri(null);
     setDraft(createClubAnnouncementDraftFromRecord(announcement));
   };
 
@@ -214,6 +443,8 @@ export default function ClubAnnouncementsScreen() {
         setIsUploadingImage(false);
         return;
       }
+
+      setLocalAnnouncementImagePreviewUri(asset.uri);
 
       const uploadedImage = await uploadClubAnnouncementImageAsync({
         asset,
@@ -299,10 +530,8 @@ export default function ClubAnnouncementsScreen() {
   return (
     <AppScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/club/home")} style={styles.iconButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
           <Text style={styles.screenTitle}>{language === "fi" ? "Tiedotteet" : "Announcements"}</Text>
           <Text style={styles.metaText}>
             {language === "fi"
@@ -363,15 +592,15 @@ export default function ClubAnnouncementsScreen() {
 
           <View style={styles.imageBlock}>
             <CoverImageSurface
-              fallbackSource={getEventCoverSourceWithFallback(null, "clubControl")}
+              fallbackSource={announcementImagePreviewFallbackSource}
               imageStyle={styles.imagePreview}
-              source={draft.imageUrl.trim().length === 0 ? null : { uri: draft.imageUrl.trim() }}
+              source={announcementImagePreviewSource}
               style={styles.imagePreviewSurface}
             >
               <View style={styles.imageOverlay} />
               <View style={styles.imageContent}>
                 <Text style={styles.imageTitle}>
-                  {draft.imageUrl.trim().length > 0
+                  {hasAnnouncementImagePreview
                     ? language === "fi"
                       ? "Kuva valittu"
                       : "Image selected"
@@ -395,6 +624,44 @@ export default function ClubAnnouncementsScreen() {
                 </Pressable>
               </View>
             </CoverImageSurface>
+          </View>
+
+          <View style={styles.dateTimeGrid}>
+            {dateTimeFieldConfigs.map((config) => (
+              <Pressable
+                disabled={isPending}
+                key={config.field}
+                onPress={() => openDateTimeEditor(config)}
+                style={styles.dateTimeCard}
+              >
+                <Text style={styles.fieldLabel}>{config.label}</Text>
+                <Text style={styles.dateTimeValue}>
+                  {formatDraftDateTimeValue(
+                    formatter,
+                    draft[config.field],
+                    config.isOptional
+                      ? language === "fi"
+                        ? "Ei päättymistä"
+                        : "No end time"
+                      : language === "fi"
+                        ? "Valitse aika"
+                        : "Pick a time"
+                  )}
+                </Text>
+                <View style={styles.dateTimeHintRow}>
+                  <AppIcon color={theme.colors.lime} name="calendar" size={14} />
+                  <Text style={styles.dateTimeHint}>
+                    {config.isOptional
+                      ? language === "fi"
+                        ? "Kalenteri tai tyhjä päättymiselle"
+                        : "Calendar or leave empty for no end"
+                      : language === "fi"
+                        ? "Valitse päivä ja aika"
+                        : "Pick date and time"}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
           </View>
 
           {fieldConfigs.map((config) => (
@@ -552,6 +819,161 @@ export default function ClubAnnouncementsScreen() {
           ))}
         </View>
       ) : null}
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setDateTimeEditor(null)}
+        transparent
+        visible={dateTimeEditor !== null}
+      >
+        <View style={styles.modalBackdrop}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={16}
+            style={styles.modalKeyboardAvoidingView}
+          >
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.modalCard}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
+                <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
+
+                <View style={styles.calendarHeader}>
+                  <Pressable
+                    onPress={() =>
+                      setDateTimeEditor((currentEditor) =>
+                        currentEditor === null
+                          ? null
+                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
+                      )
+                    }
+                    style={styles.calendarNavButton}
+                  >
+                    <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
+                  </Pressable>
+                  <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
+                  <Pressable
+                    onPress={() =>
+                      setDateTimeEditor((currentEditor) =>
+                        currentEditor === null
+                          ? null
+                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
+                      )
+                    }
+                    style={styles.calendarNavButton}
+                  >
+                    <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.weekdayGrid}>
+                  {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
+                    <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
+                  ))}
+                </View>
+
+                <View style={styles.calendarGrid}>
+                  {calendarDays.map((day) => (
+                    <Pressable
+                      key={day.date}
+                      onPress={() =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null
+                            ? null
+                            : {
+                              ...currentEditor,
+                              date: day.date,
+                              visibleMonth: getMonthStartInput(day.date),
+                            }
+                        )
+                      }
+                      style={[
+                        styles.calendarDay,
+                        day.isSelected ? styles.calendarDaySelected : null,
+                        day.isCurrentMonth ? null : styles.calendarDayOutside,
+                      ]}
+                    >
+                      <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
+                        {day.dayLabel}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.modalFieldRow}>
+                  <View style={styles.modalField}>
+                    <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      keyboardType="numbers-and-punctuation"
+                      onChangeText={(date) =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, date }
+                        )
+                      }
+                      placeholder="2026-09-12"
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.input}
+                      value={dateTimeEditor?.date ?? ""}
+                    />
+                  </View>
+                  <View style={styles.modalField}>
+                    <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      keyboardType="numbers-and-punctuation"
+                      onChangeText={(time) =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, time }
+                        )
+                      }
+                      placeholder="18:00"
+                      placeholderTextColor={theme.colors.textDim}
+                      style={styles.input}
+                      value={dateTimeEditor?.time ?? ""}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.timeChipRow}>
+                  {["16:00", "18:00", "20:00", "22:00"].map((time) => (
+                    <Pressable
+                      key={time}
+                      onPress={() =>
+                        setDateTimeEditor((currentEditor) =>
+                          currentEditor === null ? null : { ...currentEditor, time }
+                        )
+                      }
+                      style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
+                    >
+                      <Text style={styles.timeChipText}>{time}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.modalActions}>
+                  {dateTimeEditor?.field === "endsAt" ? (
+                    <Pressable onPress={handleClearDateTimePress} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>{language === "fi" ? "Tyhjennä" : "Clear"}</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
+                  </Pressable>
+                  <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
+                    <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </AppScreen>
   );
 }
@@ -563,6 +985,53 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.regular,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    calendarDay: {
+      alignItems: "center",
+      aspectRatio: 1,
+      borderRadius: 999,
+      justifyContent: "center",
+      width: `${100 / 7}%`,
+    },
+    calendarDayOutside: {
+      opacity: 0.36,
+    },
+    calendarDaySelected: {
+      backgroundColor: theme.colors.lime,
+    },
+    calendarDayText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    calendarDayTextSelected: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+    },
+    calendarGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    calendarHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    calendarMonthTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      textTransform: "capitalize",
+    },
+    calendarNavButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      height: 38,
+      justifyContent: "center",
+      width: 38,
     },
     chip: {
       backgroundColor: theme.colors.surfaceL2,
@@ -585,6 +1054,34 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    dateTimeCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 8,
+      padding: 14,
+    },
+    dateTimeGrid: {
+      gap: 10,
+    },
+    dateTimeHint: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    dateTimeHintRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    dateTimeValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     disabledButton: {
       opacity: 0.62,
@@ -645,6 +1142,53 @@ const createStyles = (theme: MobileTheme) =>
     },
     imageTitle: {
       color: "#F8FAF5",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(3, 5, 8, 0.62)",
+      justifyContent: "center",
+      padding: 20,
+    },
+    modalCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 16,
+      padding: 18,
+    },
+    modalEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    modalField: {
+      flex: 1,
+      gap: 8,
+    },
+    modalFieldRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    modalKeyboardAvoidingView: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    modalScrollContent: {
+      flexGrow: 1,
+      justifyContent: "center",
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
@@ -721,12 +1265,21 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
     secondaryButton: {
       alignItems: "center",
@@ -744,6 +1297,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -778,6 +1332,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
     },
     topBar: {
       alignItems: "center",
@@ -788,6 +1343,29 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       gap: 4,
     },
+    timeChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    timeChipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    timeChipSelected: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    timeChipText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
     uploadButton: {
       alignItems: "center",
       alignSelf: "flex-start",
@@ -795,19 +1373,33 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: 999,
       flexDirection: "row",
       gap: 8,
+      justifyContent: "center",
       minHeight: 42,
       paddingHorizontal: 14,
       paddingVertical: 10,
     },
     uploadButtonText: {
       color: theme.colors.actionPrimaryText,
+      flexShrink: 1,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
     },
     wrapRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 8,
+    },
+    weekdayGrid: {
+      flexDirection: "row",
+    },
+    weekdayLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+      width: `${100 / 7}%`,
     },
   });

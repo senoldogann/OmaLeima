@@ -44,7 +44,21 @@ export const AnnouncementPopupBridge = () => {
       return;
     }
 
-    await Linking.openURL(announcement.ctaUrl);
+    try {
+      const canOpenUrl = await Linking.canOpenURL(announcement.ctaUrl);
+
+      if (!canOpenUrl) {
+        throw new Error(language === "fi" ? "Linkkiä ei voitu avata." : "Could not open the link.");
+      }
+
+      await Linking.openURL(announcement.ctaUrl);
+    } catch (error) {
+      console.warn("announcement_popup_cta_open_failed", {
+        announcementId: announcement.announcementId,
+        ctaUrl: announcement.ctaUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
 
   return (

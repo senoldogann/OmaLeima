@@ -51,6 +51,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
     tone: "idle",
   });
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"event-catalog" | "create-reward" | "reward-catalog">("event-catalog");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -114,8 +115,14 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
         </article>
       </section>
 
-      <section className="content-grid">
-        <div className="stack-md">
+      <div className="tab-nav">
+        <button className={activeTab === "event-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-catalog")} type="button">Event Catalog</button>
+        <button className={activeTab === "create-reward" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("create-reward")} type="button">Create Reward</button>
+        <button className={activeTab === "reward-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("reward-catalog")} type="button">Reward Catalog</button>
+      </div>
+
+      <section className="content-grid" style={{ display: activeTab === "reward-catalog" ? "none" : undefined }}>
+        <div className="stack-md" style={activeTab === "event-catalog" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Event catalog</div>
             <h3 className="section-title">Manageable events</h3>
@@ -148,7 +155,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
           )}
         </div>
 
-        <div className="stack-md">
+        <div className="stack-md" style={activeTab === "create-reward" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Create reward</div>
             <h3 className="section-title">New reward tier</h3>
@@ -296,7 +303,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
         </div>
       </section>
 
-      <section className="stack-md">
+      <section className="stack-md" style={{ display: activeTab !== "reward-catalog" ? "none" : undefined }}>
         <div className="stack-sm">
           <div className="eyebrow">Reward catalog</div>
           <h3 className="section-title">Latest reward tiers</h3>

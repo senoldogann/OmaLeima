@@ -32,6 +32,7 @@
     "smoke:pilot-operator-hygiene-audit": "tsx scripts/smoke-pilot-operator-hygiene-audit.ts",
     "smoke:hosted-admin-access": "tsx scripts/smoke-hosted-admin-access.ts",
     "smoke:leaderboard-load": "tsx scripts/smoke-leaderboard-load.ts",
+    "smoke:announcement-push": "tsx scripts/smoke-announcement-push.ts",
     "smoke:oversight": "tsx scripts/smoke-oversight.ts",
     "smoke:pilot-secret-hygiene-audit": "tsx scripts/smoke-pilot-secret-hygiene-audit.ts",
     "smoke:qr-security": "tsx scripts/smoke-qr-security.ts",

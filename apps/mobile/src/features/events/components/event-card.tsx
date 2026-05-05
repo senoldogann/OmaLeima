@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 
+import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
-import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -12,18 +12,10 @@ type EventCardProps = {
   event: StudentEventSummary;
   isJoinPending?: boolean;
   onJoinPress?: () => void;
+  onMapPress?: () => void;
   onPress: () => void;
   motionIndex?: number;
 };
-
-const createDateTimeFormatter = (localeTag: string): Intl.DateTimeFormat =>
-  new Intl.DateTimeFormat(localeTag, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
 const getTimelineBadge = (
   event: StudentEventSummary,
@@ -58,14 +50,21 @@ const getRegistrationBadge = (
 const canJoinEventFromCard = (event: StudentEventSummary, onJoinPress: (() => void) | undefined): boolean =>
   onJoinPress !== undefined && event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
 
-export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress, motionIndex }: EventCardProps) => {
-  const { language, localeTag } = useUiPreferences();
+export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress }: EventCardProps) => {
+  const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
-  const timeFormatter = createDateTimeFormatter(localeTag);
   const timelineBadge = getTimelineBadge(event, language);
   const registrationBadge = getRegistrationBadge(event, language);
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
   const canJoinFromCard = canJoinEventFromCard(event, onJoinPress);
+
+  const startDate = new Date(event.startAt);
+  const dayNum = startDate.getDate().toString();
+  const monthAbbr = new Intl.DateTimeFormat(localeTag, { month: "short" })
+    .format(startDate)
+    .toUpperCase()
+    .replace(".", "");
+
   const handleJoinPress = (pressEvent: GestureResponderEvent): void => {
     pressEvent.stopPropagation();
     onJoinPress?.();
@@ -74,139 +73,153 @@ export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress, 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.pressable, pressed ? styles.pressablePressed : null]}
+      style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}
     >
-      <InfoCard motionIndex={motionIndex} title={event.name}>
-        <CoverImageSurface imageStyle={styles.heroImage} source={coverSource} style={styles.heroBand}>
-          <View style={styles.heroOverlay} />
-          <View style={styles.heroContent}>
-            <View style={styles.badges}>
-              <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-              <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-            </View>
-
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroTimeline}>{timeFormatter.format(new Date(event.startAt))}</Text>
-            </View>
+      {/* Kapa görseli + tarih rozeti */}
+      <View style={styles.thumbWrap}>
+        <CoverImageSurface imageStyle={styles.thumbImage} source={coverSource} style={styles.thumb}>
+          <View style={styles.thumbOverlay} />
+          <View style={styles.dateBadge}>
+            <Text style={styles.dateDay}>{dayNum}</Text>
+            <Text style={styles.dateMonth}>{monthAbbr}</Text>
           </View>
         </CoverImageSurface>
+      </View>
 
-        <View style={styles.metaGroup}>
-          <Text style={styles.metaLine}>
-            {event.city}
-            {event.country.length > 0 ? ` · ${event.country}` : ""}
+      {/* İçerik: başlık, konum, rozetler */}
+      <View style={styles.content}>
+        <Text numberOfLines={2} style={styles.eventName}>{event.name}</Text>
+        <View style={styles.locationRow}>
+          <AppIcon color={theme.colors.textMuted} name="map-pin" size={11} />
+          <Text numberOfLines={1} style={styles.locationText}>
+            {event.city}{event.country.length > 0 ? `, ${event.country}` : ""}
           </Text>
-          <Text style={styles.metaLine}>
-            {language === "fi" ? "Ilmoittautuminen" : "Join before"}{" "}
-            {timeFormatter.format(new Date(event.joinDeadlineAt))}
-            {event.maxParticipants === null
-              ? ""
-              : language === "fi"
-                ? ` · ${event.maxParticipants} henkeä`
-                : ` · cap ${event.maxParticipants}`}
-          </Text>
-          {event.minimumStampsRequired > 0 ? (
-            <Text style={styles.metaLine}>
-              {language === "fi"
-                ? `${event.minimumStampsRequired} leimaa ennen palkintoja`
-                : `${event.minimumStampsRequired} leima needed before rewards unlock`}
-            </Text>
+        </View>
+        <View style={styles.badgeRow}>
+          <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+          {event.registrationState === "REGISTERED" ? (
+            <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
           ) : null}
         </View>
+      </View>
 
-        <View style={styles.actionRow}>
-          <Text style={styles.actionText}>{language === "fi" ? "Avaa tapahtuma" : "Open event"}</Text>
-          {canJoinFromCard ? (
-            <Pressable
-              disabled={isJoinPending}
-              onPress={handleJoinPress}
-              style={[styles.joinButton, isJoinPending ? styles.joinButtonDisabled : null]}
-            >
-              <Text style={styles.joinButtonText}>
-                {isJoinPending ? (language === "fi" ? "Liitytään..." : "Joining...") : language === "fi" ? "Liity" : "Join"}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </InfoCard>
+      {/* Sağ taraf: katıl butonu veya ok */}
+      {canJoinFromCard ? (
+        <Pressable
+          disabled={isJoinPending}
+          onPress={handleJoinPress}
+          style={[styles.joinButton, isJoinPending ? styles.joinButtonDisabled : null]}
+        >
+          <Text style={styles.joinButtonText}>
+            {isJoinPending
+              ? "..."
+              : language === "fi" ? "Liity" : "Join"}
+          </Text>
+        </Pressable>
+      ) : (
+        <AppIcon color={theme.colors.textDim} name="chevron-right" size={18} />
+      )}
     </Pressable>
   );
 };
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-  actionRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between",
-  },
-  actionText: {
-    color: theme.colors.lime,
-    fontFamily: theme.typography.families.bold,
-    fontSize: 13,
-    letterSpacing: 0.4,
-  },
-  badges: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  heroBand: {
-    borderRadius: theme.radius.scene,
-    minHeight: 188,
-    overflow: "hidden",
-    position: "relative",
-  },
-  heroContent: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: 18,
-  },
-  heroCopy: {
-    gap: 0,
-  },
-  heroImage: {
-    borderRadius: theme.radius.scene,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.56)" : "rgba(7, 10, 7, 0.54)",
-  },
-  heroTimeline: {
-    color: "#F8FAF5",
-    fontFamily: theme.typography.families.bold,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  joinButton: {
-    backgroundColor: theme.colors.lime,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  joinButtonDisabled: {
-    opacity: 0.62,
-  },
-  joinButtonText: {
-    color: theme.colors.actionPrimaryText,
-    fontFamily: theme.typography.families.extrabold,
-    fontSize: theme.typography.sizes.caption,
-    lineHeight: theme.typography.lineHeights.caption,
-  },
-  metaGroup: {
-    gap: 7,
-  },
-  metaLine: {
-    color: theme.colors.textMuted,
-    fontFamily: theme.typography.families.regular,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  pressable: {
-    borderRadius: theme.radius.card,
-  },
-  pressablePressed: {
-    transform: [{ translateY: 1.5 }, { scale: 0.992 }],
-  },
-});
+    badgeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 2,
+    },
+    card: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 14,
+      overflow: "hidden",
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    cardPressed: {
+      transform: [{ translateY: 1.5 }, { scale: 0.992 }],
+    },
+    content: {
+      flex: 1,
+      gap: 5,
+      minWidth: 0,
+    },
+    dateBadge: {
+      alignItems: "center",
+      bottom: 8,
+      left: 8,
+      position: "absolute",
+    },
+    dateDay: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      lineHeight: 24,
+    },
+    dateMonth: {
+      color: "rgba(255, 255, 255, 0.75)",
+      fontFamily: theme.typography.families.bold,
+      fontSize: 10,
+      letterSpacing: 0.8,
+      lineHeight: 13,
+    },
+    eventName: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 15,
+      lineHeight: 21,
+    },
+    joinButton: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      flexShrink: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    joinButtonDisabled: {
+      opacity: 0.62,
+    },
+    joinButtonText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    locationRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+    },
+    locationText: {
+      color: theme.colors.textMuted,
+      flex: 1,
+      fontFamily: theme.typography.families.medium,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    thumb: {
+      height: 88,
+      width: 88,
+    },
+    thumbImage: {
+      borderRadius: theme.radius.inner,
+    },
+    thumbOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.38)",
+    },
+    thumbWrap: {
+      borderRadius: theme.radius.inner,
+      flexShrink: 0,
+      height: 88,
+      overflow: "hidden",
+      width: 88,
+    },
+  });

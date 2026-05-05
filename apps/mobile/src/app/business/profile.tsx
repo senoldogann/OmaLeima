@@ -153,9 +153,9 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
 ];
 
 export default function BusinessProfileScreen() {
-  const router = useRouter();
   const { session } = useSession();
   const { copy, language, setLanguage, setThemeMode, theme, themeMode } = useUiPreferences();
+  const router = useRouter();
   const styles = useThemeStyles(createStyles);
   const userId = session?.user.id ?? null;
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
@@ -366,10 +366,8 @@ export default function BusinessProfileScreen() {
   return (
     <AppScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.common.profile}</Text>
           <Text style={styles.metaText}>{copy.business.profileMeta}</Text>
         </View>
@@ -457,10 +455,11 @@ export default function BusinessProfileScreen() {
           ) : null}
           {mediaError ? <Text style={styles.errorText}>{mediaError}</Text> : null}
 
-          <InfoCard
-            eyebrow={language === "fi" ? "Tapahtumat" : "Events"}
-            title={language === "fi" ? "Skannerin työvuoro" : "Scanner workflow"}
-          >
+          <View style={styles.scannerWorkflowCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEyebrow}>{language === "fi" ? "Tapahtumat" : "Events"}</Text>
+              <Text style={styles.sectionTitle}>{language === "fi" ? "Skannerin työvuoro" : "Scanner workflow"}</Text>
+            </View>
             <Text style={styles.bodyText}>
               {language === "fi"
                 ? "Tapahtumiin liittyminen ja skannerin avaaminen tehdään tapahtumanäkymässä. Skannerirooli voi skannata liittyneissä tapahtumissa, mutta yritysprofiilia muokkaavat owner ja manager."
@@ -485,7 +484,7 @@ export default function BusinessProfileScreen() {
                 </Text>
               </Pressable>
             </View>
-          </InfoCard>
+          </View>
 
           {memberships.length > 1 ? (
             <View style={styles.businessSwitchRow}>
@@ -608,8 +607,8 @@ export default function BusinessProfileScreen() {
             ) : null}
 
             {!scannerDevicesQuery.isLoading &&
-            scannerDevicesQuery.error === null &&
-            (scannerDevicesQuery.data ?? []).length === 0 ? (
+              scannerDevicesQuery.error === null &&
+              (scannerDevicesQuery.data ?? []).length === 0 ? (
               <Text style={styles.bodyText}>
                 {language === "fi"
                   ? "Skannerilaitteet ilmestyvät tähän, kun henkilökunta avaa skannerin."
@@ -872,7 +871,7 @@ export default function BusinessProfileScreen() {
         visible={preferenceSheet !== null}
       >
         <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
-          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
+          <Pressable onPress={() => { }} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
@@ -947,16 +946,6 @@ export default function BusinessProfileScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
-    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.regular,
@@ -1281,8 +1270,41 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    scannerWorkflowCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 14,
+      padding: 18,
+    },
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     secondaryButton: {
       alignItems: "center",

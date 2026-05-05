@@ -88,6 +88,10 @@ const compareRegisteredEvents = (
     return order[left.timelineState] - order[right.timelineState];
   }
 
+  if (left.isRegistered !== right.isRegistered) {
+    return left.isRegistered ? -1 : 1;
+  }
+
   if (left.timelineState === "COMPLETED") {
     return new Date(right.endAt).getTime() - new Date(left.endAt).getTime();
   }
@@ -95,10 +99,15 @@ const compareRegisteredEvents = (
   return new Date(left.startAt).getTime() - new Date(right.startAt).getTime();
 };
 
-const mapRegisteredEvent = (event: EventRow, now: number): RegisteredLeaderboardEvent => ({
+const mapRegisteredEvent = (
+  event: EventRow,
+  now: number,
+  registeredEventIds: ReadonlySet<string>
+): RegisteredLeaderboardEvent => ({
   coverImageUrl: event.cover_image_url,
   country: event.country,
   id: event.id,
+  isRegistered: registeredEventIds.has(event.id),
   name: event.name,
   city: event.city,
   startAt: event.start_at,
@@ -151,7 +160,22 @@ const fetchRegisteredEventIdsAsync = async (studentId: string): Promise<string[]
   return groupEventIds(data);
 };
 
-const fetchVisibleLeaderboardEventsAsync = async (eventIds: string[]): Promise<EventRow[]> => {
+const fetchVisibleLeaderboardEventsAsync = async (): Promise<EventRow[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id,name,city,country,cover_image_url,start_at,end_at,status")
+    .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
+    .eq("visibility", "PUBLIC")
+    .returns<EventRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load leaderboard events: ${error.message}`);
+  }
+
+  return data;
+};
+
+const fetchRegisteredLeaderboardEventsAsync = async (eventIds: string[]): Promise<EventRow[]> => {
   if (eventIds.length === 0) {
     return [];
   }
@@ -161,11 +185,10 @@ const fetchVisibleLeaderboardEventsAsync = async (eventIds: string[]): Promise<E
     .select("id,name,city,country,cover_image_url,start_at,end_at,status")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
-    .eq("visibility", "PUBLIC")
     .returns<EventRow[]>();
 
   if (error !== null) {
-    throw new Error(`Failed to load leaderboard events: ${error.message}`);
+    throw new Error(`Failed to load registered leaderboard events: ${error.message}`);
   }
 
   return data;
@@ -201,20 +224,22 @@ export const fetchStudentLeaderboardOverviewAsync = async (
   studentId: string
 ): Promise<StudentLeaderboardOverview> => {
   const eventIds = await fetchRegisteredEventIdsAsync(studentId);
-
-  if (eventIds.length === 0) {
-    return {
-      registeredEventCount: 0,
-      events: [],
-    };
-  }
+  const [visibleEvents, registeredEvents] = await Promise.all([
+    fetchVisibleLeaderboardEventsAsync(),
+    fetchRegisteredLeaderboardEventsAsync(eventIds),
+  ]);
+  const mergedEvents = Array.from(
+    new Map([...visibleEvents, ...registeredEvents].map((event) => [event.id, event] as const)).values()
+  );
 
   const now = Date.now();
-  const events = await fetchVisibleLeaderboardEventsAsync(eventIds);
+  const registeredEventIds = new Set(eventIds);
 
   return {
     registeredEventCount: eventIds.length,
-    events: events.map((event) => mapRegisteredEvent(event, now)).sort(compareRegisteredEvents),
+    events: mergedEvents
+      .map((event) => mapRegisteredEvent(event, now, registeredEventIds))
+      .sort(compareRegisteredEvents),
   };
 };
 

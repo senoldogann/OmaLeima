@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { validatePasswordSessionRequest } from "@/features/auth/password-session-guard";
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { publicEnv } from "@/lib/env";
 
@@ -50,6 +51,15 @@ const attachSessionCookies = (
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse<PasswordSessionResponseBody>> {
+  const requestError = validatePasswordSessionRequest(request);
+
+  if (requestError !== null) {
+    return createJsonResponse(
+      { error: requestError.error },
+      requestError.status
+    );
+  }
+
   let body: unknown;
 
   try {

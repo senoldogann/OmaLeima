@@ -52,6 +52,9 @@ type UseStampCountQueryParams = {
   eventId: string;
   studentId: string;
   isEnabled: boolean;
+  refetchIntervalMs?: number | false;
+  refetchOnMount?: boolean | "always";
+  refetchOnReconnect?: boolean | "always";
 };
 
 type UseGenerateQrTokenQueryParams = {
@@ -69,6 +72,11 @@ type QrProtectionState = {
   detail: string;
   status: QrProtectionStatus;
 };
+
+const minimumQrRefetchIntervalMs = 250;
+const qrDarkModuleColor = "#111827";
+const qrGradientId = "omaLeimaQrGradient";
+const qrGradientMarkup = `<defs><linearGradient id="${qrGradientId}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5b21b6"/><stop offset="52%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#a16207"/></linearGradient></defs>`;
 
 export const studentQrContextQueryKey = (studentId: string) => ["student-qr-context", studentId] as const;
 
@@ -197,45 +205,76 @@ const fetchGenerateQrTokenAsync = async (
   return (await response.json()) as GenerateQrTokenResponse;
 };
 
-export const selectStudentQrEvent = (
+export const selectStudentQrEvents = (
   registeredEvents: RegisteredQrEvent[],
   now: number
-): SelectedStudentQrEvent | null => {
-  const activeEvent = registeredEvents.find((event) => {
+): SelectedStudentQrEvent[] => {
+  const activeEvents = registeredEvents.flatMap((event): SelectedStudentQrEvent[] => {
     const startTime = new Date(event.startAt).getTime();
     const endTime = new Date(event.endAt).getTime();
 
-    return now >= startTime && now <= endTime;
+    if (now < startTime || now > endTime) {
+      return [];
+    }
+
+    return [
+      {
+        ...event,
+        viewState: "ACTIVE",
+      },
+    ];
   });
 
-  if (typeof activeEvent !== "undefined") {
-    return {
-      ...activeEvent,
-      viewState: "ACTIVE",
-    };
-  }
+  const upcomingEvents = registeredEvents.flatMap((event): SelectedStudentQrEvent[] => {
+    const startTime = new Date(event.startAt).getTime();
 
-  const upcomingEvent = registeredEvents.find((event) => now < new Date(event.startAt).getTime());
+    if (now >= startTime) {
+      return [];
+    }
 
-  if (typeof upcomingEvent === "undefined") {
-    return null;
-  }
+    return [
+      {
+        ...event,
+        viewState: "UPCOMING",
+      },
+    ];
+  });
 
-  return {
-    ...upcomingEvent,
-    viewState: "UPCOMING",
-  };
+  return [...activeEvents, ...upcomingEvents];
 };
+
+export const selectStudentQrEvent = (
+  registeredEvents: RegisteredQrEvent[],
+  now: number
+): SelectedStudentQrEvent | null => selectStudentQrEvents(registeredEvents, now)[0] ?? null;
 
 export const createQrSvgDataAsync = async (token: string): Promise<string> => {
   const svgMarkup = await QRCode.toString(token, {
+    color: {
+      dark: qrDarkModuleColor,
+      light: "#ffffff",
+    },
     errorCorrectionLevel: "M",
     margin: 1,
     type: "svg",
     width: 280,
   });
 
-  return svgMarkup;
+  const gradientStrokeMarkup = `stroke="url(#${qrGradientId})"`;
+
+  if (!svgMarkup.includes(`stroke="${qrDarkModuleColor}"`)) {
+    return svgMarkup;
+  }
+
+  const rootTagEndIndex = svgMarkup.indexOf(">");
+
+  if (rootTagEndIndex === -1) {
+    return svgMarkup.replace(`stroke="${qrDarkModuleColor}"`, gradientStrokeMarkup);
+  }
+
+  return `${svgMarkup.slice(0, rootTagEndIndex + 1)}${qrGradientMarkup}${svgMarkup
+    .slice(rootTagEndIndex + 1)
+    .replace(`stroke="${qrDarkModuleColor}"`, gradientStrokeMarkup)}`;
 };
 
 export const useStudentQrContextQuery = ({
@@ -252,11 +291,17 @@ export const useStudentEventStampCountQuery = ({
   eventId,
   studentId,
   isEnabled,
+  refetchIntervalMs,
+  refetchOnMount,
+  refetchOnReconnect,
 }: UseStampCountQueryParams): UseQueryResult<StampCountResult, Error> =>
   useQuery({
     queryKey: studentEventStampCountQueryKey(eventId, studentId),
     queryFn: async () => fetchStudentEventStampCountAsync(eventId, studentId),
     enabled: isEnabled,
+    refetchInterval: typeof refetchIntervalMs === "number" ? refetchIntervalMs : false,
+    refetchOnMount,
+    refetchOnReconnect,
   });
 
 export const useGenerateQrTokenQuery = ({
@@ -269,8 +314,8 @@ export const useGenerateQrTokenQuery = ({
     queryFn: async () => fetchGenerateQrTokenAsync(accessToken, eventId),
     enabled: isEnabled,
     staleTime: Number.POSITIVE_INFINITY,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
     refetchInterval: (query) => {
       const result = query.state.data as GenerateQrTokenResponse | undefined;
 
@@ -282,10 +327,10 @@ export const useGenerateQrTokenQuery = ({
       const remainingMs = expiresAtMs - Date.now();
 
       if (remainingMs <= 0) {
-        return 0;
+        return minimumQrRefetchIntervalMs;
       }
 
-      return remainingMs;
+      return Math.max(remainingMs, minimumQrRefetchIntervalMs);
     },
   });
 

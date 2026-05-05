@@ -474,19 +474,24 @@ export default function StudentEventDetailScreen() {
         <>
           <CoverImageSurface imageStyle={themeStyles.heroImage} source={coverSource} style={themeStyles.heroCard}>
             <View style={themeStyles.heroEdgeFade} />
+            <View style={themeStyles.heroContent}>
+              <View style={themeStyles.heroBadgeRow}>
+                <StatusBadge
+                  label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
+                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
+                />
+                {registrationBadge ? (
+                  <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+                ) : null}
+              </View>
+              <View style={themeStyles.heroTextGroup}>
+                <Text style={themeStyles.heroCity}>{event.city}</Text>
+                <Text style={themeStyles.heroTitle}>{event.name}</Text>
+              </View>
+            </View>
           </CoverImageSurface>
 
-          <InfoCard eyebrow={copy.common.eventDetails} title={event.name}>
-            <View style={themeStyles.badges}>
-              <StatusBadge
-                label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
-                state={event.status === "PUBLISHED" ? "ready" : "warning"}
-              />
-              {registrationBadge ? (
-                <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
-              ) : null}
-            </View>
-
+          <View style={themeStyles.sectionBlock}>
             <View style={themeStyles.metaGrid}>
               <View style={themeStyles.metaCard}>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Paikka" : "Place"}</Text>
@@ -499,18 +504,22 @@ export default function StudentEventDetailScreen() {
               <View style={themeStyles.metaCard}>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Aika" : "Time"}</Text>
                 <Text style={themeStyles.metaCardValue}>
-                  {timeFormatter.format(new Date(event.startAt))} - {timeFormatter.format(new Date(event.endAt))}
+                  {timeFormatter.format(new Date(event.startAt))} – {timeFormatter.format(new Date(event.endAt))}
                 </Text>
               </View>
             </View>
-
-            <Text style={themeStyles.sectionLead}>{copy.student.eventDescription}</Text>
             <Text style={themeStyles.bodyText}>
               {event.description ?? copy.student.eventDescriptionFallback}
             </Text>
-          </InfoCard>
+          </View>
 
-          <InfoCard eyebrow={language === "fi" ? "Ilmoittautuminen" : "Registration"} title={joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}>
+          <View style={themeStyles.sectionDivider} />
+
+          <View style={themeStyles.sectionBlock}>
+            <View style={themeStyles.sectionHeader}>
+              <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Ilmoittautuminen" : "Registration"}</Text>
+              <Text style={themeStyles.sectionTitle}>{joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}</Text>
+            </View>
             <Text style={themeStyles.bodyText}>{joinAvailability?.detail ?? ""}</Text>
             {joinPresentation ? (
               <View style={themeStyles.inlineStatusRow}>
@@ -568,9 +577,15 @@ export default function StudentEventDetailScreen() {
                 </Pressable>
               </>
             ) : null}
-          </InfoCard>
+          </View>
 
-          <InfoCard eyebrow={language === "fi" ? "Pisteet" : "Venues"} title={language === "fi" ? "Pisteet ja palkinnot" : "Venues and rewards"}>
+          <View style={themeStyles.sectionDivider} />
+
+          <View style={themeStyles.sectionBlock}>
+            <View style={themeStyles.sectionHeader}>
+              <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Pisteet" : "Venues"}</Text>
+              <Text style={themeStyles.sectionTitle}>{language === "fi" ? "Pisteet ja palkinnot" : "Venues & rewards"}</Text>
+            </View>
             {event.venues.length > 0 ? (
               <View style={themeStyles.listGroup}>
                 {event.venues.map((venue) => (
@@ -657,19 +672,26 @@ export default function StudentEventDetailScreen() {
                 ))}
               </View>
             ) : null}
-          </InfoCard>
+          </View>
 
           {Object.entries(event.rules).length > 0 ? (
-            <InfoCard eyebrow={language === "fi" ? "Säännöt" : "Rules"} title={language === "fi" ? "Muista nämä" : "Before you go"}>
-              <View style={themeStyles.rulesGroup}>
-                {Object.entries(event.rules).map(([key, value]) => (
-                  <View key={key} style={themeStyles.ruleRow}>
-                    <Text style={themeStyles.listTitle}>{key}</Text>
-                    <Text style={themeStyles.metaLine}>{formatRuleValue(value)}</Text>
-                  </View>
-                ))}
+            <>
+              <View style={themeStyles.sectionDivider} />
+              <View style={themeStyles.sectionBlock}>
+                <View style={themeStyles.sectionHeader}>
+                  <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Säännöt" : "Rules"}</Text>
+                  <Text style={themeStyles.sectionTitle}>{language === "fi" ? "Muista nämä" : "Before you go"}</Text>
+                </View>
+                <View style={themeStyles.rulesGroup}>
+                  {Object.entries(event.rules).map(([key, value]) => (
+                    <View key={key} style={themeStyles.ruleRow}>
+                      <Text style={themeStyles.listTitle}>{key}</Text>
+                      <Text style={themeStyles.metaLine}>{formatRuleValue(value)}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </InfoCard>
+            </>
           ) : null}
         </>
       ) : null}
@@ -719,13 +741,46 @@ const createStyles = (theme: MobileTheme) => {
     heroCard: {
       marginHorizontal: -theme.spacing.screenHorizontal,
       marginTop: -theme.spacing.screenVertical,
-      minHeight: 264,
+      minHeight: 300,
       overflow: "hidden",
       position: "relative",
     },
     heroEdgeFade: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: "transparent",
+      backgroundColor: "rgba(0,0,0,0.32)",
+    },
+    heroBadgeRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    heroContent: {
+      bottom: 0,
+      gap: 10,
+      left: 0,
+      paddingBottom: 20,
+      paddingHorizontal: 16,
+      position: "absolute",
+      right: 0,
+      zIndex: 10,
+    },
+    heroTextGroup: {
+      gap: 4,
+    },
+    heroCity: {
+      color: "rgba(255, 255, 255, 0.72)",
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    heroTitle: {
+      color: "#FFFFFF",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      letterSpacing: -0.5,
+      lineHeight: 34,
     },
     heroImage: {
       borderRadius: 0,
@@ -793,10 +848,11 @@ const createStyles = (theme: MobileTheme) => {
     },
     primaryButton: {
       alignItems: "center",
+      alignSelf: "stretch",
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
       paddingHorizontal: 14,
-      paddingVertical: 12,
+      paddingVertical: 14,
       ...interactiveSurfaceShadowStyle,
     },
     primaryButtonText: {
@@ -823,11 +879,31 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.eyebrow,
       textTransform: "uppercase",
     },
-    sectionLead: {
+    sectionBlock: {
+      gap: 14,
+      paddingVertical: 6,
+    },
+    sectionDivider: {
+      backgroundColor: theme.colors.borderSubtle,
+      height: 1,
+      marginHorizontal: 0,
+    },
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     rulesGroup: {
       gap: 10,

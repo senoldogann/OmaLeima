@@ -59,7 +59,11 @@ type EventVenueRow = {
 type BusinessRow = {
   id: string;
   name: string;
+  address: string;
   city: string;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
   logo_url: string | null;
   cover_image_url: string | null;
 };
@@ -170,7 +174,7 @@ const fetchBusinessesAsync = async (businessIds: string[]): Promise<BusinessRow[
 
   const { data, error } = await supabase
     .from("businesses")
-    .select("id,name,city,logo_url,cover_image_url")
+    .select("id,name,address,city,country,latitude,longitude,logo_url,cover_image_url")
     .in("id", businessIds)
     .returns<BusinessRow[]>();
 
@@ -230,7 +234,11 @@ const mapVenues = (
         id: row.id,
         businessId: row.business_id,
         name: business.name,
+        address: business.address,
         city: business.city,
+        country: business.country,
+        latitude: business.latitude,
+        longitude: business.longitude,
         logoUrl: business.logo_url,
         coverImageUrl: business.cover_image_url,
         venueOrder: row.venue_order,

@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { pickClubMediaAsync, uploadClubMediaAsync, type ClubMediaKind } from "@/features/club/club-media";
 import { useUpdateClubProfileMutation } from "@/features/club/club-profile";
@@ -44,8 +42,20 @@ const createDraftFromMembership = (membership: ClubMembershipSummary | null): Cl
   logoUrl: membership?.logoUrl ?? "",
 });
 
+const isValidOptionalEmail = (value: string): boolean => {
+  if (value.length === 0) {
+    return true;
+  }
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+};
+
+const normalizeClubDraft = (draft: ClubProfileDraft): ClubProfileDraft => ({
+  ...draft,
+  contactEmail: draft.contactEmail.trim(),
+});
+
 export default function ClubProfileScreen() {
-  const router = useRouter();
   const { copy, language, setLanguage, setThemeMode, theme, themeMode } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -70,6 +80,13 @@ export default function ClubProfileScreen() {
     () => memberships.find((membership) => membership.clubId === selectedClubId) ?? memberships[0] ?? null,
     [memberships, selectedClubId]
   );
+  const normalizedContactEmail = clubDraft.contactEmail.trim();
+  const isContactEmailValid = isValidOptionalEmail(normalizedContactEmail);
+  const clubProfileValidationMessage = !isContactEmailValid
+    ? language === "fi"
+      ? "Anna kelvollinen sahkopostiosoite tai jata kentta tyhjaksi."
+      : "Enter a valid email address or leave the field empty."
+    : null;
   const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
   const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
 
@@ -122,12 +139,12 @@ export default function ClubProfileScreen() {
   };
 
   const handleSaveClubProfilePress = async (): Promise<void> => {
-    if (userId === null || clubDraft.clubId.trim().length === 0) {
+    if (userId === null || clubDraft.clubId.trim().length === 0 || !isContactEmailValid) {
       return;
     }
 
     await updateClubProfileMutation.mutateAsync({
-      draft: clubDraft,
+      draft: normalizeClubDraft(clubDraft),
       userId,
     });
   };
@@ -135,10 +152,8 @@ export default function ClubProfileScreen() {
   return (
     <AppScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/club/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
           <Text style={styles.screenTitle}>{language === "fi" ? "Järjestäjä" : "Organizer"}</Text>
           <Text style={styles.metaText}>
             {language === "fi" ? "Asetukset, tuki ja klubiroolit." : "Preferences, support, and club roles."}
@@ -256,7 +271,11 @@ export default function ClubProfileScreen() {
             </View>
 
             <Pressable
-              disabled={updateClubProfileMutation.isPending || clubDraft.clubId.trim().length === 0}
+              disabled={
+                updateClubProfileMutation.isPending ||
+                clubDraft.clubId.trim().length === 0 ||
+                !isContactEmailValid
+              }
               onPress={() => void handleSaveClubProfilePress()}
               style={[styles.primaryButton, updateClubProfileMutation.isPending ? styles.disabledButton : null]}
             >
@@ -272,6 +291,9 @@ export default function ClubProfileScreen() {
             </Pressable>
 
             {mediaError !== null ? <Text style={styles.errorText}>{mediaError}</Text> : null}
+            {clubProfileValidationMessage !== null ? (
+              <Text style={styles.errorText}>{clubProfileValidationMessage}</Text>
+            ) : null}
             {updateClubProfileMutation.error ? (
               <Text style={styles.errorText}>{updateClubProfileMutation.error.message}</Text>
             ) : null}
@@ -322,8 +344,6 @@ export default function ClubProfileScreen() {
           </Pressable>
 
           <View style={styles.preferenceDivider} />
-
-          <SignOutButton />
         </View>
       </InfoCard>
 
@@ -334,7 +354,7 @@ export default function ClubProfileScreen() {
         visible={preferenceSheet !== null}
       >
         <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalBackdrop}>
-          <Pressable onPress={() => {}} style={styles.preferenceModalCard}>
+          <Pressable onPress={() => { }} style={styles.preferenceModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
@@ -410,16 +430,6 @@ export default function ClubProfileScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
-    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.regular,
@@ -715,10 +725,17 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
     },
-    successText: {
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    }, successText: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,

@@ -14,11 +14,19 @@ export default function BusinessUpdatesScreen() {
   const { language, theme } = useUiPreferences();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
+  const handleBackPress = (): void => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/business/home");
+  };
 
   return (
     <AppScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
+        <Pressable onPress={handleBackPress} style={styles.backButton}>
           <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
         </Pressable>
         <View style={styles.topBarCopy}>
@@ -33,6 +41,7 @@ export default function BusinessUpdatesScreen() {
 
       <AnnouncementFeedSection
         compact={false}
+        detailPathname="/business/announcement-detail"
         maxItems={15}
         title={language === "fi" ? "Yrityksen tiedotevirta" : "Business update feed"}
         userId={userId}

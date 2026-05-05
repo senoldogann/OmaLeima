@@ -7,6 +7,8 @@ import type { ScannerAttemptResult, ScannerLocationPayload } from "@/features/sc
 type ScanQrRequestParams = {
   qrToken: string;
   businessId: string;
+  eventId: string;
+  eventVenueId: string;
   scannerDeviceId: string | null;
   scannerPin: string | null;
   scannerLocation: ScannerLocationPayload;
@@ -15,6 +17,8 @@ type ScanQrRequestParams = {
 export const invokeScanQrAsync = async ({
   qrToken,
   businessId,
+  eventId,
+  eventVenueId,
   scannerDeviceId,
   scannerPin,
   scannerLocation,
@@ -36,6 +40,8 @@ export const invokeScanQrAsync = async ({
     accessToken,
     qrToken,
     businessId,
+    eventId,
+    eventVenueId,
     scannerDeviceId,
     scannerPin,
     scannerLocation,

@@ -157,9 +157,11 @@ const main = async () => {
 
   const qrUsesPolling =
     qrPollingBlock.includes("fetchGenerateQrTokenAsync") && qrPollingBlock.includes("refetchInterval");
-  const stampUsesSnapshotOnly =
+  const stampUsesControlledPolling =
     stampSnapshotBlock.includes("fetchStudentEventStampCountAsync") &&
-    !stampSnapshotBlock.includes("refetchInterval") &&
+    stampSnapshotBlock.includes("refetchIntervalMs") &&
+    stampSnapshotBlock.includes("refetchInterval") &&
+    activeEventScreenSource.includes("shouldMonitorLiveStamps ? 2000 : false") &&
     !isRealtimeLine(stampSnapshotBlock);
   const leaderboardUsesSnapshotOnly =
     leaderboardOverviewBlock.includes("fetchStudentLeaderboardOverviewAsync") &&
@@ -214,9 +216,9 @@ const main = async () => {
     ]);
   }
 
-  if (!stampUsesSnapshotOnly) {
+  if (!stampUsesControlledPolling) {
     fail("mobile-realtime-audit:unexpected-stamp-refresh-shape", [
-      "Stamp progress query no longer matches the expected snapshot-only shape.",
+      "Stamp progress query no longer matches the expected controlled-polling shape.",
       `Checked file: ${createRelativePath(qrSourcePath)}`,
     ]);
   }

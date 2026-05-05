@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
@@ -131,7 +132,7 @@ export const AdminLoginPanel = () => {
         <div className="auth-visual-copy">
           <div className="brand-lockup">
             <span className="brand-mark" aria-hidden="true">
-              OL
+              <Image alt="" className="brand-logo" height={44} priority src="/images/omaleima-logo.png" width={44} />
             </span>
             <div>
               <div className="eyebrow">OmaLeima</div>

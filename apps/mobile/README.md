@@ -53,9 +53,8 @@ The first dedicated mobile Realtime slice is now shipped:
 - the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
 - local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
-- the student profile route now exposes a dev-only `Push diagnostics` modal for runtime mode, permission state, last received notification, and last notification response during physical-device smoke
-- the same profile route now records the last manual diagnostics refresh timestamp so the refresh button has visible feedback even when permission state does not change
-- local foreground notifications can still appear in that diagnostics surface, but only entries marked from a remote source prove APNs or FCM-backed delivery
+- native push diagnostics remain provider-owned diagnostics capture so the student profile stays clean for pilots
+- local foreground notifications can still appear in captured diagnostics, but only entries marked from a remote source prove APNs or FCM-backed delivery
 - the active student event screen still exposes the live QR scene used in hosted scanner smoke, while the business scanner keeps a manual token-scan fallback for operator or repo-owned smoke
 
 Use this command to confirm that state before extending or widening the Realtime layer:
@@ -117,7 +116,7 @@ npm run audit:store-release-readiness
 ## Native push smoke note
 
 - Expo Go is still useful for routing and auth checks, but real remote push verification needs a development build on a physical device.
-- The current profile route is the manual smoke surface for that step.
+- The provider-owned diagnostics capture and device logs are the manual smoke surface for that step.
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
 - On Android specifically, the emulator is the current fallback when no phone is available: use it for auth, event, QR, and scanner-flow coverage, but do not count it as remote-push proof.
 - The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.

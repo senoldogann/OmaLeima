@@ -5,8 +5,10 @@ import { useMemo, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import {
+  submitAnnouncementArchiveRequestAsync,
   submitAnnouncementCreateRequestAsync,
   submitAnnouncementPushRequestAsync,
+  submitAnnouncementUpdateRequestAsync,
 } from "@/features/announcements/client";
 import { uploadAnnouncementImageAsync } from "@/features/announcements/media-upload";
 import type {
@@ -45,6 +47,22 @@ const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreat
   };
 };
 
+const createPayloadFromAnnouncement = (
+  announcement: AnnouncementRecord
+): AnnouncementCreatePayload => ({
+  audience: announcement.audience,
+  body: announcement.body,
+  clubId: announcement.clubId ?? "",
+  ctaLabel: announcement.ctaLabel ?? "",
+  ctaUrl: announcement.ctaUrl ?? "",
+  endsAt: announcement.endsAt === null ? "" : toLocalDateTimeInput(new Date(announcement.endsAt)),
+  imageUrl: announcement.imageUrl ?? "",
+  priority: String(announcement.priority),
+  startsAt: toLocalDateTimeInput(new Date(announcement.startsAt)),
+  status: announcement.status === "ARCHIVED" ? "DRAFT" : announcement.status,
+  title: announcement.title,
+});
+
 const formatDate = (value: string): string =>
   new Intl.DateTimeFormat("fi-FI", {
     day: "numeric",
@@ -64,8 +82,10 @@ const renderState = (state: AnnouncementActionState) => {
 export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   const router = useRouter();
   const [payload, setPayload] = useState<AnnouncementCreatePayload>(createInitialPayload(snapshot));
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
+  const [pendingArchiveAnnouncementId, setPendingArchiveAnnouncementId] = useState<string | null>(null);
   const [pendingPushAnnouncementId, setPendingPushAnnouncementId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<AnnouncementActionState>({
     code: null,
@@ -78,7 +98,24 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
     () => (snapshot.scope === "ADMIN" ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"] : ["ALL", "STUDENTS", "CLUBS"]),
     [snapshot.scope]
   );
-  const isFormDisabled = !canCreate || isPending || isImageUploading;
+  const isEditingAnnouncement = editingAnnouncementId !== null;
+  const isFormDisabled = !canCreate || isPending || isImageUploading || pendingArchiveAnnouncementId !== null;
+  const [activeTab, setActiveTab] = useState<"compose" | "announcements">("compose");
+
+  const resetForm = (): void => {
+    setEditingAnnouncementId(null);
+    setPayload(createInitialPayload(snapshot));
+  };
+
+  const handleEditPress = (announcement: AnnouncementRecord): void => {
+    setEditingAnnouncementId(announcement.announcementId);
+    setPayload(createPayloadFromAnnouncement(announcement));
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+  };
 
   const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -103,9 +140,9 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           snapshot.scope === "ADMIN"
             ? { scope: "ADMIN" }
             : {
-                clubId: payload.clubId,
-                scope: "CLUB",
-              },
+              clubId: payload.clubId,
+              scope: "CLUB",
+            },
         supabase,
       });
 
@@ -139,7 +176,10 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
     });
 
     try {
-      const response = await submitAnnouncementCreateRequestAsync(payload);
+      const response =
+        editingAnnouncementId === null
+          ? await submitAnnouncementCreateRequestAsync(payload)
+          : await submitAnnouncementUpdateRequestAsync(editingAnnouncementId, payload);
       setActionState({
         code: response.status,
         message: response.message,
@@ -147,7 +187,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
       });
 
       if (response.status === "SUCCESS") {
-        setPayload(createInitialPayload(snapshot));
+        resetForm();
         router.refresh();
       }
     } catch (error) {
@@ -158,6 +198,43 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
       });
     } finally {
       setIsPending(false);
+    }
+  };
+
+  const handleArchivePress = async (announcement: AnnouncementRecord): Promise<void> => {
+    setPendingArchiveAnnouncementId(announcement.announcementId);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitAnnouncementArchiveRequestAsync(
+        announcement.announcementId,
+        announcement.clubId
+      );
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status === "SUCCESS") {
+        if (editingAnnouncementId === announcement.announcementId) {
+          resetForm();
+        }
+
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown announcement archive request error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingArchiveAnnouncementId(null);
     }
   };
 
@@ -198,6 +275,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
 
   const renderAnnouncementCard = (announcement: AnnouncementRecord) => {
     const canSendPush = announcement.status === "PUBLISHED";
+    const canArchive = announcement.status !== "ARCHIVED";
 
     return (
       <article className="panel" key={announcement.announcementId}>
@@ -226,14 +304,34 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
               {announcement.ctaLabel}
             </a>
           ) : null}
-          <button
-            className="secondary-action"
-            disabled={!canSendPush || pendingPushAnnouncementId !== null}
-            onClick={() => void handleSendPushPress(announcement)}
-            type="button"
-          >
-            {pendingPushAnnouncementId === announcement.announcementId ? "Sending push..." : "Send push"}
-          </button>
+          <div className="button-row">
+            <button
+              className="secondary-action"
+              disabled={isFormDisabled}
+              onClick={() => handleEditPress(announcement)}
+              type="button"
+            >
+              Edit
+            </button>
+            {canArchive ? (
+              <button
+                className="secondary-action"
+                disabled={isFormDisabled}
+                onClick={() => void handleArchivePress(announcement)}
+                type="button"
+              >
+                {pendingArchiveAnnouncementId === announcement.announcementId ? "Archiving..." : "Archive"}
+              </button>
+            ) : null}
+            <button
+              className="secondary-action"
+              disabled={!canSendPush || pendingPushAnnouncementId !== null || pendingArchiveAnnouncementId !== null}
+              onClick={() => void handleSendPushPress(announcement)}
+              type="button"
+            >
+              {pendingPushAnnouncementId === announcement.announcementId ? "Sending push..." : "Send push"}
+            </button>
+          </div>
         </div>
       </article>
     );
@@ -241,13 +339,22 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
 
   return (
     <div className="stack-lg">
-      <section className="panel panel-accent">
+      <div className="tab-nav">
+        <button className={activeTab === "compose" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("compose")} type="button">Compose</button>
+        <button className={activeTab === "announcements" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("announcements")} type="button">Announcements</button>
+      </div>
+
+      <section className="panel panel-accent" style={{ display: activeTab !== "compose" ? "none" : undefined }}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <div className="form-grid-full stack-sm">
-            <span className="field-label">{title}</span>
-            <h3 className="section-title">Publish an in-app popup</h3>
+            <span className="field-label">{isEditingAnnouncement ? "Edit" : title}</span>
+            <h3 className="section-title">
+              {isEditingAnnouncement ? "Update announcement" : "Publish an in-app popup"}
+            </h3>
             <p className="muted-text">
-              This creates the source announcement. Send push from the announcement card after publishing.
+              {isEditingAnnouncement
+                ? "Update the announcement, archive it, or send push from the card after publishing."
+                : "This creates the source announcement. Send push from the announcement card after publishing."}
             </p>
           </div>
 
@@ -255,7 +362,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
             <label className="field-stack">
               <span className="field-label">Club</span>
               <select
-                disabled={isFormDisabled}
+                disabled={isFormDisabled || isEditingAnnouncement}
                 value={payload.clubId}
                 onChange={(event) => setPayload((current) => ({ ...current, clubId: event.target.value }))}
               >
@@ -409,14 +516,27 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
 
           <div className="form-grid-full stack-sm">
             {renderState(actionState)}
-            <button className="primary-action" disabled={isFormDisabled} type="submit">
-              {isImageUploading ? "Uploading image..." : isPending ? "Saving..." : "Save announcement"}
-            </button>
+            <div className="button-row">
+              <button className="primary-action" disabled={isFormDisabled} type="submit">
+                {isImageUploading
+                  ? "Uploading image..."
+                  : isPending
+                    ? isEditingAnnouncement
+                      ? "Updating..."
+                      : "Saving..."
+                    : isEditingAnnouncement
+                      ? "Update announcement"
+                      : "Save announcement"}
+              </button>
+              <button className="secondary-action" disabled={isFormDisabled} onClick={resetForm} type="button">
+                {isEditingAnnouncement ? "Cancel edit" : "Reset form"}
+              </button>
+            </div>
           </div>
         </form>
       </section>
 
-      <section className="stack-md">
+      <section className="stack-md" style={{ display: activeTab !== "announcements" ? "none" : undefined }}>
         <div className="split-row">
           <h3 className="section-title">Latest announcements</h3>
           <span className="field-label">{snapshot.announcements.length} rows</span>

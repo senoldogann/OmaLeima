@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
@@ -70,12 +70,12 @@ export default function BusinessHomeScreen() {
       scannerStandbyTitle: language === "fi" ? "Ei käynnissä olevia tapahtumia" : "No active events",
       scannerReadyBody:
         language === "fi"
-          ? "Skanneritili avaa kameran automaattisesti, kun tapahtuma on käynnissä."
-          : "Scanner accounts open the camera automatically while an event is live.",
+          ? "Avaa skanneri, kun liittymäsi tapahtuma on käynnissä."
+          : "Open the scanner while your joined event is live.",
       scannerStandbyBody:
         language === "fi"
-          ? "Skanneri avautuu, kun liittymäsi tapahtuma on käynnissä."
-          : "The scanner opens automatically once a joined event is live.",
+          ? "Skanneri on valmiina, kun liittymäsi tapahtuma käynnistyy."
+          : "The scanner will be ready once a joined event goes live.",
       joinedEventsTitle: copy.business.joinedEvents,
       viewAllEvents: language === "fi" ? "Kaikki tapahtumat" : "View all events",
       signedInFallback: language === "fi" ? "yritystili" : "business account",
@@ -97,31 +97,12 @@ export default function BusinessHomeScreen() {
   const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
   const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
-  const memberships = homeOverviewQuery.data?.memberships ?? [];
-  const isScannerOnlyBusinessUser =
-    memberships.length > 0 && memberships.every((membership) => membership.role === "SCANNER");
   const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
   const eventRailWidth = Math.min(340, Math.max(260, windowWidth - 96));
   const eventRailContentStyle = [
     styles.eventRailContent,
     joinedEvents.length === 1 ? styles.eventRailContentSingle : null,
   ];
-
-  useEffect(() => {
-    if (homeOverviewQuery.isLoading || homeOverviewQuery.error || !isScannerOnlyBusinessUser) {
-      return;
-    }
-
-    if (activeJoinedEvents.length > 0) {
-      router.replace("/business/scanner");
-    }
-  }, [
-    activeJoinedEvents.length,
-    homeOverviewQuery.error,
-    homeOverviewQuery.isLoading,
-    isScannerOnlyBusinessUser,
-    router,
-  ]);
 
   const handleSignOutPress = async (): Promise<void> => {
     setIsSigningOut(true);
@@ -142,6 +123,7 @@ export default function BusinessHomeScreen() {
     <AppScreen>
       <View style={styles.screenHeaderRow}>
         <View style={styles.screenHeaderCopy}>
+          <Text style={styles.screenEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.common.business}</Text>
           <Text style={styles.metaText}>{copy.business.homeMeta}</Text>
         </View>
@@ -198,64 +180,59 @@ export default function BusinessHomeScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard
-          eyebrow={copy.business.scanner}
-          title={
-            activeJoinedEvents.length > 0
-              ? labels.scannerReadyTitle
-              : labels.scannerStandbyTitle
-          }
-          variant="scene"
-        >
+        <View style={[styles.scannerCard, activeJoinedEvents.length > 0 ? styles.scannerCardReady : null]}>
+          <View style={styles.scannerCardHeader}>
+            <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+            <Text style={styles.scannerTitle}>
+              {activeJoinedEvents.length > 0
+                ? labels.scannerReadyTitle
+                : labels.scannerStandbyTitle}
+            </Text>
+          </View>
           <Text style={styles.bodyText}>
             {activeJoinedEvents.length > 0
               ? labels.scannerReadyBody
               : labels.scannerStandbyBody}
           </Text>
 
-          {isScannerOnlyBusinessUser && activeJoinedEvents.length > 0 ? (
-            <View style={styles.scannerAutoRow}>
-              <ActivityIndicator color={theme.colors.lime} size="small" />
-              <Text style={styles.metaText}>
-                {language === "fi" ? "Avataan kameraa…" : "Opening camera…"}
+          <View style={styles.actionRow}>
+            <Pressable
+              style={[styles.primaryButton, styles.actionFlex]}
+              onPress={() =>
+                router.push(
+                  activeJoinedEvents.length > 0 ? "/business/scanner" : "/business/events"
+                )
+              }
+            >
+              <AppIcon
+                color={theme.colors.actionPrimaryText}
+                name={activeJoinedEvents.length > 0 ? "scan" : "calendar"}
+                size={18}
+              />
+              <Text style={styles.primaryButtonText}>
+                {activeJoinedEvents.length > 0 ? copy.business.openScanner : copy.business.manageEvents}
               </Text>
-            </View>
-          ) : (
-            <View style={styles.actionRow}>
-              <Pressable
-                style={[styles.primaryButton, styles.actionFlex]}
-                onPress={() =>
-                  router.push(
-                    activeJoinedEvents.length > 0 ? "/business/scanner" : "/business/events"
-                  )
-                }
-              >
-                <AppIcon
-                  color={theme.colors.actionPrimaryText}
-                  name={activeJoinedEvents.length > 0 ? "scan" : "calendar"}
-                  size={18}
-                />
-                <Text style={styles.primaryButtonText}>
-                  {activeJoinedEvents.length > 0 ? copy.business.openScanner : copy.business.manageEvents}
-                </Text>
-              </Pressable>
+            </Pressable>
 
-              <Pressable
-                onPress={() => router.push("/business/history")}
-                style={[styles.secondaryButton, styles.actionFlex]}
-              >
-                <AppIcon color={theme.colors.textPrimary} name="history" size={17} />
-                <Text adjustsFontSizeToFit numberOfLines={1} style={styles.secondaryButtonText}>
-                  {labels.historyShort}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-        </InfoCard>
+            <Pressable
+              onPress={() => router.push("/business/history")}
+              style={[styles.secondaryButton, styles.actionFlex]}
+            >
+              <AppIcon color={theme.colors.textPrimary} name="history" size={17} />
+              <Text adjustsFontSizeToFit numberOfLines={1} style={styles.secondaryButtonText}>
+                {labels.historyShort}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
-        <InfoCard eyebrow={copy.common.events} title={labels.joinedEventsTitle}>
+        <View style={styles.eventsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionEyebrow}>{copy.common.events}</Text>
+            <Text style={styles.sectionTitle}>{labels.joinedEventsTitle}</Text>
+          </View>
           <AutoAdvancingRail
             contentContainerStyle={eventRailContentStyle}
             intervalMs={3500}
@@ -275,8 +252,8 @@ export default function BusinessHomeScreen() {
                 event.timelineState === "ACTIVE"
                   ? labels.liveEnds
                   : event.timelineState === "UPCOMING"
-                  ? labels.upcomingStarts
-                  : labels.completedEnded;
+                    ? labels.upcomingStarts
+                    : labels.completedEnded;
 
               return (
                 <Pressable
@@ -318,7 +295,9 @@ export default function BusinessHomeScreen() {
                     <Text numberOfLines={1} style={styles.eventVisualStamp}>
                       {event.stampLabel}
                     </Text>
-                  ) : null}
+                  ) : (
+                    <View style={styles.eventVisualStampSpacer} />
+                  )}
                 </Pressable>
               );
             }}
@@ -328,13 +307,15 @@ export default function BusinessHomeScreen() {
           <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{labels.viewAllEvents}</Text>
           </Pressable>
-        </InfoCard>
+        </View>
       ) : null}
 
       <AnnouncementFeedSection
         compact={true}
-        maxItems={4}
+        detailPathname="/business/announcement-detail"
+        maxItems={5}
         onViewAllPress={() => router.push("/business/updates")}
+        presentation="rail"
         title={language === "fi" ? "Yrityksen tiedotteet" : "Business updates"}
         userId={userId}
         viewAllLabel={language === "fi" ? "Avaa tiedotevirta" : "Open update feed"}
@@ -389,6 +370,7 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: theme.radius.inner,
       borderWidth: theme.mode === "light" ? 1 : 0,
       gap: 10,
+      height: 278,
       overflow: "hidden",
       padding: 10,
     },
@@ -408,7 +390,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     eventVisualHero: {
       borderRadius: theme.radius.inner,
-      minHeight: 196,
+      height: 214,
       overflow: "hidden",
       position: "relative",
     },
@@ -432,6 +414,9 @@ const createStyles = (theme: MobileTheme) =>
       letterSpacing: 1,
       lineHeight: theme.typography.lineHeights.caption,
       textTransform: "uppercase",
+    },
+    eventVisualStampSpacer: {
+      minHeight: theme.typography.lineHeights.caption,
     },
     eventVisualTitle: {
       color: "#F8FAF5",
@@ -458,6 +443,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     headerButton: {
       alignItems: "center",
@@ -479,9 +465,11 @@ const createStyles = (theme: MobileTheme) =>
     },
     headerButtonText: {
       color: theme.colors.textPrimary,
+      flexShrink: 1,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
     },
     iconButton: {
       alignItems: "center",
@@ -507,11 +495,68 @@ const createStyles = (theme: MobileTheme) =>
       gap: 6,
       marginBottom: 4,
     },
+    screenEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    scannerCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 14,
+      padding: 18,
+    },
+    scannerCardReady: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.06)" : "rgba(200, 255, 71, 0.12)",
+      borderColor: theme.colors.limeBorder,
+    },
+    scannerCardHeader: {
+      gap: 4,
+    },
+    scannerEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    scannerTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
+    },
+    eventsSection: {
+      gap: 14,
+    },
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     secondaryButton: {
       alignItems: "center",
@@ -526,12 +571,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
-    },
-    scannerAutoRow: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 10,
-      minHeight: 48,
+      textAlign: "center",
     },
     summaryCard: {
       backgroundColor: theme.colors.surfaceL2,
@@ -554,7 +594,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 10,
     },
     summaryValue: {
-      color: theme.colors.textPrimary,
+      color: theme.colors.lime,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,

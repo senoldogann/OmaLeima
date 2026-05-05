@@ -60,6 +60,45 @@ export const submitAnnouncementCreateRequestAsync = async (
   return parseAnnouncementResponseAsync(response);
 };
 
+export const submitAnnouncementUpdateRequestAsync = async (
+  announcementId: string,
+  body: AnnouncementCreatePayload
+): Promise<AnnouncementMutationResponse> => {
+  const requestBody = {
+    ...body,
+    announcementId,
+    endsAt: toOptionalUtcIsoDateTimeOrThrow(body.endsAt, "endsAt"),
+    startsAt: toUtcIsoDateTimeOrThrow(body.startsAt, "startsAt"),
+  };
+  const response = await fetch("/api/announcements/update", {
+    body: JSON.stringify(requestBody),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  return parseAnnouncementResponseAsync(response);
+};
+
+export const submitAnnouncementArchiveRequestAsync = async (
+  announcementId: string,
+  clubId: string | null
+): Promise<AnnouncementMutationResponse> => {
+  const response = await fetch("/api/announcements/archive", {
+    body: JSON.stringify({
+      announcementId,
+      clubId: clubId ?? "",
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  return parseAnnouncementResponseAsync(response);
+};
+
 export const submitAnnouncementPushRequestAsync = async (
   announcementId: string
 ): Promise<AnnouncementMutationResponse> => {

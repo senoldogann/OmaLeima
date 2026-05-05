@@ -43,6 +43,7 @@ export const ClubDepartmentTagsPanel = ({ snapshot }: ClubDepartmentTagsPanelPro
     tone: "idle",
   });
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"community-catalog" | "publish-tag" | "tag-catalog">("community-catalog");
   const selectedClub = useMemo(
     () => snapshot.clubs.find((club) => club.clubId === payload.clubId) ?? null,
     [payload.clubId, snapshot.clubs]
@@ -110,8 +111,14 @@ export const ClubDepartmentTagsPanel = ({ snapshot }: ClubDepartmentTagsPanelPro
         </article>
       </section>
 
-      <section className="content-grid">
-        <div className="stack-md">
+      <div className="tab-nav">
+        <button className={activeTab === "community-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("community-catalog")} type="button">Community Catalog</button>
+        <button className={activeTab === "publish-tag" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("publish-tag")} type="button">Publish Tag</button>
+        <button className={activeTab === "tag-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("tag-catalog")} type="button">Tag Catalog</button>
+      </div>
+
+      <section className="content-grid" style={{ display: activeTab === "tag-catalog" ? "none" : undefined }}>
+        <div className="stack-md" style={activeTab === "community-catalog" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Community catalog</div>
             <h3 className="section-title">Organizer clubs</h3>
@@ -142,7 +149,7 @@ export const ClubDepartmentTagsPanel = ({ snapshot }: ClubDepartmentTagsPanelPro
           )}
         </div>
 
-        <div className="stack-md">
+        <div className="stack-md" style={activeTab === "publish-tag" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Publish official tag</div>
             <h3 className="section-title">New department tag</h3>
@@ -210,7 +217,7 @@ export const ClubDepartmentTagsPanel = ({ snapshot }: ClubDepartmentTagsPanelPro
         </div>
       </section>
 
-      <section className="stack-md">
+      <section className="stack-md" style={{ display: activeTab !== "tag-catalog" ? "none" : undefined }}>
         <div className="stack-sm">
           <div className="eyebrow">Current catalog</div>
           <h3 className="section-title">Official department tags</h3>

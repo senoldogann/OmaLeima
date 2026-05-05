@@ -1,19 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
-import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
 import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
+import { findOverlappingEvents } from "@/features/events/event-overlaps";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
@@ -57,6 +66,7 @@ export default function ClubHomeScreen() {
     userId: userId ?? "",
     isEnabled: userId !== null,
   });
+  const manualRefresh = useManualRefresh(dashboardQuery.refetch);
 
   const labels = useMemo(
     () => ({
@@ -83,6 +93,10 @@ export default function ClubHomeScreen() {
           ? "Kun klubi luo tapahtuman, näet sen tilanteen täällä."
           : "Once the club creates an event, its status appears here.",
       eventsTitle: language === "fi" ? "Seuraavat tapahtumat" : "Next events",
+      eventsEmptyBody:
+        language === "fi"
+          ? "Ei tulevia tai käynnissä olevia tapahtumia. Päättyneet näkyvät erillisissä historiakonteksteissa."
+          : "No upcoming or live events. Completed events stay in dedicated history contexts.",
       openUpcoming: language === "fi" ? "Avaa Tulossa" : "Open Upcoming",
       live: language === "fi" ? "Käynnissä" : "Live",
       upcoming: language === "fi" ? "Tulossa" : "Upcoming",
@@ -121,9 +135,25 @@ export default function ClubHomeScreen() {
     () => sortClubEventsForOrganizer(dashboardQuery.data?.events ?? []),
     [dashboardQuery.data?.events]
   );
+  const nextEvents = useMemo(
+    () => events.filter((event) => event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED"),
+    [events]
+  );
   const liveEvents = useMemo(
     () => sortClubEventsForOrganizer(events.filter((event) => event.timelineState === "LIVE")),
     [events]
+  );
+  const overlappingEvents = useMemo(
+    () =>
+      findOverlappingEvents(
+        nextEvents.map((event) => ({
+          endAt: event.endAt,
+          id: event.eventId,
+          name: event.name,
+          startAt: event.startAt,
+        }))
+      ),
+    [nextEvents]
   );
   const primaryClub = dashboardQuery.data?.memberships[0] ?? null;
 
@@ -157,9 +187,18 @@ export default function ClubHomeScreen() {
   };
 
   return (
-    <AppScreen>
+    <AppScreen
+      refreshControl={
+        <RefreshControl
+          onRefresh={manualRefresh.refreshAsync}
+          refreshing={manualRefresh.isRefreshing}
+          tintColor={theme.colors.lime}
+        />
+      }
+    >
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
+          <Text style={styles.headerEyebrow}>{language === "fi" ? "Organisaattori" : "Organizer"}</Text>
           <Text style={styles.screenTitle}>{primaryClub?.clubName ?? labels.title}</Text>
           <Text style={styles.metaText}>{labels.subtitle}</Text>
           {primaryClub !== null ? (
@@ -168,8 +207,16 @@ export default function ClubHomeScreen() {
             </Text>
           ) : null}
         </View>
-        <Pressable onPress={() => router.push("/club/profile")} style={styles.iconButton}>
-          <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
+        <Pressable
+          disabled={isSigningOut}
+          onPress={() => void handleSignOutPress()}
+          style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
+        >
+          {isSigningOut ? (
+            <ActivityIndicator color={theme.colors.textPrimary} size="small" />
+          ) : (
+            <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
+          )}
         </Pressable>
       </View>
 
@@ -217,38 +264,19 @@ export default function ClubHomeScreen() {
             </View>
           </View>
 
-          <View style={styles.quickActionRow}>
-            <Pressable onPress={() => router.push("/club/events")} style={styles.primaryButton}>
-              <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={18} />
-              <Text style={styles.primaryButtonText}>
-                {language === "fi" ? "Hallinnoi tapahtumia" : "Manage events"}
-              </Text>
-            </Pressable>
-            <Pressable onPress={() => router.push("/club/announcements")} style={styles.secondaryButton}>
-              <AppIcon color={theme.colors.textPrimary} name="bell" size={18} />
-              <Text style={styles.secondaryButtonText}>
-                {language === "fi" ? "Tiedotteet" : "Announcements"}
-              </Text>
-            </Pressable>
-            <Pressable
-              disabled={isSigningOut}
-              onPress={() => void handleSignOutPress()}
-              style={[styles.secondaryButton, styles.compactButton, isSigningOut ? styles.disabledButton : null]}
+          {overlappingEvents.length > 1 ? (
+            <InfoCard
+              eyebrow={language === "fi" ? "Huomio" : "Heads up"}
+              title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
+              variant="subtle"
             >
-              {isSigningOut ? (
-                <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-              ) : (
-                <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
-              )}
-            </Pressable>
-          </View>
-
-          <AnnouncementFeedSection
-            compact={true}
-            maxItems={4}
-            title={language === "fi" ? "Klubin tiedotteet" : "Club updates"}
-            userId={userId}
-          />
+              <Text style={styles.bodyText}>
+                {language === "fi"
+                  ? "Jos klubilla on useita tapahtumia samaan aikaan, tarkista rastit ja viestintä ennen julkaisua. QR-skannaus on tapahtumakohtainen."
+                  : "If your club has overlapping events, verify venues and messaging before publishing. QR scanning remains event-specific."}
+              </Text>
+            </InfoCard>
+          ) : null}
 
           {liveEvents.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveRail}>
@@ -304,55 +332,63 @@ export default function ClubHomeScreen() {
             </InfoCard>
           )}
 
-          <InfoCard eyebrow={labels.upcoming} title={labels.eventsTitle}>
+          <View style={styles.eventsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionEyebrow}>{labels.upcoming}</Text>
+              <Text style={styles.sectionTitle}>{labels.eventsTitle}</Text>
+            </View>
             <View style={styles.sectionHeaderAction}>
               <Text style={styles.bodyText}>
                 {language === "fi"
-                  ? "Selaa julkaistuja, luonnoksia ja päättyneitä tapahtumia ajan mukaan."
-                  : "Browse published, draft, and completed events by time."}
+                  ? "Selaa julkaistuja, luonnoksia ja käynnissä olevia tapahtumia ajan mukaan."
+                  : "Browse published, draft, and live events by time."}
               </Text>
               <Pressable onPress={() => router.push("/club/upcoming")} style={styles.textButton}>
                 <Text style={styles.textButtonText}>{labels.openUpcoming}</Text>
                 <AppIcon color={theme.colors.lime} name="chevron-right" size={16} />
               </Pressable>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventRail}>
-              {events.map((event) => {
-                const badge = getTimelineBadge(event.timelineState, labels.status);
-                const timeLabel = event.timelineState === "LIVE" ? labels.ends : labels.starts;
+            {nextEvents.length === 0 ? (
+              <Text style={styles.bodyText}>{labels.eventsEmptyBody}</Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventRail}>
+                {nextEvents.map((event) => {
+                  const badge = getTimelineBadge(event.timelineState, labels.status);
+                  const timeLabel = event.timelineState === "LIVE" ? labels.ends : labels.starts;
 
-                return (
-                  <Pressable
-                    key={event.eventId}
-                    onPress={() => setPreviewEvent(event)}
-                  >
-                    <CoverImageSurface
-                      source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
-                      style={styles.eventCard}
+                  return (
+                    <Pressable
+                      key={event.eventId}
+                      onPress={() => setPreviewEvent(event)}
                     >
-                      <View style={styles.eventCardOverlay} />
-                      <View style={styles.eventCardContent}>
-                        <View style={styles.eventHeaderRow}>
-                          <Text numberOfLines={1} style={styles.eventCardTitle}>
-                            {event.name}
+                      <CoverImageSurface
+                        source={getEventCoverSourceWithFallback(event.coverImageUrl, "clubControl")}
+                        style={styles.eventCard}
+                      >
+                        <View style={styles.eventCardOverlay} />
+                        <View style={styles.eventCardContent}>
+                          <View style={styles.eventHeaderRow}>
+                            <Text numberOfLines={1} style={styles.eventCardTitle}>
+                              {event.name}
+                            </Text>
+                            <StatusBadge label={badge.label} state={badge.state} />
+                          </View>
+                          <Text numberOfLines={1} style={styles.eventCardMeta}>
+                            {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
                           </Text>
-                          <StatusBadge label={badge.label} state={badge.state} />
+                          <View style={styles.eventMetricRow}>
+                            <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
+                            <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
+                            <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
+                          </View>
                         </View>
-                        <Text numberOfLines={1} style={styles.eventCardMeta}>
-                          {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
-                        </Text>
-                        <View style={styles.eventMetricRow}>
-                          <Text style={styles.eventMetricText}>{event.registeredParticipantCount} {labels.participants}</Text>
-                          <Text style={styles.eventMetricText}>{event.joinedVenueCount} {labels.venues}</Text>
-                          <Text style={styles.eventMetricText}>{event.claimedRewardCount}/{event.rewardTierCount} {labels.claims}</Text>
-                        </View>
-                      </View>
-                    </CoverImageSurface>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </InfoCard>
+                      </CoverImageSurface>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
         </>
       ) : null}
       <ClubEventPreviewModal
@@ -407,10 +443,6 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
       textTransform: "uppercase",
     },
-    compactButton: {
-      flex: 0,
-      minWidth: 54,
-    },
     disabledButton: {
       opacity: 0.62,
     },
@@ -428,7 +460,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     eventCard: {
       borderRadius: theme.radius.scene,
-      minHeight: 220,
+      height: 232,
       overflow: "hidden",
       position: "relative",
       width: 282,
@@ -502,7 +534,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     heroCard: {
       borderRadius: 30,
-      minHeight: 300,
+      height: 314,
       overflow: "hidden",
       position: "relative",
       width: 312,
@@ -580,6 +612,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     metricRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 8,
     },
     metricValue: {
@@ -588,28 +621,25 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: 20,
       lineHeight: 24,
     },
-    primaryButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.lime,
-      borderRadius: theme.radius.button,
-      flex: 1,
-      flexDirection: "row",
-      gap: 8,
-      justifyContent: "center",
-      minHeight: 48,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
+    eventsSection: {
+      gap: 14,
     },
-    primaryButtonText: {
-      color: theme.colors.actionPrimaryText,
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-    },
-    quickActionRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     sectionHeaderAction: {
       gap: 12,
@@ -617,15 +647,21 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    headerEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
     secondaryButton: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
       borderRadius: theme.radius.button,
-      flexDirection: "row",
-      gap: 8,
       minHeight: 46,
       paddingHorizontal: 16,
       paddingVertical: 13,
@@ -635,6 +671,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     summaryCard: {
       backgroundColor: theme.colors.surfaceL2,
@@ -659,7 +696,7 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     summaryValue: {
-      color: theme.colors.textPrimary,
+      color: theme.colors.lime,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,

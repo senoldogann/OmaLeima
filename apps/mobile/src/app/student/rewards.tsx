@@ -15,8 +15,8 @@ import {
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
-import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
 
@@ -24,7 +24,6 @@ export default function StudentRewardsScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
-  const { triggerRewardCelebration } = useStudentRewardCelebration();
   const { copy, language } = useUiPreferences();
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
@@ -56,37 +55,19 @@ export default function StudentRewardsScreen() {
           ? `${registeredEventCount} tapahtumaa seurannassa.`
           : `Across ${registeredEventCount} event${registeredEventCount === 1 ? "" : "s"}.`;
 
-  const handlePreviewCelebration = (): void => {
-    const previewEvent = featuredEvent ?? null;
-
-    triggerRewardCelebration([
-      {
-        kind: "STAMP",
-        key: "preview:reward",
-        eventId: previewEvent?.id ?? "preview-event",
-        eventName: previewEvent?.name ?? "OmaLeima night",
-        coverImageUrl: previewEvent?.coverImageUrl ?? null,
-        stampCount: Math.max((previewEvent?.stampCount ?? 0) + 1, 1),
-      },
-    ]);
-  };
-
   useEffect(() => {
     void prefetchEventCoverUrls(events.map((event) => event.coverImageUrl));
   }, [events]);
 
   return (
     <AppScreen>
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>{copy.common.rewards}</Text>
-        <Text style={styles.metaText}>{copy.student.rewardsMeta}</Text>
-        {__DEV__ ? (
-          <Pressable onPress={handlePreviewCelebration} style={styles.previewButton}>
-            <Text style={styles.previewButtonText}>
-              {language === "fi" ? "Esikatsele leima" : "Preview leima"}
-            </Text>
-          </Pressable>
-        ) : null}
+      <View style={styles.screenHeaderRow}>
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenEyebrow}>{language === "fi" ? "Palkinnot" : "Rewards"}</Text>
+          <Text style={styles.screenTitle}>{copy.common.rewards}</Text>
+          <Text style={styles.metaText}>{copy.student.rewardsMeta}</Text>
+        </View>
+        <StudentProfileHeaderAction />
       </View>
 
       <CoverImageSurface imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
@@ -160,6 +141,7 @@ export default function StudentRewardsScreen() {
         <View style={styles.railSection}>
           <View style={styles.railHeader}>
             <View style={styles.railHeaderCopy}>
+              <Text style={styles.railEyebrow}>{language === "fi" ? "Palkinnot" : "Rewards"}</Text>
               <Text style={styles.railTitle}>{language === "fi" ? "Tapahtumapalkinnot" : "Event rewards"}</Text>
               <Text style={styles.railMeta}>
                 {language === "fi" ? "Liukuu automaattisesti, jos et selaa." : "Slides automatically when idle."}
@@ -237,21 +219,6 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
       maxWidth: 320,
     },
-    previewButton: {
-      alignSelf: "flex-start",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.limeBorder,
-      borderRadius: 999,
-      borderWidth: 1,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    previewButtonText: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-    },
     primaryButton: {
       alignItems: "center",
       alignSelf: "flex-start",
@@ -268,6 +235,16 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       letterSpacing: 0.3,
     },
+    profileButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
     railCardWrap: {
       marginRight: 14,
     },
@@ -279,6 +256,13 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 12,
       justifyContent: "space-between",
+    },
+    railEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
     railHeaderCopy: {
       flex: 1,
@@ -310,8 +294,23 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
     },
+    screenEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
     screenHeader: {
+      flex: 1,
       gap: 6,
+    },
+    screenHeaderRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
     },
     screenTitle: {
       color: theme.colors.textPrimary,

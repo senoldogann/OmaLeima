@@ -43,6 +43,12 @@ const domainDetailsSchema = z.object({
   }),
 });
 
+const projectDomainDetailsSchema = z.object({
+  name: z.string().min(1),
+  projectId: z.string().min(1),
+  verified: z.boolean(),
+});
+
 type CommandSuccess = {
   ok: true;
   stdout: string;
@@ -58,6 +64,7 @@ type CommandResult = CommandSuccess | CommandFailure;
 type ProjectLink = z.infer<typeof projectLinkSchema>;
 type DomainConfig = z.infer<typeof domainConfigSchema>;
 type DomainDetails = z.infer<typeof domainDetailsSchema>;
+type ProjectDomainDetails = z.infer<typeof projectDomainDetailsSchema>;
 
 type DomainResolution = {
   aValues: string[];
@@ -223,6 +230,20 @@ const readDomainDetails = (domainName: string): DomainDetails => {
   return domainDetailsSchema.parse(JSON.parse(detailsResult.stdout) as unknown);
 };
 
+const readProjectDomainDetails = (projectLink: ProjectLink, domainName: string): ProjectDomainDetails => {
+  const detailsResult = runCommand(
+    "vercel",
+    ["api", `/v10/projects/${projectLink.projectId}/domains/${domainName}`, "--scope", "senol-dogans-projects", "--raw"],
+    repoRoot
+  );
+
+  if (!detailsResult.ok) {
+    throw new Error(`Could not read Vercel project domain details for ${domainName}: ${detailsResult.error}`);
+  }
+
+  return projectDomainDetailsSchema.parse(JSON.parse(detailsResult.stdout) as unknown);
+};
+
 const readResolvedValues = async (domainName: string): Promise<DomainResolution> => {
   const overrideAValues = process.env.CUSTOM_DOMAIN_AUDIT_RESOLVED_A_VALUES;
   const overrideCnameValues = process.env.CUSTOM_DOMAIN_AUDIT_RESOLVED_CNAME_VALUES;
@@ -291,12 +312,24 @@ const assertDnsReady = (
   throw new Error(`Custom domain ${domainName} is not ready yet and Vercel did not return a recommended DNS record.`);
 };
 
-const assertVercelVerification = (domainDetails: DomainDetails, domainName: string): void => {
-  if (domainDetails.domain.configVerifiedAt === null) {
-    throw new Error(
-      `Custom domain ${domainName} is still waiting for Vercel verification. Do not switch Supabase Site URL until verification completes.`
-    );
+const assertVercelVerification = (
+  projectLink: ProjectLink,
+  domainDetails: DomainDetails,
+  domainName: string
+): void => {
+  if (domainDetails.domain.configVerifiedAt !== null) {
+    return;
   }
+
+  const projectDomainDetails = readProjectDomainDetails(projectLink, domainName);
+
+  if (projectDomainDetails.verified) {
+    return;
+  }
+
+  throw new Error(
+    `Custom domain ${domainName} is still waiting for Vercel verification. Do not switch Supabase Site URL until verification completes.`
+  );
 };
 
 const run = async (): Promise<void> => {
@@ -311,7 +344,7 @@ const run = async (): Promise<void> => {
   const domainResolution = await readResolvedValues(domainName);
 
   assertDnsReady(domainName, domainConfig, domainResolution, domainDetails);
-  assertVercelVerification(domainDetails, domainName);
+  assertVercelVerification(linkedProject, domainDetails, domainName);
 
   console.log(
     [

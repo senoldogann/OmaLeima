@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  type LayoutChangeEvent,
   ScrollView,
   StyleSheet,
   View,
@@ -21,6 +22,7 @@ type AutoAdvancingRailProps<TItem> = {
   keyExtractor: (item: TItem, index: number) => string;
   railStyle?: StyleProp<ViewStyle>;
   renderItem: (item: TItem, index: number) => ReactNode;
+  shouldAdaptHeight?: boolean;
   showsIndicators: boolean;
 };
 
@@ -47,16 +49,32 @@ export const AutoAdvancingRail = <TItem,>({
   keyExtractor,
   railStyle,
   renderItem,
+  shouldAdaptHeight,
   showsIndicators,
 }: AutoAdvancingRailProps<TItem>) => {
   const styles = useThemeStyles(createStyles);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [itemHeightsByKey, setItemHeightsByKey] = useState<Record<string, number>>({});
   const [lastInteractionAt, setLastInteractionAt] = useState<number>(Date.now());
+  const itemKeys = useMemo(
+    () => items.map((item, index) => keyExtractor(item, index)),
+    [items, keyExtractor]
+  );
+  const itemKeySignature = itemKeys.join("\u001f");
+  const activeItemKey = itemKeys[Math.min(activeIndex, Math.max(0, itemKeys.length - 1))] ?? null;
+  const activeItemHeight = activeItemKey === null ? null : (itemHeightsByKey[activeItemKey] ?? null);
+  const shouldUseAdaptiveHeight = shouldAdaptHeight !== false;
+  const adaptiveViewportStyle =
+    shouldUseAdaptiveHeight && activeItemHeight !== null
+      ? [styles.scrollViewport, { height: activeItemHeight }]
+      : styles.scrollViewport;
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [items.length]);
+    setItemHeightsByKey({});
+    scrollViewRef.current?.scrollTo({ animated: false, x: 0, y: 0 });
+  }, [itemKeySignature]);
 
   useEffect(() => {
     if (items.length <= 1) {
@@ -100,6 +118,25 @@ export const AutoAdvancingRail = <TItem,>({
     handleInteraction();
   };
 
+  const handleItemLayout = useCallback((itemKey: string, event: LayoutChangeEvent): void => {
+    const itemHeight = Math.ceil(event.nativeEvent.layout.height);
+
+    if (itemHeight <= 0) {
+      return;
+    }
+
+    setItemHeightsByKey((currentHeights) => {
+      if (currentHeights[itemKey] === itemHeight) {
+        return currentHeights;
+      }
+
+      return {
+        ...currentHeights,
+        [itemKey]: itemHeight,
+      };
+    });
+  }, []);
+
   return (
     <View style={railStyle}>
       <ScrollView
@@ -113,22 +150,28 @@ export const AutoAdvancingRail = <TItem,>({
         showsHorizontalScrollIndicator={showsIndicators}
         snapToAlignment="start"
         snapToInterval={itemWidth + itemGap}
+        style={adaptiveViewportStyle}
       >
-        {items.map((item, index) => (
-          <View
-            key={keyExtractor(item, index)}
-            style={[styles.itemWrap, { marginRight: index === items.length - 1 ? 0 : itemGap, width: itemWidth }]}
-          >
-            {renderItem(item, index)}
-          </View>
-        ))}
+        {items.map((item, index) => {
+          const itemKey = itemKeys[index] ?? keyExtractor(item, index);
+
+          return (
+            <View
+              key={itemKey}
+              onLayout={(event) => handleItemLayout(itemKey, event)}
+              style={[styles.itemWrap, { marginRight: index === items.length - 1 ? 0 : itemGap, width: itemWidth }]}
+            >
+              {renderItem(item, index)}
+            </View>
+          );
+        })}
       </ScrollView>
 
       {items.length > 1 ? (
         <View style={styles.indicatorRow}>
           {items.map((item, index) => (
             <View
-              key={`${keyExtractor(item, index)}-dot`}
+              key={`${itemKeys[index] ?? keyExtractor(item, index)}-dot`}
               style={[styles.indicatorDot, index === activeIndex ? styles.indicatorDotActive : null]}
             />
           ))}
@@ -158,6 +201,10 @@ const createStyles = (theme: MobileTheme) =>
       marginTop: 12,
     },
     itemWrap: {
+      alignSelf: "flex-start",
       flexShrink: 0,
+    },
+    scrollViewport: {
+      overflow: "hidden",
     },
   });

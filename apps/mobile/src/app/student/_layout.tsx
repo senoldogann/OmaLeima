@@ -1,13 +1,12 @@
 import { Redirect, Tabs } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 
-import { SymbolView } from "expo-symbols";
-
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { GlassTabBarBackground } from "@/features/foundation/components/glass-tab-bar-background";
+import { TabIcon } from "@/features/foundation/components/tab-icon";
 import { type MobileTheme } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -17,19 +16,21 @@ const getTabIconName = (routeName: string) => {
     case "events":
       return { ios: "sparkles.rectangle.stack.fill", android: "event", web: "event" } as const;
     case "active-event":
-      return { ios: "qrcode.viewfinder", android: "qr_code_scanner", web: "qr_code_scanner" } as const;
+      return { ios: "qrcode.viewfinder", android: "qr-code-scanner", web: "qr-code-scanner" } as const;
     case "leaderboard":
       return { ios: "chart.bar.fill", android: "leaderboard", web: "leaderboard" } as const;
     case "rewards":
       return { ios: "gift.fill", android: "redeem", web: "redeem" } as const;
+    case "updates":
+      return { ios: "person.3.fill", android: "groups", web: "groups" } as const;
     default:
-      return { ios: "person.crop.circle.fill", android: "account_circle", web: "account_circle" } as const;
+      return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
   }
 };
 
 export default function StudentTabsLayout() {
   const theme = useAppTheme();
-  const { copy } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
@@ -79,7 +80,7 @@ export default function StudentTabsLayout() {
   }
 
   if (accessQuery.data?.area === "business") {
-    return <Redirect href="/business/home" />;
+    return <Redirect href={accessQuery.data.homeHref ?? "/business/home"} />;
   }
 
   if (accessQuery.data?.area === "club") {
@@ -117,7 +118,7 @@ export default function StudentTabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.colors.screenBase,
           borderTopWidth: 0,
-          bottom: 16,
+          bottom: 0,
           height: 78,
           left: 16,
           paddingBottom: 8,
@@ -127,23 +128,7 @@ export default function StudentTabsLayout() {
         },
         tabBarBackground: GlassTabBarBackground,
         tabBarIcon: ({ color, focused, size }) => (
-          <SymbolView
-            animationSpec={
-              focused
-                ? {
-                    effect: {
-                      type: "bounce",
-                      wholeSymbol: true,
-                    },
-                    speed: 0.9,
-                  }
-                : undefined
-            }
-            name={getTabIconName(route.name)}
-            size={size}
-            tintColor={color}
-            type="hierarchical"
-          />
+          <TabIcon color={color} focused={focused} name={getTabIconName(route.name)} size={size} />
         ),
         sceneStyle: {
           backgroundColor: theme.colors.screenBase,
@@ -154,8 +139,9 @@ export default function StudentTabsLayout() {
       <Tabs.Screen name="active-event" options={{ title: copy.common.myQr }} />
       <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
       <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
-      <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
-      <Tabs.Screen name="updates" options={{ href: null }} />
+      <Tabs.Screen name="updates" options={{ title: language === "fi" ? "Info" : "News" }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="announcement-detail" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -123,6 +123,28 @@ const fetchVisibleEventsAsync = async (): Promise<EventRow[]> => {
   return data;
 };
 
+const fetchRegisteredEventsAsync = async (eventIds: string[]): Promise<EventRow[]> => {
+  if (eventIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+    )
+    .in("id", eventIds)
+    .in("status", ["PUBLISHED", "ACTIVE"])
+    .order("start_at", { ascending: true })
+    .returns<EventRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load registered student events: ${error.message}`);
+  }
+
+  return data;
+};
+
 const fetchStudentRegistrationsAsync = async (studentId: string): Promise<EventRegistrationRow[]> => {
   const { data, error } = await supabase
     .from("event_registrations")
@@ -138,10 +160,21 @@ const fetchStudentRegistrationsAsync = async (studentId: string): Promise<EventR
 };
 
 export const fetchStudentEventsAsync = async (studentId: string): Promise<StudentEventsBuckets> => {
-  const [events, registrations] = await Promise.all([
+  const registrations = await fetchStudentRegistrationsAsync(studentId);
+  const registeredEventIds = Array.from(
+    new Set(
+      registrations
+        .filter((registration) => registration.status === "REGISTERED")
+        .map((registration) => registration.event_id)
+    )
+  );
+  const [publicEvents, registeredEvents] = await Promise.all([
     fetchVisibleEventsAsync(),
-    fetchStudentRegistrationsAsync(studentId),
+    fetchRegisteredEventsAsync(registeredEventIds),
   ]);
+  const events = Array.from(
+    new Map([...publicEvents, ...registeredEvents].map((event) => [event.id, event] as const)).values()
+  );
 
   const registrationsByEventId = createRegistrationMap(registrations);
   const now = Date.now();

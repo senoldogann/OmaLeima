@@ -11,7 +11,7 @@ import type {
   ClubMembershipSummary,
 } from "@/features/club/types";
 
-const dashboardEventLimit = 12;
+const dashboardEventLimit = 50;
 
 type ClubMembershipRow = {
   club_id: string;
@@ -273,6 +273,7 @@ const deriveTimelineState = (
 ): ClubDashboardTimelineState => {
   const startTime = new Date(startAt).getTime();
   const endTime = new Date(endAt).getTime();
+  const isRuntimeVisibleStatus = status === "PUBLISHED" || status === "ACTIVE";
 
   if (status === "CANCELLED") {
     return "CANCELLED";
@@ -282,11 +283,11 @@ const deriveTimelineState = (
     return "DRAFT";
   }
 
-  if (status === "ACTIVE" && now >= startTime && now <= endTime) {
+  if (isRuntimeVisibleStatus && now >= startTime && now <= endTime) {
     return "LIVE";
   }
 
-  if ((status === "PUBLISHED" || status === "ACTIVE") && now < startTime) {
+  if (isRuntimeVisibleStatus && now < startTime) {
     return "UPCOMING";
   }
 
@@ -390,17 +391,26 @@ const mapEvents = (
 const createSummary = (
   memberships: ClubMembershipSummary[],
   events: ClubDashboardEventSummary[]
-): ClubDashboardSnapshot["summary"] => ({
-  claimedRewardCount: events.reduce((total, event) => total + event.claimedRewardCount, 0),
-  creatableClubCount: memberships.filter((membership) => membership.canCreateEvents).length,
-  joinedVenueCount: events.reduce((total, event) => total + event.joinedVenueCount, 0),
-  liveEventCount: events.filter((event) => event.timelineState === "LIVE").length,
-  managedClubCount: memberships.length,
-  registeredParticipantCount: events.reduce((total, event) => total + event.registeredParticipantCount, 0),
-  rewardTierCount: events.reduce((total, event) => total + event.rewardTierCount, 0),
-  upcomingEventCount: events.filter((event) => event.timelineState === "UPCOMING").length,
-  validStampCount: events.reduce((total, event) => total + event.validStampCount, 0),
-});
+): ClubDashboardSnapshot["summary"] => {
+  const operationalEvents = events.filter(
+    (event) => event.timelineState === "LIVE" || event.timelineState === "UPCOMING"
+  );
+
+  return {
+    claimedRewardCount: operationalEvents.reduce((total, event) => total + event.claimedRewardCount, 0),
+    creatableClubCount: memberships.filter((membership) => membership.canCreateEvents).length,
+    joinedVenueCount: operationalEvents.reduce((total, event) => total + event.joinedVenueCount, 0),
+    liveEventCount: operationalEvents.filter((event) => event.timelineState === "LIVE").length,
+    managedClubCount: memberships.length,
+    registeredParticipantCount: operationalEvents.reduce(
+      (total, event) => total + event.registeredParticipantCount,
+      0
+    ),
+    rewardTierCount: operationalEvents.reduce((total, event) => total + event.rewardTierCount, 0),
+    upcomingEventCount: operationalEvents.filter((event) => event.timelineState === "UPCOMING").length,
+    validStampCount: operationalEvents.reduce((total, event) => total + event.validStampCount, 0),
+  };
+};
 
 export const fetchClubDashboardSnapshotAsync = async (userId: string): Promise<ClubDashboardSnapshot> => {
   const membershipRows = await fetchClubMembershipsAsync(userId);

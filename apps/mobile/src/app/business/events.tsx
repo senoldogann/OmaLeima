@@ -1,8 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
@@ -19,6 +18,8 @@ import type {
   BusinessJoinedEventSummary,
 } from "@/features/business/types";
 import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
+import { findOverlappingEvents } from "@/features/events/event-overlaps";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -32,13 +33,13 @@ type FeedbackState = {
 
 type EventPreview =
   | {
-      event: BusinessJoinedEventSummary;
-      kind: "joined";
-    }
+    event: BusinessJoinedEventSummary;
+    kind: "joined";
+  }
   | {
-      event: BusinessOpportunitySummary;
-      kind: "opportunity";
-    };
+    event: BusinessOpportunitySummary;
+    kind: "opportunity";
+  };
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
@@ -261,6 +262,7 @@ export default function BusinessEventsScreen() {
     userId: userId ?? "",
     isEnabled: userId !== null,
   });
+  const manualRefresh = useManualRefresh(homeOverviewQuery.refetch);
   const joinMutation = useJoinBusinessEventMutation(userId ?? "");
   const leaveMutation = useLeaveBusinessEventMutation(userId ?? "");
 
@@ -270,6 +272,27 @@ export default function BusinessEventsScreen() {
   const cityOpportunities = homeOverviewQuery.data?.cityOpportunities ?? [];
   const canManageEventMemberships =
     homeOverviewQuery.data?.memberships.some((membership) => membership.role !== "SCANNER") ?? false;
+  const overlappingEvents = useMemo(
+    () => {
+      if (typeof homeOverviewQuery.data === "undefined") {
+        return [];
+      }
+
+      return findOverlappingEvents(
+        [
+          ...homeOverviewQuery.data.joinedActiveEvents,
+          ...homeOverviewQuery.data.joinedUpcomingEvents,
+          ...homeOverviewQuery.data.cityOpportunities,
+        ].map((event) => ({
+          endAt: event.endAt,
+          id: event.eventId,
+          name: event.eventName,
+          startAt: event.startAt,
+        }))
+      );
+    },
+    [homeOverviewQuery.data]
+  );
 
   const activeJoinKey = joinMutation.variables
     ? `${joinMutation.variables.businessId}:${joinMutation.variables.eventId}`
@@ -323,7 +346,7 @@ export default function BusinessEventsScreen() {
             {event.stampLabel ? <Text numberOfLines={1} style={styles.eventStamp}>{event.stampLabel}</Text> : null}
           </View>
         </Pressable>
-        {primaryAction}
+        {primaryAction === null ? null : <View style={styles.cardActionSlot}>{primaryAction}</View>}
       </View>
     );
   };
@@ -378,12 +401,18 @@ export default function BusinessEventsScreen() {
   };
 
   return (
-    <AppScreen>
+    <AppScreen
+      refreshControl={
+        <RefreshControl
+          onRefresh={manualRefresh.refreshAsync}
+          refreshing={manualRefresh.isRefreshing}
+          tintColor={theme.colors.lime}
+        />
+      }
+    >
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.push("/business/home")} style={styles.backButton}>
-          <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
-        </Pressable>
         <View style={styles.topBarCopy}>
+          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.common.events}</Text>
           <Text style={styles.metaText}>{copy.business.eventsMeta}</Text>
         </View>
@@ -421,8 +450,26 @@ export default function BusinessEventsScreen() {
         </InfoCard>
       ) : null}
 
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && overlappingEvents.length > 1 ? (
+        <InfoCard
+          eyebrow={language === "fi" ? "Huomio" : "Heads up"}
+          title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
+          variant="subtle"
+        >
+          <Text style={styles.bodyText}>
+            {language === "fi"
+              ? "Kun samaan aikaan on useita tapahtumia, valitse skannerissa aina oikea tapahtumapiste ennen leiman antamista. QR ja skannaus sidotaan tapahtumaan."
+              : "When multiple events overlap, choose the correct event venue in the scanner before stamping. QR scans stay tied to the event."}
+          </Text>
+        </InfoCard>
+      ) : null}
+
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow={copy.business.live} title={copy.business.scannerQueue}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionEyebrow}>{copy.business.live}</Text>
+            <Text style={styles.sectionTitle}>{copy.business.scannerQueue}</Text>
+          </View>
           {activeJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.queueEmptyBody}</Text>
           ) : (
@@ -445,13 +492,13 @@ export default function BusinessEventsScreen() {
                         }
                         style={[styles.primaryButton, styles.actionFlex]}
                       >
-                        <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
+                        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.primaryButtonText}>{labels.openScanner}</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => router.push("/business/history")}
                         style={[styles.secondaryButton, styles.actionFlex]}
                       >
-                        <Text style={styles.secondaryButtonText}>{labels.openHistory}</Text>
+                        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.secondaryButtonText}>{labels.openHistory}</Text>
                       </Pressable>
                     </View>
                   )
@@ -459,11 +506,15 @@ export default function BusinessEventsScreen() {
               </View>
             </ScrollView>
           )}
-        </InfoCard>
+        </View>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow={copy.business.upcoming} title={copy.business.joinedNext}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionEyebrow}>{copy.business.upcoming}</Text>
+            <Text style={styles.sectionTitle}>{copy.business.joinedNext}</Text>
+          </View>
           {upcomingJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.joinedNextEmptyBody}</Text>
           ) : (
@@ -505,11 +556,15 @@ export default function BusinessEventsScreen() {
               </View>
             </ScrollView>
           )}
-        </InfoCard>
+        </View>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && canManageEventMemberships ? (
-        <InfoCard eyebrow={copy.common.manage} title={copy.business.availableToJoin}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionEyebrow}>{copy.common.manage}</Text>
+            <Text style={styles.sectionTitle}>{copy.business.availableToJoin}</Text>
+          </View>
           {cityOpportunities.length === 0 ? (
             <Text style={styles.bodyText}>{labels.availableEmptyBody}</Text>
           ) : (
@@ -523,7 +578,7 @@ export default function BusinessEventsScreen() {
               </View>
             </ScrollView>
           )}
-        </InfoCard>
+        </View>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
@@ -588,15 +643,6 @@ export default function BusinessEventsScreen() {
                     ? previewEvent.description.trim()
                     : labels.noDescription}
                 </Text>
-                {preview?.kind === "joined" ? (
-                  <View style={styles.detailPill}>
-                    <Text style={styles.detailLabel}>{labels.venue}</Text>
-                    <Text style={styles.detailValue}>
-                      {preview.event.businessName}
-                      {preview.event.stampLabel ? ` · ${preview.event.stampLabel}` : ""}
-                    </Text>
-                  </View>
-                ) : null}
                 <Pressable onPress={() => setPreview(null)} style={styles.secondaryButton}>
                   <Text style={styles.secondaryButtonText}>{labels.closePreview}</Text>
                 </Pressable>
@@ -626,16 +672,6 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
-    backButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
-    },
     cardTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.semibold,
@@ -644,10 +680,11 @@ const createStyles = (theme: MobileTheme) =>
     },
     cardBody: {
       gap: 5,
+      minHeight: 74,
       padding: 12,
     },
     cardCover: {
-      height: 140,
+      height: 146,
       overflow: "hidden",
     },
     cardCoverContent: {
@@ -667,7 +704,12 @@ const createStyles = (theme: MobileTheme) =>
     },
     cardPreviewButton: {
       borderRadius: theme.radius.inner,
+      flexShrink: 0,
       overflow: "hidden",
+    },
+    cardActionSlot: {
+      alignSelf: "stretch",
+      paddingHorizontal: 12,
     },
     coverMeta: {
       color: "rgba(255,255,255,0.78)",
@@ -792,15 +834,19 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
+      flexDirection: "row",
+      justifyContent: "center",
       minHeight: 46,
       paddingHorizontal: 16,
       paddingVertical: 13,
     },
     primaryButtonText: {
       color: theme.colors.actionPrimaryText,
+      flexShrink: 1,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     rowCard: {
       backgroundColor: theme.colors.surfaceL2,
@@ -816,6 +862,8 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: theme.radius.inner,
       borderWidth: 1,
       gap: 10,
+      height: 302,
+      justifyContent: "space-between",
       overflow: "hidden",
       paddingBottom: 12,
       width: 274,
@@ -836,22 +884,61 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
+    },
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 14,
+      padding: 18,
+    },
+    sectionHeader: {
+      gap: 4,
+    },
+    sectionEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
     },
     secondaryButton: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.button,
+      borderWidth: 1,
+      flexDirection: "row",
+      justifyContent: "center",
       minHeight: 46,
       paddingHorizontal: 16,
       paddingVertical: 13,
     },
     secondaryButtonText: {
       color: theme.colors.textPrimary,
+      flexShrink: 1,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     sectionLabel: {
       color: theme.colors.textPrimary,

@@ -26,7 +26,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     package: "fi.omaleima.mobile",
     predictiveBackGestureEnabled: false,
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
+      backgroundColor: "#050705",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -41,7 +41,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#0F172A",
+        backgroundColor: "#050705",
         android: {
           image: "./assets/images/splash-icon.png",
           imageWidth: 76,
@@ -60,7 +60,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
       "expo-image-picker",
       {
         photosPermission: "OmaLeima uses your photos so venues can add a logo and cover image to their scanner profile.",
-        cameraPermission: false,
+        cameraPermission: "OmaLeima uses the camera to scan student QR codes during events.",
         microphonePermission: false,
       },
     ],

@@ -4,6 +4,7 @@ import {
   createAuthedClientAsync,
   getAccessTokenAsync,
   invokeFunctionAsync,
+  readSqlTextAsync,
   requireQrSigningSecret,
   runSqlAsync,
   seededActiveEventId,
@@ -201,10 +202,25 @@ const run = async (): Promise<void> => {
 
     outputs.push("generate-valid:ok");
 
+    const seededEventVenueId = await readSqlTextAsync(`
+      select id::text
+      from public.event_venues
+      where event_id = '${seededActiveEventId}'::uuid
+        and business_id = '${seededBusinessId}'::uuid
+        and status = 'JOINED'
+      limit 1;
+    `);
+
+    if (seededEventVenueId.length === 0) {
+      throw new Error("Expected seeded active event venue to exist for QR security smoke.");
+    }
+
     const invalidScanBearer = await invokeFunctionAsync("scan-qr", null, {
       businessId: seededBusinessId,
+      eventId: seededActiveEventId,
+      eventVenueId: seededEventVenueId,
       qrToken: validToken,
-      scannerDeviceId: "qr-security-invalid-bearer",
+      scannerDeviceId: randomUUID(),
     });
 
     if (invalidScanBearer.status !== 401 || invalidScanBearer.responseBody.status !== "UNAUTHORIZED") {
@@ -217,8 +233,10 @@ const run = async (): Promise<void> => {
 
     const tamperedScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: seededBusinessId,
+      eventId: seededActiveEventId,
+      eventVenueId: seededEventVenueId,
       qrToken: tamperToken(validToken),
-      scannerDeviceId: "qr-security-tampered",
+      scannerDeviceId: randomUUID(),
     });
 
     if (tamperedScan.status !== 400 || tamperedScan.responseBody.status !== "INVALID_QR") {
@@ -231,8 +249,10 @@ const run = async (): Promise<void> => {
 
     const invalidTypeScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: seededBusinessId,
+      eventId: seededActiveEventId,
+      eventVenueId: seededEventVenueId,
       qrToken: createWrongTypeQrToken(qrSigningSecret, seededActiveEventId),
-      scannerDeviceId: "qr-security-wrong-type",
+      scannerDeviceId: randomUUID(),
     });
 
     if (invalidTypeScan.status !== 400 || invalidTypeScan.responseBody.status !== "INVALID_QR_TYPE") {
@@ -245,8 +265,10 @@ const run = async (): Promise<void> => {
 
     const expiredScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: seededBusinessId,
+      eventId: seededActiveEventId,
+      eventVenueId: seededEventVenueId,
       qrToken: createExpiredQrToken(qrSigningSecret, seededActiveEventId),
-      scannerDeviceId: "qr-security-expired",
+      scannerDeviceId: randomUUID(),
     });
 
     if (expiredScan.status !== 400 || expiredScan.responseBody.status !== "QR_EXPIRED") {
@@ -272,17 +294,19 @@ const run = async (): Promise<void> => {
 
     const wrongEventScan = await invokeFunctionAsync("scan-qr", scannerAccessToken, {
       businessId: seededBusinessId,
+      eventId: seededActiveEventId,
+      eventVenueId: seededEventVenueId,
       qrToken: wrongEventToken,
-      scannerDeviceId: "qr-security-wrong-event",
+      scannerDeviceId: null,
     });
 
-    if (wrongEventScan.status !== 200 || wrongEventScan.responseBody.status !== "VENUE_NOT_IN_EVENT") {
+    if (wrongEventScan.status !== 200 || wrongEventScan.responseBody.status !== "EVENT_CONTEXT_MISMATCH") {
       throw new Error(
-        `Expected wrong-event QR to return 200 VENUE_NOT_IN_EVENT, got ${wrongEventScan.status} ${wrongEventScan.responseBody.status ?? "null"}.`
+        `Expected wrong-event QR to return 200 EVENT_CONTEXT_MISMATCH, got ${wrongEventScan.status} ${wrongEventScan.responseBody.status ?? "null"}.`
       );
     }
 
-    outputs.push("wrong-event-qr:VENUE_NOT_IN_EVENT");
+    outputs.push("wrong-event-qr:EVENT_CONTEXT_MISMATCH");
 
     console.log(outputs.join("|"));
   } catch (error) {

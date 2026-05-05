@@ -86,7 +86,12 @@ const seedRaceFixtureAsync = async (suffix: string): Promise<RaceFixture> => {
       'Scan Race Staff ${suffix}',
       'BUSINESS_STAFF',
       'ACTIVE'
-    );
+    )
+    on conflict (id) do update
+    set email = excluded.email,
+        display_name = excluded.display_name,
+        primary_role = excluded.primary_role,
+        status = excluded.status;
 
     insert into public.business_staff (
       id,
@@ -244,24 +249,35 @@ const run = async (): Promise<void> => {
     const [scanA, scanB] = await Promise.all([
       invokeFunctionAsync("scan-qr", seededScannerAccessToken, {
         businessId: seededBusinessId,
+        eventId: fixture.eventId,
+        eventVenueId: fixture.eventVenueId,
         qrToken,
-        scannerDeviceId: "scan-race-device-a",
+        scannerDeviceId: null,
       }),
       invokeFunctionAsync("scan-qr", secondScannerAccessToken, {
         businessId: seededBusinessId,
+        eventId: fixture.eventId,
+        eventVenueId: fixture.eventVenueId,
         qrToken,
-        scannerDeviceId: "scan-race-device-b",
+        scannerDeviceId: null,
       }),
     ]);
 
     const statuses = [scanA.responseBody.status, scanB.responseBody.status].sort();
 
     if (scanA.status !== 200 || scanB.status !== 200) {
-      throw new Error(`Expected concurrent scan responses to both return 200, got ${scanA.status} and ${scanB.status}.`);
+      throw new Error(
+        `Expected concurrent scan responses to both return 200, got ${scanA.status} and ${scanB.status}: ${JSON.stringify([scanA.responseBody, scanB.responseBody])}.`
+      );
     }
 
-    if (statuses[0] !== "QR_ALREADY_USED_OR_REPLAYED" || statuses[1] !== "SUCCESS") {
-      throw new Error(`Expected concurrent scan statuses to be SUCCESS and QR_ALREADY_USED_OR_REPLAYED, got ${statuses.join(",")}.`);
+    if (
+      statuses[1] !== "SUCCESS" ||
+      (statuses[0] !== "QR_ALREADY_USED_OR_REPLAYED" && statuses[0] !== "ALREADY_STAMPED")
+    ) {
+      throw new Error(
+        `Expected concurrent scan statuses to be SUCCESS and a safe duplicate rejection, got ${statuses.join(",")}.`
+      );
     }
 
     outputs.push(`race-statuses:${statuses.join(",")}`);

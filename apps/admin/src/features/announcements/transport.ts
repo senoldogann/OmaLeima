@@ -89,6 +89,117 @@ export const createAnnouncementAsync = async (
   };
 };
 
+export const updateAnnouncementAsync = async (
+  supabase: SupabaseClient,
+  payload: {
+    announcementId: string;
+    audience: AnnouncementAudience;
+    body: string;
+    clubId: string | null;
+    ctaLabel: string | null;
+    ctaUrl: string | null;
+    endsAt: string | null;
+    imageUrl: string | null;
+    priority: number;
+    startsAt: string;
+    status: AnnouncementStatus;
+    title: string;
+  }
+): Promise<AnnouncementTransportResult> => {
+  const updateQuery = supabase
+    .from("announcements")
+    .update({
+      audience: payload.audience,
+      body: payload.body,
+      cta_label: payload.ctaLabel,
+      cta_url: payload.ctaUrl,
+      ends_at: payload.endsAt,
+      image_url: payload.imageUrl,
+      priority: payload.priority,
+      starts_at: payload.startsAt,
+      status: payload.status,
+      title: payload.title,
+    })
+    .eq("id", payload.announcementId);
+
+  const scopedQuery = payload.clubId === null ? updateQuery.is("club_id", null) : updateQuery.eq("club_id", payload.clubId);
+  const { data, error } = await scopedQuery.select("id").maybeSingle<AnnouncementInsertRow>();
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "UPDATE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (data === null) {
+    return {
+      response: {
+        message: `Announcement ${payload.announcementId} was not updated.`,
+        status: "ANNOUNCEMENT_NOT_FOUND",
+      },
+      status: 404,
+    };
+  }
+
+  return {
+    response: {
+      message: `Announcement ${data.id} updated successfully.`,
+      status: "SUCCESS",
+    },
+    status: 200,
+  };
+};
+
+export const archiveAnnouncementAsync = async (
+  supabase: SupabaseClient,
+  payload: {
+    announcementId: string;
+    clubId: string | null;
+  }
+): Promise<AnnouncementTransportResult> => {
+  const archiveQuery = supabase
+    .from("announcements")
+    .update({
+      status: "ARCHIVED",
+    })
+    .eq("id", payload.announcementId);
+
+  const scopedQuery = payload.clubId === null ? archiveQuery.is("club_id", null) : archiveQuery.eq("club_id", payload.clubId);
+  const { data, error } = await scopedQuery.select("id").maybeSingle<AnnouncementInsertRow>();
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "ARCHIVE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (data === null) {
+    return {
+      response: {
+        message: `Announcement ${payload.announcementId} was not archived.`,
+        status: "ANNOUNCEMENT_NOT_FOUND",
+      },
+      status: 404,
+    };
+  }
+
+  return {
+    response: {
+      message: `Announcement ${data.id} archived successfully.`,
+      status: "SUCCESS",
+    },
+    status: 200,
+  };
+};
+
 export const sendAnnouncementPushAsync = async (
   supabase: SupabaseClient,
   announcementId: string

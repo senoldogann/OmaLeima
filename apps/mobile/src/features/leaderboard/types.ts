@@ -4,6 +4,7 @@ export type RegisteredLeaderboardEvent = {
   coverImageUrl: string | null;
   country: string;
   id: string;
+  isRegistered: boolean;
   name: string;
   city: string;
   startAt: string;

@@ -1,22 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { InfoCard } from "@/components/info-card";
 import { EventCard } from "@/features/events/components/event-card";
+import { StudentEventVenueMap } from "@/features/events/components/student-event-venue-map";
 import {
   getEventCoverSource,
   getOffsetFallbackCoverSourceByIndex,
   prefetchEventCoverUrls,
 } from "@/features/events/event-visuals";
+import { findOverlappingEvents } from "@/features/events/event-overlaps";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { useJoinEventMutation } from "@/features/events/student-event-detail";
+import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
 import { useStudentEventsQuery } from "@/features/events/student-events";
-import type { StudentEventSummary } from "@/features/events/types";
+import type { JoinEventResultStatus, StudentEventSummary } from "@/features/events/types";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useSession } from "@/providers/session-provider";
 
 type DiscoverySlide = {
@@ -32,15 +37,36 @@ type ActionNotice = {
   title: string;
 };
 
-const createJoinActionNotice = (status: string, language: "fi" | "en"): ActionNotice | null => {
+const createJoinActionNotice = (status: JoinEventResultStatus, language: "fi" | "en"): ActionNotice | null => {
   if (status === "SUCCESS" || status === "ALREADY_REGISTERED") {
     return null;
   }
 
-  const notices: Record<string, ActionNotice> = {
+  const notices: Record<Exclude<JoinEventResultStatus, "SUCCESS" | "ALREADY_REGISTERED">, ActionNotice> = {
+    ACTOR_NOT_ALLOWED: {
+      body:
+        language === "fi"
+          ? "Tällä tilillä ei ole oikeutta liittyä tapahtumaan."
+          : "This account is not allowed to join the event.",
+      title: language === "fi" ? "Liittyminen estetty" : "Registration blocked",
+    },
+    AUTH_REQUIRED: {
+      body:
+        language === "fi"
+          ? "Kirjaudu sisään uudelleen ja yritä sitten uudestaan."
+          : "Sign in again and then try one more time.",
+      title: language === "fi" ? "Kirjautuminen vaaditaan" : "Sign-in required",
+    },
     EVENT_FULL: {
       body: language === "fi" ? "Tapahtuma on saavuttanut kapasiteettinsa." : "The event has reached capacity.",
       title: language === "fi" ? "Tapahtuma täynnä" : "Event is full",
+    },
+    EVENT_NOT_FOUND: {
+      body:
+        language === "fi"
+          ? "Tapahtumaa ei loytynyt enaa. Paivita lista ja yrita uudelleen."
+          : "The event could not be found anymore. Refresh the list and try again.",
+      title: language === "fi" ? "Tapahtuma puuttuu" : "Event not found",
     },
     EVENT_NOT_AVAILABLE: {
       body:
@@ -55,6 +81,27 @@ const createJoinActionNotice = (status: string, language: "fi" | "en"): ActionNo
           ? "Liittymisaika tai tapahtuman aloitus on jo mennyt."
           : "The join deadline or event start time has already passed.",
       title: language === "fi" ? "Liittymisaika päättynyt" : "Join window closed",
+    },
+    PROFILE_NOT_ACTIVE: {
+      body:
+        language === "fi"
+          ? "Opiskelijaprofiili ei ole aktiivinen. Tarkista profiilin tila."
+          : "The student profile is not active. Check the profile status first.",
+      title: language === "fi" ? "Profiili ei ole aktiivinen" : "Profile is not active",
+    },
+    PROFILE_NOT_FOUND: {
+      body:
+        language === "fi"
+          ? "Opiskelijaprofiilia ei loytynyt. Avaa profiili ja tarkista tiedot."
+          : "The student profile could not be found. Open your profile and verify your details.",
+      title: language === "fi" ? "Profiilia ei loytynyt" : "Profile not found",
+    },
+    ROLE_NOT_ALLOWED: {
+      body:
+        language === "fi"
+          ? "Tama rooli ei voi liittya tapahtumaan."
+          : "This role is not allowed to join the event.",
+      title: language === "fi" ? "Rooli ei kelpaa" : "Role not allowed",
     },
     STUDENT_BANNED: {
       body:
@@ -81,34 +128,6 @@ const createErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice 
 const canShowJoinAction = (event: StudentEventSummary): boolean =>
   event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
 
-const getRegistrationLabel = (
-  registrationState: StudentEventSummary["registrationState"],
-  language: "fi" | "en"
-): string => {
-  switch (registrationState) {
-    case "REGISTERED":
-      return language === "fi" ? "Liitytty" : "Registered";
-    case "CANCELLED":
-      return language === "fi" ? "Peruttu" : "Cancelled";
-    case "BANNED":
-      return language === "fi" ? "Rajoitettu" : "Restricted";
-    case "NOT_REGISTERED":
-      return language === "fi" ? "Ei vielä liitytty" : "Not joined yet";
-  }
-};
-
-const getTimelineLabel = (
-  timelineState: StudentEventSummary["timelineState"],
-  language: "fi" | "en"
-): string => {
-  switch (timelineState) {
-    case "ACTIVE":
-      return language === "fi" ? "Käynnissä nyt" : "Live now";
-    case "UPCOMING":
-      return language === "fi" ? "Tulossa" : "Coming up";
-  }
-};
-
 export default function StudentEventsScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
@@ -117,13 +136,19 @@ export default function StudentEventsScreen() {
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const studentId = session?.user.id ?? null;
-  const [previewEvent, setPreviewEvent] = useState<StudentEventSummary | null>(null);
+  const [mapPreviewEvent, setMapPreviewEvent] = useState<StudentEventSummary | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const eventsQuery = useStudentEventsQuery({
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
   });
+  const manualRefresh = useManualRefresh(eventsQuery.refetch);
   const joinMutation = useJoinEventMutation();
+  const venueMapQuery = useStudentEventDetailQuery({
+    eventId: mapPreviewEvent?.id ?? "",
+    studentId: studentId ?? "",
+    isEnabled: mapPreviewEvent !== null && studentId !== null,
+  });
 
   const activeEvents = useMemo(
     () => eventsQuery.data?.activeEvents ?? [],
@@ -142,18 +167,28 @@ export default function StudentEventsScreen() {
     [activeEvents, upcomingEvents]
   );
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
-  const heroWidth = windowWidth;
-  const dateFormatter = useMemo(
+  const overlappingEvents = useMemo(
     () =>
-      new Intl.DateTimeFormat(language === "fi" ? "fi-FI" : "en-US", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    [language]
+      findOverlappingEvents(
+        visibleEvents.map((event) => ({
+          endAt: event.endAt,
+          id: event.id,
+          name: event.name,
+          startAt: event.startAt,
+        }))
+      ),
+    [visibleEvents]
   );
+  const registeredOverlappingEvents = useMemo(
+    () =>
+      overlappingEvents.filter((overlappingEvent) =>
+        visibleEvents.some(
+          (event) => event.id === overlappingEvent.id && event.registrationState === "REGISTERED"
+        )
+      ),
+    [overlappingEvents, visibleEvents]
+  );
+  const heroWidth = windowWidth;
 
   const discoverySlides = useMemo<readonly DiscoverySlide[]>(
     () => [
@@ -192,6 +227,10 @@ export default function StudentEventsScreen() {
     });
   };
 
+  const openVenueMapPreview = (event: StudentEventSummary): void => {
+    setMapPreviewEvent(event);
+  };
+
   const joinEventFromCard = async (eventId: string): Promise<boolean> => {
     if (studentId === null) {
       return false;
@@ -214,25 +253,21 @@ export default function StudentEventsScreen() {
     }
   };
 
-  const handlePreviewJoinPress = async (event: StudentEventSummary): Promise<void> => {
-    const didJoin = await joinEventFromCard(event.id);
-
-    if (didJoin) {
-      setPreviewEvent(null);
-    }
-  };
-
-  const handlePreviewDetailPress = (event: StudentEventSummary): void => {
-    setPreviewEvent(null);
-    openEventDetail(event.id);
-  };
-
   useEffect(() => {
     void prefetchEventCoverUrls(coverImageUrls);
   }, [coverImageUrls]);
 
   return (
-    <AppScreen>
+    <AppScreen
+      contentContainerStyle={styles.screenContent}
+      refreshControl={
+        <RefreshControl
+          onRefresh={manualRefresh.refreshAsync}
+          refreshing={manualRefresh.isRefreshing}
+          tintColor={theme.colors.lime}
+        />
+      }
+    >
       <AutoAdvancingRail
         contentContainerStyle={styles.heroRailContent}
         intervalMs={3000}
@@ -247,9 +282,9 @@ export default function StudentEventsScreen() {
             source={
               visibleEvents.length > 0
                 ? getEventCoverSource(
-                    visibleEvents[index % visibleEvents.length].coverImageUrl,
-                    `${visibleEvents[index % visibleEvents.length].id}:hero:${slide.key}`
-                  )
+                  visibleEvents[index % visibleEvents.length].coverImageUrl,
+                  `${visibleEvents[index % visibleEvents.length].id}:hero:${slide.key}`
+                )
                 : getOffsetFallbackCoverSourceByIndex(index, 1)
             }
             style={styles.heroBand}
@@ -276,9 +311,12 @@ export default function StudentEventsScreen() {
         showsIndicators={false}
       />
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{copy.student.eventsTitle}</Text>
-        <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{copy.student.eventsTitle}</Text>
+          <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
+        </View>
+        <StudentProfileHeaderAction />
       </View>
 
       {eventsQuery.error ? (
@@ -300,6 +338,20 @@ export default function StudentEventsScreen() {
           <Text style={styles.messageTitle}>{actionNotice.title}</Text>
           <Text style={styles.bodyText}>{actionNotice.body}</Text>
         </View>
+      ) : null}
+
+      {registeredOverlappingEvents.length > 1 ? (
+        <InfoCard
+          eyebrow={language === "fi" ? "Huomio" : "Heads up"}
+          title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
+          variant="subtle"
+        >
+          <Text style={styles.bodyText}>
+            {language === "fi"
+              ? "Jos osallistut useaan tapahtumaan samaan aikaan, avaa oikean tapahtuman QR ennen skannausta. QR kertoo skannerille aina oikean tapahtuman."
+              : "If you join overlapping events, open the correct event QR before scanning. The QR always tells the scanner which event to use."}
+          </Text>
+        </InfoCard>
       ) : null}
 
       {!eventsQuery.isLoading && !eventsQuery.error && !hasEvents ? (
@@ -326,7 +378,8 @@ export default function StudentEventsScreen() {
               key={event.id}
               motionIndex={index + 1}
               onJoinPress={canShowJoinAction(event) ? () => void joinEventFromCard(event.id) : undefined}
-              onPress={() => setPreviewEvent(event)}
+              onMapPress={() => openVenueMapPreview(event)}
+              onPress={() => openEventDetail(event.id)}
             />
           ))}
         </View>
@@ -342,7 +395,8 @@ export default function StudentEventsScreen() {
               key={event.id}
               motionIndex={activeEvents.length + index + 1}
               onJoinPress={() => void joinEventFromCard(event.id)}
-              onPress={() => setPreviewEvent(event)}
+              onMapPress={() => openVenueMapPreview(event)}
+              onPress={() => openEventDetail(event.id)}
             />
           ))}
         </View>
@@ -350,128 +404,53 @@ export default function StudentEventsScreen() {
 
       <Modal
         animationType="fade"
-        onRequestClose={() => setPreviewEvent(null)}
+        onRequestClose={() => setMapPreviewEvent(null)}
         transparent
-        visible={previewEvent !== null}
+        visible={mapPreviewEvent !== null}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
-            {previewEvent !== null ? (
-              <ScrollView
-                contentContainerStyle={styles.modalScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <CoverImageSurface
-                  imageStyle={styles.previewImage}
-                  source={getEventCoverSource(previewEvent.coverImageUrl, `${previewEvent.id}:preview`)}
-                  style={styles.previewHero}
-                >
-                  <View style={styles.previewOverlay} />
-                  <Pressable onPress={() => setPreviewEvent(null)} style={styles.modalCloseButton}>
-                    <AppIcon color="#F8FAF5" name="x" size={18} />
-                  </Pressable>
-                  <View style={styles.previewHeroCopy}>
-                    <Text style={styles.previewEyebrow}>
-                      {getTimelineLabel(previewEvent.timelineState, language)}
-                    </Text>
-                    <Text style={styles.previewTitle}>{previewEvent.name}</Text>
+            {mapPreviewEvent !== null ? (
+              <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.mapModalHeader}>
+                  <View style={styles.mapModalCopy}>
+                    <Text style={styles.previewEyebrow}>{language === "fi" ? "Tapahtumakartta" : "Event map"}</Text>
+                    <Text style={styles.mapModalTitle}>{mapPreviewEvent.name}</Text>
                     <Text style={styles.previewMeta}>
-                      {previewEvent.city}
-                      {previewEvent.country.length > 0 ? ` · ${previewEvent.country}` : ""}
+                      {mapPreviewEvent.city}
+                      {mapPreviewEvent.country.length > 0 ? ` · ${mapPreviewEvent.country}` : ""}
                     </Text>
                   </View>
-                </CoverImageSurface>
-
-                <View style={styles.previewDetailGrid}>
-                  <View style={styles.previewDetailTile}>
-                    <Text style={styles.previewTileLabel}>{language === "fi" ? "Alkaa" : "Starts"}</Text>
-                    <Text style={styles.previewTileValue}>
-                      {dateFormatter.format(new Date(previewEvent.startAt))}
-                    </Text>
-                  </View>
-                  <View style={styles.previewDetailTile}>
-                    <Text style={styles.previewTileLabel}>{language === "fi" ? "Päättyy" : "Ends"}</Text>
-                    <Text style={styles.previewTileValue}>
-                      {dateFormatter.format(new Date(previewEvent.endAt))}
-                    </Text>
-                  </View>
-                  <View style={styles.previewDetailTile}>
-                    <Text style={styles.previewTileLabel}>
-                      {language === "fi" ? "Liittyminen" : "Join before"}
-                    </Text>
-                    <Text style={styles.previewTileValue}>
-                      {dateFormatter.format(new Date(previewEvent.joinDeadlineAt))}
-                    </Text>
-                  </View>
-                  <View style={styles.previewDetailTile}>
-                    <Text style={styles.previewTileLabel}>{language === "fi" ? "Tila" : "Status"}</Text>
-                    <Text style={styles.previewTileValue}>
-                      {getRegistrationLabel(previewEvent.registrationState, language)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.previewSection}>
-                  <Text style={styles.previewSectionTitle}>{language === "fi" ? "Kuvaus" : "Description"}</Text>
-                  <Text style={styles.previewDescription}>
-                    {previewEvent.description?.trim().length
-                      ? previewEvent.description
-                      : language === "fi"
-                        ? "Järjestäjä ei ole vielä lisännyt tarkempaa kuvausta."
-                        : "The organizer has not added a detailed description yet."}
-                  </Text>
-                </View>
-
-                <View style={styles.previewFactRow}>
-                  <View style={styles.previewFact}>
-                    <Text style={styles.previewFactNumber}>
-                      {previewEvent.minimumStampsRequired}
-                    </Text>
-                    <Text style={styles.previewFactLabel}>
-                      {language === "fi" ? "leimaa palkintoon" : "leima for rewards"}
-                    </Text>
-                  </View>
-                  <View style={styles.previewFact}>
-                    <Text style={styles.previewFactNumber}>
-                      {previewEvent.maxParticipants === null ? "∞" : previewEvent.maxParticipants}
-                    </Text>
-                    <Text style={styles.previewFactLabel}>
-                      {language === "fi" ? "paikkaa" : "places"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.previewActionRow}>
-                  <Pressable
-                    onPress={() => handlePreviewDetailPress(previewEvent)}
-                    style={[styles.previewSecondaryButton, styles.previewActionFlex]}
-                  >
-                    <Text style={styles.previewSecondaryButtonText}>
-                      {language === "fi" ? "Avaa tiedot" : "Open details"}
-                    </Text>
+                  <Pressable onPress={() => setMapPreviewEvent(null)} style={styles.mapCloseButton}>
+                    <AppIcon color={theme.colors.textPrimary} name="x" size={18} />
                   </Pressable>
-                  {canShowJoinAction(previewEvent) ? (
-                    <Pressable
-                      disabled={joinMutation.isPending}
-                      onPress={() => void handlePreviewJoinPress(previewEvent)}
-                      style={[
-                        styles.previewPrimaryButton,
-                        styles.previewActionFlex,
-                        joinMutation.isPending ? styles.previewButtonDisabled : null,
-                      ]}
-                    >
-                      <Text style={styles.previewPrimaryButtonText}>
-                        {joinMutation.isPending
-                          ? language === "fi"
-                            ? "Liitytään..."
-                            : "Joining..."
-                          : language === "fi"
-                            ? "Liity"
-                            : "Join"}
-                      </Text>
-                    </Pressable>
-                  ) : null}
                 </View>
+
+                {venueMapQuery.isLoading ? (
+                  <View style={styles.messageCard}>
+                    <Text style={styles.messageEyebrow}>{copy.common.loading}</Text>
+                    <Text style={styles.bodyText}>
+                      {language === "fi" ? "Ladataan tapahtuman pisteitä." : "Loading event venues."}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {venueMapQuery.error ? (
+                  <View style={styles.messageCard}>
+                    <Text style={styles.messageEyebrow}>{copy.common.error}</Text>
+                    <Text style={styles.bodyText}>
+                      {venueMapQuery.error.message.trim().length > 0
+                        ? venueMapQuery.error.message
+                        : language === "fi"
+                          ? "Kartan lataaminen epäonnistui."
+                          : "Failed to load map."}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {!venueMapQuery.isLoading && !venueMapQuery.error ? (
+                  <StudentEventVenueMap venues={venueMapQuery.data?.venues ?? []} />
+                ) : null}
               </ScrollView>
             ) : null}
           </View>
@@ -490,6 +469,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     header: {
+      flex: 1,
       gap: 6,
     },
     headerMeta: {
@@ -505,8 +485,14 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
     },
+    headerRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
     heroBand: {
-      minHeight: 248,
+      height: 260,
       position: "relative",
       width: "100%",
     },
@@ -598,6 +584,33 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
     },
+    mapCloseButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    mapModalCopy: {
+      flex: 1,
+      gap: 5,
+      minWidth: 0,
+    },
+    mapModalHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    mapModalTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
     modalBackdrop: {
       alignItems: "center",
       backgroundColor: "rgba(0, 0, 0, 0.72)",
@@ -635,9 +648,11 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       flex: 1,
       justifyContent: "center",
+      minWidth: 124,
     },
     previewActionRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 10,
     },
     previewButtonDisabled: {
@@ -739,6 +754,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     previewSecondaryButton: {
       backgroundColor: theme.colors.surfaceL2,
@@ -753,6 +769,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+      textAlign: "center",
     },
     previewSection: {
       gap: 8,
@@ -781,6 +798,16 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
     },
+    profileButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
     retryButton: {
       alignSelf: "flex-start",
       backgroundColor: theme.colors.lime,
@@ -797,9 +824,14 @@ const createStyles = (theme: MobileTheme) =>
       gap: theme.spacing.sectionGap,
     },
     sectionTitle: {
-      color: theme.colors.textPrimary,
+      color: theme.colors.lime,
       fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.1,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    screenContent: {
+      paddingBottom: 104,
     },
   });

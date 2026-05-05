@@ -44,17 +44,8 @@ const completeNativeOAuthCallbackAsync = async (callbackUrl: string): Promise<vo
   const accessToken = readCallbackParam(callbackUrl, "access_token");
   const refreshToken = readCallbackParam(callbackUrl, "refresh_token");
 
-  if (accessToken !== null && refreshToken !== null) {
-    const { error } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-
-    if (error !== null) {
-      throw new Error(error.message);
-    }
-
-    return;
+  if (accessToken !== null || refreshToken !== null) {
+    throw new Error("OAuth callback must return an authorization code.");
   }
 
   const code = readCallbackParam(callbackUrl, "code");

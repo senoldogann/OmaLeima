@@ -10,7 +10,7 @@ const absoluteDateTimePattern =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const integerPattern = /^-?\d+$/;
 
-export class AnnouncementValidationError extends Error {}
+export class AnnouncementValidationError extends Error { }
 
 const announcementAudiences = new Set<string>(["ALL", "BUSINESSES", "CLUBS", "STUDENTS"]);
 const announcementStatuses = new Set<string>(["DRAFT", "PUBLISHED", "ARCHIVED"]);
@@ -23,6 +23,24 @@ export const parseAnnouncementIdOrThrow = (value: unknown): string => {
   }
 
   return value;
+};
+
+export const parseOptionalAnnouncementClubIdOrThrow = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    throw new AnnouncementValidationError("clubId must be a string.");
+  }
+
+  const normalizedValue = value.trim();
+
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  if (!isUuid(normalizedValue)) {
+    throw new AnnouncementValidationError("clubId must be a valid UUID when provided.");
+  }
+
+  return normalizedValue;
 };
 
 const parseIsoDateTimeOrThrow = (value: string, fieldName: string): string => {

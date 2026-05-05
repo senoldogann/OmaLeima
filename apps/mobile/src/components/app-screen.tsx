@@ -1,5 +1,13 @@
-import type { PropsWithChildren } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from "react-native";
+import type { ReactElement, PropsWithChildren } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  type RefreshControlProps,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Image as ExpoImage } from "expo-image";
@@ -10,7 +18,12 @@ import { useAppTheme, useThemeStyles } from "@/features/preferences/ui-preferenc
 const darkBackgroundSource = require("../../assets/backgrounds/gravity-lines-dark.png");
 const lightBackgroundSource = require("../../assets/backgrounds/gravity-lines-light.png");
 
-export const AppScreen = ({ children }: PropsWithChildren) => {
+type AppScreenProps = PropsWithChildren<{
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  refreshControl?: ReactElement<RefreshControlProps>;
+}>;
+
+export const AppScreen = ({ children, contentContainerStyle, refreshControl }: AppScreenProps) => {
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const backgroundSource = theme.mode === "dark" ? darkBackgroundSource : lightBackgroundSource;
@@ -32,9 +45,10 @@ export const AppScreen = ({ children }: PropsWithChildren) => {
       >
         <ScrollView
           automaticallyAdjustKeyboardInsets
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, contentContainerStyle]}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl}
           style={styles.scrollView}
         >
           {children}

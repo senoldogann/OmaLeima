@@ -20,6 +20,8 @@ type ScannerLocation = {
 type ScanQrRequest = {
   qrToken: string;
   businessId: string | undefined;
+  eventId: string | undefined;
+  eventVenueId: string | undefined;
   scannerDeviceId: string | null;
   scannerPin: string | null;
   scannerLocation: ScannerLocation;
@@ -31,10 +33,6 @@ type BusinessStaffRow = {
 
 type DeviceTokenRow = {
   expo_push_token: string;
-};
-
-type ExistingStampRow = {
-  scanned_at: string;
 };
 
 type NotificationInsertRow = {
@@ -75,6 +73,8 @@ type RewardUnlockPushSummary = {
 
 const responseMessages: Record<string, string> = {
   SUCCESS: "Leima added successfully.",
+  EVENT_CONTEXT_REQUIRED: "Selected scanner event context is required.",
+  EVENT_CONTEXT_MISMATCH: "Selected scanner event does not match the student's QR event.",
   EVENT_NOT_FOUND: "Event was not found.",
   EVENT_NOT_ACTIVE: "Event is not active.",
   STUDENT_NOT_REGISTERED: "Student is not registered for this event.",
@@ -92,13 +92,13 @@ const serializeTokenResults = (results: ExpoPushSendResult[]): Record<string, un
   results.map((result): Record<string, unknown> =>
     result.ok
       ? {
-          ok: true,
-          ticketId: result.ticketId,
-        }
+        ok: true,
+        ticketId: result.ticketId,
+      }
       : {
-          ok: false,
-          error: result.message,
-        }
+        ok: false,
+        error: result.message,
+      }
   );
 
 const createRewardUnlockPushSummary = (
@@ -324,6 +324,14 @@ const parseRequestBody = (body: Record<string, unknown>): ScanQrRequest => {
     throw new Error("businessId must be a valid UUID when provided.");
   }
 
+  if (!isOptionalUuid(body.eventId)) {
+    throw new Error("eventId must be a valid UUID when provided.");
+  }
+
+  if (!isOptionalUuid(body.eventVenueId)) {
+    throw new Error("eventVenueId must be a valid UUID when provided.");
+  }
+
   if (body.scannerDeviceId !== null && !isOptionalUuid(body.scannerDeviceId)) {
     throw new Error("scannerDeviceId must be a valid UUID when provided.");
   }
@@ -339,6 +347,8 @@ const parseRequestBody = (body: Record<string, unknown>): ScanQrRequest => {
   return {
     qrToken: body.qrToken,
     businessId: body.businessId,
+    eventId: body.eventId,
+    eventVenueId: body.eventVenueId,
     scannerDeviceId: body.scannerDeviceId ?? null,
     scannerPin: typeof body.scannerPin === "string" ? body.scannerPin : null,
     scannerLocation: parseScannerLocation(body.scannerLocation),
@@ -356,39 +366,6 @@ const resolveBusinessId = (rows: BusinessStaffRow[], requestedBusinessId: string
   }
 
   return null;
-};
-
-const readExistingValidStampAsync = async (
-  supabase: ReturnType<typeof createServiceClient>,
-  eventId: string,
-  studentId: string,
-  businessId: string
-): Promise<ExistingStampRow | null> => {
-  const { data, error } = await supabase
-    .from("stamps")
-    .select("scanned_at")
-    .eq("event_id", eventId)
-    .eq("student_id", studentId)
-    .eq("business_id", businessId)
-    .eq("validation_status", "VALID")
-    .order("scanned_at", { ascending: false })
-    .limit(1)
-    .returns<ExistingStampRow[]>()
-    .maybeSingle();
-
-  if (error !== null) {
-    console.warn("existing_stamp_lookup_failed", {
-      eventId,
-      studentId,
-      businessId,
-      errorCode: error.code,
-      errorMessage: error.message,
-    });
-
-    return null;
-  }
-
-  return data;
 };
 
 Deno.serve(async (request: Request): Promise<Response> => {
@@ -453,11 +430,53 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
+    if (typeof body.eventId !== "string" || typeof body.eventVenueId !== "string") {
+      return jsonResponse({
+        status: "EVENT_CONTEXT_REQUIRED",
+        message: responseMessages.EVENT_CONTEXT_REQUIRED,
+      }, 200);
+    }
+
+    if (body.eventId !== verifiedQrToken.payload.eventId) {
+      return jsonResponse({
+        status: "EVENT_CONTEXT_MISMATCH",
+        message: responseMessages.EVENT_CONTEXT_MISMATCH,
+      }, 200);
+    }
+
+    const { data: selectedEventVenueRow, error: selectedEventVenueError } = await supabase
+      .from("event_venues")
+      .select("id")
+      .eq("id", body.eventVenueId)
+      .eq("event_id", body.eventId)
+      .eq("business_id", businessId)
+      .eq("status", "JOINED")
+      .maybeSingle<{ id: string }>();
+
+    if (selectedEventVenueError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to validate selected event venue context.", {
+        selectedEventVenueError: selectedEventVenueError.message,
+        selectedEventVenueErrorCode: selectedEventVenueError.code,
+        scannerUserId: user.id,
+        eventId: body.eventId,
+        eventVenueId: body.eventVenueId,
+        businessId,
+      });
+    }
+
+    if (selectedEventVenueRow === null) {
+      return jsonResponse({
+        status: "EVENT_CONTEXT_MISMATCH",
+        message: responseMessages.EVENT_CONTEXT_MISMATCH,
+      }, 200);
+    }
+
     const { data: rpcResult, error: rpcError } = await supabase.rpc("scan_stamp_atomic", {
       p_event_id: verifiedQrToken.payload.eventId,
       p_student_id: verifiedQrToken.payload.sub,
       p_qr_jti: verifiedQrToken.payload.jti,
       p_business_id: businessId,
+      p_event_venue_id: body.eventVenueId,
       p_scanner_user_id: user.id,
       p_scanner_device_id: body.scannerDeviceId,
       p_scanner_pin: body.scannerPin,
@@ -475,18 +494,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const result = rpcResult as ScanStampResult;
-    const existingStamp =
-      result.status === "ALREADY_STAMPED"
-        ? await readExistingValidStampAsync(
-            supabase,
-            verifiedQrToken.payload.eventId,
-            verifiedQrToken.payload.sub,
-            businessId
-          )
-        : null;
     const responseResult: ScanStampResult = {
       ...result,
-      existingStampedAt: existingStamp?.scanned_at,
     };
     const unlockedRewardTiers = responseResult.unlockedRewardTiers ?? [];
     let rewardUnlockPush = createRewardUnlockPushSummary(

@@ -4,11 +4,15 @@ type AppIconName =
   | "google"
   | "business"
   | "user"
+  | "info"
   | "logout"
   | "bell"
+  | "check"
+  | "mail"
   | "scan"
   | "history"
   | "calendar"
+  | "map-pin"
   | "palette"
   | "globe"
   | "support"
@@ -84,6 +88,29 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           />
         </Svg>
       );
+    case "info":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Path
+            d="M12 10.2v5.2M12 7.75h.01"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
     case "logout":
       return (
         <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -102,6 +129,55 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
         <Svg height={size} viewBox="0 0 24 24" width={size}>
           <Path
             d="M9 18a3 3 0 0 0 6 0M6 17h12l-1.2-1.4a3 3 0 0 1-.8-1.95V10a4 4 0 1 0-8 0v3.65c0 .72-.28 1.41-.8 1.95L6 17Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "check":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="12" fill={color} opacity={0.14} r="8" />
+          <Path
+            d="m8.2 12.3 2.35 2.35 5.25-5.25"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "mail":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Rect
+            fill="none"
+            height="13"
+            rx="2.5"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+            width="16"
+            x="4"
+            y="5.5"
+          />
+          <Path
+            d="m5.5 7 6.5 5 6.5-5"
             fill="none"
             stroke={color}
             strokeLinecap="round"
@@ -151,6 +227,34 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           <Circle cx="9" cy="13" fill={color} r="1" />
           <Circle cx="12" cy="13" fill={color} opacity={0.66} r="1" />
           <Circle cx="15" cy="13" fill={color} opacity={0.42} r="1" />
+        </Svg>
+      );
+    case "map-pin":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M12 21s6.5-5.65 6.5-11.05A6.5 6.5 0 0 0 5.5 9.95C5.5 15.35 12 21 12 21Z"
+            fill={color}
+            opacity={0.16}
+          />
+          <Path
+            d="M12 21s6.5-5.65 6.5-11.05A6.5 6.5 0 0 0 5.5 9.95C5.5 15.35 12 21 12 21Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle
+            cx="12"
+            cy="10"
+            fill="none"
+            r="2.35"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
         </Svg>
       );
     case "palette":

@@ -1,12 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { NavIcon } from "@/features/dashboard/components/nav-icon";
+import { PageHeader } from "@/features/dashboard/components/page-header";
 import type { DashboardNavItem } from "@/features/dashboard/types";
 
 type DashboardShellProps = {
   activeHref: string;
   areaLabel: string;
   children: React.ReactNode;
+  headerActions?: React.ReactNode;
   navigationItems: DashboardNavItem[];
   roleLabel: string | null;
   subtitle: string;
@@ -18,6 +22,7 @@ export const DashboardShell = ({
   activeHref,
   areaLabel,
   children,
+  headerActions,
   navigationItems,
   roleLabel,
   subtitle,
@@ -29,7 +34,7 @@ export const DashboardShell = ({
       <div className="stack-lg">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true">
-            OL
+            <Image alt="" className="brand-logo" height={44} priority src="/images/omaleima-logo.png" width={44} />
           </span>
           <div>
             <div className="eyebrow">OmaLeima</div>
@@ -43,31 +48,31 @@ export const DashboardShell = ({
         </div>
       </div>
 
-      <nav className="stack-sm">
-        {navigationItems.map((item) => (
-          <Link
-            key={item.href}
-            className={`nav-link ${item.href === activeHref ? "nav-link-active" : ""}`}
-            href={item.href}
-          >
-            <span className="nav-dot" aria-hidden="true" />
-            {item.label}
-          </Link>
-        ))}
+      <nav aria-label={`${areaLabel} navigation`} className="stack-sm sidebar-nav">
+        {navigationItems.map((item) => {
+          const isActive = item.href === activeHref;
+
+          return (
+            <Link
+              key={item.href}
+              aria-current={isActive ? "page" : undefined}
+              className={`nav-link ${isActive ? "nav-link-active" : ""}`}
+              href={item.href}
+            >
+              <span className="nav-icon" aria-hidden>
+                <NavIcon name={item.iconName} />
+              </span>
+              <span className="nav-label">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       <SignOutButton />
     </aside>
 
     <main className="content">
-      <header className="panel hero-banner">
-        <div className="hero-banner-content">
-          <div className="eyebrow">{areaLabel}</div>
-          <h2 className="panel-title">{title}</h2>
-          <p className="panel-copy">{subtitle}</p>
-        </div>
-      </header>
-
+      <PageHeader actions={headerActions} eyebrow={areaLabel} subtitle={subtitle} title={title} />
       {children}
     </main>
   </div>

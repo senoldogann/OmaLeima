@@ -10,58 +10,89 @@ type LeaderboardEntryCardProps = {
   isCurrentUser: boolean;
 };
 
+// İsimden kısaltma üretir (ör. "Mehmet Ali" → "MA")
+const getInitials = (name: string): string => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return (words[0].charAt(0)).toUpperCase();
+  return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+};
+
+// İlk 3 sıra için altın/gümüş/bronz renkleri
+const getMedalColors = (rank: number): { bg: string; border: string; text: string } | null => {
+  if (rank === 1) return { bg: "rgba(255, 196, 0, 0.14)", border: "rgba(255, 196, 0, 0.30)", text: "#FFC400" };
+  if (rank === 2) return { bg: "rgba(190, 200, 190, 0.12)", border: "rgba(190, 200, 190, 0.22)", text: "#BEC8BE" };
+  if (rank === 3) return { bg: "rgba(205, 127, 50, 0.12)", border: "rgba(205, 127, 50, 0.24)", text: "#CD7F32" };
+  return null;
+};
+
 const getDisplayName = (entry: LeaderboardEntry, language: "fi" | "en"): string =>
   entry.displayName ?? (language === "fi" ? `Opiskelija ${entry.rank}` : `Student ${entry.rank}`);
 
-const getInitials = (value: string | null, rank: number): string => {
-  const source = value?.trim() ?? `Student ${rank}`;
-  const parts = source.split(/\s+/).filter(Boolean);
-
-  if (parts.length === 0) {
-    return `${rank}`;
-  }
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-};
-
 export const LeaderboardEntryCard = ({ entry, isCurrentUser }: LeaderboardEntryCardProps) => {
-  const { language } = useUiPreferences();
+  const { language, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
+  const medal = getMedalColors(entry.rank);
+  const displayName = getDisplayName(entry, language);
+  const initials = getInitials(displayName);
+
+  const rankBubbleStyle = medal
+    ? { backgroundColor: medal.bg, borderColor: medal.border }
+    : isCurrentUser
+      ? { backgroundColor: theme.colors.limeSurface, borderColor: theme.colors.limeBorder }
+      : { backgroundColor: theme.colors.surfaceL4, borderColor: theme.colors.borderStrong };
+
+  const rankTextColor = medal
+    ? medal.text
+    : isCurrentUser
+      ? theme.mode === "dark" ? theme.colors.lime : theme.colors.actionPrimaryText
+      : theme.colors.textPrimary;
+
+  const avatarBg = isCurrentUser
+    ? theme.colors.limeSurface
+    : medal
+      ? medal.bg
+      : theme.colors.surfaceL3;
+  const avatarBorder = isCurrentUser
+    ? theme.colors.limeBorder
+    : medal
+      ? medal.border
+      : theme.colors.borderStrong;
+  const avatarTextColor = isCurrentUser
+    ? theme.mode === "dark" ? theme.colors.lime : theme.colors.actionPrimaryText
+    : medal
+      ? medal.text
+      : theme.colors.textSecondary;
 
   return (
     <View style={[styles.card, isCurrentUser ? styles.currentUserCard : null]}>
       <View style={styles.leftGroup}>
-        <View style={[styles.rankBubble, isCurrentUser ? styles.currentUserRankBubble : null]}>
-          <Text selectable style={styles.rankText}>
-            #{entry.rank}
+        {/* Sıra numarası yuvarlak kabarcık */}
+        <View style={[styles.rankBubble, rankBubbleStyle]}>
+          <Text selectable style={[styles.rankText, { color: rankTextColor }]}>
+            {entry.rank}
           </Text>
         </View>
 
-        <View style={[styles.avatarBubble, isCurrentUser ? styles.avatarBubbleCurrent : null]}>
-          <Text selectable style={styles.avatarText}>
-            {getInitials(entry.displayName, entry.rank)}
-          </Text>
+        {/* Avatar: baş harfler */}
+        <View style={[styles.avatarBubble, { backgroundColor: avatarBg, borderColor: avatarBorder }]}>
+          <Text style={[styles.avatarInitials, { color: avatarTextColor }]}>{initials}</Text>
         </View>
 
         <View style={styles.copyGroup}>
           <Text selectable style={[styles.nameText, isCurrentUser ? styles.currentUserNameText : null]}>
-            {getDisplayName(entry, language)}
+            {displayName}
+          </Text>
+          <Text selectable style={[styles.stampLabel, isCurrentUser ? styles.currentUserStampLabel : null]}>
+            {language === "fi" ? `Leimoja: ${entry.stampCount}` : `Stamps: ${entry.stampCount}`}
           </Text>
         </View>
       </View>
 
-      <View style={styles.scoreGroup}>
-        <Text selectable style={[styles.scoreText, isCurrentUser ? styles.currentUserScoreText : null]}>
-          {entry.stampCount}
-        </Text>
-        <Text selectable style={[styles.scoreLabel, isCurrentUser ? styles.currentUserScoreLabel : null]}>
-          {language === "fi" ? "leimaa" : "leima"}
-        </Text>
-      </View>
+      {/* #1 için kron ikonu */}
+      {entry.rank === 1 ? (
+        <Text style={styles.crownEmoji}>👑</Text>
+      ) : null}
     </View>
   );
 };
@@ -70,23 +101,17 @@ const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
     avatarBubble: {
       alignItems: "center",
-      backgroundColor: theme.colors.surfaceL4,
-      borderColor: theme.colors.borderStrong,
       borderRadius: 999,
       borderWidth: 1,
       height: 40,
       justifyContent: "center",
       width: 40,
     },
-    avatarBubbleCurrent: {
-      backgroundColor: theme.colors.limeSurface,
-      borderColor: theme.colors.limeBorder,
-    },
-    avatarText: {
-      color: theme.colors.textPrimary,
+    avatarInitials: {
       fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
+      fontSize: 14,
+      letterSpacing: 0.3,
+      lineHeight: 18,
     },
     card: {
       alignItems: "center",
@@ -98,27 +123,25 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
       justifyContent: "space-between",
       paddingHorizontal: 14,
-      paddingVertical: 13,
+      paddingVertical: 12,
     },
     copyGroup: {
       flex: 1,
-      gap: 4,
+      gap: 2,
+    },
+    crownEmoji: {
+      fontSize: 18,
+      lineHeight: 22,
     },
     currentUserCard: {
-      backgroundColor: theme.colors.lime,
+      backgroundColor: theme.mode === "dark" ? "rgba(6, 8, 6, 0.54)" : theme.colors.surfaceL1,
       borderColor: theme.colors.limeBorder,
     },
     currentUserNameText: {
-      color: theme.colors.actionPrimaryText,
+      color: theme.colors.textPrimary,
     },
-    currentUserRankBubble: {
-      backgroundColor: "rgba(8, 9, 14, 0.16)",
-    },
-    currentUserScoreLabel: {
-      color: "rgba(8, 9, 14, 0.74)",
-    },
-    currentUserScoreText: {
-      color: theme.colors.actionPrimaryText,
+    currentUserStampLabel: {
+      color: theme.mode === "dark" ? theme.colors.lime : theme.colors.actionPrimaryText,
     },
     leftGroup: {
       alignItems: "center",
@@ -135,33 +158,22 @@ const createStyles = (theme: MobileTheme) =>
     },
     rankBubble: {
       alignItems: "center",
-      backgroundColor: theme.colors.surfaceL4,
       borderRadius: 999,
+      borderWidth: 1,
+      height: 34,
       justifyContent: "center",
-      minWidth: 44,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
+      width: 34,
     },
     rankText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.bodySmall,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 13,
       fontVariant: ["tabular-nums"],
+      lineHeight: 17,
     },
-    scoreGroup: {
-      alignItems: "flex-end",
-      minWidth: 58,
-    },
-    scoreLabel: {
+    stampLabel: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-    },
-    scoreText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.subtitle,
-      fontVariant: ["tabular-nums"],
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
   });
