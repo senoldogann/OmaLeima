@@ -76,5 +76,29 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.4,
       url: "https://omaleima.fi/en/terms",
     },
+    {
+      alternates: {
+        languages: {
+          en: "https://omaleima.fi/en/contact",
+          fi: "https://omaleima.fi/contact",
+        },
+      },
+      changeFrequency: "monthly",
+      lastModified,
+      priority: 0.7,
+      url: "https://omaleima.fi/contact",
+    },
+    {
+      alternates: {
+        languages: {
+          en: "https://omaleima.fi/en/contact",
+          fi: "https://omaleima.fi/contact",
+        },
+      },
+      changeFrequency: "monthly",
+      lastModified,
+      priority: 0.6,
+      url: "https://omaleima.fi/en/contact",
+    },
   ];
 }

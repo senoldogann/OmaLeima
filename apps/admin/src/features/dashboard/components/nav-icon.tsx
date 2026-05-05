@@ -13,6 +13,7 @@ export type NavIconName =
     | "rewards"
     | "venues"
     | "audit"
+    | "inbox"
     | "settings";
 
 type NavIconProps = {
@@ -112,6 +113,14 @@ export const NavIcon = ({ name }: NavIconProps) => {
                 <svg aria-hidden {...sharedSvgProps}>
                     <rect height="18" rx="2" width="14" x="5" y="3" />
                     <path d="M9 8h6M9 12h6M9 16h4" />
+                </svg>
+            );
+        case "inbox":
+            return (
+                <svg aria-hidden {...sharedSvgProps}>
+                    <path d="M3 13l3-7h12l3 7" />
+                    <path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6" />
+                    <path d="M3 13h5l1.5 2h5L16 13h5" />
                 </svg>
             );
         case "settings":
