@@ -31,10 +31,10 @@ const featureImages = {
     width: 1536,
   },
   scan: {
-    alt: "OmaLeima app screen with stamp progress and reward state.",
-    height: 1536,
-    src: "/images/public/omaleima-scanner-closeup.png",
-    width: 1024,
+    alt: "Järjestäjä seuraa tapahtumaa OmaLeiman kautta – yksi selkeä hallintapinta.",
+    height: 941,
+    src: "/images/public/scene-organizer-hd.png",
+    width: 1672,
   },
 } as const;
 
@@ -45,13 +45,6 @@ const scenePhotos = [
     span: "wide" as const,
     height: 941,
     src: "/images/public/scene-bar-qr-scan-hd.png",
-    width: 1672,
-  },
-  {
-    alt: "Järjestäjä seuraa tapahtumaa OmaLeiman kautta.",
-    span: "normal" as const,
-    height: 941,
-    src: "/images/public/scene-organizer-hd.png",
     width: 1672,
   },
   {
@@ -212,7 +205,7 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         <div className="public-image-card public-image-card-scan public-image-surface public-media-soft">
           <Image
             alt={featureImages.scan.alt}
-            className="public-image public-image-cover public-image-position-right"
+            className="public-image public-image-cover public-image-position-center"
             height={featureImages.scan.height}
             loading="eager"
             sizes="(max-width: 980px) 100vw, 40vw"
