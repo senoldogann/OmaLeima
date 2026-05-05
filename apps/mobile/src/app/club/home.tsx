@@ -115,6 +115,18 @@ export default function ClubHomeScreen() {
         LIVE: language === "fi" ? "Live" : "Live",
         UPCOMING: language === "fi" ? "Tulossa" : "Upcoming",
       } satisfies Record<ClubDashboardTimelineState, string>,
+      growthEyebrow: language === "fi" ? "Kasvumalli" : "Growth model",
+      growthTitle:
+        language === "fi"
+          ? "Klubin peruskäyttö pidetään ilmaisena"
+          : "Keep the organizer core free",
+      growthBody:
+        language === "fi"
+          ? "Rahoitus tulee yritys- ja sponsoripaketeista: rastipaikat, palkintonäkyvyys, kuponkilunastukset ja tapahtuman jälkiraportti."
+          : "Revenue comes from venue and sponsor packages: checkpoints, reward visibility, offer redemptions, and post-event reporting.",
+      growthPointA: language === "fi" ? "Sponsoritodiste" : "Sponsor proof",
+      growthPointB: language === "fi" ? "Vähemmän paperia" : "Less paper",
+      growthPointC: language === "fi" ? "Yritysraportti" : "Venue report",
     }),
     [language]
   );
@@ -261,6 +273,17 @@ export default function ClubHomeScreen() {
             <View style={styles.summaryCard}>
               <Text style={styles.summaryValue}>{dashboardQuery.data.summary.validStampCount}</Text>
               <Text style={styles.summaryLabel}>{labels.stamps}</Text>
+            </View>
+          </View>
+
+          <View style={styles.growthCard}>
+            <Text style={styles.growthEyebrow}>{labels.growthEyebrow}</Text>
+            <Text style={styles.growthTitle}>{labels.growthTitle}</Text>
+            <Text style={styles.bodyText}>{labels.growthBody}</Text>
+            <View style={styles.growthPillRow}>
+              <Text style={styles.growthPill}>{labels.growthPointA}</Text>
+              <Text style={styles.growthPill}>{labels.growthPointB}</Text>
+              <Text style={styles.growthPill}>{labels.growthPointC}</Text>
             </View>
           </View>
 
@@ -528,6 +551,45 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 12,
       justifyContent: "space-between",
+    },
+    growthCard: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.07)" : "rgba(200, 255, 71, 0.18)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 10,
+      padding: 18,
+    },
+    growthEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    growthPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    growthPillRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    growthTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     heroBottom: {
       gap: 10,

@@ -2,6 +2,41 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Business Growth Package + Background Push Readiness)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/business-growth-package`
+- **Scope:** Temiz main merge sonrasi web ve mobile yuzeylere Finlandiya appro/haalarit kulturune uygun business-growth paketini eklemek; ogrenci, kulup/organizer ve business tarafinda urunun neden kullanilacagini daha net gostermek; mevcut push altyapisinda arka plan notification delivery icin guvenli minimum ayarlari dogrulamak.
+
+## Business Growth Package Affected Files
+
+- `apps/admin/src/features/public-site/content.ts`
+- `apps/admin/src/features/public-site/landing-page.tsx`
+- `apps/admin/src/app/globals.css`
+- `apps/admin/public/images/public/scene-event-in-hand.png`
+- `apps/mobile/app.config.ts`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/app/business/home.tsx`
+- `apps/mobile/src/app/club/home.tsx`
+- `supabase/functions/_shared/expoPush.ts`
+- `REVIEW.md`
+- `PLAN.md`
+- `TODOS.md`
+- `PROGRESS.md`
+
+## Business Growth Package Findings
+
+- QR/scan akisi kullanici tarafindan iki iPhone ile dogrulandi; bu turda scanner veya stamp RPC davranisina dokunulmamali.
+- Ogrenci ve kulup tarafina yeni ucret bariyeri koymak pilot icin zayif olur. Gelir modeli, business/venue/sponsor tarafinda verified student traffic, reward visibility, offer redemption ve post-event reporting olarak konumlanmali.
+- Public landing zaten FI/EN yapiya sahip; yeni model bolumu content source-of-truth'a eklenip nav'dan erisilebilir olmali.
+- Mobile'da business/club home ekranlari kullanici rolune gore paket mantigini anlatmak icin en dusuk riskli yerler. Ogrenci tarafinda Events ekranina kisa deger karti eklemek, neden app'i acsinlar sorusunu dogrudan cevaplar.
+- Mevcut push altyapisi `expo-notifications`, fiziksel cihaz token registration, backend `device_tokens` ve Expo Push Service payload'lariyla kurulmus. Backend notification message `title` + `body` gonderdigi icin OS arka planda bildirimi gosterebilir; silent/headless JS calistirma bu slice'in kapsami degil.
+- Android notification default channel config'i build-time plugin ayariyla netlestirilmeli. Backend push payload'i `priority: high` ve `sound: default` ile gonderilirse event-day notification beklentisi daha tutarli olur.
+
+## Business Growth Package Review Outcome
+
+Yeni paket ucretsiz ogrenci/organizer core + ucretli business/venue/sponsor degeri olarak konumlandi. Web landing, mobile student, mobile club ve mobile business yuzeyleri ayni anlatida hizalandi. Push tarafinda visible remote notifications icin mevcut mimari korunup delivery varsayilanlari guclendirildi; headless background task eklenmedi cunku urun akisi bildirim gostermek istiyor, arka planda JS islemi calistirmak degil.
+
 ## Current Review (Manual QR Token Scanner Smoke)
 
 - **Date:** 2026-05-05

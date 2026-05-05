@@ -5,6 +5,11 @@ export type ExpoPushMessage = {
   data: Record<string, unknown>;
 };
 
+type ExpoPushRequestMessage = ExpoPushMessage & {
+  priority: "high";
+  sound: "default";
+};
+
 export type ExpoPushSendResult =
   | {
       ok: true;
@@ -137,7 +142,7 @@ const sendExpoPushBatch = async (
       response = await fetch(pushApiUrl, {
         method: "POST",
         headers: buildHeaders(accessToken),
-        body: JSON.stringify(messages),
+        body: JSON.stringify(messages.map(createExpoPushRequestMessage)),
         signal: abortController.signal,
       });
     } catch (error) {
@@ -178,6 +183,12 @@ const sendExpoPushBatch = async (
 
   return buildFailureResults(messages.length, "Expo Push API retry loop exited unexpectedly.", null);
 };
+
+const createExpoPushRequestMessage = (message: ExpoPushMessage): ExpoPushRequestMessage => ({
+  ...message,
+  priority: "high",
+  sound: "default",
+});
 
 const chunkMessages = (messages: ExpoPushMessage[]): ExpoPushMessage[][] => {
   const chunks: ExpoPushMessage[][] = [];

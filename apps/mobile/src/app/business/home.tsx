@@ -85,6 +85,18 @@ export default function BusinessHomeScreen() {
       completedStatus: language === "fi" ? "Päättynyt" : "Completed",
       past: language === "fi" ? "Menneet" : "Past",
       historyShort: language === "fi" ? "Historia" : "History",
+      growthEyebrow: language === "fi" ? "Pilottipaketti" : "Pilot package",
+      growthTitle:
+        language === "fi"
+          ? "Yritys maksaa todennetusta opiskelijavirrasta"
+          : "Businesses pay for verified student traffic",
+      growthBody:
+        language === "fi"
+          ? "OmaLeima kannattaa myydä yrityksille tapahtumapaikkana, näkyvänä palkintona, kuponkilunastuksina ja selkeänä tapahtumaraporttina."
+          : "Sell OmaLeima to venues as event participation, promoted rewards, verified offer redemptions, and a clear post-event report.",
+      growthMetricA: language === "fi" ? "Event fee" : "Event fee",
+      growthMetricB: language === "fi" ? "Sponsor slot" : "Sponsor slot",
+      growthMetricC: language === "fi" ? "Raportti" : "Report",
     }),
     [copy.business.joinedEvents, language]
   );
@@ -160,6 +172,19 @@ export default function BusinessHomeScreen() {
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{labels.past}</Text>
             <Text style={styles.summaryValue}>{joinedCompletedEvents.length}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <View style={styles.growthCard}>
+          <Text style={styles.growthEyebrow}>{labels.growthEyebrow}</Text>
+          <Text style={styles.growthTitle}>{labels.growthTitle}</Text>
+          <Text style={styles.bodyText}>{labels.growthBody}</Text>
+          <View style={styles.growthPillRow}>
+            <Text style={styles.growthPill}>{labels.growthMetricA}</Text>
+            <Text style={styles.growthPill}>{labels.growthMetricB}</Text>
+            <Text style={styles.growthPill}>{labels.growthMetricC}</Text>
           </View>
         </View>
       ) : null}
@@ -470,6 +495,45 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
       textAlign: "center",
+    },
+    growthCard: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.07)" : "rgba(200, 255, 71, 0.18)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 10,
+      padding: 18,
+    },
+    growthEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    growthPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    growthPillRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    growthTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     iconButton: {
       alignItems: "center",

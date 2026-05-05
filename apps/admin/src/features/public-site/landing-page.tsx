@@ -49,12 +49,12 @@ const galleryImages = [
     width: 1672,
   },
   {
-    alt: "Opiskelijat vaihtavat QR-tarkistuksen checkpointilla tapahtumaillan aikana.",
-    className: "public-mosaic-item public-mosaic-tall",
-    height: 1774,
+    alt: "Opiskelija pitää tapahtuman hallussa: leimakortti puhelimessa.",
+    className: "public-mosaic-item",
+    height: 1254,
     imageClassName: "public-image-position-center",
-    src: "/images/public/scene-generated-vertical-checkpoint.png",
-    width: 887,
+    src: "/images/public/scene-event-in-hand.png",
+    width: 1254,
   },
   {
     alt: "Opiskelijat näyttävät palkintoa ja puhelinta tapahtumaillassa.",
@@ -291,6 +291,26 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="public-shell public-growth-shell" id="model">
+        <div className="public-growth-heading">
+          <p className="eyebrow">{locale === "fi" ? "Pilottimalli" : "Pilot model"}</p>
+          <h2>{content.growthModelTitle}</h2>
+          <p>{content.growthModelSubtitle}</p>
+        </div>
+
+        <div className="public-growth-grid">
+          {content.growthModelItems.map((item) => (
+            <article key={item.eyebrow} className="public-growth-card">
+              <span>{item.eyebrow}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+
+        <p className="public-growth-footnote">{content.growthModelFootnote}</p>
       </section>
 
       {/* Etkinlik günü bölümü – ödül görseli + destek kartları */}

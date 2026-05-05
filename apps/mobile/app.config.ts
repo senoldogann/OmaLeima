@@ -55,7 +55,13 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-secure-store",
-    "expo-notifications",
+    [
+      "expo-notifications",
+      {
+        color: "#C8FF47",
+        defaultChannel: "default",
+      },
+    ],
     [
       "expo-image-picker",
       {

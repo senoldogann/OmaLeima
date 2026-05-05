@@ -1024,22 +1024,22 @@ button {
 }
 
 .public-home-v2 {
-  width: min(1540px, 100%);
+  width: min(1880px, 100%);
   justify-content: flex-start;
-  gap: 10px;
-  padding: clamp(14px, 2.4vw, 32px) clamp(14px, 2.8vw, 38px) clamp(22px, 3.2vw, 48px);
+  gap: 12px;
+  padding: clamp(10px, 1.4vw, 22px) clamp(12px, 1.6vw, 28px) clamp(20px, 2.4vw, 40px);
 }
 
 .public-navbar-wrap {
   position: fixed;
-  inset: 10px 0 auto;
+  inset: 0 0 auto;
   z-index: 40;
-  padding-inline: clamp(14px, 2.8vw, 38px);
+  padding-inline: 0;
   pointer-events: none;
 }
 
 .public-navbar-spacer {
-  height: 70px;
+  height: 64px;
 }
 
 .public-navbar {
@@ -1048,24 +1048,25 @@ button {
 }
 
 .public-navbar-inner {
-  width: min(1540px, 100%);
+  width: 100%;
   margin: 0 auto;
-  min-height: 58px;
+  min-height: 60px;
   display: grid;
-  grid-template-columns: auto minmax(240px, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(14px, 2.4vw, 28px);
-  padding: 8px 10px 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 999px;
-  background: rgba(3, 5, 3, 0.84);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(20px);
+  gap: clamp(14px, 2vw, 32px);
+  padding: 8px clamp(20px, 3vw, 40px);
+  border: none;
+  border-radius: 0;
+  background: rgba(3, 5, 3, 0.62);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .public-navbar-inner[data-scrolled="true"] {
-  background: rgba(3, 5, 3, 0.92);
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.38);
+  background: rgba(3, 5, 3, 0.88);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.32);
 }
 
 .public-brand-row {
@@ -1451,6 +1452,89 @@ button {
   letter-spacing: 0.16em;
 }
 
+.public-growth-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(18px, 2.8vw, 34px);
+  border: 1px solid rgba(200, 255, 71, 0.13);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(200, 255, 71, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(18, 26, 14, 0.96), rgba(8, 11, 9, 0.98));
+}
+
+.public-growth-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 850px;
+}
+
+.public-growth-heading h2 {
+  color: var(--text-primary);
+  font-size: clamp(24px, 2.8vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  font-weight: 900;
+  text-wrap: balance;
+}
+
+.public-growth-heading p,
+.public-growth-footnote {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 550;
+}
+
+.public-growth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.public-growth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 220px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(5, 8, 5, 0.58);
+}
+
+.public-growth-card span {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.public-growth-card h3 {
+  color: var(--text-primary);
+  font-size: clamp(17px, 1.5vw, 22px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 850;
+}
+
+.public-growth-card p {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.58;
+  font-weight: 520;
+}
+
+.public-growth-footnote {
+  max-width: 920px;
+  margin: 0;
+  color: var(--primary-soft);
+}
+
 .public-contact-card {
   position: relative;
   overflow: hidden;
@@ -1651,18 +1735,16 @@ button {
   width: 100vw;
   margin-left: -50vw;
   margin-right: -50vw;
-  margin-top: 6px;
-  /* Sert çizgi yerine yumuşak geçiş */
+  margin-top: clamp(24px, 3vw, 48px);
   border-top: none;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(200, 255, 71, 0.09), transparent 26%),
-    linear-gradient(180deg, transparent 0%, rgba(5, 7, 5, 0.92) 6%, rgba(3, 4, 3, 0.98) 18%);
+  /* Footer arka plan ile sayfa arka planı aynı — görünür sınır yok */
+  background: transparent;
 }
 
 .public-footer-inner {
-  width: min(1540px, 100%);
+  width: min(1880px, 100%);
   margin: 0 auto;
-  padding: clamp(20px, 3vw, 36px) clamp(14px, 2.8vw, 38px) clamp(24px, 3.4vw, 40px);
+  padding: clamp(20px, 3vw, 36px) clamp(20px, 3vw, 40px) clamp(24px, 3.4vw, 40px);
 }
 
 .public-footer-main {
@@ -2014,6 +2096,7 @@ button {
   .public-story-grid,
   .public-support-grid,
   .public-timeline,
+  .public-growth-grid,
   .public-stat-row {
     grid-template-columns: 1fr;
   }

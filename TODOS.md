@@ -2,6 +2,17 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Business Growth Package + Background Push Readiness)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, review, and relevant frontend/mobile guidance.
+- [x] Merge previous uncommitted work to `main`, push it, delete merged local/remote feature branches, and create a clean feature branch.
+- [x] Verify current Expo push/background notification behavior from official docs before changing push code.
+- [x] Add the public landing growth/business model section with FI/EN content and nav entry.
+- [x] Add role-specific mobile value cards for student, club/organizer, and business users.
+- [x] Strengthen Expo notification config and backend push payload defaults without changing QR/scan logic.
+- [x] Run admin/mobile typecheck, lint, build, mobile push/store audits, announcement push smoke, and reward unlock push smoke.
+- [x] Update `REVIEW.md`, `PLAN.md`, `TODOS.md`, and `PROGRESS.md`.
+
 ## Current Todos (Manual QR Token Scanner Smoke)
 
 - [x] Re-read project rules, master plan, progress, todos, plan, review, and Expo/Android QA guidance.

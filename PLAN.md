@@ -2,6 +2,51 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Business Growth Package + Background Push Readiness)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/business-growth-package`
+- **Goal:** OmaLeima'yi Finlandiya ogrenci etkinlikleri icin ogrenci/organizer tarafinda kullanimi kolay, business tarafinda gelir uretebilir bir pilot paket olarak web ve mobile yuzeylerde anlatmak; push notification arka plan beklentisini mevcut Expo mimarisine uygun guclendirmek.
+
+## Business Growth Package Architectural Decisions
+
+- Public web copy `content.ts` icinde FI/EN source-of-truth olarak tutulacak; landing component sadece render edecek.
+- Business model anlatimi public landing'de ayri `#model` section olacak ve nav'dan ulasilacak.
+- Mobile tarafinda role-specific yuzeyler secilecek: student Events, club Home, business Home. Bu sayede auth, scanner, QR, reward veya admin data modeline yeni risk eklenmeyecek.
+- Push icin yeni paket kurulmayacak; mevcut `expo-notifications` zaten dogru paket. Build-time plugin config'i ve backend payload defaults guclendirilecek.
+- iOS visible remote notification ve silent/headless background notification ayrimi net tutulacak. Bu slice sadece gorunen reward/announcement/reminder notification message akisini optimize eder.
+
+## Business Growth Package Edge Cases
+
+- Android'de `channelId` yanlis verilirse kanal cihazda yoksa notification gorunmeyebilir; bu yuzden backend message'a explicit `channelId` eklenmeyecek, Expo/default channel davranisi korunacak.
+- iOS'ta app force-quit edilirse standart alert notification OS tarafindan gosterilebilir, fakat JS listener calismasi app acilana/tap edilene kadar garanti degildir.
+- Background/silent data-only push icin `_contentAvailable`, `expo-task-manager` ve iOS `remote-notification` background mode gerekir; bu urun ihtiyaci su an gorunen bildirim oldugu icin kapsam disi.
+- Copy yeni gelir iddiasini abartmamali; verified traffic/reporting gibi olculebilir pilot degerleri kullanilmali.
+
+## Prompt
+
+Sen bir Expo React Native + Next.js growth/product engineer'isin.
+Hedef: OmaLeima'ye Finlandiya appro/haalarit kulturu icin mantikli pilot business paketini web landing ve mobile role ekranlarina ekle; ogrenci, kulup/organizer ve business icin net deger onerisi yaz; mevcut push notification arka plan delivery beklentisini Expo resmi davranisina uygun guclendir.
+Mimari: mevcut content-driven public landing, Expo Router mobile role screens ve Supabase Edge Function shared Expo push helper korunacak. Yeni backend tablo/RPC yok.
+Kapsam: public landing model section, mobile student/club/business value cards, Expo notifications config/plugin defaults, Expo Push Service payload defaults, calisma dokumanlari ve validation.
+Cikti: strict typed TS/TSX/CSS degisiklikleri, gerekiyorsa public image asset, temiz typecheck/lint/build/audit sonuclari.
+Yasaklar: `any` yok, scanner/QR/RLS davranisini degistirmek yok, silent fallback yok, untracked/unrelated dosyalari revert yok, ogrenci veya organizer'a zorunlu ucret bariyeri anlatimi yok.
+Standartlar: AGENTS.md, minimal diff, FI/EN copy, existing design language, visible notification message semantics, Expo official push behavior.
+
+## Business Growth Package Validation Plan
+
+- `git --no-pager diff --check`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run audit:native-push-device-readiness`
+- `npm --prefix apps/mobile run audit:reward-notification-bridge`
+- `npm --prefix apps/mobile run audit:store-release-readiness`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/admin run smoke:announcement-push`
+- `npm --prefix apps/admin run smoke:reward-unlocked-push`
+
 ## Current Plan (Manual QR Token Scanner Smoke)
 
 - **Date:** 2026-05-05

@@ -20,6 +20,14 @@ export type PublicLandingContent = {
   footerNote: string;
   footerPhoneLabel: string;
   footerPostalLabel: string;
+  growthModelFootnote: string;
+  growthModelItems: ReadonlyArray<{
+    body: string;
+    eyebrow: string;
+    title: string;
+  }>;
+  growthModelSubtitle: string;
+  growthModelTitle: string;
   heroTitle: string;
   interestHref: string;
   interestLabel: string;
@@ -53,12 +61,11 @@ export type PublicLandingContent = {
   }>;
 };
 
-const contactHref = `mailto:${publicCompanyInfo.email}?subject=OmaLeima%20early%20access`;
 const interestHref = publicCompanyInfo.instagramUrl;
 
 export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingContent> = {
   en: {
-    contactHref,
+    contactHref: "/en/contact",
     contactLabel: "Contact us",
     description:
       "OmaLeima turns Finnish student event stamp cards into a secure digital flow: QR checkpoints, reward progress, and calm event-day operations for organizers, clubs, venues, and students.",
@@ -71,6 +78,28 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     footerNote: "Built for Finnish student culture. Early pilot conversations are open.",
     footerPhoneLabel: "Phone",
     footerPostalLabel: "Mailing address",
+    growthModelFootnote:
+      "Pilot recommendation: keep the student app and organizer core free, then charge venues and sponsors for verified traffic, offer redemption, and post-event reporting.",
+    growthModelItems: [
+      {
+        body: "Students get a reason to open the app before, during, and after the night: no lost stamp card, live progress, rewards, leaderboard, venue map, and timely announcements.",
+        eyebrow: "Students",
+        title: "Use it because the night is easier",
+      },
+      {
+        body: "Clubs can run the paperless flow for free in the pilot, then use sponsor proof, venue performance, fraud control, and announcement reach to fund the event.",
+        eyebrow: "Organizers",
+        title: "Free core, sponsor-ready operations",
+      },
+      {
+        body: "Venues pay for measurable student footfall: event participation, promoted reward slots, verified offer redemptions, and a clean report after the event.",
+        eyebrow: "Businesses",
+        title: "Revenue from verified student traffic",
+      },
+    ],
+    growthModelSubtitle:
+      "Students and clubs should not feel like the product is another cost. The business model works when OmaLeima proves attention, movement, and redemptions to venues.",
+    growthModelTitle: "A pilot package that makes sense for Finland.",
     heroTitle: "Leimas and rewards in one system.",
     interestHref,
     interestLabel: "Follow @omaleima",
@@ -82,6 +111,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     navItems: [
       { href: "#culture", label: "Culture" },
       { href: "#flow", label: "Flow" },
+      { href: "#model", label: "Model" },
       { href: "#event-day", label: "Event day" },
       { href: "#contact", label: "Contact" },
     ],
@@ -136,7 +166,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     ],
   },
   fi: {
-    contactHref,
+    contactHref: "/contact",
     contactLabel: "Ota yhteyttä",
     description:
       "OmaLeima muuttaa opiskelijatapahtumien leimakortit turvalliseksi digitaaliseksi virraksi: QR-tarkistukset, palkintojen eteneminen ja rauhallinen tapahtumapäivän operointi yhdessä paketissa.",
@@ -149,6 +179,28 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     footerNote: "Rakennettu suomalaiseen opiskelijakulttuuriin. Pilottikeskustelut ovat avoinna.",
     footerPhoneLabel: "Puhelin",
     footerPostalLabel: "Postiosoite",
+    growthModelFootnote:
+      "Pilottisuositus: opiskelijasovellus ja järjestäjän peruskäyttö pidetään ilmaisena, ja tulot haetaan yrityksiltä sekä sponsoreilta mitattavan kävijävirran, lunastusten ja raportoinnin kautta.",
+    growthModelItems: [
+      {
+        body: "Opiskelijalle syy avata sovellus syntyy illan aikana: ei kadonnutta paperikorttia, reaaliaikainen eteneminen, palkinnot, leaderboard, kartta ja tiedotteet.",
+        eyebrow: "Opiskelijat",
+        title: "Käyttö helpottaa iltaa",
+      },
+      {
+        body: "Klubi voi ajaa paperittoman pilotin ilman perusmaksua ja näyttää sponsoreille yrityskohtaiset leimat, osallistujavirran, viestinnän ja väärinkäytön eston.",
+        eyebrow: "Järjestäjät",
+        title: "Ilmainen perusmalli, sponsorivalmis data",
+      },
+      {
+        body: "Yritys maksaa mitattavasta opiskelijavirrasta: tapahtumapaikasta, näkyvästä palkintopaikasta, kuponkilunastuksista ja tapahtuman jälkiraportista.",
+        eyebrow: "Yritykset",
+        title: "Tulot todennetusta opiskelijaliikenteestä",
+      },
+    ],
+    growthModelSubtitle:
+      "Opiskelijoille ja klubeille tuotteen ei pidä tuntua uudelta kululta. Malli toimii, kun OmaLeima todistaa yrityksille huomion, liikkeen ja lunastukset.",
+    growthModelTitle: "Suomeen sopiva pilottipaketti.",
     heroTitle: "Leimat ja palkinnot yhdessä.",
     interestHref,
     interestLabel: "Seuraa @omaleima",
@@ -160,6 +212,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     navItems: [
       { href: "#culture", label: "Kulttuuri" },
       { href: "#flow", label: "Toiminta" },
+      { href: "#model", label: "Malli" },
       { href: "#event-day", label: "Tapahtumapäivä" },
       { href: "#contact", label: "Yhteys" },
     ],

@@ -219,6 +219,23 @@ export default function StudentEventsScreen() {
     ],
     [activeEvents.length, copy.student.discoveryEyebrow, copy.student.discoverySlides, language, upcomingEvents.length]
   );
+  const valueLabels = useMemo(
+    () => ({
+      eyebrow: language === "fi" ? "Miksi OmaLeima" : "Why OmaLeima",
+      title:
+        language === "fi"
+          ? "Haalarit pysyvät, paperikortti jää pois."
+          : "Keep the haalarit energy, lose the paper card.",
+      body:
+        language === "fi"
+          ? "Näet omat leimat, palkinnot, kartan ja järjestäjän tiedotteet samasta paikasta koko illan ajan."
+          : "Track leimas, rewards, the venue map, and organizer updates from one place during the whole night.",
+      pointA: language === "fi" ? "Ei kadonnutta korttia" : "No lost card",
+      pointB: language === "fi" ? "Palkinnot auki" : "Rewards unlock",
+      pointC: language === "fi" ? "Tiedot heti" : "Updates live",
+    }),
+    [language]
+  );
 
   const openEventDetail = (eventId: string): void => {
     router.push({
@@ -317,6 +334,17 @@ export default function StudentEventsScreen() {
           <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
         </View>
         <StudentProfileHeaderAction />
+      </View>
+
+      <View style={styles.studentValueCard}>
+        <Text style={styles.valueEyebrow}>{valueLabels.eyebrow}</Text>
+        <Text style={styles.valueTitle}>{valueLabels.title}</Text>
+        <Text style={styles.bodyText}>{valueLabels.body}</Text>
+        <View style={styles.valuePillRow}>
+          <Text style={styles.valuePill}>{valueLabels.pointA}</Text>
+          <Text style={styles.valuePill}>{valueLabels.pointB}</Text>
+          <Text style={styles.valuePill}>{valueLabels.pointC}</Text>
+        </View>
       </View>
 
       {eventsQuery.error ? (
@@ -490,6 +518,46 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 12,
       justifyContent: "space-between",
+    },
+    studentValueCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 10,
+      padding: 18,
+    },
+    valueEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    valuePill: {
+      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.12)" : "rgba(74, 107, 10, 0.1)",
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    valuePillRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingTop: 2,
+    },
+    valueTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     heroBand: {
       height: 260,
