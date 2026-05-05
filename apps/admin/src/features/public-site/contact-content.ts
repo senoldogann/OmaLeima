@@ -23,6 +23,7 @@ export type ContactPageContent = {
     emailLabel: string;
     errorGeneric: string;
     errorRateLimit: string;
+    errorVerification: string;
     errorValidation: string;
     eyebrow: string;
     honeypotLabel: string;
@@ -36,6 +37,8 @@ export type ContactPageContent = {
     organizationHint: string;
     organizationLabel: string;
     privacyHref: string;
+    protectionLabel: string;
+    protectionUnavailable: string;
     removeAttachmentLabel: string;
     requiredHint: string;
     submitLabel: string;
@@ -58,6 +61,7 @@ const fiContent: ContactPageContent = {
     emailLabel: "Sähköposti",
     errorGeneric: "Lomakkeen lähetys epäonnistui. Yritä hetken kuluttua uudelleen.",
     errorRateLimit: "Olet lähettänyt lomakkeen liian usein. Odota hetki ja yritä uudelleen.",
+    errorVerification: "Vahvistus epäonnistui. Päivitä sivu ja yritä uudelleen.",
     errorValidation: "Tarkista lomakkeen kentät ja yritä uudelleen.",
     eyebrow: "Yhteydenotto",
     honeypotLabel: "Älä täytä tätä kenttää",
@@ -72,6 +76,9 @@ const fiContent: ContactPageContent = {
     organizationHint: "Valinnainen. Yrityksen, klubin tai järjestön nimi.",
     organizationLabel: "Organisaatio",
     privacyHref: "/privacy",
+    protectionLabel: "Roskapostisuojaus",
+    protectionUnavailable:
+        "Lomakkeen roskapostisuojausta ei ole määritetty. Ota yhteyttä suoraan sähköpostilla.",
     removeAttachmentLabel: "Poista liite",
     requiredHint: "Pakollinen kenttä",
     submitLabel: "Lähetä viesti",
@@ -121,6 +128,7 @@ const enContent: ContactPageContent = {
     emailLabel: "Email",
     errorGeneric: "Sending failed. Please try again in a moment.",
     errorRateLimit: "You sent the form too many times. Please wait a moment and try again.",
+    errorVerification: "Verification failed. Refresh the page and try again.",
     errorValidation: "Please check the form fields and try again.",
     eyebrow: "Contact",
     honeypotLabel: "Do not fill in this field",
@@ -135,6 +143,9 @@ const enContent: ContactPageContent = {
     organizationHint: "Optional. Company, club or association name.",
     organizationLabel: "Organisation",
     privacyHref: "/en/privacy",
+    protectionLabel: "Spam protection",
+    protectionUnavailable:
+        "The form spam protection is not configured. Please contact us directly by email.",
     removeAttachmentLabel: "Remove attachment",
     requiredHint: "Required field",
     submitLabel: "Send message",

@@ -2,6 +2,39 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Contact Form Security + Business Package Follow-up)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/contact-form-hardening`
+- **Scope:** Kullanici tarafindan eklenen public contact form ve yeni frontend polish commit'lerini incelemek; gerekiyorsa Cloudflare Turnstile, RLS/storage hardening ve contact submission admin yuzeyi kontrollerini eklemek; business paket anlatimini sonraki adimlarla uyumlu tutmak.
+
+## Contact Form Security Affected Files
+
+- `apps/admin/src/app/api/contact/route.ts`
+- `apps/admin/src/features/public-site/contact-form.tsx`
+- `apps/admin/src/features/public-site/contact-content.ts`
+- `apps/admin/src/features/public-site/contact-page.tsx`
+- `apps/admin/src/app/globals.css`
+- `apps/admin/scripts/check-hosted-env.ts`
+- `apps/admin/.env.example`
+- `supabase/migrations/20260506000000_public_contact_submissions.sql`
+- `REVIEW.md`
+- `PLAN.md`
+- `TODOS.md`
+- `PROGRESS.md`
+
+## Contact Form Security Findings
+
+- Contact route'ta honeypot, elapsed-time check, MIME/magic-byte validation ve basic rate limit vardi; ancak DB migration anonim client'a `public_contact_submissions` insert ve `contact-attachments` storage upload izni veriyordu. Bu, API'deki tum bot/validation/rate-limit kontrollerinin Supabase REST/storage endpoint'leri uzerinden bypass edilebilmesi anlamina geliyordu.
+- In-memory rate limiter Vercel/serverless ortaminda instance-local kalir; tek basina yeterli degil. API zaten DB'ye yazdigi icin IP hash uzerinden DB-backed recent/daily limit daha guvenilir.
+- Cloudflare Turnstile resmi dokumanina gore client widget tek basina koruma degil; server-side Siteverify zorunlu. Tokenlar 5 dakika gecerlidir ve tek kullanimliktir. Bu yuzden client token'i server'a tasiyip Siteverify sonucuna gore submit edilmeli.
+- Contact attachment WebP magic byte kontrolu yalnizca `RIFF` prefix'ine bakiyordu; `WEBP` marker'i da dogrulanmali.
+- Hosted deployment artik contact form icin `SUPABASE_SERVICE_ROLE_KEY`, `CONTACT_IP_HASH_SECRET`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` ve `TURNSTILE_SECRET_KEY` olmadan fail-fast olmali.
+
+## Contact Form Security Review Outcome
+
+Contact form server-side validation merkezli hale getirildi: public Supabase direct insert/upload kapatildi, API service-role client ile yaziyor, Turnstile Siteverify server'da dogrulaniyor, rate limit DB-backed IP hash sayimina tasindi ve hosted env check gerekli secret'lari zorunlu kiliyor. Bu model reCAPTCHA yerine Cloudflare Turnstile secerek daha az friction ile yeterli bot korumasi saglar.
+
 ## Current Review (Business Growth Package + Background Push Readiness)
 
 - **Date:** 2026-05-05

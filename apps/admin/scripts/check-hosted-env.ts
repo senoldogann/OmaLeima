@@ -25,6 +25,13 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL."),
 });
 
+const hostedSecretEnvSchema = z.object({
+  CONTACT_IP_HASH_SECRET: z.string().min(24, "Missing CONTACT_IP_HASH_SECRET."),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1, "Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY."),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "Missing SUPABASE_SERVICE_ROLE_KEY."),
+  TURNSTILE_SECRET_KEY: z.string().min(1, "Missing TURNSTILE_SECRET_KEY."),
+});
+
 const placeholderMarkers = [
   "replace_me",
   "your_local_or_hosted_key",
@@ -34,6 +41,14 @@ const parsePublicEnvAsync = async (): Promise<z.infer<typeof publicEnvSchema>> =
   publicEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  });
+
+const parseHostedSecretEnvAsync = async (): Promise<z.infer<typeof hostedSecretEnvSchema>> =>
+  hostedSecretEnvSchema.parse({
+    CONTACT_IP_HASH_SECRET: process.env.CONTACT_IP_HASH_SECRET,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   });
 
 const readHostedModeAsync = async (): Promise<boolean> => {
@@ -82,6 +97,8 @@ const validateHostedEnvAsync = async (): Promise<HostedEnvCheckResult> => {
     if (isPlaceholderPublishableKey(publicEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)) {
       throw new Error("Hosted admin env requires a real NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, not an example placeholder.");
     }
+
+    await parseHostedSecretEnvAsync();
   }
 
   return {

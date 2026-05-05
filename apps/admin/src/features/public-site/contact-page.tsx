@@ -27,6 +27,9 @@ export const PublicContactPage = ({ locale }: PublicContactPageProps) => {
     const privacyHref = getPublicPrivacyHref(locale);
     const termsHref = getPublicTermsHref(locale);
     const localeSwitchHref = getContactPageHref(locale === "fi" ? "en" : "fi");
+    const isProtectionRequired =
+        process.env.VERCEL === "1" || process.env.REQUIRE_CONTACT_TURNSTILE === "1";
+    const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null;
 
     const navItems = [
         { href: homeHref, label: locale === "fi" ? "Etusivu" : "Home" },
@@ -79,7 +82,13 @@ export const PublicContactPage = ({ locale }: PublicContactPageProps) => {
             </section>
 
             <section className="public-shell public-contact-form-shell">
-                <ContactForm apiPath="/api/contact" content={content} locale={locale} />
+                <ContactForm
+                    apiPath="/api/contact"
+                    content={content}
+                    isProtectionRequired={isProtectionRequired}
+                    locale={locale}
+                    turnstileSiteKey={turnstileSiteKey}
+                />
             </section>
 
             <PublicFooter content={landingContent} />

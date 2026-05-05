@@ -1,5 +1,5 @@
--- Halka açık iletişim formu için tablo ve dosya yükleme bucket'ı.
--- Anonim kullanıcılar yalnızca INSERT yapabilir; okuma/güncelleme/silme yetkisi yoktur.
+-- Public contact form submissions and private attachment storage.
+-- Public clients cannot write directly; the Next.js route validates abuse controls and writes with service_role.
 
 create table if not exists public.public_contact_submissions (
   id uuid primary key default gen_random_uuid(),
@@ -24,15 +24,14 @@ create index if not exists public_contact_submissions_status_idx
 
 alter table public.public_contact_submissions enable row level security;
 
--- Anonim INSERT politikası (yalnızca yeni kayıt ekleyebilir)
 drop policy if exists "Anyone can submit a contact form" on public.public_contact_submissions;
-create policy "Anyone can submit a contact form"
+drop policy if exists "Service role can submit contact forms" on public.public_contact_submissions;
+create policy "Service role can submit contact forms"
   on public.public_contact_submissions
   for insert
-  to anon, authenticated
+  to service_role
   with check (status = 'new');
 
--- Service_role tam erişimli (Edge Function ve scheduled job senaryoları için)
 drop policy if exists "Service role can read submissions" on public.public_contact_submissions;
 create policy "Service role can read submissions"
   on public.public_contact_submissions
@@ -40,7 +39,6 @@ create policy "Service role can read submissions"
   to service_role
   using (true);
 
--- Platform admin tüm kayıtları okuyabilir
 drop policy if exists "Platform admins can read submissions" on public.public_contact_submissions;
 create policy "Platform admins can read submissions"
   on public.public_contact_submissions
@@ -48,7 +46,6 @@ create policy "Platform admins can read submissions"
   to authenticated
   using (public.is_platform_admin());
 
--- Platform admin status alanını güncelleyebilir (in_review/closed/spam)
 drop policy if exists "Platform admins can update submissions" on public.public_contact_submissions;
 create policy "Platform admins can update submissions"
   on public.public_contact_submissions
@@ -57,7 +54,6 @@ create policy "Platform admins can update submissions"
   using (public.is_platform_admin())
   with check (public.is_platform_admin());
 
--- Storage bucket: contact-attachments
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'contact-attachments',
@@ -72,15 +68,14 @@ on conflict (id) do update
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
--- Anonim kullanıcılar contact-attachments bucket'ına dosya yükleyebilir
 drop policy if exists "Anyone can upload contact attachments" on storage.objects;
-create policy "Anyone can upload contact attachments"
+drop policy if exists "Service role can upload contact attachments" on storage.objects;
+create policy "Service role can upload contact attachments"
   on storage.objects
   for insert
-  to anon, authenticated
+  to service_role
   with check (bucket_id = 'contact-attachments');
 
--- Sadece service_role indirme yapabilir
 drop policy if exists "Service role can read contact attachments" on storage.objects;
 create policy "Service role can read contact attachments"
   on storage.objects
@@ -88,7 +83,6 @@ create policy "Service role can read contact attachments"
   to service_role
   using (bucket_id = 'contact-attachments');
 
--- Platform admin contact-attachments bucket'ındaki dosyaları okuyabilir (signed URL için)
 drop policy if exists "Platform admins can read contact attachments" on storage.objects;
 create policy "Platform admins can read contact attachments"
   on storage.objects

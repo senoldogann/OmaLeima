@@ -1,5 +1,6 @@
 "use client";
 
+import Script from "next/script";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import type {
@@ -16,8 +17,31 @@ type SubmissionState =
 type ContactFormProps = {
     apiPath: string;
     content: ContactPageContent;
+    isProtectionRequired: boolean;
     locale: "fi" | "en";
+    turnstileSiteKey: string | null;
 };
+
+type TurnstileRenderOptions = {
+    action: string;
+    callback: (token: string) => void;
+    "error-callback": () => void;
+    "expired-callback": () => void;
+    sitekey: string;
+    theme: "dark";
+};
+
+type TurnstileApi = {
+    remove: (widgetId: string) => void;
+    render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+    reset: (widgetId?: string) => void;
+};
+
+declare global {
+    interface Window {
+        turnstile?: TurnstileApi;
+    }
+}
 
 const allowedMimeTypes: ReadonlyArray<string> = [
     "image/jpeg",
@@ -26,15 +50,24 @@ const allowedMimeTypes: ReadonlyArray<string> = [
 ];
 
 const maxAttachmentBytes = 5 * 1024 * 1024;
+const turnstileAction = "contact_form";
 
-export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
+export const ContactForm = ({
+    apiPath,
+    content,
+    isProtectionRequired,
+    locale,
+    turnstileSiteKey,
+}: ContactFormProps) => {
     const formId = useId();
     const fieldId = (suffix: string): string => `${formId}-${suffix}`;
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const startedAtRef = useRef<number>(0);
+    const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+    const turnstileWidgetIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        // Render saflığını korumak için Date.now() yalnızca mount sonrasında okunur.
+        // Keep render pure by reading Date.now() only after mount.
         startedAtRef.current = Date.now();
     }, []);
 
@@ -43,6 +76,93 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [consentChecked, setConsentChecked] = useState<boolean>(false);
     const [subjectValue, setSubjectValue] = useState<ContactSubjectValue | "">("");
+    const [turnstileToken, setTurnstileToken] = useState<string>("");
+
+    const hasTurnstileSiteKey = typeof turnstileSiteKey === "string" && turnstileSiteKey.length > 0;
+    const isProtectionUnavailable = isProtectionRequired && !hasTurnstileSiteKey;
+
+    const renderTurnstile = (): void => {
+        if (!hasTurnstileSiteKey || turnstileContainerRef.current === null || turnstileWidgetIdRef.current !== null) {
+            return;
+        }
+
+        const turnstile = window.turnstile;
+
+        if (typeof turnstile === "undefined") {
+            return;
+        }
+
+        turnstileWidgetIdRef.current = turnstile.render(turnstileContainerRef.current, {
+            "error-callback": () => {
+                setTurnstileToken("");
+                setState({ kind: "error", message: content.errorVerification });
+            },
+            "expired-callback": () => setTurnstileToken(""),
+            action: turnstileAction,
+            callback: (token: string) => {
+                setTurnstileToken(token);
+                setFieldErrors((current) => {
+                    if (!("turnstileToken" in current)) {
+                        return current;
+                    }
+                    const next = { ...current };
+                    delete next.turnstileToken;
+                    return next;
+                });
+            },
+            sitekey: turnstileSiteKey,
+            theme: "dark",
+        });
+    };
+
+    const resetTurnstile = (): void => {
+        setTurnstileToken("");
+
+        if (turnstileWidgetIdRef.current !== null) {
+            window.turnstile?.reset(turnstileWidgetIdRef.current);
+        }
+    };
+
+    useEffect(() => {
+        if (!hasTurnstileSiteKey || turnstileContainerRef.current === null || turnstileWidgetIdRef.current !== null) {
+            return undefined;
+        }
+
+        const turnstile = window.turnstile;
+
+        if (typeof turnstile === "undefined") {
+            return undefined;
+        }
+
+        turnstileWidgetIdRef.current = turnstile.render(turnstileContainerRef.current, {
+            "error-callback": () => {
+                setTurnstileToken("");
+                setState({ kind: "error", message: content.errorVerification });
+            },
+            "expired-callback": () => setTurnstileToken(""),
+            action: turnstileAction,
+            callback: (token: string) => {
+                setTurnstileToken(token);
+                setFieldErrors((current) => {
+                    if (!("turnstileToken" in current)) {
+                        return current;
+                    }
+                    const next = { ...current };
+                    delete next.turnstileToken;
+                    return next;
+                });
+            },
+            sitekey: turnstileSiteKey,
+            theme: "dark",
+        });
+
+        return () => {
+            if (turnstileWidgetIdRef.current !== null) {
+                window.turnstile?.remove(turnstileWidgetIdRef.current);
+                turnstileWidgetIdRef.current = null;
+            }
+        };
+    }, [content.errorVerification, hasTurnstileSiteKey, turnstileSiteKey]);
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
         const file = event.target.files?.[0];
@@ -121,11 +241,23 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
         const formElement = event.currentTarget;
         const formData = new FormData(formElement);
 
+        if (isProtectionUnavailable) {
+            setState({ kind: "error", message: content.protectionUnavailable });
+            return;
+        }
+
+        if (hasTurnstileSiteKey && turnstileToken.length === 0) {
+            setFieldErrors({ turnstileToken: content.errorVerification });
+            setState({ kind: "error", message: content.errorVerification });
+            return;
+        }
+
         formData.set("locale", locale);
         formData.set(
             "elapsedMs",
             String(Math.max(0, Date.now() - startedAtRef.current)),
         );
+        formData.set("turnstileToken", turnstileToken);
 
         setState({ kind: "submitting" });
         setFieldErrors({});
@@ -137,6 +269,7 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
             });
 
             if (response.status === 429) {
+                resetTurnstile();
                 setState({ kind: "error", message: content.errorRateLimit });
                 return;
             }
@@ -147,11 +280,13 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
                     | null;
 
                 setFieldErrors(payload?.fieldErrors ?? {});
+                resetTurnstile();
                 setState({ kind: "error", message: content.errorValidation });
                 return;
             }
 
             if (!response.ok) {
+                resetTurnstile();
                 setState({ kind: "error", message: content.errorGeneric });
                 return;
             }
@@ -160,8 +295,10 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
             setAttachmentName(null);
             setConsentChecked(false);
             setSubjectValue("");
+            resetTurnstile();
             setState({ kind: "success" });
         } catch {
+            resetTurnstile();
             setState({ kind: "error", message: content.errorGeneric });
         }
     };
@@ -184,7 +321,7 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
             noValidate
             onSubmit={handleSubmit}
         >
-            {/* Bot tuza\u011f\u0131: g\u00f6r\u00fcnmez alan, dolduran istek reddedilir */}
+            {/* Bot trap: hidden field submissions are rejected by the API. */}
             <div aria-hidden="true" className="contact-honeypot">
                 <label htmlFor={fieldId("website")}>{content.honeypotLabel}</label>
                 <input
@@ -371,8 +508,31 @@ export const ContactForm = ({ apiPath, content, locale }: ContactFormProps) => {
                 </p>
             ) : null}
 
+            {hasTurnstileSiteKey ? (
+                <div className="contact-turnstile">
+                    <Script
+                        async
+                        defer
+                        onLoad={renderTurnstile}
+                        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                        strategy="afterInteractive"
+                    />
+                    <span className="contact-label">{content.protectionLabel}</span>
+                    <div ref={turnstileContainerRef} />
+                    {fieldErrors.turnstileToken ? (
+                        <span className="contact-hint">{fieldErrors.turnstileToken}</span>
+                    ) : null}
+                </div>
+            ) : null}
+
+            {isProtectionUnavailable ? (
+                <p className="contact-error" role="alert">
+                    {content.protectionUnavailable}
+                </p>
+            ) : null}
+
             <div className="contact-actions">
-                <button className="contact-submit" disabled={isSubmitting} type="submit">
+                <button className="contact-submit" disabled={isSubmitting || isProtectionUnavailable} type="submit">
                     {isSubmitting ? content.submittingLabel : content.submitLabel}
                 </button>
             </div>

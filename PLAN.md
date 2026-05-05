@@ -2,6 +2,46 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Contact Form Security + Business Package Follow-up)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/contact-form-hardening`
+- **Goal:** Public contact formu production'a yakisir sekilde bot, direct Supabase bypass, dosya upload ve admin review risklerine karsi sertlestirmek; Cloudflare Turnstile'i server-side validation ile eklemek; business paket anlatiminin yeni contact funnel ile uyumlu kalmasini saglamak.
+
+## Contact Form Security Architectural Decisions
+
+- Public client Supabase'e dogrudan contact submission veya attachment yazamayacak. Tüm submit akisi Next.js `/api/contact` route'undan gececek.
+- API route'u hosted ortamda service role key ile DB/storage yazacak; bu key sadece server-side kullanilacak.
+- Turnstile, reCAPTCHA yerine tercih edilecek: friction dusuk, Cloudflare tarafinda domain-bound token, server-side Siteverify ve action/hostname kontrolu var.
+- Rate limiting in-memory degil DB-backed olacak: `ip_hash` + `created_at` penceresi uzerinden recent ve daily limit sayilacak.
+- Local development icin Turnstile secret yoksa API submit'i dev ortamda calisabilir; hosted/Vercel ortaminda env check fail-fast olacak.
+
+## Contact Form Security Edge Cases
+
+- Turnstile tokenlari tek kullanimlik oldugu icin server 400/429/500 cevaplarindan sonra client widget reset edilmeli.
+- Attachment upload basarili ama DB insert fail olursa orphan object kalmamasi icin upload cleanup denenmeli.
+- Direct Supabase REST insert/upload denemeleri RLS ile reddedilmeli; anon insert/upload policy kalmamali.
+- `cf-connecting-ip` varsa once o kullanilmali; yoksa `x-forwarded-for` ilk IP fallback'i ve son olarak `x-real-ip`.
+- Hosted env eksikse form sessiz gecmemeli; build/prebuild veya API 503 ile acik hata vermeli.
+
+## Prompt
+
+Sen bir Next.js public form, Supabase RLS/storage ve Cloudflare Turnstile guvenlik uzmanisin.
+Hedef: OmaLeima public contact formunu production icin harden et; client-side form UX'i korurken direct Supabase bypass'i kapat, Turnstile server-side verification ekle, DB-backed rate limit uygula, attachment upload'i service-role route'a tasi ve admin contact submissions yuzeyini bozmadan validation kos.
+Mimari: Next.js App Router route handler, Supabase service-role server client, private storage bucket, RLS deny-by-default, Cloudflare Turnstile Siteverify ve mevcut contact form client component'i kullanilir.
+Kapsam: contact API, public contact form/page content, contact migration policies, hosted env check/example, calisma dokumanlari ve validation. Scanner/mobile QR logic ve unrelated frontend polish bu slice disinda.
+Cikti: strict typed TS/TSX/SQL degisiklikleri, clean admin typecheck/lint/build, focused contact route smoke ve security notes.
+Yasaklar: `any` yok, client'a service role secret sizdirmak yok, anon direct DB/storage write yok, silent fallback yok, unrelated user commitlerini revert yok.
+Standartlar: AGENTS.md, explicit errors, structured logs, Cloudflare official Turnstile server-side validation guidance, Supabase zero-trust RLS.
+
+## Contact Form Security Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- focused static checks: anon contact insert/upload policies absent, Turnstile token wired client->server, hosted env check requires contact secrets
+
 ## Current Plan (Business Growth Package + Background Push Readiness)
 
 - **Date:** 2026-05-05

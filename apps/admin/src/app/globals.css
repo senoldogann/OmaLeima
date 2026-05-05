@@ -3418,6 +3418,13 @@ button {
   line-height: 1.5;
 }
 
+.contact-turnstile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 92px;
+}
+
 .contact-actions {
   display: flex;
   justify-content: flex-end;

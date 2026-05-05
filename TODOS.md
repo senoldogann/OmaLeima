@@ -2,6 +2,18 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Contact Form Security + Business Package Follow-up)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and relevant security/web/Expo guidance.
+- [x] Create a feature branch from the user's current local frontend/contact work without reverting their commits.
+- [x] Inspect the contact route, public form, admin submissions panel, RLS migration, and storage policy.
+- [x] Add Cloudflare Turnstile client widget and mandatory hosted server-side Siteverify validation.
+- [x] Move contact writes/uploads behind the Next.js API service-role path and close anon direct Supabase insert/upload policies.
+- [x] Replace process-local rate limiting with DB-backed IP-hash recent/daily limits.
+- [x] Add hosted env checks and env examples for service-role, Turnstile, and IP hash secret.
+- [x] Run admin typecheck, lint, build, diff checks, and focused contact hardening checks.
+- [x] Update `PROGRESS.md` with final validation and remaining deployment env steps.
+
 ## Current Todos (Business Growth Package + Background Push Readiness)
 
 - [x] Re-read project rules, master plan, progress, todos, plan, review, and relevant frontend/mobile guidance.
