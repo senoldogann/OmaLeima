@@ -6,6 +6,7 @@ import {
 import { getPublicLandingContent } from "@/features/public-site/content";
 import { PublicFooter } from "@/features/public-site/public-footer";
 import { PublicNavbar } from "@/features/public-site/public-navbar";
+import { ScrollRevealProvider } from "@/features/public-site/scroll-reveal";
 import {
     getPublicHomeHref,
     getPublicPrivacyHref,
@@ -35,6 +36,7 @@ export const PublicContactPage = ({ locale }: PublicContactPageProps) => {
 
     return (
         <main className="public-home public-home-v2 public-contact-page">
+            <ScrollRevealProvider />
             <PublicNavbar
                 contactHref={getContactPageHref(locale)}
                 contactLabel={landingContent.contactLabel}

@@ -5,6 +5,7 @@ import { getPublicLandingContent, type PublicLocale } from "@/features/public-si
 import { PublicFooter } from "@/features/public-site/public-footer";
 import { ContactIcon, InstagramIcon } from "@/features/public-site/public-icons";
 import { PublicNavbar } from "@/features/public-site/public-navbar";
+import { ScrollRevealProvider } from "@/features/public-site/scroll-reveal";
 
 type PublicLandingPageProps = {
   locale: PublicLocale;
@@ -96,6 +97,7 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
 
   return (
     <main className="public-home public-home-v2">
+      <ScrollRevealProvider />
       <PublicNavbar
         contactHref={content.contactHref}
         contactLabel={content.contactLabel}

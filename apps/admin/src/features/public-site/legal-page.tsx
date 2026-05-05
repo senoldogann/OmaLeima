@@ -6,6 +6,7 @@ import {
   type LegalDocumentType,
 } from "@/features/public-site/legal-content";
 import { PublicFooter } from "@/features/public-site/public-footer";
+import { ScrollRevealProvider } from "@/features/public-site/scroll-reveal";
 import { PublicNavbar } from "@/features/public-site/public-navbar";
 import {
   getPublicHomeHref,
@@ -39,6 +40,7 @@ export const PublicLegalPage = ({ documentType, locale }: PublicLegalPageProps) 
 
   return (
     <main className="public-home public-home-v2 public-legal-page">
+      <ScrollRevealProvider />
       <PublicNavbar
         contactHref={landingContent.contactHref}
         contactLabel={landingContent.contactLabel}

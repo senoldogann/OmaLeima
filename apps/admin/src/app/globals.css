@@ -1023,6 +1023,37 @@ button {
   font-weight: 400;
 }
 
+/* ─────────────────────────────────────────────
+   Scroll reveal – section'lar görünüme girerken
+   aşağıdan yukarı yükselir
+   ──────────────────────────────────────────── */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.public-shell {
+  opacity: 0;
+  transform: translateY(32px);
+}
+
+.public-shell[data-visible="true"] {
+  animation: reveal-up 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Arka arkaya gelen section'larda hafif gecikme */
+.public-shell[data-visible="true"]:nth-child(2) { animation-delay: 0.04s; }
+.public-shell[data-visible="true"]:nth-child(3) { animation-delay: 0.08s; }
+.public-shell[data-visible="true"]:nth-child(4) { animation-delay: 0.06s; }
+.public-shell[data-visible="true"]:nth-child(5) { animation-delay: 0.04s; }
+
 .public-home-v2 {
   width: min(1880px, 100%);
   justify-content: flex-start;
@@ -1245,8 +1276,8 @@ button {
 .public-stat-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 4px;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 .public-stat-card {
@@ -1457,10 +1488,10 @@ button {
   flex-direction: column;
   gap: 18px;
   padding: clamp(18px, 2.8vw, 34px);
-  border: 1px solid rgba(200, 255, 71, 0.13);
+  border: none;
   background:
-    radial-gradient(circle at 12% 0%, rgba(200, 255, 71, 0.18), transparent 34%),
-    linear-gradient(135deg, rgba(18, 26, 14, 0.96), rgba(8, 11, 9, 0.98));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 20%),
+    rgba(5, 7, 5, 0.92);
 }
 
 .public-growth-heading {
@@ -1502,8 +1533,8 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    rgba(5, 8, 5, 0.58);
+    linear-gradient(160deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012)),
+    rgba(8, 10, 8, 0.72);
 }
 
 .public-growth-card span {
@@ -1625,7 +1656,7 @@ button {
 .public-gallery-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
   grid-auto-flow: dense;
 }
 
@@ -1986,10 +2017,10 @@ button {
 .public-legal-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 24px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 20px 0;
+  border-bottom: none;
 }
 
 .public-legal-card:first-child {
@@ -1997,7 +2028,6 @@ button {
 }
 
 .public-legal-card:last-child {
-  border-bottom: none;
   padding-bottom: 0;
 }
 
@@ -2364,7 +2394,7 @@ button {
   /* Galeri: mobilde 2 sütun, landscape yine span 2 */
   .public-gallery-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    gap: 4px;
   }
 
   .public-gallery-item {
@@ -2915,6 +2945,8 @@ button {
   padding: clamp(24px, 3vw, 44px);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 14px;
   min-height: 280px;
   justify-content: flex-end;
@@ -2929,6 +2961,11 @@ button {
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin: 0;
+  text-align: center;
+}
+
+.public-contact-hero .eyebrow {
+  text-align: center;
 }
 
 .public-contact-intro {
@@ -2937,7 +2974,8 @@ button {
   line-height: 1.55;
   font-weight: 400;
   margin: 0;
-  max-width: 64ch;
+  max-width: 56ch;
+  text-align: center;
 }
 
 .public-contact-description {
@@ -2945,16 +2983,17 @@ button {
   font-size: 14px;
   line-height: 1.65;
   margin: 0;
-  max-width: 64ch;
+  max-width: 56ch;
+  text-align: center;
 }
 
 .public-contact-meta {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
   margin: 18px 0 0;
   padding: 18px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .public-contact-meta div {
@@ -3242,6 +3281,7 @@ button {
   font-size: 14px;
   line-height: 1.55;
 }
+
 /* === Contact submissions admin panel === */
 .contact-submissions {
   display: grid;
