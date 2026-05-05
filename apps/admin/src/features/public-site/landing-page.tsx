@@ -39,55 +39,76 @@ const featureImages = {
   },
 } as const;
 
-/* Tüm HD sahne fotoğrafları – tek galeri */
+/* Flow adımları için arka plan fotoğrafları – her karta özgü */
+const timelineCardImages = [
+  "/images/public/gen-scanning-qr.png",
+  "/images/public/omaleima-scan.png",
+  "/images/public/omaleima-student-reward.png",
+] as const;
+
+/* Pilottimalli kartları için arka plan fotoğrafları – her karta özgü */
+const growthCardImages = [
+  "/images/public/gen-app-screen.png",
+  "/images/public/omaleima-organizer-operations.png",
+  "/images/public/omaleima-night-flow.png",
+] as const;
+
+/* Atmosfer galerisi – 8 benzersiz fotoğraf, bento ızgara düzeni */
 const scenePhotos = [
   {
-    alt: "Opiskelija haalarissa baaritiskillä – QR-skannaus käynnissä.",
+    alt: "QR-skannaus baaritiskillä – yhdellä näytöllä leima kirjautuu.",
+    span: "wide" as const,
+    height: 887,
+    src: "/images/public/omaleima-venue-scan.png",
+    width: 1774,
+  },
+  {
+    alt: "Opiskelijat tapahtumassa – tunnelma tiivistyy.",
+    span: "normal" as const,
+    height: 1254,
+    src: "/images/public/gen-student-event.png",
+    width: 1254,
+  },
+  {
+    alt: "Opiskelija katselee appro-tapahtumaansa puhelimesta.",
+    span: "normal" as const,
+    height: 1254,
+    src: "/images/public/gen-student-scene.png",
+    width: 1254,
+  },
+  {
+    alt: "Palkinto aukeaa – haalarimerkki lunastetaan tapahtumassa.",
     span: "wide" as const,
     height: 941,
-    src: "/images/public/scene-bar-qr-scan-hd.png",
+    src: "/images/public/gen-reward-moment.png",
     width: 1672,
   },
   {
-    alt: "Opiskelija pitää tapahtuman hallussa: leimakortti puhelimessa.",
-    span: "normal" as const,
-    height: 1254,
-    src: "/images/public/scene-tapahtuma-hallussa-hd.png",
-    width: 1254,
-  },
-  {
-    alt: "Yksi skannaus – leima heti.",
-    span: "normal" as const,
-    height: 1254,
-    src: "/images/public/scene-yksi-scan-hd.png",
-    width: 1254,
-  },
-  {
-    alt: "Opiskelijat nauttivat illasta leimat taskussa.",
+    alt: "Opiskelijaryhmä pitää QR-koodia pystyssä yöllisellä kadulla.",
     span: "wide" as const,
     height: 941,
-    src: "/images/public/scene-haalarit-students-hd.png",
+    src: "/images/public/gen-students-group.png",
     width: 1672,
   },
   {
-    alt: "Leimat mukana – appro seuraa joka askeleessa.",
+    alt: "OmaLeima-sovellus reaaliaikainen käyttöliittymä.",
     span: "normal" as const,
-    height: 1254,
-    src: "/images/public/scene-leimat-mukana-hd.png",
-    width: 1254,
+    height: 1619,
+    src: "/images/public/gen-venue-interior.png",
+    width: 971,
   },
   {
-    alt: "Palkinto aukeaa – haalarimerkki lunastettu.",
+    alt: "Opiskelijat käyttävät OmaLeimaa puhelimella ja kannettavalla.",
     span: "normal" as const,
-    height: 1254,
-    src: "/images/public/scene-palkinto-auki-hd.png",
-    width: 1254,
+    height: 1568,
+    src: "/images/public/gen-app-mockup.png",
+    width: 1003,
   },
   {
-    alt: "Palkinto: haalarimerkki omaan haalariisi.",
-    span: "normal" as const,
+    alt: "QR-skannausasema baarissa – leima rekisteröityy heti.",
+    span: "wide" as const,
     height: 941,
-    src: "/images/public/scene-reward-haalarimerkki-hd.png",
+    src: "/images/public/omaleima-bar-qr-scan.png",
     width: 1672,
   },
 ] as const;
@@ -227,11 +248,22 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
           </div>
 
           <div className="public-timeline">
-            {content.timelineItems.map((item) => (
+            {content.timelineItems.map((item, idx) => (
               <article key={item.step} className="public-timeline-card">
-                <span>{item.step}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="public-timeline-card-bg"
+                  fill
+                  sizes="(max-width: 980px) 100vw, 33vw"
+                  src={timelineCardImages[idx as 0 | 1 | 2]}
+                />
+                <div aria-hidden="true" className="public-timeline-card-overlay" />
+                <div className="public-timeline-card-content">
+                  <span>{item.step}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -249,11 +281,22 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
           </div>
 
           <div className="public-growth-grid">
-            {content.growthModelItems.map((item) => (
+            {content.growthModelItems.map((item, idx) => (
               <article key={item.eyebrow} className="public-growth-card">
-                <span>{item.eyebrow}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
+                <Image
+                  alt=""
+                  aria-hidden="true"
+                  className="public-growth-card-bg"
+                  fill
+                  sizes="(max-width: 980px) 100vw, 33vw"
+                  src={growthCardImages[idx as 0 | 1 | 2]}
+                />
+                <div aria-hidden="true" className="public-growth-card-overlay" />
+                <div className="public-growth-card-content">
+                  <span>{item.eyebrow}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
               </article>
             ))}
           </div>

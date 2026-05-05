@@ -1520,20 +1520,47 @@ button {
 }
 
 .public-timeline-card {
-  min-height: 160px;
+  position: relative;
+  overflow: hidden;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 7px;
-  padding: 16px;
-  border: 1px solid rgba(200, 255, 71, 0.12);
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(200, 255, 71, 0.07), transparent 28%),
-    rgba(255, 255, 255, 0.025);
+  border: none;
+  background: #050705;
 }
 
-.public-timeline-card span {
+/* Kart arka plan fotoğrafı – fill ile mutlak konumlanır */
+.public-timeline-card-bg {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Metin okunaklılığı için altı koyu gradient */
+.public-timeline-card-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    170deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) 55%,
+    rgba(0, 0, 0, 0.86) 100%
+  );
+}
+
+.public-timeline-card-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+}
+
+/* Timeline kart span (01/02/03) stili content div içinde */
+.public-timeline-card-content span {
   color: var(--primary);
   font-size: 12px;
   font-weight: 800;
@@ -1582,19 +1609,47 @@ button {
 }
 
 .public-growth-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 18px;
+  border: none;
+  background: #050705;
+}
+
+/* Kart arka plan fotoğrafı */
+.public-growth-card-bg {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Altından yukarı koyu gradient – metin okunaklılığı */
+.public-growth-card-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    170deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.54) 52%,
+    rgba(0, 0, 0, 0.88) 100%
+  );
+}
+
+.public-growth-card-content {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 220px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 18px;
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012)),
-    rgba(8, 10, 8, 0.72);
 }
 
-.public-growth-card span {
+/* Growth kart içerik metin stilleri */
+.public-growth-card-content span {
   color: var(--primary);
   font-size: 11px;
   font-weight: 900;
@@ -1602,7 +1657,7 @@ button {
   text-transform: uppercase;
 }
 
-.public-growth-card h3 {
+.public-growth-card-content h3 {
   color: var(--text-primary);
   font-size: clamp(17px, 1.5vw, 22px);
   line-height: 1.08;
@@ -1610,7 +1665,7 @@ button {
   font-weight: 850;
 }
 
-.public-growth-card p {
+.public-growth-card-content p {
   color: var(--text-secondary);
   font-size: 13.5px;
   line-height: 1.58;
@@ -1620,7 +1675,7 @@ button {
 .public-growth-footnote {
   max-width: 920px;
   margin: 0;
-  color: var(--primary-soft);
+  color: var(--text-secondary);
 }
 
 .public-contact-card {
@@ -1720,11 +1775,9 @@ button {
 .public-gallery-item {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: #050705;
   aspect-ratio: 1 / 1;
-  min-height: 180px;
 }
 
 /* Galeri içindeki resimler container'ı tam doldurur – siyah boşluk kalmaz */
@@ -1738,10 +1791,10 @@ button {
   display: block;
 }
 
-/* Landscape fotoğraflar 2 sütun kaplar – sinematik oran */
+/* Landscape fotoğraflar 2 sütun kaplar – 2:1 oran normal item yüksekliğiyle eşleşir */
 .public-gallery-wide {
   grid-column: span 2;
-  aspect-ratio: 2.4 / 1;
+  aspect-ratio: 2 / 1;
 }
 
 /* Foto galerisi – bento ızgara */
