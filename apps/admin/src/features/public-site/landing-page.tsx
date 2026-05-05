@@ -38,85 +38,63 @@ const featureImages = {
   },
 } as const;
 
-/* Foto-galeri bento ızgarası için görseller */
-const galleryImages = [
+/* Tüm HD sahne fotoğrafları – tek galeri */
+const scenePhotos = [
+  {
+    alt: "Opiskelija haalarissa baaritiskillä – QR-skannaus käynnissä.",
+    span: "wide" as const,
+    height: 941,
+    src: "/images/public/scene-bar-qr-scan-hd.png",
+    width: 1672,
+  },
   {
     alt: "Järjestäjä seuraa tapahtumaa OmaLeiman kautta.",
-    className: "public-mosaic-item public-mosaic-wide",
+    span: "normal" as const,
     height: 941,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/scene-organizer-operations.png",
+    src: "/images/public/scene-organizer-hd.png",
     width: 1672,
   },
   {
     alt: "Opiskelija pitää tapahtuman hallussa: leimakortti puhelimessa.",
-    className: "public-mosaic-item",
+    span: "normal" as const,
     height: 1254,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/scene-event-in-hand.png",
+    src: "/images/public/scene-tapahtuma-hallussa-hd.png",
     width: 1254,
   },
   {
-    alt: "Opiskelijat näyttävät palkintoa ja puhelinta tapahtumaillassa.",
-    className: "public-mosaic-item public-mosaic-wide",
-    height: 941,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/gen-students-group.png",
-    width: 1672,
-  },
-  {
-    alt: "QR-koodi skannataan nopeasti baaritiskillä.",
-    className: "public-mosaic-item",
-    height: 887,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/omaleima-scan.png",
-    width: 1774,
-  },
-  {
-    alt: "Opiskelijavirta siirtyy klubille ja tapahtumailta jatkuu.",
-    className: "public-mosaic-item",
-    height: 941,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/omaleima-night-flow.png",
-    width: 1672,
-  },
-  {
-    alt: "QR-skannaus tapahtuu nopeasti tiskilla.",
-    className: "public-mosaic-item public-mosaic-portrait",
+    alt: "Yksi skannaus – leima heti.",
+    span: "normal" as const,
     height: 1254,
-    imageClassName: "public-image-position-right",
-    src: "/images/public/omaleima-venue-scan.png",
+    src: "/images/public/scene-yksi-scan-hd.png",
     width: 1254,
   },
-] as const;
-
-const eventDayPhotos = [
   {
-    alt: "QR scan tapahtuman aikana.",
-    caption: "QR check nopeasti",
-    className: "public-scene-card public-scene-card-feature",
+    alt: "Opiskelijat nauttivat illasta leimat taskussa.",
+    span: "wide" as const,
     height: 941,
-    imageClassName: "public-image-position-right",
-    src: "/images/public/scene-bar-qr-scan.png",
+    src: "/images/public/scene-haalarit-students-hd.png",
     width: 1672,
   },
   {
-    alt: "Palkintohetki opiskelijoiden kanssa.",
-    caption: "Palkinto aukeaa oikeassa hetkessä",
-    className: "public-scene-card",
-    height: 941,
-    imageClassName: "public-image-position-center",
-    src: "/images/public/scene-reward-haalarimerkki.png",
-    width: 1672,
-  },
-  {
-    alt: "Opiskelija nayttaa QR-koodia tiskilla seuraavaa leimaa varten.",
-    caption: "Seuraava checkpoint löytyy heti",
-    className: "public-scene-card",
+    alt: "Leimat mukana – appro seuraa joka askeleessa.",
+    span: "normal" as const,
     height: 1254,
-    imageClassName: "public-image-position-right",
-    src: "/images/public/scene-scan-counter-side.png",
+    src: "/images/public/scene-leimat-mukana-hd.png",
     width: 1254,
+  },
+  {
+    alt: "Palkinto aukeaa – haalarimerkki lunastettu.",
+    span: "normal" as const,
+    height: 1254,
+    src: "/images/public/scene-palkinto-auki-hd.png",
+    width: 1254,
+  },
+  {
+    alt: "Palkinto: haalarimerkki omaan haalariisi.",
+    span: "normal" as const,
+    height: 941,
+    src: "/images/public/scene-reward-haalarimerkki-hd.png",
+    width: 1672,
   },
 ] as const;
 
@@ -179,35 +157,35 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         </div>
       </section>
 
-      {/* Atmosfer foto-galerisi – bento grid */}
+      {/* Atmosfer foto-galerisi – tüm HD sahne fotoğrafları */}
       <section
         aria-label={locale === "fi" ? "Tapahtumaillan tunnelma" : "Event night atmosphere"}
-        className="public-shell public-mosaic-shell"
+        className="public-shell public-gallery-shell"
       >
-        <div className="public-mosaic-header">
+        <div className="public-gallery-header">
           <p className="eyebrow">
             {locale === "fi" ? "Approkulttuuri elää" : "Appro culture lives"}
           </p>
-          <h2 className="public-mosaic-heading">
+          <h2 className="public-gallery-heading">
             {locale === "fi"
               ? "Leimat, haalarit ja yöt joita ei unohda."
               : "Leimas, haalarit and nights worth remembering."}
           </h2>
         </div>
-        <div className="public-photo-mosaic">
-          {galleryImages.map((img) => (
+        <div className="public-gallery-grid">
+          {scenePhotos.map((photo) => (
             <div
-              key={img.src}
-              className={`${img.className} public-image-surface public-media-soft`}
+              key={photo.src}
+              className={`public-gallery-item public-image-surface public-media-soft${photo.span === "wide" ? " public-gallery-wide" : ""}`}
             >
               <Image
-                alt={img.alt}
-                className={`public-image public-image-cover ${img.imageClassName}`}
-                height={img.height}
+                alt={photo.alt}
+                className="public-image public-image-cover public-image-position-center"
+                height={photo.height}
                 loading="eager"
                 sizes="(max-width: 600px) 100vw, (max-width: 980px) 50vw, 33vw"
-                src={img.src}
-                width={img.width}
+                src={photo.src}
+                width={photo.width}
               />
             </div>
           ))}
@@ -241,37 +219,6 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             src={featureImages.scan.src}
             width={featureImages.scan.width}
           />
-        </div>
-      </section>
-
-      {/* Foto-odakli ikinci galeri */}
-      <section
-        aria-label={locale === "fi" ? "Tapahtumapäivän hetket" : "Event day moments"}
-        className="public-shell public-scene-shell"
-      >
-        <div className="public-scene-heading">
-          <p className="eyebrow">{locale === "fi" ? "Tapahtumaillan hetket" : "Moments from the night"}</p>
-          <h2 className="public-section-heading-title">
-            {locale === "fi"
-              ? "Opiskelija, skanneri ja järjestäjä samassa virrassa."
-              : "Students, scanners, and organisers in the same flow."}
-          </h2>
-        </div>
-        <div className="public-scene-grid" role="list">
-          {eventDayPhotos.map((img) => (
-            <article key={img.src} className={`${img.className} public-image-surface public-media-soft`} role="listitem">
-              <Image
-                alt={img.alt}
-                className={`public-image public-image-cover ${img.imageClassName}`}
-                height={img.height}
-                loading="eager"
-                sizes="(max-width: 980px) 100vw, 50vw"
-                src={img.src}
-                width={img.width}
-              />
-              <span className="public-scene-caption">{img.caption}</span>
-            </article>
-          ))}
         </div>
       </section>
 

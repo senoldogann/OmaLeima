@@ -1591,6 +1591,60 @@ button {
   font-weight: 500;
 }
 
+/* ─────────────────────────────────────────────
+   HD sahne fotoğrafları – birleşik galeri
+   ──────────────────────────────────────────── */
+
+.public-gallery-shell {
+  padding: clamp(16px, 2.6vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.013);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+}
+
+.public-gallery-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.public-gallery-heading {
+  font-size: clamp(20px, 2.4vw, 32px);
+  line-height: 1.07;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+  color: var(--text-primary);
+  max-width: 680px;
+  text-wrap: balance;
+}
+
+/* Masonry ızgara: 3 sütun desktop, hizalı satırlar */
+.public-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  grid-auto-flow: dense;
+}
+
+.public-gallery-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  aspect-ratio: 1 / 1;
+  min-height: 180px;
+}
+
+/* Landscape (16:9) fotoğraflar 2 sütun kaplar */
+.public-gallery-wide {
+  grid-column: span 2;
+  aspect-ratio: 16 / 9;
+}
+
 /* Foto galerisi – bento ızgara */
 .public-mosaic-shell {
   padding: clamp(16px, 2.6vw, 30px);
@@ -1868,6 +1922,8 @@ button {
   flex-direction: column;
   gap: 10px;
   max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .public-legal-hero-copy h1 {
@@ -1918,6 +1974,7 @@ button {
   gap: 0;
   max-width: 800px;
   width: 100%;
+  margin: 0 auto;
 }
 
 .public-legal-card {
@@ -2240,6 +2297,14 @@ button {
     display: flex;
   }
 
+  /* Mobil açık menü: arka plan tamamen opak */
+  .public-navbar-inner[data-open="true"] {
+    background: rgba(3, 5, 3, 0.97);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
   .public-nav-links {
     width: 100%;
     margin-top: 12px;
@@ -2285,8 +2350,19 @@ button {
   .public-stack,
   .public-timeline-shell,
   .public-mosaic-shell,
-  .public-scene-shell {
+  .public-scene-shell,
+  .public-gallery-shell {
     padding: 14px;
+  }
+
+  /* Galeri: mobilde 2 sütun, landscape yine span 2 */
+  .public-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .public-gallery-item {
+    min-height: 140px;
   }
 
   .public-copy-v2 h1 {
