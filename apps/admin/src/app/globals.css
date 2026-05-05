@@ -1033,6 +1033,7 @@ button {
     opacity: 0;
     transform: translateY(32px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1049,10 +1050,21 @@ button {
 }
 
 /* Arka arkaya gelen section'larda hafif gecikme */
-.public-shell[data-visible="true"]:nth-child(2) { animation-delay: 0.04s; }
-.public-shell[data-visible="true"]:nth-child(3) { animation-delay: 0.08s; }
-.public-shell[data-visible="true"]:nth-child(4) { animation-delay: 0.06s; }
-.public-shell[data-visible="true"]:nth-child(5) { animation-delay: 0.04s; }
+.public-shell[data-visible="true"]:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.public-shell[data-visible="true"]:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.public-shell[data-visible="true"]:nth-child(4) {
+  animation-delay: 0.06s;
+}
+
+.public-shell[data-visible="true"]:nth-child(5) {
+  animation-delay: 0.04s;
+}
 
 .public-home-v2 {
   width: min(1880px, 100%);
@@ -1447,6 +1459,39 @@ button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* ─────────────────────────────────────────────
+   Flow + Pilottimalli birleşik bölüm
+   ──────────────────────────────────────────── */
+
+.public-combined-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.public-combined-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(24px, 3vw, 42px);
+}
+
+.public-combined-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0 clamp(24px, 3vw, 42px);
+}
+
+.public-combined-growth {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: clamp(24px, 3vw, 42px);
+  background: linear-gradient(180deg, rgba(200, 255, 71, 0.025) 0%, transparent 28%);
 }
 
 .public-section-heading {
@@ -1913,25 +1958,25 @@ button {
 
 .public-footer-legal-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .public-footer-chip {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(200, 255, 71, 0.14);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 700;
+  display: block;
+  padding: 3px 0;
+  border: none;
+  background: none;
+  border-radius: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.18s;
 }
 
 .public-footer-chip:hover {
-  background: rgba(200, 255, 71, 0.08);
+  background: none;
+  color: var(--text-primary);
 }
 
 .public-legal-page {
@@ -2385,10 +2430,16 @@ button {
   .public-hero-v2,
   .public-stack,
   .public-timeline-shell,
+  .public-combined-flow,
+  .public-combined-growth,
   .public-mosaic-shell,
   .public-scene-shell,
   .public-gallery-shell {
     padding: 14px;
+  }
+
+  .public-combined-divider {
+    margin: 0 14px;
   }
 
   /* Galeri: mobilde 2 sütun, landscape yine span 2 */

@@ -217,42 +217,49 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         </div>
       </section>
 
-      {/* Nasıl çalışır – zaman çizelgesi */}
-      <section className="public-shell public-timeline-shell" id="flow">
-        <div className="public-section-heading">
-          <p className="eyebrow">Flow</p>
-          <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
+      {/* Nasıl çalışır + Pilottimalli – birleşik bölüm */}
+      <section className="public-shell public-combined-section" id="flow">
+        {/* Adım akışı */}
+        <div className="public-combined-flow">
+          <div className="public-section-heading">
+            <p className="eyebrow">Flow</p>
+            <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
+          </div>
+
+          <div className="public-timeline">
+            {content.timelineItems.map((item) => (
+              <article key={item.step} className="public-timeline-card">
+                <span>{item.step}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
 
-        <div className="public-timeline">
-          {content.timelineItems.map((item) => (
-            <article key={item.step} className="public-timeline-card">
-              <span>{item.step}</span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+        {/* Bölüm ayıraç çizgisi */}
+        <div className="public-combined-divider" aria-hidden="true" />
 
-      <section className="public-shell public-growth-shell" id="model">
-        <div className="public-growth-heading">
-          <p className="eyebrow">{locale === "fi" ? "Pilottimalli" : "Pilot model"}</p>
-          <h2>{content.growthModelTitle}</h2>
-          <p>{content.growthModelSubtitle}</p>
-        </div>
+        {/* Pilottimalli */}
+        <div className="public-combined-growth" id="model">
+          <div className="public-growth-heading">
+            <p className="eyebrow">{locale === "fi" ? "Pilottimalli" : "Pilot model"}</p>
+            <h2>{content.growthModelTitle}</h2>
+            <p>{content.growthModelSubtitle}</p>
+          </div>
 
-        <div className="public-growth-grid">
-          {content.growthModelItems.map((item) => (
-            <article key={item.eyebrow} className="public-growth-card">
-              <span>{item.eyebrow}</span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
+          <div className="public-growth-grid">
+            {content.growthModelItems.map((item) => (
+              <article key={item.eyebrow} className="public-growth-card">
+                <span>{item.eyebrow}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
 
-        <p className="public-growth-footnote">{content.growthModelFootnote}</p>
+          <p className="public-growth-footnote">{content.growthModelFootnote}</p>
+        </div>
       </section>
 
       {/* Etkinlik günü bölümü – ödül görseli + destek kartları */}
