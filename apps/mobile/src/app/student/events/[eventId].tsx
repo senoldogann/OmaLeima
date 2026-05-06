@@ -684,7 +684,7 @@ export default function StudentEventDetailScreen() {
               </View>
               <View style={themeStyles.metaCard}>
                 <View style={themeStyles.metaCardIcon}>
-                  <AppIcon name="calendar" size={14} color={theme.colors.lime} />
+                  <AppIcon name="clock" size={14} color={theme.colors.lime} />
                 </View>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Aika" : "Time"}</Text>
                 <Text style={themeStyles.metaCardValue}>
@@ -839,7 +839,7 @@ export default function StudentEventDetailScreen() {
                         ]}
                       >
                         <View style={themeStyles.rewardBadgeIcon}>
-                          <AppIcon name="check" size={11} color={theme.colors.textPrimary} />
+                          <AppIcon name="star" size={11} color={theme.colors.textPrimary} />
                         </View>
                         <Text style={themeStyles.rewardRequirementText}>
                           {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
@@ -964,7 +964,7 @@ export default function StudentEventDetailScreen() {
                                 ]}
                               >
                                 <View style={themeStyles.rewardBadgeIcon}>
-                                  <AppIcon name="check" size={11} color={theme.colors.textPrimary} />
+                                  <AppIcon name="star" size={11} color={theme.colors.textPrimary} />
                                 </View>
                                 <Text style={themeStyles.rewardRequirementText}>
                                   {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}

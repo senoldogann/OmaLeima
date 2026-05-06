@@ -8,6 +8,9 @@ type AppIconName =
   | "logout"
   | "bell"
   | "check"
+  | "check-circle"
+  | "circle"
+  | "clock"
   | "mail"
   | "scan"
   | "history"
@@ -17,11 +20,13 @@ type AppIconName =
   | "globe"
   | "support"
   | "send"
+  | "star"
   | "tools"
   | "x"
   | "chevron-left"
   | "chevron-right"
-  | "chevron-down";
+  | "chevron-down"
+  | "id-card";
 
 type AppIconProps = {
   name: AppIconName;
@@ -410,6 +415,104 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="2"
+          />
+        </Svg>
+      );
+    case "check-circle":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="12" fill={color} opacity={0.22} r="8" />
+          <Path
+            d="m8.2 12.3 2.35 2.35 5.25-5.25"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </Svg>
+      );
+    case "circle":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "clock":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="12" fill={color} opacity={0.14} r="8" />
+          <Path
+            d="M12 7.5v4.75l2.75 1.6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "star":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M12 2.5l2.63 5.33 5.88.86-4.26 4.15 1.01 5.86L12 15.97l-5.26 2.73 1.01-5.86L3.49 8.69l5.88-.86L12 2.5Z"
+            fill={color}
+            opacity={0.22}
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "id-card":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Rect fill={color} height="13" opacity={0.13} rx="2.5" width="18" x="3" y="5.5" />
+          <Path
+            d="M5.5 5.5h13A2.5 2.5 0 0 1 21 8v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16V8a2.5 2.5 0 0 1 2.5-2.5Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle cx="9" cy="11" fill={color} opacity={0.22} r="2.2" />
+          <Path
+            d="M6 16.5c.4-1.9 1.6-2.8 3-2.8s2.6.9 3 2.8"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+          />
+          <Path
+            d="M14.5 10.5h3M14.5 13.5h2"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
           />
         </Svg>
       );

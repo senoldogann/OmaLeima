@@ -257,7 +257,7 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                             >
                                 <AppIcon
                                     color={announcement.isRead ? theme.colors.lime : theme.colors.textPrimary}
-                                    name="check"
+                                    name={announcement.isRead ? "check-circle" : "circle"}
                                     size={15}
                                 />
                                 <Text style={styles.secondaryButtonText}>{announcement.isRead ? labels.read : labels.markRead}</Text>
