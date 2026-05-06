@@ -2,6 +2,27 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Business Owner Onboarding Handoff)
+
+- [x] Inspect approved business application RPC, admin route pattern, reviewed card UI, and auth admin helpers.
+- [x] Update working docs with the owner onboarding handoff scope and REASONS prompt.
+- [x] Add atomic owner access RPC migration.
+- [x] Add service-role Edge Function for owner auth/profile/membership handoff.
+- [x] Add admin API route, read-model fields, and reviewed application UI action.
+- [x] Run admin/Supabase validation.
+- [x] Deploy the owner access Edge Function, apply the hosted migration, and deploy the admin web route.
+- [x] Record outcome and remaining hosted deploy/smoke notes.
+
+## Current Todos (Scanner QR Login Redirect Regression)
+
+- [x] Re-read AGENTS, master plan, progress, todos, and plan before editing.
+- [x] Inspect business QR login, session access query, auth layout redirects, business layout guards, and provisioning Edge Function contract.
+- [x] Update working docs with the scanner QR redirect regression scope and REASONS prompt.
+- [x] Invalidate/refetch session access after scanner provisioning and verify business scanner access before navigation.
+- [x] Suppress announcement popup and push-routing bridges during scanner provisioning and for scanner-only sessions.
+- [x] Run mobile typecheck, lint, and diff checks.
+- [x] Record the outcome and remaining physical-device smoke need in `PROGRESS.md`.
+
 ## Current Todos (Anonymous Auth Security Hardening)
 
 - [x] Re-read AGENTS, master plan, progress, todos, and plan before continuing.
@@ -10,11 +31,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Verify hosted anonymous sign-in now succeeds with a real Supabase client smoke.
 - [x] Inspect anonymous auth trigger, profile RLS, business application intake, support request policy, and device-token registration flow.
 - [x] Update working docs with the security hardening scope and REASONS prompt.
-- [ ] Add the corrective migration for suspended-by-default anonymous profiles, protected profile fields, business application policy removal, and active-profile support gates.
-- [ ] Harden `register-device-token` with an active-profile check.
-- [ ] Apply/deploy the Supabase migration/function changes to hosted Supabase using Supabase tooling.
-- [ ] Run hosted anonymous/RLS/security smokes.
-- [ ] Complete the project-wide readiness/gap matrix for admin business account creation, organizer/admin actions, and remaining release risks.
+- [x] Add the corrective migration for suspended-by-default anonymous profiles, protected profile fields, business application policy removal, and active-profile support gates.
+- [x] Harden `register-device-token` with an active-profile check.
+- [x] Apply/deploy the Supabase migration/function changes to hosted Supabase using Supabase tooling.
+- [x] Run hosted anonymous/RLS/security smokes.
+- [x] Update the business application smoke fixture path so direct DB intake remains closed after the RLS hardening.
+- [x] Complete the project-wide readiness/gap matrix for admin business account creation, organizer/admin actions, and remaining release risks.
 
 ## Current Todos (Owner QR Scanner Provisioning)
 

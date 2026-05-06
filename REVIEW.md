@@ -2,6 +2,44 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Business Owner Onboarding Handoff)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Scope:** Admin business application post-approval owner account and membership handoff.
+
+## Business Owner Onboarding Handoff Findings
+
+- `approve_business_application_atomic()` already creates a `businesses` row linked to the original `business_applications.id`, but it does not create a business owner auth user or `business_staff` membership.
+- The admin panel currently explains that operators should use bootstrap scripts after approval. That is not a production-ready admin workflow because it leaves account delivery outside the UI.
+- The existing review API pattern is safe: Next.js route checks platform-admin access, then invokes a Supabase Edge Function that uses service-role and database RPCs. The owner onboarding action should follow the same pattern.
+- Owner account linking needs to be idempotent. Re-clicking the action should reuse the existing profile/auth user and existing `business_staff` membership instead of creating duplicates.
+- Scanner staff no longer needs password delivery because owner-QR scanner provisioning exists. The business owner handoff should therefore focus on owner access and clear scanner QR onboarding instructions.
+
+## Business Owner Onboarding Handoff Review Outcome
+
+This slice should add a post-approval admin action that creates or reuses the contact email auth user, links it as `BUSINESS_OWNER` + `business_staff OWNER`, and returns a recovery/onboarding link when Supabase can generate one. The reviewed applications read-model should show whether a business and owner membership already exist.
+
+## Current Review (Scanner QR Login Redirect Regression)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Scope:** Business owner QR scanner login flow after anonymous-auth security hardening.
+
+## Scanner QR Login Redirect Regression Findings
+
+- Business QR login intentionally starts with `supabase.auth.signInAnonymously()` and then calls `provision-business-scanner-session` to activate the anonymous profile as `BUSINESS_STAFF/SCANNER`.
+- After the security hardening, anonymous profiles are correctly created as `SUSPENDED`. This is safe, but it creates a short-lived transitional state during QR provisioning.
+- The mobile auth layout and login screen both subscribe to `useSessionAccessQuery(session.user.id)`. As soon as anonymous sign-in succeeds, that query can resolve the transitional `SUSPENDED/STUDENT` profile as `unsupported` before provisioning finishes.
+- React Query can then keep the stale `session-access` result for the same anonymous user id. Even if the Edge Function successfully updates the profile to `ACTIVE` and creates `business_staff`, the business layout may still read the cached unsupported access and bounce the user away from scanner mode.
+- `BusinessQrSignIn` currently navigates directly to `provisionedSession.homeHref` after the Edge Function response without invalidating/refetching session access for the newly provisioned anonymous user.
+- `AnnouncementPopupBridge` also enabled on any authenticated session, not on resolved role access. During QR provisioning this let public popup announcements render over the business login screen while anonymous scanner activation was still in flight.
+- Scanner-only devices are operational kiosks, so announcement popups and announcement push deep-links should not compete with the scanner route.
+
+## Scanner QR Login Redirect Regression Review Outcome
+
+The QR login should explicitly treat anonymous sign-in as a provisioning transaction: capture the anonymous user id, call the provisioning Edge Function, invalidate/refetch `session-access` for that user, verify the resolved access is business/scanner, and only then navigate to `/business/scanner`. Announcement popup/push bridges must wait for resolved non-scanner access and stay quiet during provisioning. This keeps suspended-by-default anonymous auth secure without letting stale access cache or modal bridges redirect/distract the scanner back to login.
+
 ## Current Review (Anonymous Auth Security Hardening)
 
 - **Date:** 2026-05-06

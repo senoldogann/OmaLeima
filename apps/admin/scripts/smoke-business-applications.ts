@@ -99,6 +99,43 @@ const runSqlAsync = async (sql: string): Promise<void> => {
   );
 };
 
+const runSqlJsonAsync = <T,>(sql: string): T => {
+  const output = execFileSync(
+    dockerBinary,
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-t",
+      "-A",
+      "-c",
+      sql,
+    ],
+    {
+      encoding: "utf8",
+      stdio: "pipe",
+    }
+  ).trim();
+  const jsonLine = output
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("{") || line.startsWith("["));
+
+  if (typeof jsonLine === "undefined") {
+    throw new Error(`Expected SQL JSON output, got: ${output}`);
+  }
+
+  return JSON.parse(jsonLine) as T;
+};
+
+const sqlLiteral = (value: string): string => `'${value.replaceAll("'", "''")}'`;
+
 const createCookieBackedClientAsync = async (email: string, password: string): Promise<CookieBackedClient> => {
   const cookieJar = new Map<string, string>();
   const hydrateFromResponse = (response: Response): void => {
@@ -157,64 +194,91 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
 };
 
 const insertPendingApplicationAsync = async (
-  client: AuthedClient,
   suffix: string,
   createdAt: string,
   websiteUrl: string
 ): Promise<BusinessApplicationRow> => {
-  const { data, error } = await client.supabase
-    .from("business_applications")
-    .insert({
-      address: `${suffix} Street 1`,
-      business_name: `Smoke Venue ${suffix}`,
-      city: "Helsinki",
-      contact_email: `smoke-${suffix.toLowerCase()}@example.test`,
-      contact_name: "Smoke Operator",
-      country: "Finland",
-      created_at: createdAt,
-      message: `Smoke queue check ${suffix}`,
-      status: "PENDING",
-      website_url: websiteUrl,
-    })
-    .select("id,business_name,status,rejection_reason")
-    .single<BusinessApplicationRow>();
-
-  if (error !== null) {
-    throw new Error(`Failed to insert smoke business application ${suffix}: ${error.message}`);
-  }
-
-  return data;
+  return runSqlJsonAsync<BusinessApplicationRow>(`
+    insert into public.business_applications (
+      address,
+      business_name,
+      city,
+      contact_email,
+      contact_name,
+      country,
+      created_at,
+      message,
+      status,
+      website_url
+    )
+    values (
+      ${sqlLiteral(`${suffix} Street 1`)},
+      ${sqlLiteral(`Smoke Venue ${suffix}`)},
+      'Helsinki',
+      ${sqlLiteral(`smoke-${suffix.toLowerCase()}@example.test`)},
+      'Smoke Operator',
+      'Finland',
+      ${sqlLiteral(createdAt)}::timestamptz,
+      ${sqlLiteral(`Smoke queue check ${suffix}`)},
+      'PENDING',
+      ${sqlLiteral(websiteUrl)}
+    )
+    returning json_build_object(
+      'id', id,
+      'business_name', business_name,
+      'status', status,
+      'rejection_reason', rejection_reason
+    );
+  `);
 };
 
 const insertPendingApplicationBatchAsync = async (
-  client: AuthedClient,
   suffix: string,
   count: number,
   createdAtStart: number
 ): Promise<BusinessApplicationRow[]> => {
-  const rows = Array.from({ length: count }, (_, index) => ({
-    address: `${suffix}-BATCH-${index + 1} Street 1`,
-    business_name: `Smoke Venue ${suffix}-BATCH-${index + 1}`,
-    city: "Helsinki",
-    contact_email: `smoke-${suffix.toLowerCase()}-batch-${index + 1}@example.test`,
-    contact_name: "Smoke Operator",
-    country: "Finland",
-    created_at: new Date(createdAtStart + index * 1000).toISOString(),
-    message: `Smoke queue batch ${suffix}-${index + 1}`,
-    status: "PENDING",
-    website_url: "https://example.test/review",
-  }));
-  const { data, error } = await client.supabase
-    .from("business_applications")
-    .insert(rows)
-    .select("id,business_name,status,rejection_reason")
-    .returns<BusinessApplicationRow[]>();
+  const rowsSql = Array.from({ length: count }, (_, index) => {
+    const rowSuffix = `${suffix}-BATCH-${index + 1}`;
 
-  if (error !== null) {
-    throw new Error(`Failed to insert smoke business application batch ${suffix}: ${error.message}`);
-  }
+    return `(
+      ${sqlLiteral(`${rowSuffix} Street 1`)},
+      ${sqlLiteral(`Smoke Venue ${rowSuffix}`)},
+      'Helsinki',
+      ${sqlLiteral(`smoke-${suffix.toLowerCase()}-batch-${index + 1}@example.test`)},
+      'Smoke Operator',
+      'Finland',
+      ${sqlLiteral(new Date(createdAtStart + index * 1000).toISOString())}::timestamptz,
+      ${sqlLiteral(`Smoke queue batch ${suffix}-${index + 1}`)},
+      'PENDING',
+      'https://example.test/review'
+    )`;
+  }).join(",\n");
 
-  return data;
+  return runSqlJsonAsync<BusinessApplicationRow[]>(`
+    with inserted as (
+      insert into public.business_applications (
+        address,
+        business_name,
+        city,
+        contact_email,
+        contact_name,
+        country,
+        created_at,
+        message,
+        status,
+        website_url
+      )
+      values ${rowsSql}
+      returning id, business_name, status, rejection_reason, created_at
+    )
+    select coalesce(json_agg(json_build_object(
+      'id', id,
+      'business_name', business_name,
+      'status', status,
+      'rejection_reason', rejection_reason
+    ) order by created_at), '[]'::json)
+    from inserted;
+  `);
 };
 
 const assertAdminVisibleRowsAsync = async (client: AuthedClient, ids: string[]): Promise<void> => {
@@ -403,26 +467,22 @@ const run = async (): Promise<void> => {
   try {
     const existingPendingCount = await fetchPendingApplicationCountAsync(adminDataClient);
     const approvedCandidate = await insertPendingApplicationAsync(
-      adminDataClient,
       `${suffix}-APPROVE`,
       new Date(createdAtBase).toISOString(),
       "https://example.test/review"
     );
     const rejectedCandidate = await insertPendingApplicationAsync(
-      adminDataClient,
       `${suffix}-REJECT`,
       new Date(createdAtBase + 1000).toISOString(),
       "https://example.test/review"
     );
     const unsafeWebsiteValue = "javascript:alert('xss')";
     const forbiddenCandidate = await insertPendingApplicationAsync(
-      adminDataClient,
       `${suffix}-DENY`,
       new Date(createdAtBase + 2000).toISOString(),
       unsafeWebsiteValue
     );
     const paginatedCandidates = await insertPendingApplicationBatchAsync(
-      adminDataClient,
       suffix,
       18,
       createdAtBase + 3000

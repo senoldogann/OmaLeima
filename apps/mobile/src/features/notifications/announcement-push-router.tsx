@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import type * as ExpoNotifications from "expo-notifications";
 
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { readNotificationsModuleAsync } from "@/lib/push";
 import { useSession } from "@/providers/session-provider";
 
@@ -93,8 +94,9 @@ export const AnnouncementPushRouterBridge = (): null => {
   const router = useRouter();
   const { session, isLoading } = useSession();
   const userId = session?.user.id ?? null;
+  const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
-    isEnabled: userId !== null,
+    isEnabled: userId !== null && !isScannerProvisioningActive,
     userId: userId ?? "",
   });
   const [pendingPayload, setPendingPayload] = useState<AnnouncementPushPayload | null>(null);
@@ -167,7 +169,12 @@ export const AnnouncementPushRouterBridge = (): null => {
   }, []);
 
   useEffect(() => {
-    if (pendingPayload === null || isLoading || accessQuery.isLoading) {
+    if (pendingPayload === null || isLoading || accessQuery.isLoading || isScannerProvisioningActive) {
+      return;
+    }
+
+    if (accessQuery.data?.isBusinessScannerOnly === true) {
+      setPendingPayload(null);
       return;
     }
 
@@ -187,7 +194,15 @@ export const AnnouncementPushRouterBridge = (): null => {
       },
     });
     setPendingPayload(null);
-  }, [accessQuery.data?.area, accessQuery.isLoading, isLoading, pendingPayload, router]);
+  }, [
+    accessQuery.data?.area,
+    accessQuery.data?.isBusinessScannerOnly,
+    accessQuery.isLoading,
+    isLoading,
+    isScannerProvisioningActive,
+    pendingPayload,
+    router,
+  ]);
 
   return null;
 };

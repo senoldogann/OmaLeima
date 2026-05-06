@@ -12,6 +12,7 @@ import {
 } from "@/features/announcements/announcements";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useSession } from "@/providers/session-provider";
 
 const resolveAnnouncementReturnToPath = (
@@ -44,23 +45,31 @@ export const AnnouncementPopupBridge = () => {
   const { language, theme } = useUiPreferences();
   const { session, isLoading } = useSession();
   const userId = session?.user.id ?? "";
+  const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
-    isEnabled: !isLoading && session !== null,
+    isEnabled: !isLoading && session !== null && !isScannerProvisioningActive,
     userId,
   });
+  const canShowAnnouncements =
+    !isLoading &&
+    session !== null &&
+    !isScannerProvisioningActive &&
+    typeof accessQuery.data !== "undefined" &&
+    accessQuery.data.area !== "unsupported" &&
+    !accessQuery.data.isBusinessScannerOnly;
   const announcementsQuery = useActiveAnnouncementsQuery({
-    isEnabled: !isLoading && session !== null,
+    isEnabled: canShowAnnouncements,
     userId,
   });
   const acknowledgeMutation = useAcknowledgeAnnouncementMutation();
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
   const activeAnnouncement = announcementsQuery.data?.[0] ?? null;
   const announcement =
-    activeAnnouncement !== null && activeAnnouncement.announcementId !== dismissedAnnouncementId
+    canShowAnnouncements && activeAnnouncement !== null && activeAnnouncement.announcementId !== dismissedAnnouncementId
       ? activeAnnouncement
       : null;
   useAnnouncementRealtimeInvalidation({
-    isEnabled: !isLoading && session !== null,
+    isEnabled: canShowAnnouncements,
     userId,
   });
 

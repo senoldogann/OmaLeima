@@ -797,6 +797,10 @@ button {
   white-space: pre-wrap;
 }
 
+.breakable-text {
+  overflow-wrap: anywhere;
+}
+
 .fraud-review-item {
   align-items: stretch;
 }

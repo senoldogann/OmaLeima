@@ -3,6 +3,7 @@ export type BusinessApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type BusinessApplicationRecord = {
   id: string;
   address: string | null;
+  businessId: string | null;
   businessName: string;
   city: string;
   contactEmail: string;
@@ -14,6 +15,11 @@ export type BusinessApplicationRecord = {
   phone: string | null;
   rejectionReason: string | null;
   reviewedAt: string | null;
+  ownerAccess: {
+    ownerEmail: string | null;
+    ownerUserId: string | null;
+    status: "MISSING_BUSINESS" | "MISSING_OWNER" | "OWNER_READY" | "NOT_APPLICABLE";
+  };
   status: BusinessApplicationStatus;
   websiteUrl: string | null;
 };
@@ -45,5 +51,17 @@ export type ReviewActionState = {
 
 export type ReviewMutationResponse = {
   message: string;
+  status: string | null;
+};
+
+export type OwnerAccessMutationResponse = {
+  authUserCreated?: boolean;
+  businessId?: string;
+  businessName?: string;
+  message: string;
+  onboardingLink?: string | null;
+  onboardingLinkError?: string | null;
+  ownerEmail?: string;
+  ownerUserId?: string;
   status: string | null;
 };

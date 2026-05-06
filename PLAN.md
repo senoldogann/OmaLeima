@@ -2,6 +2,86 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Business Owner Onboarding Handoff)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Goal:** Admin business application approve sonrasi business owner hesabini ve membership'i panelden uretilebilir, tekrar tiklanabilir ve audit'lenebilir hale getirmek.
+
+## Business Owner Onboarding Handoff Architectural Decisions
+
+- New SQL RPC `create_business_owner_access_atomic` admin actor'u, business'i ve owner profile'i doğrular; profile'i `BUSINESS_OWNER/ACTIVE` yapar ve `business_staff OWNER/ACTIVE` membership'i idempotent olarak yazar.
+- New Edge Function `admin-create-business-owner-access` platform admin bearer token'iyle calisir, approved application id'den business/contact context'ini bulur, auth user yoksa contact email ile olusturur, RPC'yi cagirir ve mümkünse Supabase recovery link uretir.
+- Next.js admin route mevcut review transport pattern'ine benzer sekilde once admin access check yapar, sonra Edge Function'i invoke eder.
+- Read-model approved applications icin linked business id ve owner membership durumunu getirir; UI reviewed cards uzerinde `Create owner access` aksiyonu ve scanner QR onboarding notu gosterir.
+- Scanner worker account delivery bu slice'a eklenmez; owner login sonrasi mobile business profile QR ile staff cihaz provisioning akisi kullanilir.
+
+## Business Owner Onboarding Handoff Edge Cases
+
+- Application approved ama business row eksikse action `BUSINESS_NOT_FOUND` donmeli.
+- Contact email ile profile zaten varsa yeni auth user yaratmadan mevcut user owner membership'e baglanmali.
+- Auth create basarili ama RPC fail olursa hata acik detayla donmeli; sessiz partial success yok.
+- Recovery link generate edilemezse owner access yine create edilebilir, ama UI bunu onboarding link unavailable olarak gostermeli.
+
+## Business Owner Onboarding Handoff Prompt
+
+Sen Supabase Auth Admin, PostgreSQL RPC ve Next.js admin panel konusunda deneyimli bir full-stack guvenlik muhendisisin.
+Hedef: Approved business application sonrasinda admin panelden owner auth/profile/membership access'i olusturan ve scanner QR onboarding'i baslatmaya yeterli handoff bilgisini gosteren production-ready vertical slice uret.
+Mimari: Next.js admin route -> Supabase Edge Function -> service-role Supabase Auth Admin + atomic PostgreSQL RPC. Read-model business/application/link durumunu server-side okur, UI idempotent aksiyon gosterir.
+Kapsam: business applications admin read-model/types/components/routes, Supabase migration, Edge Function, working docs ve validation. Pricing, public website, student mobile ve unrelated admin sayfalarina dokunma.
+Cikti: strict typed TS/TSX/SQL/Deno TS degisiklikleri, explicit error statuses, owner membership idempotency, validation komutlari.
+Yasaklar: `any` yok, plaintext password UI'da gostermek yok, client-side role mutation yok, scanner worker password modeli eklemek yok, unrelated dirty worktree revert yok.
+Standartlar: AGENTS.md, zero-trust backend, service-role only privileged writes, audit log, minimal diff.
+
+## Business Owner Onboarding Handoff Validation Plan
+
+- `supabase db lint --local`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- Hosted deploy/apply after local validation if production smoke is needed
+
+## Current Plan (Scanner QR Login Redirect Regression)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Goal:** Owner QR okutulduktan sonra scanner session provisioning basariliysa kullaniciyi stale `SUSPENDED` access cache'i yuzunden tekrar login/auth yuzeyine dusurmemek.
+
+## Scanner QR Login Redirect Regression Architectural Decisions
+
+- QR login flow anonymous auth'u bir son durum degil, provisioning transaction baslangici olarak ele alacak.
+- `signInAnonymously()` sonucu user id zorunlu olarak okunacak; user id yoksa acik hata verilecek.
+- Provisioning Edge Function basarili dondugunde `sessionAccessQueryKey(userId)` invalidate/refetch edilecek ve `fetchSessionAccessAsync(userId)` ile backend'deki son profil/membership state dogrulanacak.
+- Navigation sadece access `area = business`, `homeHref = /business/scanner`, ve `isBusinessScannerOnly = true` oldugunda yapilacak. Aksi durumda session sign-out ile fail-closed davranis korunacak.
+- Announcement popup ve push-router bridge'leri provisioning transaction'i sirasinda ve scanner-only access icin devre disi kalacak; duyuru UI'i rol/access cozulmeden anonymous login yuzeyine bind olmayacak.
+- Existing email/password business login ve student Google login akislarina dokunulmayacak.
+
+## Scanner QR Login Redirect Regression Edge Cases
+
+- QR token gecersiz/expired ise mevcut catch + signOut davranisi korunur.
+- Provisioning basarili ama session access hala scanner degilse kullanici login'e sessizce donmek yerine actionable error gormeli.
+- Query cache temizleme navigation'dan once yapilmali; aksi halde business layout stale unsupported state ile render edebilir.
+- Parent auth layout kisa sureli suspended anonymous state'i gorebilir; ancak flow sonunda cache refetch ve explicit navigation scanner state'i stabilize eder.
+- Popup duyurular access cozulmeden acilirsa provisioning overlay'in uzerinde modal gosterebilir; bu nedenle popup query enable kosulu session degil, cozulmus non-scanner access olmali.
+
+## Scanner QR Login Redirect Regression Prompt
+
+Sen Expo Router, Supabase Auth ve React Query session guard konusunda deneyimli bir mobil auth muhendisisin.
+Hedef: Business owner QR scanner login akisi anonymous auth hardening sonrasi stale session-access cache yuzunden tekrar login'e dusmesin; provisioning sonrasi access'i refetch edip dogrulayarak scanner ekranina stabilize et.
+Mimari: mevcut `BusinessQrSignIn`, `fetchSessionAccessAsync`, `sessionAccessQueryKey`, Supabase anonymous auth ve provisioning Edge Function kontrati korunur; sadece mobile QR login transaction sequencing duzeltilir.
+Kapsam: mobile auth QR sign-in component, working docs ve targeted mobile validation. Supabase SQL, Edge Functions, public web ve unrelated UI dosyalarina dokunma.
+Cikti: strict typed TSX degisikligi, acik hata mesajlari, cache invalidation/refetch ve validation komutlari.
+Yasaklar: `any` yok, sessiz fallback yok, scanner provisioning basarisizken role'i client'ta fake etme yok, unrelated dirty worktree revert yok.
+Standartlar: AGENTS.md, fail-closed auth, explicit errors, minimal diff.
+
+## Scanner QR Login Redirect Regression Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+- Physical iPhone/Android QR provisioning smoke after build refresh
+
 ## Current Plan (Anonymous Auth Security Hardening)
 
 - **Date:** 2026-05-06

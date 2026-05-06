@@ -2,23 +2,29 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CameraView, type BarcodeScanningResult, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppIcon } from "@/components/app-icon";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
-import { fetchSessionAccessAsync, type SessionAccess } from "@/features/auth/session-access";
+import { fetchSessionAccessAsync, sessionAccessQueryKey, type SessionAccess } from "@/features/auth/session-access";
 import {
   interactiveSurfaceShadowStyle,
   type MobileTheme,
 } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { provisionBusinessScannerSessionAsync } from "@/features/scanner/business-scanner-login";
+import { setScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { supabase } from "@/lib/supabase";
 
 const requiresWebPanel = (access: SessionAccess): boolean =>
   access.primaryRole === "PLATFORM_ADMIN";
 
+const isProvisionedScannerAccess = (access: SessionAccess): boolean =>
+  access.area === "business" && access.homeHref === "/business/scanner" && access.isBusinessScannerOnly;
+
 const BusinessQrSignIn = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const theme = useAppTheme();
   const { language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
@@ -54,27 +60,44 @@ const BusinessQrSignIn = () => {
     }
 
     setIsProvisioning(true);
+    setScannerProvisioningActive(true);
     setErrorMessage(null);
 
     try {
       await supabase.auth.signOut();
-      const { error: anonymousSignInError } = await supabase.auth.signInAnonymously();
+      const { data: anonymousSignInData, error: anonymousSignInError } = await supabase.auth.signInAnonymously();
 
       if (anonymousSignInError !== null) {
         throw new Error(`Anonymous scanner sign-in failed: ${anonymousSignInError.message}`);
+      }
+
+      const scannerUserId = anonymousSignInData.user?.id;
+
+      if (typeof scannerUserId !== "string") {
+        throw new Error("Anonymous scanner sign-in completed without a user id.");
       }
 
       const provisionedSession = await provisionBusinessScannerSessionAsync({
         businessName: null,
         qrToken,
       });
+      await queryClient.invalidateQueries({ queryKey: sessionAccessQueryKey(scannerUserId) });
+      const access = await fetchSessionAccessAsync(scannerUserId);
 
+      if (!isProvisionedScannerAccess(access)) {
+        throw new Error(
+          `Scanner provisioning did not produce active scanner access. Area: ${access.area}. Profile status: ${access.profileStatus}.`
+        );
+      }
+
+      queryClient.setQueryData(sessionAccessQueryKey(scannerUserId), access);
       setIsScannerOpen(false);
       router.replace(provisionedSession.homeHref);
     } catch (error) {
       await supabase.auth.signOut();
       setErrorMessage(error instanceof Error ? error.message : "Unknown QR scanner sign-in error.");
     } finally {
+      setScannerProvisioningActive(false);
       setIsProvisioning(false);
     }
   };

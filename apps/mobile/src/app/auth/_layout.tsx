@@ -5,13 +5,15 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useSession } from "@/providers/session-provider";
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading, session } = useSession();
+  const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
-    isEnabled: isAuthenticated && session !== null,
+    isEnabled: isAuthenticated && session !== null && !isScannerProvisioningActive,
   });
 
   if (isLoading) {
@@ -24,6 +26,10 @@ export default function AuthLayout() {
         </InfoCard>
       </AppScreen>
     );
+  }
+
+  if (isScannerProvisioningActive) {
+    return <Slot />;
   }
 
   if (isAuthenticated) {

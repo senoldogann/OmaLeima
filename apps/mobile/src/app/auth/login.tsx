@@ -12,6 +12,7 @@ import { LoginHero } from "@/features/auth/components/login-hero";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useSession } from "@/providers/session-provider";
 
 type LoginMode = "student" | "business";
@@ -21,15 +22,16 @@ export default function LoginScreen() {
   const { copy, language, setLanguage } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
+  const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
-    isEnabled: isAuthenticated && session !== null,
+    isEnabled: isAuthenticated && session !== null && !isScannerProvisioningActive,
   });
   const [mode, setMode] = useState<LoginMode>("student");
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState<boolean>(false);
-  const isResolvingAccess = !isLoading && isAuthenticated && accessQuery.isLoading;
+  const isResolvingAccess = !isLoading && isAuthenticated && !isScannerProvisioningActive && accessQuery.isLoading;
 
-  if (!isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
+  if (!isScannerProvisioningActive && !isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
     return <Redirect href={accessQuery.data.homeHref} />;
   }
 
