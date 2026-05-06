@@ -121,6 +121,14 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
         body: "Reward milestones, venue participation, and announcements stay visible across the full event window.",
         title: "Reward visibility",
       },
+      {
+        body: "Dynamic QR codes update continuously, preventing screenshots and shared passes from cheating the system.",
+        title: "Fraud prevention",
+      },
+      {
+        body: "Track active venues, total scans, and student participation in real-time throughout the night.",
+        title: "Live analytics",
+      },
     ],
     timelineItems: [
       {
@@ -201,6 +209,14 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
       {
         body: "Palkintorajojen eteneminen, yritysten osallistuminen ja tiedotteet pysyvät näkyvillä koko tapahtuman ajan.",
         title: "Palkintojen näkyvyys",
+      },
+      {
+        body: "Dynaamiset QR-koodit päivittyvät jatkuvasti, mikä estää kuvakaappausten ja jaettujen passien käytön.",
+        title: "Väärinkäytösten esto",
+      },
+      {
+        body: "Seuraa aktiivisia yrityksiä, kokonaisskannauksia ja opiskelijoiden osallistumista livenä koko illan ajan.",
+        title: "Reaaliaikainen seuranta",
       },
     ],
     timelineItems: [
