@@ -3846,6 +3846,44 @@ button {
   padding-top: clamp(18px, 2.5vw, 28px);
 }
 
+@media (max-width: 980px) {
+  .public-poster-grid,
+  .public-spotlight-shell,
+  .public-proof-shell,
+  .public-page-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .public-step-grid,
+  .public-poster-stat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .public-final-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .public-actions-end {
+    justify-content: flex-start;
+  }
+
+  .public-spotlight-shell .public-spotlight-copy,
+  .public-proof-shell .public-proof-copy,
+  .public-poster-grid .public-poster-copy,
+  .public-page-grid .public-page-aside {
+    order: -1;
+  }
+
+  .public-poster-media,
+  .public-spotlight-media,
+  .public-proof-media {
+    min-height: 280px;
+    margin-top: 8px;
+  }
+}
+
 .contact-form {
   display: flex;
   flex-direction: column;
