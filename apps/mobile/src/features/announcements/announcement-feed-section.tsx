@@ -8,6 +8,7 @@ import { InfoCard } from "@/components/info-card";
 import {
   useAcknowledgeAnnouncementMutation,
   useAnnouncementFeedQuery,
+  useAnnouncementRealtimeInvalidation,
   useRecordAnnouncementImpressionsMutation,
   useSetAnnouncementNotificationPreferenceMutation,
   type AnnouncementFeedItem,
@@ -23,6 +24,7 @@ type AnnouncementFeedSectionProps = {
   maxItems: number;
   onViewAllPress?: () => void;
   presentation?: "stack" | "rail";
+  returnToPathname?: string;
   title: string;
   userId: string | null;
   viewAllLabel?: string;
@@ -47,6 +49,7 @@ export const AnnouncementFeedSection = ({
   maxItems,
   onViewAllPress,
   presentation = "stack",
+  returnToPathname,
   title,
   userId,
   viewAllLabel,
@@ -74,6 +77,11 @@ export const AnnouncementFeedSection = ({
     styles.feedRailContent,
     visibleItems.length === 1 ? styles.feedRailContentSingle : null,
   ];
+
+  useAnnouncementRealtimeInvalidation({
+    isEnabled: userId !== null,
+    userId: userId ?? "",
+  });
 
   const labels = {
     ctaFallback: language === "fi" ? "Avaa" : "Open",
@@ -208,6 +216,7 @@ export const AnnouncementFeedSection = ({
       pathname: detailPathname,
       params: {
         announcementId: announcement.announcementId,
+        returnTo: returnToPathname,
       },
     });
   };

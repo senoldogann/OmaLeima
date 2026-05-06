@@ -18,9 +18,9 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 import { useSession } from "@/providers/session-provider";
 
 type UpcomingTimelineState = Exclude<ClubDashboardTimelineState, "CANCELLED" | "COMPLETED">;
-type StatusFilter = "ALL" | UpcomingTimelineState;
+type StatusFilter = "ALL" | UpcomingTimelineState | "COMPLETED";
 type DateFilter = "ALL" | "TODAY" | "WEEK";
-const statusFilters = ["ALL", "LIVE", "UPCOMING", "DRAFT"] as const satisfies readonly StatusFilter[];
+const statusFilters = ["ALL", "LIVE", "UPCOMING", "DRAFT", "COMPLETED"] as const satisfies readonly StatusFilter[];
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
@@ -50,16 +50,24 @@ const isInsideDateFilter = (event: ClubDashboardEventSummary, dateFilter: DateFi
 
   const now = new Date();
   const startAt = new Date(event.startAt);
+  const endAt = new Date(event.endAt);
 
   if (dateFilter === "TODAY") {
+    const compareValue = event.timelineState === "COMPLETED" ? endAt : startAt;
+
     return (
-      now.getFullYear() === startAt.getFullYear() &&
-      now.getMonth() === startAt.getMonth() &&
-      now.getDate() === startAt.getDate()
+      now.getFullYear() === compareValue.getFullYear() &&
+      now.getMonth() === compareValue.getMonth() &&
+      now.getDate() === compareValue.getDate()
     );
   }
 
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  if (event.timelineState === "COMPLETED") {
+    return endAt >= weekStart && endAt <= now;
+  }
 
   return startAt >= now && startAt <= weekEnd;
 };
@@ -106,8 +114,8 @@ export default function ClubUpcomingScreen() {
       } satisfies Record<ClubDashboardTimelineState, string>,
       subtitle:
         language === "fi"
-          ? "Suodata tulevat, luonnokset ja käynnissä olevat tapahtumat ennen muokkausta tai tapahtumapäivää."
-          : "Filter upcoming, draft, and live events before editing or event day.",
+          ? "Rajaa tapahtumat nopeasti ennen muokkausta."
+          : "Filter events before editing.",
       title: language === "fi" ? "Tulossa" : "Upcoming",
     }),
     [language]
@@ -128,7 +136,8 @@ export default function ClubUpcomingScreen() {
   const events = useMemo(() => {
     const sourceEvents = dashboardQuery.data?.events ?? [];
     const filteredEvents = sourceEvents
-      .filter((event) => event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED")
+      .filter((event) => event.timelineState !== "CANCELLED")
+      .filter((event) => statusFilter === "COMPLETED" || event.timelineState !== "COMPLETED")
       .filter((event) => statusFilter === "ALL" || event.timelineState === statusFilter)
       .filter((event) => isInsideDateFilter(event, dateFilter));
 
@@ -173,31 +182,29 @@ export default function ClubUpcomingScreen() {
         </View>
       </View>
 
-      <View style={styles.filtersCard}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
-          {statusFilters.map((filter) => (
-            <Pressable
-              key={filter}
-              onPress={() => setStatusFilter(filter)}
-              style={[styles.filterChip, statusFilter === filter ? styles.filterChipActive : null]}
-            >
-              <Text style={styles.filterChipText}>{filter === "ALL" ? labels.all : labels.status[filter]}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+        {statusFilters.map((filter) => (
+          <Pressable
+            key={filter}
+            onPress={() => setStatusFilter(filter)}
+            style={[styles.filterChip, statusFilter === filter ? styles.filterChipActive : null]}
+          >
+            <Text style={styles.filterChipText}>{filter === "ALL" ? labels.all : labels.status[filter]}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
-          {(["ALL", "TODAY", "WEEK"] as DateFilter[]).map((filter) => (
-            <Pressable
-              key={filter}
-              onPress={() => setDateFilter(filter)}
-              style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
-            >
-              <Text style={styles.filterChipText}>{labels.dateFilters[filter]}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
+        {(["ALL", "TODAY", "WEEK"] as DateFilter[]).map((filter) => (
+          <Pressable
+            key={filter}
+            onPress={() => setDateFilter(filter)}
+            style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
+          >
+            <Text style={styles.filterChipText}>{labels.dateFilters[filter]}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow="Club" title={language === "fi" ? "Tapahtumat eivät latautuneet" : "Events did not load"}>
@@ -370,14 +377,6 @@ const createStyles = (theme: MobileTheme) =>
       letterSpacing: 1.4,
       textTransform: "uppercase",
     },
-    filtersCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
-      gap: 12,
-      padding: 14,
-    },
     topBar: {
       alignItems: "flex-start",
       flexDirection: "row",
@@ -385,6 +384,6 @@ const createStyles = (theme: MobileTheme) =>
     },
     topBarCopy: {
       flex: 1,
-      gap: 6,
+      gap: 4,
     },
   });

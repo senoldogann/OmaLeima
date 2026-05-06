@@ -8,6 +8,7 @@ import {
 } from "@/features/club-rewards/format";
 import { RewardTierCard } from "@/features/club-rewards/components/reward-tier-card";
 import { rewardTierRefreshableStatuses, submitRewardTierCreateRequestAsync } from "@/features/club-rewards/reward-tier-client";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import type {
   ClubRewardTierActionState,
   ClubRewardTierCreatePayload,
@@ -15,8 +16,96 @@ import type {
 } from "@/features/club-rewards/types";
 
 type ClubRewardsPanelProps = {
+  locale: DashboardLocale;
   snapshot: ClubRewardsSnapshot;
 };
+
+const copyByLocale = {
+  en: {
+    catalogBody: "Showing the latest reward tiers visible in this organizer session, including disabled tiers kept for stock history.",
+    catalogEyebrow: "Reward catalog",
+    catalogTitle: "Latest reward tiers",
+    claimInstructions: "Claim instructions",
+    claimedUnitsPrefix: "Claimed reward units currently visible across these tiers:",
+    createButton: "Create reward tier",
+    createEventRewardButton: "Create reward for this event",
+    createRewardBody: "Publish reward thresholds for an event and keep claim instructions or stock notes in one place.",
+    createRewardEyebrow: "Create reward",
+    createRewardTab: "Create Reward",
+    createRewardTitle: "New reward tier",
+    description: "Description",
+    editable: "Editable",
+    emptyEditableEvents: "No editable events are available for reward tier management right now.",
+    emptyEvents: "No club events are visible yet. Create an event first, then return here for rewards.",
+    emptyRewardTiers: "No reward tiers are visible yet. Create the first reward tier for an event above.",
+    event: "Event",
+    eventCatalogBody: "Pick an active club event before publishing a new reward tier. Completed events stay visible for stock context but are not editable.",
+    eventCatalogEyebrow: "Event catalog",
+    eventCatalogTab: "Event Catalog",
+    eventCatalogTitle: "Manageable events",
+    inventoryTotal: "Inventory total",
+    lowStockBody: "Reward tiers that are nearly out or fully exhausted based on claimed stock.",
+    lowStockLabel: "Low-stock tiers",
+    manageableEventsBody: "Club events where this organizer can review reward catalog visibility.",
+    manageableEventsLabel: "Manageable events",
+    readOnly: "Read-only",
+    requiredStamps: "Required stamps",
+    rewardCatalogTab: "Reward Catalog",
+    rewardTierWord: "reward tier",
+    rewardTiersWord: "reward tiers",
+    rewardType: "Reward type",
+    saving: "Saving...",
+    title: "Title",
+    totalTiersBodyPrefix: "Latest list shows",
+    totalTiersBodySuffix: "in the current club session.",
+    totalTiersLabel: "Total reward tiers",
+    workflowBody: "Pick an editable event, define the stamp threshold, stock, and handoff instructions, then students unlock that tier from the same event scan progress used in mobile.",
+    workflowEyebrow: "Reward workflow",
+    workflowTitle: "Rewards are always attached to one event",
+  },
+  fi: {
+    catalogBody: "Näytetään viimeisimmät tässä järjestäjäsessiossa näkyvät palkintotasot, myös varastohistoriaa varten säilytetyt pois käytöstä olevat tasot.",
+    catalogEyebrow: "Palkintokatalogi",
+    catalogTitle: "Viimeisimmät palkintotasot",
+    claimInstructions: "Luovutusohjeet",
+    claimedUnitsPrefix: "Näissä tasoissa näkyvät luovutetut palkintoyksiköt:",
+    createButton: "Luo palkintotaso",
+    createEventRewardButton: "Luo palkinto tälle tapahtumalle",
+    createRewardBody: "Julkaise tapahtuman palkintorajat ja pidä luovutusohjeet sekä varastomuistiinpanot yhdessä paikassa.",
+    createRewardEyebrow: "Luo palkinto",
+    createRewardTab: "Luo palkinto",
+    createRewardTitle: "Uusi palkintotaso",
+    description: "Kuvaus",
+    editable: "Muokattavissa",
+    emptyEditableEvents: "Tällä hetkellä ei ole tapahtumia, joihin voi lisätä palkintotasoja.",
+    emptyEvents: "Klubitapahtumia ei vielä näy. Luo ensin tapahtuma ja palaa sitten palkintoihin.",
+    emptyRewardTiers: "Palkintotasoja ei vielä näy. Luo ensimmäinen palkintotaso yllä olevalle tapahtumalle.",
+    event: "Tapahtuma",
+    eventCatalogBody: "Valitse aktiivinen klubitapahtuma ennen uuden palkintotason julkaisua. Päättyneet tapahtumat näkyvät varastokontekstia varten, mutta niitä ei voi muokata.",
+    eventCatalogEyebrow: "Tapahtumakatalogi",
+    eventCatalogTab: "Tapahtumat",
+    eventCatalogTitle: "Hallittavat tapahtumat",
+    inventoryTotal: "Varasto yhteensä",
+    lowStockBody: "Palkintotasot, jotka ovat vähissä tai loppuneet luovutetun varaston perusteella.",
+    lowStockLabel: "Vähissä olevat tasot",
+    manageableEventsBody: "Klubitapahtumat, joissa tämä järjestäjä voi tarkistaa palkintokatalogin näkyvyyden.",
+    manageableEventsLabel: "Hallittavat tapahtumat",
+    readOnly: "Vain luku",
+    requiredStamps: "Vaaditut leimat",
+    rewardCatalogTab: "Palkintokatalogi",
+    rewardTierWord: "palkintotaso",
+    rewardTiersWord: "palkintotasoa",
+    rewardType: "Palkinnon tyyppi",
+    saving: "Tallennetaan...",
+    title: "Otsikko",
+    totalTiersBodyPrefix: "Viimeisin lista näyttää",
+    totalTiersBodySuffix: "tässä klubisessiossa.",
+    totalTiersLabel: "Palkintotasoja yhteensä",
+    workflowBody: "Valitse muokattava tapahtuma, määritä leimaraja, varasto ja luovutusohjeet. Opiskelijat avaavat tason samasta tapahtuman scan-edistymisestä kuin mobiilissa.",
+    workflowEyebrow: "Palkintovirta",
+    workflowTitle: "Palkinnot liitetään aina yhteen tapahtumaan",
+  },
+} as const satisfies Record<DashboardLocale, Record<string, string>>;
 
 const createInitialPayload = (eventId: string): ClubRewardTierCreatePayload => ({
   claimInstructions: "",
@@ -36,8 +125,9 @@ const renderActionState = (state: ClubRewardTierActionState) => {
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
 };
 
-export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
+export const ClubRewardsPanel = ({ locale, snapshot }: ClubRewardsPanelProps) => {
   const router = useRouter();
+  const copy = copyByLocale[locale];
   const editableEvents = useMemo(
     () => snapshot.events.filter((event) => event.canManageRewards),
     [snapshot.events]
@@ -90,50 +180,56 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
       <section className="metrics-grid">
         <article className="panel panel-accent">
           <div className="stack-sm">
-            <span className="field-label">Manageable events</span>
+            <span className="field-label">{copy.manageableEventsLabel}</span>
             <strong className="metric-value">{snapshot.summary.manageableEventCount}</strong>
-            <p className="muted-text">Club events where this organizer can review reward catalog visibility.</p>
+            <p className="muted-text">{copy.manageableEventsBody}</p>
           </div>
         </article>
 
         <article className="panel">
           <div className="stack-sm">
-            <span className="field-label">Total reward tiers</span>
+            <span className="field-label">{copy.totalTiersLabel}</span>
             <strong className="metric-value">{snapshot.summary.totalTierCount}</strong>
             <p className="muted-text">
-              Latest list shows {snapshot.summary.visibleTierCount} tier{snapshot.summary.visibleTierCount === 1 ? "" : "s"} in the current club session.
+              {copy.totalTiersBodyPrefix} {snapshot.summary.visibleTierCount} {snapshot.summary.visibleTierCount === 1 ? copy.rewardTierWord : copy.rewardTiersWord} {copy.totalTiersBodySuffix}
             </p>
           </div>
         </article>
 
         <article className="panel panel-warning">
           <div className="stack-sm">
-            <span className="field-label">Low-stock tiers</span>
+            <span className="field-label">{copy.lowStockLabel}</span>
             <strong className="metric-value">{snapshot.summary.lowStockTierCount}</strong>
-            <p className="muted-text">Reward tiers that are nearly out or fully exhausted based on claimed stock.</p>
+            <p className="muted-text">{copy.lowStockBody}</p>
           </div>
         </article>
       </section>
 
       <div className="tab-nav">
-        <button className={activeTab === "event-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-catalog")} type="button">Event Catalog</button>
-        <button className={activeTab === "create-reward" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("create-reward")} type="button">Create Reward</button>
-        <button className={activeTab === "reward-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("reward-catalog")} type="button">Reward Catalog</button>
+        <button className={activeTab === "event-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-catalog")} type="button">{copy.eventCatalogTab}</button>
+        <button className={activeTab === "create-reward" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("create-reward")} type="button">{copy.createRewardTab}</button>
+        <button className={activeTab === "reward-catalog" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("reward-catalog")} type="button">{copy.rewardCatalogTab}</button>
       </div>
+
+      <section className="panel">
+        <div className="stack-sm">
+          <div className="eyebrow">{copy.workflowEyebrow}</div>
+          <h3 className="section-title">{copy.workflowTitle}</h3>
+          <p className="muted-text">{copy.workflowBody}</p>
+        </div>
+      </section>
 
       <section className="content-grid" style={{ display: activeTab === "reward-catalog" ? "none" : undefined }}>
         <div className="stack-md" style={activeTab === "event-catalog" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
-            <div className="eyebrow">Event catalog</div>
-            <h3 className="section-title">Manageable events</h3>
-            <p className="muted-text">
-              Pick an active club event before publishing a new reward tier. Completed events stay visible for stock context but are not editable.
-            </p>
+            <div className="eyebrow">{copy.eventCatalogEyebrow}</div>
+            <h3 className="section-title">{copy.eventCatalogTitle}</h3>
+            <p className="muted-text">{copy.eventCatalogBody}</p>
           </div>
 
           {snapshot.events.length === 0 ? (
             <article className="panel">
-              <p className="muted-text">No club events are visible yet. Create an event first, then return here for rewards.</p>
+              <p className="muted-text">{copy.emptyEvents}</p>
             </article>
           ) : (
             <div className="content-grid">
@@ -143,11 +239,26 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                     <h3 className="section-title">{event.name}</h3>
                     <p className="muted-text">{formatManageableRewardEventMeta(event)}</p>
                     <p className="review-note">
-                      {event.rewardTierCount} reward tier{event.rewardTierCount === 1 ? "" : "s"} · {event.eventStatus}
+                      {event.rewardTierCount} {event.rewardTierCount === 1 ? copy.rewardTierWord : copy.rewardTiersWord} · {event.eventStatus}
                     </p>
                     <span className={event.canManageRewards ? "status-pill status-pill-success" : "status-pill"}>
-                      {event.canManageRewards ? "Editable" : "Read-only"}
+                      {event.canManageRewards ? copy.editable : copy.readOnly}
                     </span>
+                    {event.canManageRewards ? (
+                      <button
+                        className="button button-secondary"
+                        onClick={() => {
+                          setPayload((currentPayload) => ({
+                            ...currentPayload,
+                            eventId: event.eventId,
+                          }));
+                          setActiveTab("create-reward");
+                        }}
+                        type="button"
+                      >
+                        {copy.createEventRewardButton}
+                      </button>
+                    ) : null}
                   </div>
                 </article>
               ))}
@@ -157,22 +268,20 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
 
         <div className="stack-md" style={activeTab === "create-reward" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
-            <div className="eyebrow">Create reward</div>
-            <h3 className="section-title">New reward tier</h3>
-            <p className="muted-text">
-              Publish reward thresholds for an event and keep claim instructions or stock notes in one place.
-            </p>
+            <div className="eyebrow">{copy.createRewardEyebrow}</div>
+            <h3 className="section-title">{copy.createRewardTitle}</h3>
+            <p className="muted-text">{copy.createRewardBody}</p>
           </div>
 
           {editableEvents.length === 0 ? (
             <article className="panel">
-              <p className="muted-text">No editable events are available for reward tier management right now.</p>
+              <p className="muted-text">{copy.emptyEditableEvents}</p>
             </article>
           ) : (
             <article className="panel">
               <form className="stack-md" onSubmit={(event) => void handleSubmit(event)}>
                 <label className="field">
-                  <span className="field-label">Event</span>
+                  <span className="field-label">{copy.event}</span>
                   <select
                     className="field-input"
                     disabled={isPending}
@@ -194,7 +303,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
 
                 <div className="detail-grid">
                   <label className="field">
-                    <span className="field-label">Title</span>
+                    <span className="field-label">{copy.title}</span>
                     <input
                       className="field-input"
                       disabled={isPending}
@@ -209,7 +318,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                   </label>
 
                   <label className="field">
-                    <span className="field-label">Reward type</span>
+                    <span className="field-label">{copy.rewardType}</span>
                     <select
                       className="field-input"
                       disabled={isPending}
@@ -231,7 +340,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                   </label>
 
                   <label className="field">
-                    <span className="field-label">Required stamps</span>
+                    <span className="field-label">{copy.requiredStamps}</span>
                     <input
                       className="field-input"
                       disabled={isPending}
@@ -247,7 +356,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                   </label>
 
                   <label className="field">
-                    <span className="field-label">Inventory total</span>
+                    <span className="field-label">{copy.inventoryTotal}</span>
                     <input
                       className="field-input"
                       disabled={isPending}
@@ -264,7 +373,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                 </div>
 
                 <label className="field">
-                  <span className="field-label">Description</span>
+                  <span className="field-label">{copy.description}</span>
                   <textarea
                     className="field-input field-textarea"
                     disabled={isPending}
@@ -279,7 +388,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                 </label>
 
                 <label className="field">
-                  <span className="field-label">Claim instructions</span>
+                  <span className="field-label">{copy.claimInstructions}</span>
                   <textarea
                     className="field-input field-textarea"
                     disabled={isPending}
@@ -294,7 +403,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
                 </label>
 
                 <button className="button button-primary" disabled={isPending} type="submit">
-                  {isPending ? "Saving..." : "Create reward tier"}
+                  {isPending ? copy.saving : copy.createButton}
                 </button>
                 {renderActionState(actionState)}
               </form>
@@ -305,16 +414,14 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
 
       <section className="stack-md" style={{ display: activeTab !== "reward-catalog" ? "none" : undefined }}>
         <div className="stack-sm">
-          <div className="eyebrow">Reward catalog</div>
-          <h3 className="section-title">Latest reward tiers</h3>
-          <p className="muted-text">
-            Showing the latest {snapshot.summary.visibleTierCount} reward tier{snapshot.summary.visibleTierCount === 1 ? "" : "s"} visible in this organizer session, including disabled tiers kept for stock history.
-          </p>
+          <div className="eyebrow">{copy.catalogEyebrow}</div>
+          <h3 className="section-title">{copy.catalogTitle}</h3>
+          <p className="muted-text">{copy.catalogBody}</p>
         </div>
 
         {snapshot.rewardTiers.length === 0 ? (
           <article className="panel">
-            <p className="muted-text">No reward tiers are visible yet. Create the first reward tier for an event above.</p>
+            <p className="muted-text">{copy.emptyRewardTiers}</p>
           </article>
         ) : (
           <div className="review-grid">
@@ -324,7 +431,7 @@ export const ClubRewardsPanel = ({ snapshot }: ClubRewardsPanelProps) => {
           </div>
         )}
 
-        <p className="muted-text">Claimed reward units currently visible across these tiers: {snapshot.summary.claimedUnitCount}.</p>
+        <p className="muted-text">{copy.claimedUnitsPrefix} {snapshot.summary.claimedUnitCount}.</p>
       </section>
     </div>
   );

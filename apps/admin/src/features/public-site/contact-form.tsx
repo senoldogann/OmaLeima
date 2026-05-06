@@ -22,19 +22,8 @@ type ContactFormProps = {
     turnstileSiteKey: string | null;
 };
 
-type TurnstileRenderOptions = {
-    action: string;
-    callback: (token: string) => void;
-    "error-callback": () => void;
-    "expired-callback": () => void;
-    sitekey: string;
-    theme: "dark";
-};
-
 type TurnstileApi = {
-    remove: (widgetId: string) => void;
-    render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
-    reset: (widgetId?: string) => void;
+    reset: () => void;
 };
 
 declare global {
@@ -63,8 +52,6 @@ export const ContactForm = ({
     const fieldId = (suffix: string): string => `${formId}-${suffix}`;
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const startedAtRef = useRef<number>(0);
-    const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
-    const turnstileWidgetIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         // Keep render pure by reading Date.now() only after mount.
@@ -76,93 +63,13 @@ export const ContactForm = ({
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [consentChecked, setConsentChecked] = useState<boolean>(false);
     const [subjectValue, setSubjectValue] = useState<ContactSubjectValue | "">("");
-    const [turnstileToken, setTurnstileToken] = useState<string>("");
 
     const hasTurnstileSiteKey = typeof turnstileSiteKey === "string" && turnstileSiteKey.length > 0;
     const isProtectionUnavailable = isProtectionRequired && !hasTurnstileSiteKey;
 
-    const renderTurnstile = (): void => {
-        if (!hasTurnstileSiteKey || turnstileContainerRef.current === null || turnstileWidgetIdRef.current !== null) {
-            return;
-        }
-
-        const turnstile = window.turnstile;
-
-        if (typeof turnstile === "undefined") {
-            return;
-        }
-
-        turnstileWidgetIdRef.current = turnstile.render(turnstileContainerRef.current, {
-            "error-callback": () => {
-                setTurnstileToken("");
-                setState({ kind: "error", message: content.errorVerification });
-            },
-            "expired-callback": () => setTurnstileToken(""),
-            action: turnstileAction,
-            callback: (token: string) => {
-                setTurnstileToken(token);
-                setFieldErrors((current) => {
-                    if (!("turnstileToken" in current)) {
-                        return current;
-                    }
-                    const next = { ...current };
-                    delete next.turnstileToken;
-                    return next;
-                });
-            },
-            sitekey: turnstileSiteKey,
-            theme: "dark",
-        });
-    };
-
     const resetTurnstile = (): void => {
-        setTurnstileToken("");
-
-        if (turnstileWidgetIdRef.current !== null) {
-            window.turnstile?.reset(turnstileWidgetIdRef.current);
-        }
+        window.turnstile?.reset();
     };
-
-    useEffect(() => {
-        if (!hasTurnstileSiteKey || turnstileContainerRef.current === null || turnstileWidgetIdRef.current !== null) {
-            return undefined;
-        }
-
-        const turnstile = window.turnstile;
-
-        if (typeof turnstile === "undefined") {
-            return undefined;
-        }
-
-        turnstileWidgetIdRef.current = turnstile.render(turnstileContainerRef.current, {
-            "error-callback": () => {
-                setTurnstileToken("");
-                setState({ kind: "error", message: content.errorVerification });
-            },
-            "expired-callback": () => setTurnstileToken(""),
-            action: turnstileAction,
-            callback: (token: string) => {
-                setTurnstileToken(token);
-                setFieldErrors((current) => {
-                    if (!("turnstileToken" in current)) {
-                        return current;
-                    }
-                    const next = { ...current };
-                    delete next.turnstileToken;
-                    return next;
-                });
-            },
-            sitekey: turnstileSiteKey,
-            theme: "dark",
-        });
-
-        return () => {
-            if (turnstileWidgetIdRef.current !== null) {
-                window.turnstile?.remove(turnstileWidgetIdRef.current);
-                turnstileWidgetIdRef.current = null;
-            }
-        };
-    }, [content.errorVerification, hasTurnstileSiteKey, turnstileSiteKey]);
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
         const file = event.target.files?.[0];
@@ -240,6 +147,7 @@ export const ContactForm = ({
 
         const formElement = event.currentTarget;
         const formData = new FormData(formElement);
+        const turnstileToken = String(formData.get("cf-turnstile-response") ?? "").trim();
 
         if (isProtectionUnavailable) {
             setState({ kind: "error", message: content.protectionUnavailable });
@@ -511,14 +419,16 @@ export const ContactForm = ({
             {hasTurnstileSiteKey ? (
                 <div className="contact-turnstile">
                     <Script
-                        async
-                        defer
-                        onLoad={renderTurnstile}
-                        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
                         strategy="afterInteractive"
                     />
                     <span className="contact-label">{content.protectionLabel}</span>
-                    <div ref={turnstileContainerRef} />
+                    <div
+                        className="cf-turnstile"
+                        data-action={turnstileAction}
+                        data-sitekey={turnstileSiteKey}
+                        data-theme="dark"
+                    />
                     {fieldErrors.turnstileToken ? (
                         <span className="contact-hint">{fieldErrors.turnstileToken}</span>
                     ) : null}

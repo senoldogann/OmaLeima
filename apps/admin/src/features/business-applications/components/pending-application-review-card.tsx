@@ -147,7 +147,7 @@ export const PendingApplicationReviewCard = ({ application }: PendingApplication
         <div className="review-card-header">
           <div className="stack-sm">
             <div className="eyebrow">Pending review</div>
-            <h3 className="section-title">{application.businessName}</h3>
+            <p className="card-title">{application.businessName}</p>
             <p className="muted-text">
               {application.contactName} · {application.contactEmail}
             </p>

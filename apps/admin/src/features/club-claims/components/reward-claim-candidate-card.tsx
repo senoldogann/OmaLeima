@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import {
   formatClubClaimInventory,
   formatClubClaimProgress,
@@ -20,6 +21,7 @@ import type {
 
 type RewardClaimCandidateCardProps = {
   candidate: ClubClaimCandidateRecord;
+  locale: DashboardLocale;
 };
 
 const createInitialPayload = (candidate: ClubClaimCandidateRecord): ClubRewardClaimConfirmPayload => ({
@@ -37,7 +39,7 @@ const renderActionState = (state: ClubRewardClaimActionState) => {
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
 };
 
-export const RewardClaimCandidateCard = ({ candidate }: RewardClaimCandidateCardProps) => {
+export const RewardClaimCandidateCard = ({ candidate, locale }: RewardClaimCandidateCardProps) => {
   const router = useRouter();
   const [payload, setPayload] = useState<ClubRewardClaimConfirmPayload>(createInitialPayload(candidate));
   const [actionState, setActionState] = useState<ClubRewardClaimActionState>({
@@ -70,7 +72,7 @@ export const RewardClaimCandidateCard = ({ candidate }: RewardClaimCandidateCard
     } catch (error) {
       setActionState({
         code: "REQUEST_ERROR",
-        message: error instanceof Error ? error.message : "Unknown reward claim request error.",
+        message: error instanceof Error ? error.message : locale === "fi" ? "Tuntematon palkinnon luovutusvirhe." : "Unknown reward claim request error.",
         tone: "error",
       });
     } finally {
@@ -83,20 +85,20 @@ export const RewardClaimCandidateCard = ({ candidate }: RewardClaimCandidateCard
       <div className="stack-md">
         <div className="review-card-header">
           <div className="stack-sm">
-            <h3 className="section-title">{candidate.studentLabel}</h3>
+            <p className="card-title">{candidate.studentLabel}</p>
             <p className="muted-text">
-              {candidate.rewardTitle} · {formatClubClaimRewardType(candidate.rewardType)}
+              {candidate.rewardTitle} · {formatClubClaimRewardType(locale, candidate.rewardType)}
             </p>
           </div>
-          <span className="status-pill status-pill-success">Claimable</span>
+          <span className="status-pill status-pill-success">{locale === "fi" ? "Lunastettavissa" : "Claimable"}</span>
         </div>
 
         <p className="review-note">
-          {formatClubClaimProgress(candidate)} · {formatClubClaimInventory(candidate)}
+          {formatClubClaimProgress(locale, candidate)} · {formatClubClaimInventory(locale, candidate)}
         </p>
 
         <label className="field">
-          <span className="field-label">Handoff notes</span>
+          <span className="field-label">{locale === "fi" ? "Luovutusmuistiinpanot" : "Handoff notes"}</span>
           <textarea
             className="field-input field-textarea"
             disabled={isPending}
@@ -111,7 +113,7 @@ export const RewardClaimCandidateCard = ({ candidate }: RewardClaimCandidateCard
         </label>
 
         <button className="button button-primary" disabled={isPending} onClick={() => void handleConfirmAsync()} type="button">
-          {isPending ? "Confirming..." : "Confirm handoff"}
+          {isPending ? (locale === "fi" ? "Vahvistetaan..." : "Confirming...") : locale === "fi" ? "Vahvista luovutus" : "Confirm handoff"}
         </button>
         {renderActionState(actionState)}
       </div>

@@ -34,6 +34,13 @@ type ProfileRow = {
   id: string;
 };
 
+type NotificationRow = {
+  payload: {
+    announcementId?: string;
+  } | null;
+  status: "FAILED" | "READ" | "SENT";
+};
+
 const latestAnnouncementLimit = 12;
 
 const fetchProfileEmailsByIdsAsync = async (
@@ -57,7 +64,57 @@ const fetchProfileEmailsByIdsAsync = async (
   return new Map<string, string>(data.map((row) => [row.id, row.email]));
 };
 
-const mapRows = (rows: AnnouncementRow[], creatorEmails: Map<string, string>): AnnouncementRecord[] =>
+const readNotificationAnnouncementId = (payload: NotificationRow["payload"]): string | null =>
+  typeof payload?.announcementId === "string" ? payload.announcementId : null;
+
+const buildPushDeliveryStatusByAnnouncementId = (
+  notificationRows: NotificationRow[]
+): Map<string, AnnouncementRecord["pushDeliveryStatus"]> => {
+  const deliveryStateByAnnouncementId = new Map<string, { hasFailure: boolean; hasSuccess: boolean }>();
+
+  notificationRows.forEach((row) => {
+    const announcementId = readNotificationAnnouncementId(row.payload);
+
+    if (announcementId === null) {
+      return;
+    }
+
+    const currentState = deliveryStateByAnnouncementId.get(announcementId) ?? {
+      hasFailure: false,
+      hasSuccess: false,
+    };
+
+    if (row.status === "SENT" || row.status === "READ") {
+      currentState.hasSuccess = true;
+    }
+
+    if (row.status === "FAILED") {
+      currentState.hasFailure = true;
+    }
+
+    deliveryStateByAnnouncementId.set(announcementId, currentState);
+  });
+
+  return new Map<string, AnnouncementRecord["pushDeliveryStatus"]>(
+    Array.from(deliveryStateByAnnouncementId.entries()).map(([announcementId, deliveryState]) => {
+      if (deliveryState.hasSuccess && deliveryState.hasFailure) {
+        return [announcementId, "PARTIAL"];
+      }
+
+      if (deliveryState.hasSuccess) {
+        return [announcementId, "SENT"];
+      }
+
+      return [announcementId, "FAILED"];
+    })
+  );
+};
+
+const mapRows = (
+  rows: AnnouncementRow[],
+  creatorEmails: Map<string, string>,
+  pushDeliveryStatusByAnnouncementId: Map<string, AnnouncementRecord["pushDeliveryStatus"]>
+): AnnouncementRecord[] =>
   rows.map((row) => ({
     announcementId: row.id,
     audience: row.audience,
@@ -71,6 +128,7 @@ const mapRows = (rows: AnnouncementRow[], creatorEmails: Map<string, string>): A
     endsAt: row.ends_at,
     imageUrl: row.image_url,
     priority: row.priority,
+    pushDeliveryStatus: pushDeliveryStatusByAnnouncementId.get(row.id) ?? "NOT_SENT",
     startsAt: row.starts_at,
     status: row.status,
     title: row.title,
@@ -122,8 +180,26 @@ const fetchAnnouncementsAsync = async (
     supabase,
     Array.from(new Set<string>(data.map((row) => row.created_by)))
   );
+  const announcementIds = data.map((row) => row.id);
+  const pushDeliveryStatusByAnnouncementId =
+    announcementIds.length === 0
+      ? new Map<string, AnnouncementRecord["pushDeliveryStatus"]>()
+      : await (async (): Promise<Map<string, AnnouncementRecord["pushDeliveryStatus"]>> => {
+        const { data: notificationRows, error: notificationError } = await supabase
+          .from("notifications")
+          .select("status,payload")
+          .eq("type", "ANNOUNCEMENT")
+          .in("status", ["FAILED", "SENT", "READ"])
+          .returns<NotificationRow[]>();
 
-  return mapRows(data, creatorEmails);
+        if (notificationError !== null) {
+          throw new Error(`Failed to load announcement push delivery status: ${notificationError.message}`);
+        }
+
+        return buildPushDeliveryStatusByAnnouncementId(notificationRows);
+      })();
+
+  return mapRows(data, creatorEmails, pushDeliveryStatusByAnnouncementId);
 };
 
 export const fetchAdminAnnouncementsSnapshotAsync = async (

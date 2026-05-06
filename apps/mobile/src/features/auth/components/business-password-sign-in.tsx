@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { CameraView, type BarcodeScanningResult, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
@@ -10,10 +11,142 @@ import {
   type MobileTheme,
 } from "@/features/foundation/theme";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { provisionBusinessScannerSessionAsync } from "@/features/scanner/business-scanner-login";
 import { supabase } from "@/lib/supabase";
 
 const requiresWebPanel = (access: SessionAccess): boolean =>
   access.primaryRole === "PLATFORM_ADMIN";
+
+const BusinessQrSignIn = () => {
+  const router = useRouter();
+  const theme = useAppTheme();
+  const { language } = useUiPreferences();
+  const styles = useThemeStyles(createStyles);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
+  const [isProvisioning, setIsProvisioning] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleOpenScannerPress = async (): Promise<void> => {
+    setErrorMessage(null);
+
+    if (permission === null || !permission.granted) {
+      const nextPermission = await requestPermission();
+
+      if (!nextPermission.granted) {
+        setErrorMessage(language === "fi" ? "Kameralupa tarvitaan QR-kirjautumiseen." : "Camera access is required for QR sign-in.");
+        return;
+      }
+    }
+
+    setIsScannerOpen(true);
+  };
+
+  const handleBarcodeScanned = async (result: BarcodeScanningResult): Promise<void> => {
+    if (isProvisioning) {
+      return;
+    }
+
+    const qrToken = result.data.trim();
+
+    if (qrToken.length === 0) {
+      return;
+    }
+
+    setIsProvisioning(true);
+    setErrorMessage(null);
+
+    try {
+      await supabase.auth.signOut();
+      const { error: anonymousSignInError } = await supabase.auth.signInAnonymously();
+
+      if (anonymousSignInError !== null) {
+        throw new Error(`Anonymous scanner sign-in failed: ${anonymousSignInError.message}`);
+      }
+
+      const provisionedSession = await provisionBusinessScannerSessionAsync({
+        businessName: null,
+        qrToken,
+      });
+
+      setIsScannerOpen(false);
+      router.replace(provisionedSession.homeHref);
+    } catch (error) {
+      await supabase.auth.signOut();
+      setErrorMessage(error instanceof Error ? error.message : "Unknown QR scanner sign-in error.");
+    } finally {
+      setIsProvisioning(false);
+    }
+  };
+
+  return (
+    <View style={styles.qrSignInCard}>
+      <View style={styles.qrSignInHeader}>
+        <View style={styles.qrSignInIcon}>
+          <AppIcon color={theme.colors.lime} name="scan" size={18} />
+        </View>
+        <View style={styles.qrSignInCopy}>
+          <Text style={styles.qrSignInTitle}>
+            {language === "fi" ? "Kirjaudu scanner QR:lla" : "Sign in with scanner QR"}
+          </Text>
+          <Text style={styles.qrSignInText}>
+            {language === "fi"
+              ? "Työntekijä voi skannata omistajan QR-koodin ilman jaettua salasanaa."
+              : "Staff can scan the owner's QR without sharing a password."}
+          </Text>
+        </View>
+      </View>
+
+      {isScannerOpen ? (
+        <View style={styles.qrCameraWrap}>
+          <CameraView
+            active={!isProvisioning}
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={isProvisioning ? undefined : (result) => void handleBarcodeScanned(result)}
+            style={styles.qrCamera}
+          />
+          {isProvisioning ? (
+            <View style={styles.qrCameraOverlay}>
+              <ActivityIndicator color={theme.colors.lime} size="small" />
+              <Text style={styles.qrCameraOverlayText}>
+                {language === "fi" ? "Luodaan scanner-käyttöä..." : "Creating scanner access..."}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.qrSignInActions}>
+        <Pressable
+          disabled={isProvisioning}
+          onPress={() => void handleOpenScannerPress()}
+          style={({ pressed }) => [
+            styles.qrSignInButton,
+            isProvisioning ? styles.disabledButton : null,
+            pressed ? styles.buttonPressed : null,
+          ]}
+        >
+          <Text style={styles.qrSignInButtonText}>
+            {isScannerOpen
+              ? language === "fi"
+                ? "Skanneri auki"
+                : "Scanner open"
+              : language === "fi"
+                ? "Skannaa owner QR"
+                : "Scan owner QR"}
+          </Text>
+        </Pressable>
+        {isScannerOpen ? (
+          <Pressable disabled={isProvisioning} onPress={() => setIsScannerOpen(false)} style={styles.qrCancelButton}>
+            <Text style={styles.qrCancelButtonText}>{language === "fi" ? "Peruuta" : "Cancel"}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+    </View>
+  );
+};
 
 export const BusinessPasswordSignIn = () => {
   const router = useRouter();
@@ -134,6 +267,8 @@ export const BusinessPasswordSignIn = () => {
       ) : null}
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+      <BusinessQrSignIn />
     </View>
   );
 };
@@ -186,5 +321,100 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textSecondary,
       fontSize: 13,
       fontWeight: "600",
+    },
+    qrCamera: {
+      minHeight: 220,
+      width: "100%",
+    },
+    qrCameraOverlay: {
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.58)",
+      bottom: 0,
+      gap: 10,
+      justifyContent: "center",
+      left: 0,
+      position: "absolute",
+      right: 0,
+      top: 0,
+    },
+    qrCameraOverlayText: {
+      color: theme.colors.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    qrCameraWrap: {
+      borderRadius: 18,
+      minHeight: 220,
+      overflow: "hidden",
+      position: "relative",
+    },
+    qrCancelButton: {
+      alignItems: "center",
+      borderRadius: theme.radius.button,
+      justifyContent: "center",
+      minHeight: 42,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    qrCancelButtonText: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: "800",
+    },
+    qrSignInActions: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+    },
+    qrSignInButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      justifyContent: "center",
+      minHeight: 42,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    qrSignInButtonText: {
+      color: theme.colors.textPrimary,
+      fontSize: 13,
+      fontWeight: "800",
+    },
+    qrSignInCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 18,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 12,
+      padding: 12,
+    },
+    qrSignInCopy: {
+      flex: 1,
+      gap: 3,
+    },
+    qrSignInHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 10,
+    },
+    qrSignInIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 34,
+      justifyContent: "center",
+      width: 34,
+    },
+    qrSignInText: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    qrSignInTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 13,
+      fontWeight: "900",
     },
   });

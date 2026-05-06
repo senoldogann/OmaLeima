@@ -2,6 +2,778 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Anonymous Auth Security Hardening)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Goal:** Anonymous Supabase Auth acikken scanner provisioning calissin, fakat anonymous session'lar active student/admin/business veya public-intake bypass kapisi haline gelmesin.
+
+## Anonymous Auth Security Hardening Architectural Decisions
+
+- Auth trigger anonymous/email-less users icin placeholder email uretmeye devam edecek, ancak profile `status = SUSPENDED` olarak acilacak. Normal email'li auth users mevcut `ACTIVE/STUDENT` davranisini korur.
+- Scanner owner-QR provisioning zaten service-role Edge Function + atomic RPC uzerinden profile'i `BUSINESS_STAFF/ACTIVE` seviyesine cekiyor. Bu nedenle suspended-by-default anonymous model scanner onboarding'i bozmaz; sadece provisioning oncesi yetkisiz app akislarini kapatir.
+- `profiles` own-row update policy korunabilir, fakat hassas alanlar icin database trigger fail-closed calisacak. `primary_role`, `status`, `email`, ve `created_at` gibi alanlar sadece `service_role` veya migration/postgres context'inde degisebilir.
+- Public business applications icin direct DB insert policy kaldirilacak. Basvuru kabul yolu sadece server route + service-role + Turnstile dogrulamasi olacak.
+- Support request insert policy aktif profil kontroluyle daraltilacak. Active business/club membership kontrolleri mevcut helper'larla korunacak.
+- `register-device-token` Edge Function profile durumunu kontrol edecek ve suspended/deleted kullanicilar icin `PROFILE_NOT_ACTIVE` donecek.
+
+## Anonymous Auth Security Hardening Edge Cases
+
+- Daha once anonymous smoke ile olusan active placeholder profile'lar varsa, aktif business scanner membership'i olmayanlar `SUSPENDED` durumuna alinmali.
+- Provisioned scanner user'lar yanlışlikla suspended edilmemeli; `business_staff.status = ACTIVE` membership'i olan placeholder scanner hesaplari migration update filtresinden haric tutulur.
+- Profile trigger service-role revocation/provisioning RPC'lerini engellememeli. Trigger sadece caller role `authenticated` gibi client context'lerinde hassas field degisimini engeller.
+- Business application form server route'u service-role ile yazdigi icin insert policy kaldirilmasindan etkilenmez; client-side direct insert yolu ise beklenen sekilde RLS ile kapanir.
+
+## Anonymous Auth Security Hardening Prompt
+
+Sen Supabase Auth/RLS ve Edge Function guvenlik review uzmansin.
+Hedef: Anonymous sign-in acikken OmaLeima'da anonymous session'larin active student, profile self-promotion, business application Turnstile bypass veya push/support spam kapisi olmasini engelleyen kucuk ama kokten guvenlik sertlestirmesini uret.
+Mimari: SQL migration ile auth trigger/RLS/trigger policy hardening; Edge Function'da active profile gate; hosted Supabase MCP/CLI ile migration deploy ve gercek anonymous smoke validation.
+Kapsam: Supabase migrations, `register-device-token` Edge Function, working docs, hosted validation ve proje-geneli gap raporu. Public website tasarimi, mobile UI polish ve unrelated dirty worktree dosyalarina dokunma.
+Cikti: strict SQL + TypeScript degisiklikleri, fail-closed error kodlari, hosted migration deploy notu, validation sonuclari ve kalan proje eksiklerini onceliklendiren kisa rapor.
+Yasaklar: `any` yok, sessiz fallback yok, RLS bypass eden client hack yok, unrelated degisiklik revert yok, anonymous sign-in'i tamamen kapatarak scanner provisioning'i bozmak yok.
+Standartlar: AGENTS.md, Codex Security scan phases, zero-trust Supabase RLS, explicit actionable errors, minimal diff, real hosted smoke where practical.
+
+## Anonymous Auth Security Hardening Validation Plan
+
+- Supabase MCP ile hosted project/migration state kontrolu
+- `supabase db lint --local` veya SQL parse smoke
+- Hosted migration apply via Supabase MCP
+- `supabase functions deploy register-device-token --project-ref jwhdlcnfhrwdxptmoret`
+- Real anonymous smoke: profile suspended-by-default, profile self-promotion blocked, direct business application insert blocked
+- Edge Function smoke: suspended anonymous token cannot register push token
+- `git --no-pager diff --check`
+
+## Current Plan (Owner QR Scanner Provisioning)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Business owner/manager QR'i ile staff cihazini sifre paylasmadan scanner hesabina cevirmek ve cihaz silindiginde scanner erisimini kapatmak.
+
+## Owner QR Scanner Provisioning Architectural Decisions
+
+- Owner QR, client tarafinda uretilecek statik bir secret olmayacak. Business owner/manager authenticated session ile Supabase Edge Function'a gidecek; function business manager yetkisini kontrol edip kisa omurlu, imzali, tek kullanimlik QR token dondurecek.
+- Scanner login, email/password yerine Supabase anonymous session ile baslayacak. QR scan sonrasi cihaz kendi access token'i ile provisioning Edge Function'a gidecek.
+- Provisioning tek DB RPC icinde atomik olacak: QR grant `for update` ile consume edilecek, anonymous profile `BUSINESS_STAFF` rolune cekilecek, `business_staff(role = SCANNER)` kaydi acilacak ve `business_scanner_devices.scanner_user_id` ile cihaz o scanner user'a baglanacak.
+- Revocation manager-only service-role Edge Function uzerinden yapilacak. Device `REVOKED`, staff membership `DISABLED`, profile `DELETED` olacak; FK'ler izin verdiginde auth user silinecek ve scan history business/event uzerinden korunacak.
+- Mobile UI iki yuzeyde kalacak: business profile'da owner/manager icin rotating QR karti, login business modunda compact `QR okut` scanner girisi. Mevcut email/password login korunacak.
+
+## Owner QR Scanner Provisioning Edge Cases
+
+- Expired QR kullanimi `QR_EXPIRED`, tekrar kullanilan QR `QR_ALREADY_USED`, manager yetkisi olmayan QR uretimi `ACTOR_NOT_ALLOWED` olarak fail-closed donmeli.
+- Ayni cihaz daha once revoke edildiyse ancak owner yeni QR gosteriyorsa, provisioning yeni owner onayi kabul edilerek cihaz tekrar aktif scanner user'a baglanabilir.
+- Anonymous auth hosted projede kapaliysa mobile UI net hata vermeli; production'a gecmeden Supabase Auth anonymous sign-in ayari da aktiflenmelidir.
+- Scanner user silinse bile `stamps`, `qr_token_uses`, `fraud_signals`, `audit_logs` gibi tarihsel kayitlar silinmemeli veya FK hatasi uretmemeli.
+
+## Owner QR Scanner Provisioning Prompt
+
+Sen Supabase Auth/RLS ve Expo mobile provisioning konusunda deneyimli bir full-stack guvenlik muhendisisin.
+Hedef: Business owner QR ile scanner cihazini sifre paylasmadan provision eden, revocation ile scanner erisimini kapatan, scan history'yi koruyan calisir bir vertical slice uret.
+Mimari: Edge Function -> service-role Supabase client -> atomic PostgreSQL RPC; mobile tarafta mevcut session/provider/router ve scanner-device helper'larini reuse et.
+Kapsam: sadece owner-QR scanner provisioning lifecycle, business profile QR display, business login QR scan ve ilgili DB/Edge Function dosyalari. Pricing, public website ve unrelated admin sayfalarina dokunma.
+Cikti: TypeScript Edge Functions, SQL migration, Expo React Native TypeScript component/helper degisiklikleri, ilgili working docs guncellemeleri.
+Yasaklar: `any` yok, sessiz fallback yok, fake session yok, RLS bypass eden client-side hack yok, unrelated dirty worktree revert yok, uzun vadeli scan history'yi bozan cascade delete yok.
+Standartlar: AGENTS.md, Supabase security best practices, short-lived signed QR, one-time grant consumption, strict typed responses, explicit actionable errors, validation commands after edits.
+
+## Owner QR Scanner Provisioning Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- Supabase local migration parse/apply smoke if the local stack is reachable
+- `git --no-pager diff --check`
+- Hosted apply/deploy only after local validation, using Supabase MCP `_apply_migration` and `_deploy_edge_function`
+
+## Current Plan (Public Website Simplification Redesign)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Web sitesini kalabalik section yigini olmaktan cikarip referanstaki gibi daha poster-benzeri, daha temiz ve daha az copy ile daha guclu bir kamuya acik sunuma cevir.
+
+## Public Website Simplification Redesign Architectural Decisions
+
+- `frontend-design` ve `frontend-skill` yonu bu slice'ta "editorial poster minimalism" olacak: tek guclu hero, kisa akis, bir ana destek bolumu ve tek net CTA. Section sayisi azaltilacak.
+- Public landing artik pricing veya checkout merkezli olmayacak. Stripe/public checkout UI homepage akisi disina alinacak; ana public aksiyonlar `contact` ve `apply` olacak.
+- Hero gorseli icin `imagegen` ile uretilen yeni editorial photo kullanilacak; diger destek bloklarinda mevcut repo asset'leri yeniden secilerek gereksiz gorsel kalabalik azaltilacak.
+- Navbar/footer korunacak ama nav item yapisi sadeleştirilecek; public pages ayni shell ve spacing sistemiyle hizalanacak.
+- Contact/apply/legal sayfalari yeni visual language ile ayni ailede hissedilecek: daha az utility clutter, daha guclu heading ritmi, daha sakin shell treatment.
+- Content modeli sadeleştirilecek: stale `#pricing` ve `#model` anchor'lari kaldirilacak, public landing copy apply/contact akisi etrafinda yeniden adlandirilacak.
+- Public Stripe code'u project codepath'inden cikacak; website checkout route/button/package dosyalari kaldirilacak ve admin package dependency temizlenecek.
+
+## Public Website Simplification Redesign Edge Cases
+
+- Landing'den pricing section kalkinca `#pricing` anchor'lari ve checkout status akisi stale kalabilir; homepage page entry ve nav item'lari buna gore sadeleştirilmeli.
+- Content tiplerinde pricing/growth alanlari kalsa bile render'dan ciktiği surece lint/typecheck kirilmamali; bu slice once UX'i duzeltir, derin type cleanup gerekmiyorsa sonraya birakilir.
+- Yeni generated hero dosyasi repo icine kopyalanmali; sadece `~/.codex/generated_images` altinda kalmamali.
+- Contact/apply/legal sayfalarinda yeni sistem uygulanirken mevcut Turnstile/form logic'e dokunulmamalidir; sadece layout ve copy hiyerarsisi sadeleşmeli.
+
+## Public Website Simplification Redesign Prompt
+
+Sen bir Next.js public-site tasarim ve art-direction uzmansin.
+Hedef: OmaLeima'nin public websitesini kullanicinin paylastigi referansa yakin sekilde daha temiz, daha koyu, daha premium ve daha az kalabalik bir tasarima gecir; pricing alanini tamamen disarida birak ve public CTA'lari contact/apply eksenine indir.
+Mimari: mevcut App Router public pages, `PublicNavbar`, `PublicFooter`, content-based locale sistemi ve global public CSS korunur; landing-page + content/nav + paylasilan public page shell'leri minimal fakat etkili bir sekilde yeniden kompoze edilir.
+Kapsam: public landing, public content/nav copy, homepage metadata hero image refs, contact/apply/legal page layout styling, working docs, validation ve gerekirse lokal visual smoke. Yeni hero gorseli icin built-in `image_gen` kullan.
+Cikti: strict typed TS/TSX/CSS degisiklikleri, repo icinde yeni hero image asset'i, daha sade public section yapisi ve temiz admin build/lint/typecheck.
+Yasaklar: `any` yok, theme disina cikan parlak renkler yok, gereksiz section cogaltmak yok, existing form/security logic'e dokunmak yok, pricing checkout'u homepage'e geri sokmak yok.
+Standartlar: AGENTS.md, restraint-first composition, production-grade responsive layout, clean hierarchy over component count.
+
+## Public Website Simplification Redesign Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- optional local visual smoke if environment allows
+
+## Current Plan (Cross-Role Mobile Design Audit Round Two)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Kalan yogun mobile surfaces'i daha sakin, daha hizli okunur ve daha operasyonel bir duzene cekmek; ozellikle profile, leaderboard, scanner ve upcoming ekranlarinda gereksiz baslik/copy/kart katmanlarini azaltmak.
+
+## Cross-Role Mobile Design Audit Round Two Architectural Decisions
+
+- `frontend-design` ve `frontend-skill` bu turda yine kullanilacak; gorsel tez "calm operational minimalism" olarak korunacak, ancak ilk turdan farkli olarak odak copy silmekten cok hiyerarsiyi sikistirmak olacak.
+- Shared primitives (`InfoCard`, `CoverImageSurface`, `StatusBadge`, modal/preferences patterns) korunacak. Bu slice component sistemi degistirmeyecek; screen-level composition ve metin azaltma yapacak.
+- Feed-first veya action-first screens'te aciklayici alt metin sadece gercekten karar verdirmeye yardim ediyorsa kalacak. Aksi halde title + state yeterli sayilacak.
+- Operational fallback tools, ozellikle business scanner manuel token yuzeyi, ana akisla ayni gorsel agirlikta tutulmayacak; daha ikincil ve daha test-yardimci bir presentation'a cekilecek.
+- Profile surfaces'te amac "card icinde bir kart" hissini azaltmak olacak. Ayrica gereksiz ara basliklar ya da tekrar eden preference frameleri duzlestirilecek.
+
+## Cross-Role Mobile Design Audit Round Two Edge Cases
+
+- Scanner ekraninda manual token yuzeyi cok gizlenirse test akisi zorlasabilir; bu nedenle tamamen kaldirilmayacak, sadece daha ikincil sunulacak.
+- Leaderboard ekraninda fazla metin azaltirken error/loading/empty state'lerin hala anlasilir kalmasi gerekir; sadece basarili durumda yer kaplayan tekrarlar kesilmeli.
+- Profile ekranlarinda header/copy azaltimi support, language, theme, push setup veya media upload capability'lerini gorunmez hale getirmemeli.
+- Club upcoming filtreleri duzlestirilirken yatay chip rail davranisi bozulmamali; sadece wrapper ve subtitle yogunlugu azaltilmali.
+
+## Cross-Role Mobile Design Audit Round Two Prompt
+
+Sen bir Expo React Native mobil urun tasarimi ve UI polish uzmansin.
+Hedef: OmaLeima'nin student, organizer ve business mobil ekranlarinda ilk sadeleştirme turundan sonra yogun kalan profile, leaderboard, updates, scanner ve upcoming surfaces'i profesyonel bir tasarimci gozuyle tekrar incele; gereksiz frame, tekrar eden copy, zayif hiyerarsi ve ikincil araclari baskin gosteren yuzeyleri sakinlestir.
+Mimari: mevcut Expo Router screen yapisi, theme tokenlari, shared UI primitives ve role bazli akislar korunur; minimal screen-level TSX/stil degisiklikleriyle ilerlenir.
+Kapsam: `student/updates`, `student/leaderboard`, `student/profile`, `business/scanner`, `business/profile`, `club/upcoming`, `club/profile`, ilgili working docs ve validation.
+Cikti: strict typed TS/TSX degisiklikleri, azaltılmış copy/chrome, daha net operasyonel hiyerarsi ve temiz mobile validation.
+Yasaklar: `any` yok, yeni dependency yok, theme disi parlak renk yok, unrelated logic refactor yok, test yardimci yuzeyleri tamamen silmek yok.
+Standartlar: AGENTS.md, restraint-first mobile design, utility over narration, production-grade readability.
+
+## Cross-Role Mobile Design Audit Round Two Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+- TypeScript reviewer pass on touched TS/TSX files
+
+## Current Plan (Cross-Role Mobile Design Audit)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Student, organizer, and business mobile surfaces'i ayni theme icinde daha sakin, daha amac-odakli ve daha premium hissettirecek sekilde sadeleştir.
+
+## Cross-Role Mobile Design Audit Architectural Decisions
+
+- `frontend-design` ve `frontend-skill` yonu bu slice'ta "calm operational minimalism" olacak: guclu tipografi + net hiyerarsi korunur, ama role disi aciklama ve ornamental chrome kaldirilir.
+- Bu tur "eklemekten cok cikarmak" yaklasimi kullanilacak. Kullanicinin isiyle ilgisiz growth/pilot/sponsor copy'leri mobile operational surfaces'ten temizlenecek.
+- Student rail'lerinde hareketi aciklayan `Auto` gibi copy'ler kaldirilacak; motion varligini UI'nin kendisi hissettirecek, metin anlatmayacak.
+- Shared theme ve component primitives korunacak; buyuk bir component rewrite yerine screen-level minimal diffs tercih edilecek.
+- Organik sonraki adim icin daha genis bir mobil audit backlog'u cikabilir, ancak bu slice ilk olarak en yuksek etkili ve en dusuk riskli clutter alanlarini kapatacak.
+
+## Cross-Role Mobile Design Audit Edge Cases
+
+- Growth kartlari kaldirilinca business ve club home ekranlari bosalmis hissedebilir; bu nedenle kalan scanner/events/summaries bloklarinin ritmi korunmali.
+- Student rail meta azaltildiginda carousel tamamen anlamsizlasmamali; event count gibi faydali meta korunabilir ama mekanik aciklama copy'si cikmali.
+- Translation copy object'lerinde artan ama kullanilmayan label alanlari gecici olarak kalabilir; bu slice UI sadeleştirmeyi oncelikli tutar ve genis cull/refactor yapmaz.
+
+## Cross-Role Mobile Design Audit Prompt
+
+Sen bir mobil urun tasarimcisi ve Expo React Native uygulama polish uzmansin.
+Hedef: OmaLeima'nin student, organizer ve business mobil ekranlarinda kullanicinin isine hizmet etmeyen tekrarli, gereksiz veya mantiksiz UI/copy bloklarini kaldir; mevcut lime/dark tema icinde daha sakin ve daha premium bir hiyerarsi kur.
+Mimari: mevcut mobile theme tokenlari, screen yapilari ve shared components korunur; minimal screen-level TSX degisiklikleriyle ilerlenir.
+Kapsam: business home, club home, student events, student rewards ve bu ekranlara bagli working docs/validation. Gerekliyse paylasilan kucuk UI metinleri sadeleştirilebilir.
+Cikti: strict typed TS/TSX degisiklikleri, azaltılmış clutter, daha net role-specific surfaces ve temiz validation.
+Yasaklar: `any` yok, theme disina cikmak yok, parlak yeni renk yok, unrelated logic degisikligi yok, yeni dependency yok.
+Standartlar: AGENTS.md, mevcut tasarim dili, high-signal subtraction, production-grade mobile UI restraint.
+
+## Cross-Role Mobile Design Audit Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Organizer Announcement Edit Focus + Login Language Menu)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Club duyuru duzenleme akisini aninda gorunur hale getir ve login dil secicisini daha kompakt, daha temiz bir utility menuye donustur.
+
+## Organizer Announcement Edit Focus + Login Language Menu Architectural Decisions
+
+- `frontend-design` ve `frontend-skill` yonu bu slice'ta "calm operational minimalism" olacak: birincil akisa hizmet etmeyen sabit buton kalabaligi azaltilir, kontrol sayisi degil okunurluk oncelenir.
+- Root `AppScreen` mevcut `ScrollView` yapisini koruyacak; sadece opsiyonel bir `scrollViewRef` expose edilerek ihtiyac duyan ekranlara kontrollu scroll imkani verilecek.
+- Club announcements ekraninda satira tiklandiginda once draft edit verisi set edilir, sonra root scroll `y=0` konumuna animasyonlu sekilde cekilir. Ayrica ust form copy'si mevcut draft durumunu daha acik gosterecek.
+- Login dil secici yeni state makinesi yazmayacak; mevcut `useUiPreferences().language` ve `setLanguage()` korunacak. UI ise globe ikonu + locale etiketi + acilan kucuk dropdown olacak.
+- Dropdown modal yerine ayni kart icinde absolute/floating menu olarak cozulur; bu, akisi daha hafif tutar ve login ekranini gereksiz sheet/modal hissinden kurtarir.
+
+## Organizer Announcement Edit Focus + Login Language Menu Edge Cases
+
+- Club screen'de row tap save/archive pending iken edit'e gecmemeli; mevcut pending guard korunmali.
+- Auto-scroll tetigi ayni announcement'a tekrar basildiginda da calismali; sadece `draft.announcementId` degisikligine bagli olmak yeterli olmayabilir.
+- Login dropdown'u acikken mod degisimi veya successful auth redirect olursa acik menu stale kalmamali; state basit toggle ile kapanabilmeli.
+- Outside tap icin agir global dismiss mekanizmasi eklenmeyecek; tekrar ikon tiklamasi veya dil secimi menu'yu kapatmak icin yeterli.
+
+## Organizer Announcement Edit Focus + Login Language Menu Prompt
+
+Sen bir Expo React Native urun-tasarim ve operasyonel mobil UX uzmanisin.
+Hedef: Organizer mobile duyuru ekraninda bir duyuruya dokunuldugunda duzenleme modunun ust formda hemen goruldugu bir akis kur ve login ekranindaki kaba FI/EN butonlarini globe ikonlu kompakt bir dropdown seciciyle degistir.
+Mimari: mevcut `AppScreen` root scroll yapisi, `club/announcements` form/feed kompozisyonu, `useUiPreferences()` dil durumu ve mevcut theme tokenlari korunur; yeni dependency eklenmez.
+Kapsam: mobile `AppScreen`, `club/announcements`, `auth/login`, calisma dokumanlari ve targeted validation.
+Cikti: strict typed TS/TSX degisiklikleri, net edit affordance, daha sakin login utility menu ve temiz lint/typecheck.
+Yasaklar: `any` yok, unrelated screen refactor yok, yeni global modal system yok, theme disi parlak renk yok, sessiz fallback yok.
+Standartlar: AGENTS.md, mevcut design language, minimal diff, high-signal UX polish.
+
+## Organizer Announcement Edit Focus + Login Language Menu Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Announcement Push Reliability + Dashboard Locale Cohesion)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Duyuru push aksiyonlarini anlasilir ve guvenilir hale getir, admin/organizer locale akisindaki karisikliklari azalt, department-tag merge primary conflict'ini kapat ve mobil bildirim tiklamasini duyuru detayina bagla.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Architectural Decisions
+
+- Web announcement push transport'u Supabase Functions invoke hatalarinda `Response` body/status bilgisini okuyacak; panel generic SDK string'i degil function'in kendi `message` ve `status` alanlarini gosterecek.
+- `AnnouncementRecord` read-model'i mevcut `notifications` tablosundan announcement-bazli delivery ozetini okuyacak. Panel `Send push` butonunu yalnizca `PUBLISHED + active time window + no prior successful delivery` oldugunda aktif birakacak.
+- Dashboard locale cookie modeli korunacak; ancak locale'i kullanan sayfalar explicit hale getirilecek ve announcements/department-tags panelleri kendi locale-aware copy sozlukleriyle calisacak.
+- Department-tag merge bug'i eski migration dosyasini yeniden yazarak degil, yeni bir corrective migration ile cozulur. Trigger `sync_department_tag_profile_links()` source primary profile id'lerini once toplar, source primary'leri demote eder, sonra target primary promotion'i yapar.
+- Mobile push click-through icin yeni router bridge `expo-notifications` response listener'i kullanir. Payload `type === "ANNOUNCEMENT"` ise mevcut session access alanina gore `/student/announcement-detail`, `/business/announcement-detail`, veya `/club/announcement-detail` route'una gider.
+- Announcement detail veri modeli buyuk schema degisikligi istemez; mevcut `clubName` + `sourceType` ile explicit sender label olusturulur. Platform kaynagi `OmaLeima Support` olarak gosterilir.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Edge Cases
+
+- Daha once hic gonderilmemis ama tum hedefleri push preference kapatmis bir announcement yine function tarafinda `NOTIFICATION_RECIPIENTS_NOT_FOUND` donebilir; UI bunu generic fail olarak gizlememeli.
+- `notifications` tablosunda eski `FAILED` kayitlar varsa announcement push tekrar denenebilmelidir; yalnizca basarili teslimat varliginda buton disabled olmalidir.
+- Expo `getLastNotificationResponse()` cold start'ta ayni response'u tekrar verebilir; mobile bridge son islenen announcement key'ini ref ile tutup cift navigation'i engellemelidir.
+- Dashboard locale panel copy'leri çevrilse bile diger daha az kullanilan panellerde kalan English metinler olabilir; bu slice once karisik locale hissini yaratan ana yuzeyleri toparlar.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Prompt
+
+Sen bir Supabase Edge Function transport, Next.js dashboard i18n ve Expo notification routing uzmanisin.
+Hedef: OmaLeima'da announcement push hatalarini web UI'da gercek nedenleriyle goster, artik gonderilemeyecek duyurular icin butonu fail-late yerine fail-early hale getir, admin/organizer dashboard locale gecisini announcements ve department-tags yuzeylerinde tutarli calistir, department-tag merge primary conflict trigger'ini duzelt ve mobilde push'e tiklayinca kullaniciyi dogru duyuru detayina gotur.
+Mimari: mevcut Supabase Edge Function kontrati, `notifications` tablosu, dashboard locale cookie route'u, mevcut mobile announcement detail route'lari ve session access query korunur; minimal typed katman genislemeleriyle ilerlenir.
+Kapsam: admin announcements transport/read-model/panel/page dosyalari, dashboard locale'li admin/club page wiring, department-tags panel/components/trigger migration, mobile announcement detail + yeni push response bridge, calisma dokumanlari, validation ve gerekiyorsa deploy.
+Cikti: strict typed TS/TSX/SQL degisiklikleri, anlamli push action feedback, locale-aware panel copy, yeni migration ve temiz mobile/admin validation.
+Yasaklar: `any` yok, unrelated dirty worktree revert yok, yeni auth modeli yok, fake push success yok, existing notification history'yi silmek yok.
+Standartlar: AGENTS.md, explicit error handling, minimal diff, zero-trust backend semantics, deployable migration.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- `npm --prefix apps/admin run smoke:announcement-push` if local Supabase stack is available
+
+## Current Plan (Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Ayni eventte ayni mekandan kazanilan ikinci leimanin UI'da gorunmesini sagla, public brand navigation'i duzelt, pricing'i tek aylik 29.99 EUR Stripe subscription paketine indir ve apply/login/contact Turnstile entegrasyonunu implicit render ile daha dayanikli hale getir.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Architectural Decisions
+
+- `EventVenueSummary` backend kontrati bozulmadan genisletilecek; venue-level gorunum korunurken ayni business icin `collectedStampCount` ve en son `stampedAt` agregasyonu detail query katmaninda hesaplanacak.
+- `StudentLeimaPassCard` slotlari venue listesinden degil, `collectedStampCount` kadar expand edilmis stamp slot setinden uretecek. Modal ayni venue bilgisiyle acilmaya devam edecek.
+- Public navbar brand link'i locale-aware `getPublicHomeHref(locale)` kullanacak; hash-scroll mantigi brand seviyesinden kaldirilacak.
+- Public pricing tek self-serve pakete inecek: 29.99 EUR monthly business subscription. Stripe Checkout `mode: "subscription"` ve `price_data.recurring.interval = "month"` ile hosted session uretecek.
+- Stripe tax mantigi official hosted Checkout yolu ile korunacak: `automatic_tax`, `billing_address_collection`, `tax_id_collection`. Subscription mode icin gereksiz payment-only alanlar route'tan cikacak.
+- Cloudflare Turnstile client widget'lari explicit JS render yerine implicit `cf-turnstile` markup ile kurulacak. Token okuma submit aninda form/container uzerinden yapilacak; reset varsa global `turnstile.reset()` ile alinacak.
+- Scanner owner-QR provisioning bugfixlerle ayni patch'e zorla sokulmayacak. Mevcut `business_scanner_devices` yapisi ve `auth.uid()` tabanli scan kontrati once netlestirilecek, sonra ayri backend/mobile slice olarak uygulanacak.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Edge Cases
+
+- Ayni business'ten toplanmis stamp sayisi minimum stamp hedefini asabilir; UI slot expansion'i `minimumStampsRequired` uzerine cikmamak icin cap uygulanmali.
+- Bazi eventlerde hic stamp yokken `collectedStampCount` kesinlikle `0` olmali; pending venue slot'lari bozulmamali.
+- Subscription checkout'ta olden kalma package key veya old route consumer'i gelirse route acik hata donmeli; sessiz fallback ile eski paket satin almasi yapilmamali.
+- Implicit Turnstile widget hidden input token'i her zaman ayni isimle gelmeli; token okunamazsa form fail-closed davranmali.
+- Apply/contact/login formlarinda Turnstile reset cagrisi script henuz inject olmadan da guvenli olmali.
+- Unpaid business deactivation istendigi icin pricing copy bunu anlatabilir; fakat gercek access suspension icin webhook + billing state lazimdir. Bu slice'ta checkout kurulsa bile tam hesap kapatma enforcement'i ayri backend isi olarak kalabilir.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Prompt
+
+Sen bir Expo React Native UI veri-akisi ve Next.js/Stripe/Cloudflare checkout hardening uzmanisin.
+Hedef: OmaLeima'da ayni business'ten gelen ikinci leimanin leima-pass UI'inda kaybolmasini duzelt, public brand'i her sayfadan dogru ana sayfaya yonlendir, pricing'i tek aylik 29.99 EUR recurring Stripe Checkout paketine indir ve apply/login/contact Turnstile entegrasyonunu CSP/Trusted Types ile daha uyumlu implicit render modeline gecir.
+Mimari: mevcut student event detail query katmani, `StudentLeimaPassCard`, public-site content + pricing checkout route'u, Cloudflare Turnstile server-side validation route'lari ve mevcut shared public/auth form yapisi korunur.
+Kapsam: mobile student leima-pass/event-detail tipleri, public navbar, pricing content/package/checkout route'u, business application form, contact form, admin login Turnstile client katmani, calisma dokumanlari ve validation.
+Cikti: strict typed TS/TSX degisiklikleri, gerekli minimal content copy update'leri, temiz mobile/admin validation, gerekiyorsa production deploy ve apply/pricing smoke notlari.
+Yasaklar: `any` yok, unrelated dirty worktree revert yok, fake payment success yok, old package fallback yok, scanner auth modelini yarim yamalak degistirmek yok.
+Standartlar: AGENTS.md, official Stripe Checkout subscription docs, official Cloudflare Turnstile implicit rendering guidance, explicit error handling, minimal diff.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- production checkout smoke should return a hosted Stripe subscription URL
+- hosted `/apply` page should render the implicit Turnstile widget without the old explicit-render crash path
+
+## Current Plan (Stripe Live Checkout + Event Stamp Limit Parity)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Stripe live checkout'u production'da gercekten calistir, reminder warning fix'inin yerinde kaldigini dogrula ve same-venue stamp limit kurallarini mobile/web organizer yuzeylerinde veri kaybi olmadan tutarli hale getir.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Architectural Decisions
+
+- Pricing checkout App Router route'u hosted Stripe Checkout Session uretmeye devam eder; ancak live-mode sorunlarini kapatmak icin invalid `customer_update` kaldirilir ve inline `price_data.tax_behavior` acikca `exclusive` verilir.
+- Stripe env values source-of-truth olarak Vercel production env'lerinde tutulur; route fix'i production'a fresh deploy ile tasinir ve sonrasinda canlı endpoint smoke'u yapilir.
+- Mobile organizer event draft'i, UI'da gosterilmese bile mevcut `rules` JSON'unu form state'inde tasiyacak; update/create sirasinda sadece `stampPolicy.perBusinessLimit` degismis gibi merge edilecek, baska rule anahtarlari silinmeyecek.
+- Legacy `stampPolicy.perBusinessLimit` digit-string degerleri mobile dashboard parse katmaninda, web builder'da ve web validation'da normalize edilerek sayiya cevrilecek.
+- Web builder copy'si "same venue total stamp limit" olarak aciklastirilacak; boylece kuralin "bir scan kac stamp verir" degil "aynı isletmeden toplam kac stamp toplanabilir" mantiginda oldugu daha net olacak.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Edge Cases
+
+- Stripe route fix'i deploy edilmeden production smoke hala eski 500'i dondurebilir; smoke tarihi deploy sonrasina ait olmalidir.
+- Inline `tax_behavior: "exclusive"` demek fiyatlari net pilot fiyat olarak tutar; checkout'ta VAT ustune eklenir. Bu, Finlandiya B2B pilot modeliyle uyumludur ama ileride B2C sabit fiyat istenirse ayrica gozden gecirilmelidir.
+- `rules` merge'i yapilirken `stampPolicy` altindaki olasi gelecekteki diger alanlar da korunmalidir; sadece `perBusinessLimit` degistirilmelidir.
+- Legacy string-form event rules normalize edilmezse organizer unrelated edit yaptiginda limit istemeden `1`e inebilir veya request validation fail edebilir.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Prompt
+
+Sen bir Stripe Checkout production rollout ve event-rules parity uzmanisin.
+Hedef: OmaLeima pricing checkout'u live Stripe anahtarlariyla production'da gercekten calistir, Expo reminder warning fix'inin hala yerinde oldugunu dogrula ve same-venue stamp limit kuralini mobile/web organizer duzenleme akislari boyunca veri kaybi veya legacy-value bozulmasi olmadan koru.
+Mimari: mevcut Next.js App Router pricing route'u, Vercel production env'leri, mevcut Expo reminder bridge, mobile club dashboard/form state'i, web event-rules builder ve mevcut rules JSON modeli korunur.
+Kapsam: Stripe checkout route + production smoke, mobile club event draft/mutation/rules parse katmani, web rules builder/validation katmani, calisma dokumanlari ve ilgili validation.
+Cikti: strict typed TS/TSX degisiklikleri, production deploy, gercek checkout smoke sonucu ve net parity notu.
+Yasaklar: fake Stripe success yok, unrelated dirty worktree revert yok, mevcut rules blob'unu ezmek yok, `any` yok.
+Standartlar: AGENTS.md, explicit error handling, minimal diff, live-smoke proof, backward-compatible rules normalization.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- `vercel deploy --prod --yes`
+- Production `POST https://omaleima.fi/api/pricing/checkout` smoke should return `200` with a hosted Stripe Checkout URL.
+
+## Current Plan (Student Event Detail + Reminder Warning Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Student event detail ekranindaki yanlis timeline/rules sunumunu duzeltmek, reminder SecureStore warning'lerini kapatmak ve raporlanan event cover prefetch loglarini gercekten aktif problem mi diye dogrulamak.
+
+## Student Event Detail + Reminder Warning Cleanup Architectural Decisions
+
+- Student event detail timeline badge'i student listesiyle ayni mantigi kullanacak: `CANCELLED` haricindeki durumlarda source-of-truth zaman olacak (`startAt`/`endAt`), stale `status` label'lari future event UI'ini bozamayacak.
+- Registration/cancellation availability logic'i de ayni zaman mantigina yaklastirilacak; iptal edilmis event yine kapali kalacak ama pre-start flow sadece `status !== PUBLISHED` gibi dar bir backend etikete baglanmayacak.
+- Event rules icin yeni backend schema eklenmeyecek. Sadece mobile detail ekraninda `stampPolicy.perBusinessLimit` mevcut object/string/legacy array sekillerinden okunup insan-dostu aciklama metnine cevrilecek; diger rule tipleri mevcut stringify fallback ile kalabilir.
+- Reminder bridge mimarisi korunacak. Sadece SecureStore key'i Expo'nun izin verdigi karakter setine alinacak.
+- Event cover prefetch icin kullanicinin verdigi URL'ler once ag seviyesinde dogrulanacak; hala saglikli donuyorlarsa bu turda gereksiz kod degisikligi yapilmayacak.
+
+## Student Event Detail + Reminder Warning Cleanup Edge Cases
+
+- Event veritabani `status = COMPLETED` kalsa bile `startAt` gelecekteyse student detail `tulossa` gostermeli; aksi halde event listesi ve detail birbiriyle celisir.
+- `stampPolicy` eski verilerde `["perBusinessLimit:2"]` veya `"perBusinessLimit:2"` olarak gelebilir; UI bunlari da anlamali.
+- SecureStore key migration bu feature icin stateful veri kaybi yaratmaz; reminder fired record cache'i zaten yeniden kurulabilen, gecici bir istemci cache'idir.
+- Prefetch warning URL'leri su anda saglikliysa, log temizlenene kadar eski cihaz loglari gorulebilir; bunu aktif product regression gibi raporlamamak gerekir.
+
+## Student Event Detail + Reminder Warning Cleanup Prompt
+
+Sen bir Expo React Native student event UX ve runtime warning temizligi uzmanisin.
+Hedef: Student event detail ekraninda yanlis timeline badge'lerini ve ham `stampPolicy` gorunumunu duzelt, reminder bridge'in SecureStore warning kok nedenini kapat, paylasilan event cover URL'lerinin gercekten halen bozuk olup olmadigini dogrula.
+Mimari: mevcut student detail query/hook'lari, mevcut event rules JSON modeli, Expo SecureStore ve mevcut remote-image-health verification helper'lari korunur; backend schema veya yeni dependency eklenmez.
+Kapsam: `apps/mobile/src/app/student/events/[eventId].tsx`, `apps/mobile/src/features/notifications/student-event-reminders.ts`, gerekli calisma dokumanlari ve targeted mobile validation.
+Cikti: strict typed TS/TSX degisiklikleri, acik runtime bulgu notu ve temiz mobile validation.
+Yasaklar: yeni dependency yok, unrelated dirty worktree revert yok, fake fallback yok, `any` yok.
+Standartlar: AGENTS.md, minimal diff, explicit error handling, student list/detail zaman mantigi tutarliligi.
+
+## Student Event Detail + Reminder Warning Cleanup Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check -- 'apps/mobile/src/app/student/events/[eventId].tsx' apps/mobile/src/features/notifications/student-event-reminders.ts`
+
+## Current Plan (Pricing Checkout + Announcement/Admin Reliability)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Public pricing'i Stripe Checkout ile gercek odemeye hazir hale getirmek, mobile login ve announcement detail yuzeylerindeki UX bosluklarini kapatmak ve organizer/admin panel aksiyonlarini guvenilir sekilde dogrulamak.
+
+## Pricing Checkout + Announcement/Admin Reliability Architectural Decisions
+
+- Public pricing icin Stripe Checkout Sessions kullanilacak. Stripe docs'un onerisi dogrultusunda hosted checkout tercih edilecek; custom card form veya Payment Intents gereksiz complexity yaratmayacak.
+- Finlandiya genel ALV orani kodda hard-code hesaplanmayacak. Checkout session `automatic_tax: { enabled: true }`, `billing_address_collection: "required"` ve `tax_id_collection: { enabled: true }` ile acilacak; vergi hesaplamasini Stripe yapacak.
+- Kullaniciya kontrolsuz recurring subscription acmayacagiz. Self-serve Stripe paketleri bir kerelik pilot/slot odemeleri olacak; daha buyuk premium surecler application/contact uzerinden kalabilir.
+- Stripe product/price dashboard bagimliligi olmadan hizli ve deterministic kalmak icin pilot checkout paketleri server-side validated package key -> inline `price_data` map'i ile acilacak.
+- Login language selector yeni state makinesi kurmayacak; mevcut `useUiPreferences()` icindeki `language` ve `setLanguage()` kullanilacak.
+- Announcement detail zoom'u yeni dependency olmadan native `Modal` + `Image` ile cozulur; resim tum ekranda `contain` ile acilir, gorunen ikincil zoom butonu olmaz.
+- Shared `AnnouncementsPanel` icindeki duzeltmeler hem `/club/announcements` hem `/admin/announcements` icin source-of-truth olacak. `Edit` compose tab'ina geri donecek; archive/send-push sonuclari listede gorunur kalacak; push metric parse'i client'ta korunacak.
+- Panel auditinde once mevcut scriptler kosulacak; script coverage disinda kalan bulgular kod incelemesiyle not dusulecek.
+
+## Pricing Checkout + Announcement/Admin Reliability Edge Cases
+
+- Stripe secret/publishable key yoksa checkout route sessiz fallback yapmayacak; acik hata donecek ve public CTA bunu kontrollu sekilde gosterecek.
+- `automatic_tax` kullanildigi icin checkout success toplaminda vergi alici lokasyonuna gore degisebilir; public pricing copy "VAT calculated in checkout" mantigini acikca belirtmeli.
+- Club/admin announcements panelinde listeden `Edit` basinca form state dolu olsa bile kullanici ayni tab'ta kalirsa broken hissi surer; active tab explicit degismeli.
+- `router.refresh()` sonrasi action mesajlari tamamen kaybolursa kullanici archive/push sonucunu gormez; success/error state'i listede kalacak sekilde ele alinmali.
+- Smoke scriptler local/hosted auth durumuna gore kismen environment-dependent olabilir; fail eden script olursa teknik blocker acikca raporlanacak, false green yazilmayacak.
+
+## Pricing Checkout + Announcement/Admin Reliability Prompt
+
+Sen bir Next.js + Stripe Checkout + Expo mobile polish ve dashboard regression uzmanisin.
+Hedef: OmaLeima public pricing alanini Finlandiya ALV mantigina uygun Stripe checkout akisina bagla, mobile login'e kalici dil secici ekle, announcement detail image zoom UX'ini sadeleştir ve shared organizer/admin announcements panelindeki kirik veya kirik gorunen aksiyonlari kapat; ardindan organizer/admin panel yuzeylerini mevcut smoke katmani ile yeniden dogrula.
+Mimari: Next.js App Router route handler, Stripe Checkout Sessions, mevcut public landing content sistemi, Expo `useUiPreferences`, native modal/image, shared `AnnouncementsPanel` component ve mevcut admin smoke scriptleri kullanilir.
+Kapsam: public pricing/public-site dosyalari, Stripe route/helper/env docs, mobile login + announcement detail dosyalari, shared announcements/admin dashboard dosyalari, calisma dokumanlari, validation ve deploy.
+Cikti: strict typed TS/TSX degisiklikleri, gerekli package/env updates, temiz mobile/admin validation, smoke sonuclari ve production deploy.
+Yasaklar: recurring subscription'ı kullaniciya gizlice acmak yok, hard-coded VAT math ile Stripe tax'i bypass etmek yok, fake success yok, unrelated dirty worktree revert yok, `any` yok.
+Standartlar: AGENTS.md, official Stripe/Vero guidance, minimal diff, explicit error handling, source-of-truth shared panel logic.
+
+## Pricing Checkout + Announcement/Admin Reliability Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/admin run smoke:routes`
+- targeted admin/club smoke scripts where environment allows
+- `git --no-pager diff --check`
+
+## Current Plan (Student Event Time Awareness + Venue Discovery)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Student event akisini zaman-duyarli hale getirmek, kayitli ogrenciye son 60 dakika reminder + countdown eklemek, event detail venue kesfini iyilestirmek ve leaderboard/leima-pass geri bildirim bosluklarini kapatmak.
+
+## Student Event Time Awareness + Venue Discovery Architectural Decisions
+
+- `useStudentEventsQuery` fetch kontrati korunacak; event listesi query sonucunu local `now` ile tekrar bucket'layarak `UPCOMING -> ACTIVE -> hidden` gecislerini manuel refresh olmadan gosterecek.
+- Countdown gorseli sadece kayitli upcoming eventlerde ve `startAt - now <= 60 dakika` oldugunda render edilecek.
+- Event reminder server push ile yeniden kurulmayacak; mevcut Expo local notification altyapisi uzerinden `startAt - 60 dakika` icin stable identifier'li schedule, gec kalinmis durumlarda da bir kere immediate local reminder uygulanacak.
+- Reminder dedupe icin mevcut dependency set icinde `expo-secure-store` kullanilacak; yeni paket eklenmeyecek.
+- Event detail `Ilmoittautuminen` blogu sadece event henuz baslamamissa render edilecek.
+- Event venue listesi compact pressable kartlara donusecek; secilen venue modal'inda adres, durum, varsa instructions, event reward summary ve harita aksiyonu gosterilecek.
+- Leaderboard tarih filtresi event selector'u bozmadan chip seviyesinde olacak; secilen tarih grubuna gore event rail daralacak ve secim gecersiz kalirsa uygun default event'e donecek.
+- Leima pass slot'lari collected venue icin pressable olacak; kucuk modal venue adini ve stamp baglamini gosterecek.
+
+## Student Event Time Awareness + Venue Discovery Edge Cases
+
+- Query fetch aninda `ACTIVE` olan bir event ekranda zaman ilerledikce `COMPLETED` olup listeden dusmeli; stale query sonucuna ragmen local bucket yeniden hesaplanacak.
+- User app'i reminder saatinden once acmissa notification future trigger ile schedule edilecek; user son 60 dakika icinde ilk kez app'e gelirse immediate local notification yalnizca bir kez gosterilecek.
+- Event saati veya event listesi degisirse eski scheduled reminder'lar iptal edilmeli; stale local notification kalmamali.
+- Event detail direct deep link ile acildiginda `now` bazli hide/show karari ayni sekilde calismali.
+- Venue reward modeli event-level; venue modal bunu venue-specific gibi yanlis temsil etmemeli.
+- Leaderboard tarih filtresi event setini sifirlarsa kullaniciya bos hata vermek yerine uygun fallback event secimi yapilmali.
+
+## Student Event Time Awareness + Venue Discovery Prompt
+
+Sen bir Expo React Native ogrenci deneyimi ve event-day operasyon uzmanisin.
+Hedef: Student Events ekraninda eventleri zaman ilerledikce otomatik dogru bolume tasiyan UI kur, kayitli ogrenciye son 60 dakikada countdown ve local reminder goster, event detail'de baslangic sonrasi kayit blogunu kaldir, venue kesfini compact kart + detail/map akisina cevir, leaderboard'a hafif tarih filtresi ekle ve leima pass'te mekan kimligini popup ile goster.
+Mimari: mevcut React Query event/detail sorgulari, Expo local notifications, SecureStore, mevcut student venue/reward surface'leri ve mevcut design language korunur; backend tablo/RPC eklenmez.
+Kapsam: mobile student event list/detail/leaderboard/leima-pass dosyalari, gerekli push helper/bridge katmani, calisma dokumanlari ve mobile validation.
+Cikti: strict typed TS/TSX degisiklikleri, yeni reminder bridge/helper'lari ve temiz lint/typecheck.
+Yasaklar: yeni dependency eklemek yok, fake fallback yok, reward/scan backend kontratini degistirmek yok, unrelated dirty worktree revert yok, `any` yok.
+Standartlar: AGENTS.md, minimal diff, explicit error handling, time-aware UI, one-time reminder dedupe.
+
+## Student Event Time Awareness + Venue Discovery Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Login Protection + Pricing/Business Intake)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Admin login'i Cloudflare Turnstile ile guclendirmek, Finland-only erisim kararini guvenli sekilde opsiyonel yapmak, pricing/business paketini public site'a koymak ve isletme basvurularini admin queue'ya gercekten baglamak.
+
+## Login Protection + Pricing/Business Intake Architectural Decisions
+
+- Login Turnstile token'i server-side `/api/auth/turnstile` endpoint'inde validate edilir; password ve Google auth ancak bu preflight gectikten sonra baslar.
+- Contact formdaki mantikla uyumlu shared Turnstile validator ve client IP helper kullanilir; secret sadece server-side okunur.
+- Finland-only erisim hard-coded kapatma olarak uygulanmaz. `OMALEIMA_GEOFENCE_MODE=off|admin|all` proxy guard'i eklenir; default `off`, onerilen ilk production modu `admin`.
+- Public business application intake yeni `/apply` ve `/en/apply` sayfalarindan gider. API service role ile `business_applications` insert eder, Turnstile ve same-origin kontrolu uygular.
+- Pricing public landing'de yayinlanir, ancak Stripe tahsilati fake checkout ile acilmaz. CTA'lar application flow'a gider; Stripe Checkout Payment Links veya Price IDs netlesince bu planlar checkout'a baglanabilir.
+- Admin business applications paneli approval sonrasi business profile + scanner credential handoff surecini aciklar.
+- Announcement popup "View more/Näytä lisää" local dismiss state set eder ve sonra detail route'a gider.
+
+## Login Protection + Pricing/Business Intake Edge Cases
+
+- Local development'ta Turnstile secret yoksa validator safe-open davranir; hosted/Vercel ortaminda secret eksikse login/apply/contact fail-closed olur.
+- Geofence country header'i yoksa request allowed kalir; bu local/dev ve botched proxy header durumunda false negative'i false positive'e tercih eder.
+- `OMALEIMA_GEOFENCE_MODE=all` public website ve API'yi Finlandiya disindan kapatabilir; App Store review ve yurt disi kullanicilar icin risklidir. Varsayilan kapali kalmalidir.
+- Business application API public anon RLS'yi acmaz; service role server route kullanir. Client dogrudan Supabase'e yazamaz.
+- Stripe odeme almadan once vergi/fatura, urun/price id ve refund/contract metinleri netlesmelidir.
+
+## Login Protection + Pricing/Business Intake Prompt
+
+Sen bir Next.js/Supabase/Cloudflare Turnstile ve B2B onboarding uzmanisin.
+Hedef: OmaLeima admin login'e server-side Turnstile preflight ekle, Finland-only access'i opsiyonel ve kontrollu hale getir, public pricing paketlerini yayinla, isletme basvuru formunu admin `business_applications` kuyruğuna bagla ve duyuru popup detail tiklamasinda popup'i kapat.
+Mimari: Next.js App Router API route'lari, Supabase service role server-only insert, existing admin review queue, Cloudflare Turnstile Siteverify, Vercel/Cloudflare country headers ve mevcut public design system kullanilir.
+Kapsam: admin login, public apply/pricing, business application admin explanation, mobile announcement popup, docs and validation.
+Cikti: strict TS/TSX/CSS, yeni `/apply` sayfalari, `/api/business-applications`, `/api/auth/turnstile`, optional proxy geofence ve temiz validation.
+Yasaklar: fake Stripe payment yok, public direct Supabase insert policy yok, secret degeri yazdirmak yok, Finland geofence'i default production'da tum siteye zorlamak yok, unrelated dirty worktree revert yok.
+Standartlar: AGENTS.md, server-side Turnstile validation, zero-trust backend, minimal diff, explicit product risk notes.
+
+## Login Protection + Pricing/Business Intake Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+- Production smoke after deploy: `/login` Turnstile widget + preflight, `/apply` successful Turnstile submit creates a pending admin application.
+
+## Current Plan (QR Refresh + Navigation/Layout Regression)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** My QR refresh error root cause'i kapatmak, announcement detail navigation/zoom davranisini role-aware yapmak, admin/organizer web shell'ini fixed ve dil olarak stabil hale getirmek.
+
+## QR Refresh + Navigation/Layout Architectural Decisions
+
+- `generate-qr-token` call existing hosted Edge Function kontratini kullanmaya devam eder; sadece gateway icin gerekli `apikey` header'i eklenir.
+- QR UI generic friendly error'u korur ama altinda actual function/gateway message'i selectable olarak gosterir; silent failure yok.
+- Announcement detail back button stack history'ye guvenmez; caller tarafindan verilen `backHref` role source-of-truth olur.
+- Announcement image zoom icin visible button kaldirilir; hero image full tap target olur ve modal full-frame image gosterir.
+- Dashboard desktop sidebar document flow'dan cikarilip fixed viewport rail olur; menu listesi kendi icinde scroll eder, sign out sabit kalir.
+- Dashboard locale default'u Finnish olur; panel locale okuyan sayfalar ayni locale'i shell'e de gecerek duplicate/karisik resolution'i azaltir.
+
+## QR Refresh + Navigation/Layout Edge Cases
+
+- Edge Function hala `EVENT_ENDED`, `UNAUTHORIZED`, `NOT_REGISTERED` gibi domain hatalari donebilir; UI artik bu detayi saklamaz.
+- Detail sayfasina direct deep link ile girilirse backHref yine role route'una replace eder, bos/native stack'e bagli kalmaz.
+- Mobile/tablet dashboard breakpoint'lerinde sidebar tekrar relative flow'a doner; fixed davranis desktop'a ozeldir.
+- Locale cookie yoksa artik Finnish shell/nav/title gorunur. Kullanici switch'e basarsa HTTP-only cookie ile English kalici olur.
+
+## QR Refresh + Navigation/Layout Prompt
+
+Sen bir Expo React Native + Next.js dashboard regression uzmanisin.
+Hedef: Student My QR ekraninda token refresh'in hosted Supabase Edge gateway tarafindan reddedilmesini onle, hata detayini gorunur yap, announcement detail back/zoom UX'ini role-aware hale getir ve admin/organizer web dashboard sidebar/dil stabilitesini duzelt.
+Mimari: mevcut Edge Function, Expo Router detail route'lari, React Query QR hook'u, DashboardShell ve cookie-backed dashboard locale sistemi korunur; backend tablo/RPC degismez.
+Kapsam: QR fetch/header ve QR hata UI'i, announcement detail back/zoom, dashboard shell CSS/i18n ve ilgili calisma dokumanlari.
+Cikti: strict typed TS/TSX/CSS degisiklikleri ve clean mobile/admin validation.
+Yasaklar: unrelated dirty work revert yok, fake fallback yok, default language'i sayfa bazinda hard-code dagitmak yok, RLS/Auth kontratini gevsetmek yok.
+Standartlar: AGENTS.md, minimal diff, explicit error reporting, role-aware navigation, fixed desktop shell.
+
+## QR Refresh + Navigation/Layout Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+
+## Current Plan (Student Info IA + Turnstile Production Finish)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Student mobile information architecture'i sadeleştirmek ve Turnstile production rollout'u env/deploy seviyesinde tamamlamak.
+
+## Student Info IA Architectural Decisions
+
+- Student tab route'u `events` olarak kalacak; sadece Finnish tab title `Eventit` olacak. Events page title/copy `Tapahtumat` olarak korunur.
+- `Miksi OmaLeima` login hero rail'ine dorduncu image-backed onboarding slide olarak tasinir; Events page'deki value card kaldirilir.
+- Duyurularin ana yeri student `updates`/Info olur. Events page announcement rail'i kaldirilir; Info'daki feed `presentation="rail"` ile yatay, kendi icinde kayan `Tiedotteet` alanina donusur.
+- `PublicClubDirectorySection` Info'da kalir ve existing horizontal rail davranisini korur.
+- Turnstile env'leri Vercel production'a eklenir, production deploy alinir, hosted env check'in build'de gecmesi ve `/contact` HTML/API fail-closed davranisi dogrulanir.
+
+## Student Info IA Edge Cases
+
+- Kisa FI tab label narrow iPhone'da tasmazken Events route ve deep linkler etkilenmez.
+- Info sayfasinda user yoksa announcement section zaten render olmaz; club directory query de `isEnabled` ile kapali kalir.
+- Contact submit token olmadan basarili sayilmamalidir; `Verification failed` response istenen fail-closed davranistir.
+- Gercek basarili Turnstile submit smoke icin browser'da widget token'i uretilmelidir; headless/tokenless curl bunu kanitlayamaz.
+
+## Student Info IA Prompt
+
+Sen bir Expo React Native information architecture ve Vercel/Turnstile rollout uzmanisin.
+Hedef: Student mobile'da tab label overflow'u duzelt, Events sayfasindaki duplicate value/announcement yuzeylerini dogru sayfalara tasi, Info sayfasini yatay Tiedotteet + scrollable opiskelijaklubit merkezi yap ve Turnstile production env/deploy adimini tamamla.
+Mimari: mevcut Expo Router tablari, login `LoginHero` auto rail, `AnnouncementFeedSection`, `PublicClubDirectorySection`, Vercel production env ve Next.js contact API korunur. Yeni backend tablo/RPC yok.
+Kapsam: student tab/events/updates/login-copy mobile dosyalari, Vercel env/deploy, contact smoke notlari ve calisma dokumanlari.
+Cikti: strict typed TS/TSX copy/layout degisiklikleri, temiz mobile/admin validation, production deploy ve acik smoke sonucu.
+Yasaklar: route rename yok, secret degeri log/final tekrar yok, fake Turnstile token yok, unrelated dirty worktree revert yok.
+Standartlar: AGENTS.md, minimal diff, explicit validation, fail-closed contact security.
+
+## Student Info IA Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- Vercel production env list should show both Turnstile names.
+- Production deploy should pass hosted env check.
+- `/contact` page should include Turnstile script/sitekey and `/api/contact` should fail closed without a token.
+- `git --no-pager diff --check`
+
+## Current Plan (Announcement Realtime Crash + Turnstile Retry)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Physical iPhone'da announcement feed'i crash ettiren Supabase Realtime channel reuse problemini duzeltmek ve Cloudflare Turnstile key rollout'unun gercek durumunu netlestirmek.
+
+## Announcement Realtime Crash Architectural Decisions
+
+- Announcement realtime query invalidation ayni kalacak; sadece channel topic'i hook instance'a ozel yapilacak.
+- Channel suffix'i guvenlik amacli degil, runtime topic collision onleme amacli olacak; DB/RLS veya publication davranisi degismeyecek.
+- Turnstile production key'leri yoksa Vercel'e sahte/test key eklenmeyecek. Production contact smoke ancak real Cloudflare auth/key ile kapanacak.
+
+## Announcement Realtime Crash Edge Cases
+
+- Ayni ekranda birden fazla announcement feed mount edilirse her hook instance kendi channel'ina subscribe olur, ama ayni user query key'lerini invalidate eder.
+- Hot reload veya native error recovery sonrasi eski channel topic'i subscribed kalirsa yeni instance farkli topic ile crash'i tetiklemez.
+- User id degisirse effect cleanup eski channel'i remove eder ve yeni user icin yeni topic kullanilir.
+- Cloudflare auth hatasi devam ederse contact form hosted ortamda fail-closed kalir; bu guvenlik olarak tercih edilir.
+
+## Announcement Realtime Crash Prompt
+
+Sen bir Expo React Native + Supabase Realtime runtime regression uzmanisin.
+Hedef: iPhone'da announcement feed acilirken gorulen `cannot add postgres_changes callbacks after subscribe()` render crash'ini, query/read modelini bozmadan duzelt; Cloudflare Turnstile production key durumunu guvenli sekilde tekrar dene.
+Mimari: mevcut React Query invalidation hook'u, Supabase Realtime `postgres_changes`, hosted `supabase_realtime` publication ve Vercel env modeli korunur. Sadece channel topic collision onlenir.
+Kapsam: `apps/mobile/src/features/announcements/announcements.ts`, calisma dokumanlari, mobile type/lint validation ve Cloudflare/Vercel env durum raporu.
+Cikti: strict typed TS degisikligi, temiz mobile validation ve acik Turnstile blocker notu.
+Yasaklar: fake Turnstile key production'a eklemek yok, RLS bypass yok, announcement query semantigini degistirmek yok, secret degerlerini loglamak yok, unrelated worktree degisikliklerini revert yok.
+Standartlar: AGENTS.md, minimal diff, explicit blocker reporting, mobile runtime stability.
+
+## Announcement Realtime Crash Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+- Cloudflare Turnstile widget list retry through MCP; if auth fails, document blocker without mutating Vercel env.
+
+## Current Plan (Business/Admin Workflow Parity Polish)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Business mobile ve admin/organizer web yuzeylerinde kullanicinin bildirdigi akisi belirsiz, fazla yer kaplayan ve eksik gorunen noktalarini minimal riskle toparlamak.
+
+## Business/Admin Workflow Parity Architectural Decisions
+
+- Business mobile `Laitteet` existing scanner device read/mutation hooks ile kalacak; yalnizca collapsible shell eklenecek.
+- Business history accepted rows daha kompakt olacak; valid scan detail copy tekrari kaldirilacak, review/revoked aciklamalari korunacak.
+- Event cover upload web client tarafinda Supabase browser client + `event-media` storage bucket ile yapilacak; event save payload'i yine `coverImageUrl` string kontratini kullanacak.
+- Business applications page backend lifecycle'i UI icinde aciklayacak; yeni tablo veya public intake form bu slice'ta eklenmeyecek.
+- Rewards page event-bound mantigi bir workflow karti ve "Create reward for this event" aksiyonu ile gorunur kilacak.
+- Sidebar fixed behavior CSS ile cozulur; dashboard component API degismez.
+- Dashboard FI/EN destegi once server-side shell seviyesinde kurulacak: HTTP-only cookie, guvenli locale route, nav/title/subtitle dictionary ve sidebar switch. Ardindan kullanicinin isaret ettigi uc kritik workflow paneli (`business-applications`, `club/events`, `club/rewards`) locale prop ile cevrilecek.
+- Kalan admin/organizer panelleri ayni `DashboardLocale` pattern'iyle sonradan tasinacak; bu turda tum panel detay copy'leri yarim yamalak cevrilip teknik borc buyutulmayacak.
+
+## Business/Admin Workflow Parity Edge Cases
+
+- Event cover upload basarili olsa bile update formunda kullanici "Save event" basmadan event kaydi degismemeli; UI bunu mesajla belirtir.
+- Storage upload path `clubs/{clubId}/events/...` olmalidir; mevcut RLS policy bu path'ten club organizer/admin yetkisini kontrol eder.
+- Scanner devices collapsed olsa bile query calismaya devam eder; header count kullaniciya durum verir.
+- Valid history cards compact olurken manual review/revoked detail kaybolmamali.
+- Business applications bos queue durumunda bile "nasil gelir" aciklamasi gorunmeli.
+- Dashboard locale route sadece `/admin` ve `/club` altina redirect etmeli; open redirect'e izin vermemeli.
+- Protected sayfalar local Supabase kapaliyken browser auth smoke'a girmeyebilir; i18n route/cookie ve static dictionary smoke yine kosulmali, gercek UI smoke hosted/local auth ortaminda tamamlanmali.
+
+## Business/Admin Workflow Parity Prompt
+
+Sen bir Expo React Native + Next.js/Supabase urun akisi polish uzmanisin.
+Hedef: Business mobile devices/history yogunlugunu azaltmak, admin business applications lifecycle'ini aciklamak, organizer event cover image upload'u bilgisayardan calisir hale getirmek, reward tiers'in event'e nasil baglandigini gorunur yapmak, admin sidebar'i sabit boyutta tutmak ve admin/organizer web icin kalici FI/EN dashboard temelini kurmaktir.
+Mimari: mevcut hooks, Supabase storage RLS, Next.js client components, server-side dashboard shell, HTTP-only locale cookie ve shared dashboard CSS korunur; yeni backend tablo/RPC eklenmez.
+Kapsam: sadece bildirilen business mobile ve admin/club web workflow UI dosyalari, calisma dokumanlari ve validation.
+Cikti: strict TS/TSX/CSS degisiklikleri, yeni event media upload helper'i ve temiz typecheck/lint/diff-check.
+Yasaklar: scanner/scan/reward backend kontratini degistirmek yok, kalan paneller tamamen cevrilmis gibi davranmak yok, open redirect yok, unrelated dirty worktree revert yok, default parameter yok, `any` yok.
+Standartlar: AGENTS.md, minimal diff, explicit errors, Supabase storage policy path'iyle uyum, existing design language.
+
+## Business/Admin Workflow Parity Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- Dashboard i18n static smoke for FI shell/nav copy.
+- `curl` locale route smoke for `Set-Cookie` + safe dashboard redirect.
+- `git --no-pager diff --check`
+
+## Current Plan (Announcement Delivery + Contact Hosted Follow-up)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Goal:** Hosted contact rollout'u mumkun olan yere kadar tamamlamak; mobil duyurularin popup/detail/realtime akisini guclendirmek; organizer tarafinda completed eventleri gorunur yapmak.
+
+## Announcement Delivery + Contact Hosted Architectural Decisions
+
+- Contact production rollout yalanci smoke ile kapatilmayacak. Gercek Cloudflare Turnstile sitekey/secret yoksa production deploy ve submit smoke bekletilecek.
+- Hosted contact SQL dogrudan linked DB'ye uygulanacak ve migration history yalniz ilgili migration versionlari icin repair edilecek; daha once pending gorunen scanner migration'larina bu slice dokunmayacak.
+- Announcement realtime, mevcut Supabase Realtime + React Query invalidation pattern'ine eklenecek. UI kendi query'lerini yeniden kullanacak; yeni tablo veya yeni endpoint yok.
+- Popup bir preview olarak kalacak: body sinirli satirla gorunecek, close acknowledgement yapacak, "Näytä lisää / View more" uygulama ici detail route'una gidecek.
+- Detail image zoom native modal ile cozulur; yeni dependency eklenmez.
+- Student Events sayfasi announcement feed'i compact rail olarak gosterecek; ana News/Info sayfasi full feed olarak kalacak.
+- Organizer Upcoming ekraninda `COMPLETED` filter chip'i eklenecek; default `ALL` hala aktif/tulossa/draft odakli kalacak, completed bilincli secimle gorulecek.
+
+## Announcement Delivery + Contact Hosted Edge Cases
+
+- Popup close butonu duyuruyu read/ack yapar; "View more" ack yapmaz, kullanici detayda okuyup isterse mark read yapar.
+- Realtime channel RLS visibility'yi bypass etmemeli; UI sadece mevcut read modelini invalidate eder, data yine RLS'li query ile gelir.
+- Announcement table `supabase_realtime` publication'da zaten varsa migration duplicate hata vermemeli.
+- Club completed events default listeyi sisirmemeli; `COMPLETED` chip'i secilince gorunmeli.
+- Turnstile test key kullanilmayacak; aksi halde contact form bot korumasi production'da gercekten etkin sanilabilir.
+
+## Announcement Delivery + Contact Hosted Prompt
+
+Sen bir Expo React Native + Supabase Realtime + hosted rollout uzmanisin.
+Hedef: OmaLeima duyuru akisini ogrenci tarafinda popup preview, uygulama ici detay navigasyonu, detay gorsel zoom'u ve Events sayfasinda realtime gorunurluk ile tamamla; organizer tarafinda päättynyt/completed eventleri gorunur yap; hosted contact migration/env rollout'unu guvenli sekilde ilerlet.
+Mimari: mevcut React Query read model, Supabase Realtime postgres_changes invalidation, Expo Router detail route'lari, mevcut InfoCard/CoverImageSurface komponentleri ve Supabase migration sistemi kullanilir.
+Kapsam: announcement mobile UI/query/realtime, club upcoming completed filter, contact hosted env/migration smoke notlari ve validation. Scanner QR/RLS/reward logic veya unrelated public landing image work bu slice disinda.
+Cikti: strict typed TS/TSX/SQL degisiklikleri, hosted migration proof, mobile typecheck/lint, acik Turnstile blocker notu.
+Yasaklar: fake Turnstile/test-key production smoke yok, service role secret yazdirmak yok, unrelated dirty worktree revert yok, genis refactor yok, client-side RLS bypass yok.
+Standartlar: AGENTS.md, minimal diff, explicit failure/blocker reporting, Supabase zero-trust/RLS, Expo native UX, no silent failures.
+
+## Announcement Delivery + Contact Hosted Validation Plan
+
+- Hosted Vercel env list: `SUPABASE_SERVICE_ROLE_KEY`, `CONTACT_IP_HASH_SECRET` added; Turnstile pair missing until Cloudflare auth works.
+- Hosted Supabase contact migration SQL + RLS/storage verification.
+- Hosted Supabase announcement realtime publication SQL + publication verification.
+- `npm --prefix apps/mobile run typecheck`
+- Scoped mobile ESLint for changed announcement/student/club files.
+- `git --no-pager diff --check`
+
+## Current Plan (Public Landing Image Sharpness)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/club-presentation-fi`
+- **Goal:** Hero ve "Approkulttuuri elaa" galerisi gorsellerindeki blur sorununu kaynak boyut, Next image `sizes`, ve compression seviyesi acisindan duzeltmek; sonra tekrar production deploy almak.
+
+## Public Landing Image Sharpness Architectural Decisions
+
+- Kullanicinin rapor ettigi yuzeyler once canli DOM/image inspection ile dogrulandi; cozum tahminle degil browser'in gercek `currentSrc` secimiyle verilecek.
+- Public galeri tek bir `sizes` string ile gitmeyecek. `wide` ve `normal` item'lar farkli render genisligine sahip oldugu icin `span` bazli `sizes` hesaplanacak.
+- Hero ve galeri gorsellerinde kalite `q=75` seviyesinden daha yukari cekilecek. `unoptimized` veya global image pipeline kapatma yerine kontrollu bir `quality` artisi tercih edilecek.
+- Layout ve tema korunacak; sadece image delivery katmani duzeltilecek.
+
+## Public Landing Image Sharpness Edge Cases
+
+- `public-gallery-wide` item'lar desktop'ta 2 kolon kapladigi icin `33vw` bildirmek net sekilde yanlis; mobil/tablet kirilimlarinda da bu yeni `sizes` string dogru davranmali.
+- Source asset'lerin cogu `1672x941`; bu yuzden cok buyuk retina ekranlarda sifir blur garantisi yok. Ama hatali `1080w` indirme davranisi kapandiginda gozle gorulur kalite artisi olmali.
+- Hero source boyutu kodda yanlis tanimliysa onu current bitmap ile hizalamak gerekir.
+
+## Public Landing Image Sharpness Prompt
+
+Sen bir Next.js image delivery ve responsive media quality uzmanisin.
+Hedef: OmaLeima public landing ana sayfasindaki bulanik gorunen hero ve "Approkulttuuri elaa" galerisi gorsellerinin kok nedenini bulup duzeltmek.
+Mimari: canli browser inspection ile `currentSrc`, `clientWidth`, ve source resolution karsilastirilir; `Image` component'lerinde `span` bazli dogru `sizes` tanimlanir; gerekli yuzeylerde daha yuksek `quality` kullanilir; layout korunur.
+Kapsam: `landing-page.tsx`, ilgili calisma dokumanlari, validation ve deploy. Yeni tasarim, yeni backend veya asset havuzu degisikligi bu slice disinda.
+Cikti: keskinligi artirilmis image delivery, clean validation, production deploy ve kok neden notu.
+Yasaklar: unrelated refactor yok, image pipeline'i tamamen bypass etmek yok, gercekte test edilmemis varsayimi cozum gibi sunmak yok.
+Standartlar: AGENTS.md, minimal diff, browser-verified reasoning, stable responsive layout, source-of-truth measurements.
+
 ## Current Plan (Contact Form Security + Business Package Follow-up)
 
 - **Date:** 2026-05-05

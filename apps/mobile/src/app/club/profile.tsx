@@ -155,13 +155,10 @@ export default function ClubProfileScreen() {
         <View style={styles.topBarCopy}>
           <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
           <Text style={styles.screenTitle}>{language === "fi" ? "Järjestäjä" : "Organizer"}</Text>
-          <Text style={styles.metaText}>
-            {language === "fi" ? "Asetukset, tuki ja klubiroolit." : "Preferences, support, and club roles."}
-          </Text>
         </View>
       </View>
 
-      <InfoCard eyebrow="Club" title={language === "fi" ? "Klubin tiedot" : "Club identity"}>
+      <InfoCard eyebrow="Club" title={language === "fi" ? "Identiteetti" : "Identity"}>
         {dashboardQuery.isLoading ? (
           <Text style={styles.bodyText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
         ) : null}
@@ -304,7 +301,7 @@ export default function ClubProfileScreen() {
         ) : null}
       </InfoCard>
 
-      <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={copy.common.profile}>
+      <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={language === "fi" ? "Valinnat" : "Settings"}>
         <View style={styles.preferenceSection}>
           <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceRow}>
             <View style={styles.preferenceIconWrap}>
@@ -751,6 +748,6 @@ const createStyles = (theme: MobileTheme) =>
     },
     topBarCopy: {
       flex: 1,
-      gap: 6,
+      gap: 4,
     },
   });

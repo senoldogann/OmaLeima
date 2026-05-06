@@ -37,6 +37,57 @@ const createDateFormatter = (localeTag: string): Intl.DateTimeFormat =>
     month: "short",
   });
 
+type LeaderboardDateFilter = "ALL" | string;
+
+type LeaderboardDateFilterOption = {
+  count: number;
+  key: LeaderboardDateFilter;
+  label: string;
+};
+
+const createLocalDateKey = (isoDate: string): string => {
+  const value = new Date(isoDate);
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const createDateFilterOptions = (
+  events: {
+    startAt: string;
+  }[],
+  language: "fi" | "en",
+  formatter: Intl.DateTimeFormat
+): LeaderboardDateFilterOption[] => {
+  const seenKeys = new Set<string>();
+  const options: LeaderboardDateFilterOption[] = [
+    {
+      count: events.length,
+      key: "ALL",
+      label: language === "fi" ? "Kaikki päivät" : "All dates",
+    },
+  ];
+
+  for (const event of events) {
+    const dateKey = createLocalDateKey(event.startAt);
+
+    if (seenKeys.has(dateKey)) {
+      continue;
+    }
+
+    seenKeys.add(dateKey);
+    options.push({
+      count: events.filter((candidate) => createLocalDateKey(candidate.startAt) === dateKey).length,
+      key: dateKey,
+      label: formatter.format(new Date(event.startAt)),
+    });
+  }
+
+  return options;
+};
+
 const getFreshnessBadge = (
   refreshedAt: string | null,
   language: "fi" | "en"
@@ -88,8 +139,26 @@ export default function StudentLeaderboardScreen() {
     [now, overviewData]
   );
   const registeredEventCount = overviewData?.registeredEventCount ?? 0;
-  const defaultEvent = useMemo(() => selectDefaultLeaderboardEvent(events), [events]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<LeaderboardDateFilter>("ALL");
+  const dateFilterOptions = useMemo(
+    () => createDateFilterOptions(events, language, dateFormatter),
+    [dateFormatter, events, language]
+  );
+  const filteredEvents = useMemo(
+    () =>
+      selectedDateFilter === "ALL"
+        ? events
+        : events.filter((event) => createLocalDateKey(event.startAt) === selectedDateFilter),
+    [events, selectedDateFilter]
+  );
+  const defaultEvent = useMemo(() => selectDefaultLeaderboardEvent(filteredEvents), [filteredEvents]);
+
+  useEffect(() => {
+    if (!dateFilterOptions.some((option) => option.key === selectedDateFilter)) {
+      setSelectedDateFilter("ALL");
+    }
+  }, [dateFilterOptions, selectedDateFilter]);
 
   useEffect(() => {
     if (selectedEventId === null && defaultEvent !== null) {
@@ -97,13 +166,21 @@ export default function StudentLeaderboardScreen() {
       return;
     }
 
-    if (selectedEventId !== null && !events.some((event) => event.id === selectedEventId)) {
+    if (selectedEventId !== null && !filteredEvents.some((event) => event.id === selectedEventId)) {
       setSelectedEventId(defaultEvent?.id ?? null);
     }
-  }, [defaultEvent, events, selectedEventId]);
+  }, [defaultEvent, filteredEvents, selectedEventId]);
 
   const selectedEvent =
-    events.find((event) => event.id === selectedEventId) ?? defaultEvent ?? null;
+    filteredEvents.find((event) => event.id === selectedEventId) ?? defaultEvent ?? null;
+  const screenMeta =
+    events.length === 0
+      ? language === "fi"
+        ? "Valitse tapahtuma, kun julkinen tulostaulu avautuu."
+        : "Choose an event once a public leaderboard becomes available."
+      : language === "fi"
+        ? `${events.length} tapahtumaa julkaisee tulostaulun`
+        : `${events.length} event${events.length === 1 ? "" : "s"} publish standings`;
 
   const leaderboardQuery = useEventLeaderboardQuery({
     eventId: selectedEvent?.id ?? "",
@@ -177,6 +254,7 @@ export default function StudentLeaderboardScreen() {
         <View style={styles.screenHeader}>
           <Text style={styles.screenEyebrow}>{language === "fi" ? "Tulostaulut" : "Rankings"}</Text>
           <Text style={styles.screenTitle}>{copy.common.leaderboard}</Text>
+          <Text style={styles.screenMeta}>{screenMeta}</Text>
         </View>
         <StudentProfileHeaderAction />
       </View>
@@ -230,7 +308,11 @@ export default function StudentLeaderboardScreen() {
           <View style={styles.eventSelectorSection}>
             <View style={styles.eventSelectorHeader}>
               <View style={styles.selectorHeaderTop}>
-                <Text style={styles.sectionKicker}>{copy.student.chooseEvent}</Text>
+                {selectedEvent !== null ? (
+                  <Text style={styles.selectorEventTitle}>{selectedEvent.name}</Text>
+                ) : (
+                  <Text style={styles.selectorEventTitle}>{copy.student.chooseEvent}</Text>
+                )}
                 {selectedEvent !== null ? (
                   <View style={styles.selectorBadgeRow}>
                     <StatusBadge
@@ -253,17 +335,42 @@ export default function StudentLeaderboardScreen() {
                   </View>
                 ) : null}
               </View>
-              {selectedEvent !== null ? (
-                <Text style={styles.selectorEventTitle}>{selectedEvent.name}</Text>
-              ) : null}
             </View>
+
+            {dateFilterOptions.length > 2 ? (
+              <ScrollView
+                contentContainerStyle={styles.dateFilterRow}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+              >
+                {dateFilterOptions.map((option) => (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => setSelectedDateFilter(option.key)}
+                    style={[
+                      styles.dateChip,
+                      selectedDateFilter === option.key ? styles.selectedDateChip : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dateChipText,
+                        selectedDateFilter === option.key ? styles.selectedDateChipText : null,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
 
             <ScrollView
               contentContainerStyle={styles.eventSelector}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              {events.map((event) => (
+              {filteredEvents.map((event) => (
                 <Pressable
                   key={event.id}
                   onPress={() => setSelectedEventId(event.id)}
@@ -356,7 +463,6 @@ export default function StudentLeaderboardScreen() {
         <>
           {top10.length > 0 ? (
             <View style={styles.standingsBlock}>
-              <Text style={styles.sectionKicker}>{language === "fi" ? "Sijoitukset" : "Standings"}</Text>
               <View style={styles.standingsList}>
                 {top10.map((entry) => (
                   <LeaderboardEntryCard
@@ -374,7 +480,7 @@ export default function StudentLeaderboardScreen() {
               <View style={styles.currentUserContent}>
                 <View style={styles.currentUserHeader}>
                   <View style={styles.currentUserHeaderCopy}>
-                    <Text style={styles.currentUserKicker}>{language === "fi" ? "Sinun tilanteesi" : "Your position"}</Text>
+                    <Text style={styles.currentUserKicker}>{language === "fi" ? "Sinun sijasi" : "Your rank"}</Text>
                     {currentUserSpotlightTitle ? <Text style={styles.currentUserTitle}>{currentUserSpotlightTitle}</Text> : null}
                   </View>
                   <View style={styles.currentUserStampPill}>
@@ -402,6 +508,24 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    dateChip: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    dateChipText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    dateFilterRow: {
+      gap: 8,
+      paddingRight: 8,
+    },
     currentUserBlock: {
       backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.limeBorder,
@@ -413,26 +537,6 @@ const createStyles = (theme: MobileTheme) =>
     currentUserContent: {
       gap: 12,
       padding: 18,
-    },
-    currentUserGlowPrimary: {
-      backgroundColor: theme.colors.limeSurface,
-      borderRadius: 999,
-      height: 148,
-      opacity: 0.9,
-      position: "absolute",
-      right: -34,
-      top: -42,
-      width: 148,
-    },
-    currentUserGlowSecondary: {
-      backgroundColor: theme.colors.chromeTintIndigo,
-      borderRadius: 999,
-      height: 116,
-      left: -24,
-      opacity: 0.8,
-      position: "absolute",
-      top: 64,
-      width: 116,
     },
     currentUserHeader: {
       alignItems: "flex-start",
@@ -527,6 +631,13 @@ const createStyles = (theme: MobileTheme) =>
     eventSelectorSection: {
       gap: 12,
     },
+    selectedDateChip: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    selectedDateChipText: {
+      color: theme.colors.lime,
+    },
     selectorHeaderTop: {
       alignItems: "center",
       flexDirection: "row",
@@ -545,70 +656,6 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.subtitle,
       letterSpacing: -0.3,
       lineHeight: theme.typography.lineHeights.subtitle,
-    },
-    podiumAvatar: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL4,
-      borderColor: theme.colors.limeBorder,
-      borderRadius: 999,
-      borderWidth: 1,
-      height: 58,
-      justifyContent: "center",
-      width: 58,
-    },
-    podiumBadge: {
-      alignItems: "center",
-      backgroundColor: theme.colors.lime,
-      borderRadius: 999,
-      height: 36,
-      justifyContent: "center",
-      position: "absolute",
-      right: 12,
-      top: 12,
-      width: 36,
-    },
-    podiumBadgeText: {
-      color: theme.colors.actionPrimaryText,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.bodySmall,
-    },
-    podiumCard: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.scene,
-      borderWidth: 1,
-      flex: 1,
-      justifyContent: "flex-end",
-      paddingBottom: 16,
-      paddingHorizontal: 12,
-      position: "relative",
-    },
-    podiumName: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      marginTop: 10,
-      maxWidth: "100%",
-    },
-    podiumRow: {
-      alignItems: "flex-end",
-      flexDirection: "row",
-      gap: 10,
-    },
-    podiumScore: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
-      marginTop: 4,
-    },
-    podiumSection: {
-      gap: 12,
-    },
-    podiumSpacer: {
-      flex: 1,
     },
     screenEyebrow: {
       color: theme.colors.lime,
@@ -634,15 +681,11 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
     },
-    profileButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      height: 42,
-      justifyContent: "center",
-      width: 42,
+    screenMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     retryButton: {
       alignItems: "center",
@@ -659,14 +702,6 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
-    },
-    sectionKicker: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.1,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
     },
     selectedEventChip: {
       borderColor: theme.colors.limeBorder,

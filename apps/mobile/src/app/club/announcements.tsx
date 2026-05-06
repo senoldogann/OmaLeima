@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -302,6 +302,7 @@ export default function ClubAnnouncementsScreen() {
   const [dateTimeEditor, setDateTimeEditor] = useState<DateTimeEditorState>(null);
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [localAnnouncementImagePreviewUri, setLocalAnnouncementImagePreviewUri] = useState<string | null>(null);
+  const screenScrollViewRef = useRef<ScrollView | null>(null);
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(localeTag, {
@@ -351,6 +352,7 @@ export default function ClubAnnouncementsScreen() {
       year: "numeric",
     }).format(new Date(`${dateTimeEditor.visibleMonth}T00:00:00`));
   }, [dateTimeEditor, localeTag]);
+  const isEditingDraft = draft.announcementId !== null;
 
   useEffect(() => {
     if (draft.clubId.trim().length > 0 || memberships.length === 0) {
@@ -423,9 +425,20 @@ export default function ClubAnnouncementsScreen() {
   };
 
   const handleEditPress = (announcement: ClubAnnouncementRecord): void => {
+    if (isPending) {
+      return;
+    }
+
     setActionNotice(null);
     setLocalAnnouncementImagePreviewUri(null);
     setDraft(createClubAnnouncementDraftFromRecord(announcement));
+    requestAnimationFrame(() => {
+      screenScrollViewRef.current?.scrollTo({
+        animated: true,
+        x: 0,
+        y: 0,
+      });
+    });
   };
 
   const handleUploadImagePress = async (): Promise<void> => {
@@ -528,7 +541,7 @@ export default function ClubAnnouncementsScreen() {
   };
 
   return (
-    <AppScreen>
+    <AppScreen scrollViewRef={screenScrollViewRef}>
       <View style={styles.topBar}>
         <View style={styles.topBarCopy}>
           <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
@@ -567,8 +580,8 @@ export default function ClubAnnouncementsScreen() {
 
       {memberships.length > 0 ? (
         <InfoCard
-          eyebrow={draft.announcementId === null ? "Create" : "Edit"}
-          title={draft.announcementId === null ? (language === "fi" ? "Uusi tiedote" : "New announcement") : draft.title}
+          eyebrow={isEditingDraft ? (language === "fi" ? "Muokkaa" : "Edit") : language === "fi" ? "Uusi" : "Create"}
+          title={isEditingDraft ? draft.title : language === "fi" ? "Uusi tiedote" : "New announcement"}
         >
           {memberships.length > 1 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRail}>
@@ -588,6 +601,24 @@ export default function ClubAnnouncementsScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+          ) : null}
+
+          {isEditingDraft ? (
+            <View style={styles.editFocusCard}>
+              <View style={styles.editFocusIconWrap}>
+                <AppIcon color={theme.colors.actionPrimaryText} name="check" size={14} />
+              </View>
+              <View style={styles.editFocusCopy}>
+                <Text style={styles.editFocusTitle}>
+                  {language === "fi" ? "Muokkaus avattiin yläkenttiin" : "Edit mode is active above"}
+                </Text>
+                <Text style={styles.editFocusBody}>
+                  {language === "fi"
+                    ? "Tallenna muutokset tai tyhjennä lomake aloittaaksesi uuden tiedotteen."
+                    : "Save changes or reset the form to start a new announcement."}
+                </Text>
+              </View>
+            </View>
           ) : null}
 
           <View style={styles.imageBlock}>
@@ -1085,6 +1116,41 @@ const createStyles = (theme: MobileTheme) =>
     },
     disabledButton: {
       opacity: 0.62,
+    },
+    editFocusBody: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    editFocusCard: {
+      alignItems: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 12,
+      padding: 14,
+    },
+    editFocusCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    editFocusIconWrap: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 24,
+      justifyContent: "center",
+      marginTop: 1,
+      width: 24,
+    },
+    editFocusTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     errorCard: {
       backgroundColor: theme.colors.dangerSurface,

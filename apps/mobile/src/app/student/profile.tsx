@@ -349,7 +349,6 @@ export default function StudentProfileScreen() {
     <AppScreen>
       <View style={styles.screenHeader}>
         <Text style={styles.screenTitle}>{copy.common.profile}</Text>
-        <Text style={styles.metaText}>{copy.student.profileMeta}</Text>
       </View>
 
       {profileOverviewQuery.isLoading ? (
@@ -389,10 +388,6 @@ export default function StudentProfileScreen() {
       ) : null}
 
       <View style={styles.settingsCard}>
-        <View style={styles.settingsHeader}>
-          <Text style={styles.settingsEyebrow}>{language === "fi" ? "Asetukset" : "Preferences"}</Text>
-          <Text style={styles.settingsTitle}>{language === "fi" ? "Profiilin asetukset" : "Profile settings"}</Text>
-        </View>
         {!profileOverviewQuery.isLoading && !profileOverviewQuery.error ? (
           <>
             <View style={styles.preferenceSection}>
@@ -727,16 +722,6 @@ const createStyles = (theme: MobileTheme) =>
     createGroup: {
       gap: 10,
     },
-    diagnosticsBlock: {
-      gap: 4,
-    },
-    diagnosticsRow: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 12,
-      justifyContent: "space-between",
-    },
     disabledButton: {
       opacity: 0.6,
     },
@@ -979,29 +964,8 @@ const createStyles = (theme: MobileTheme) =>
       gap: 0,
       overflow: "hidden",
     },
-    settingsHeader: {
-      gap: 4,
-      paddingHorizontal: 18,
-      paddingTop: 18,
-      paddingBottom: 14,
-    },
-    settingsEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    settingsTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.subtitle,
-      letterSpacing: -0.3,
-      lineHeight: 24,
-    },
     screenHeader: {
-      gap: 6,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     screenTitle: {
       color: theme.colors.textPrimary,

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { formatOversightDateTime } from "@/features/oversight/format";
 import type { OversightFraudSignalRecord } from "@/features/oversight/types";
 import {
@@ -16,7 +17,45 @@ import type {
 
 type FraudSignalReviewListProps = {
   emptyText: string;
+  locale: DashboardLocale;
   signals: OversightFraudSignalRecord[];
+};
+
+type FraudReviewCopy = {
+  confirmIssue: string;
+  created: string;
+  dismiss: string;
+  noLinkedContext: string;
+  noteLabel: string;
+  notePlaceholder: string;
+  requestError: string;
+  reviewed: string;
+  saving: string;
+};
+
+const copyByLocale: Record<DashboardLocale, FraudReviewCopy> = {
+  en: {
+    confirmIssue: "Confirm issue",
+    created: "Created",
+    dismiss: "Dismiss",
+    noLinkedContext: "No linked event, business, or scanner",
+    noteLabel: "Resolution note",
+    notePlaceholder: "Optional internal note for the audit trail",
+    requestError: "Unknown fraud review request error.",
+    reviewed: "Mark reviewed",
+    saving: "Saving...",
+  },
+  fi: {
+    confirmIssue: "Vahvista ongelma",
+    created: "Luotu",
+    dismiss: "Hylkaa",
+    noLinkedContext: "Ei liitettya tapahtumaa, yritysta tai scanneria",
+    noteLabel: "Ratkaisumuistio",
+    notePlaceholder: "Valinnainen sisainen huomio audit trailia varten",
+    requestError: "Tuntematon fraud-tarkistuksen virhe.",
+    reviewed: "Merkitse tarkistetuksi",
+    saving: "Tallennetaan...",
+  },
 };
 
 const createIdleState = (): FraudSignalActionState => ({
@@ -47,8 +86,9 @@ const renderActionState = (state: FraudSignalActionState) => {
   );
 };
 
-export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewListProps) => {
+export const FraudSignalReviewList = ({ emptyText, locale, signals }: FraudSignalReviewListProps) => {
   const router = useRouter();
+  const copy = copyByLocale[locale];
   const [notesById, setNotesById] = useState<Record<string, string>>({});
   const [statesById, setStatesById] = useState<Record<string, FraudSignalActionState>>({});
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
@@ -97,7 +137,7 @@ export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewL
         ...current,
         [signalId]: {
           code: "REQUEST_ERROR",
-          message: error instanceof Error ? error.message : "Unknown fraud review request error.",
+          message: error instanceof Error ? error.message : copy.requestError,
           tone: "error",
         },
       }));
@@ -125,21 +165,21 @@ export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewL
                   [signal.eventName, signal.businessName, signal.scannerEmail]
                     .filter((value) => value !== null)
                     .join(" · "),
-                  "No linked event, business, or scanner"
+                  copy.noLinkedContext
                 )}
               </p>
               <p className="record-note">{signal.description}</p>
               {renderMetadataLine(signal.metadataSummary)}
-              <p className="record-note">Created {formatOversightDateTime(signal.createdAt)}</p>
+              <p className="record-note">{copy.created} {formatOversightDateTime(locale, signal.createdAt)}</p>
 
               <label className="field fraud-review-note-field">
-                <span className="field-label">Resolution note</span>
+                <span className="field-label">{copy.noteLabel}</span>
                 <textarea
                   className="field-input field-textarea fraud-review-note"
                   disabled={isPending}
                   maxLength={500}
                   onChange={(event) => handleNoteChange(signal.id, event.target.value)}
-                  placeholder="Optional internal note for the audit trail"
+                  placeholder={copy.notePlaceholder}
                   value={notesById[signal.id] ?? ""}
                 />
               </label>
@@ -151,7 +191,7 @@ export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewL
                   onClick={() => void handleReviewClick(signal.id, "REVIEWED")}
                   type="button"
                 >
-                  {isSignalPending && pendingStatus === "REVIEWED" ? "Saving..." : "Mark reviewed"}
+                  {isSignalPending && pendingStatus === "REVIEWED" ? copy.saving : copy.reviewed}
                 </button>
                 <button
                   className="button button-primary"
@@ -159,7 +199,7 @@ export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewL
                   onClick={() => void handleReviewClick(signal.id, "CONFIRMED")}
                   type="button"
                 >
-                  {isSignalPending && pendingStatus === "CONFIRMED" ? "Saving..." : "Confirm issue"}
+                  {isSignalPending && pendingStatus === "CONFIRMED" ? copy.saving : copy.confirmIssue}
                 </button>
                 <button
                   className="button button-danger"
@@ -167,7 +207,7 @@ export const FraudSignalReviewList = ({ emptyText, signals }: FraudSignalReviewL
                   onClick={() => void handleReviewClick(signal.id, "DISMISSED")}
                   type="button"
                 >
-                  {isSignalPending && pendingStatus === "DISMISSED" ? "Saving..." : "Dismiss"}
+                  {isSignalPending && pendingStatus === "DISMISSED" ? copy.saving : copy.dismiss}
                 </button>
               </div>
 

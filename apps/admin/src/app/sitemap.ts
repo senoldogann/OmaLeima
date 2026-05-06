@@ -100,5 +100,29 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
       url: "https://omaleima.fi/en/contact",
     },
+    {
+      alternates: {
+        languages: {
+          en: "https://omaleima.fi/en/apply",
+          fi: "https://omaleima.fi/apply",
+        },
+      },
+      changeFrequency: "monthly",
+      lastModified,
+      priority: 0.8,
+      url: "https://omaleima.fi/apply",
+    },
+    {
+      alternates: {
+        languages: {
+          en: "https://omaleima.fi/en/apply",
+          fi: "https://omaleima.fi/apply",
+        },
+      },
+      changeFrequency: "monthly",
+      lastModified,
+      priority: 0.7,
+      url: "https://omaleima.fi/en/apply",
+    },
   ];
 }

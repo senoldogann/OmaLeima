@@ -103,13 +103,13 @@ const createVenuePins = (venues: EventVenueSummary[]): VenuePin[] => {
     });
 };
 
-const createVenueAddressLine = (venue: EventVenueSummary): string => {
+export const createVenueAddressLine = (venue: EventVenueSummary): string => {
     const parts = [venue.address, venue.city, venue.country].filter((part) => part.trim().length > 0);
 
     return parts.join(", ");
 };
 
-const createExternalMapUrl = (venue: EventVenueSummary): string => {
+export const createExternalMapUrl = (venue: EventVenueSummary): string => {
     const query = encodeURIComponent([venue.name, createVenueAddressLine(venue)].filter(Boolean).join(", "));
 
     if (venue.latitude !== null && venue.longitude !== null) {
@@ -119,7 +119,7 @@ const createExternalMapUrl = (venue: EventVenueSummary): string => {
     return `https://maps.apple.com/?q=${query}`;
 };
 
-const openExternalVenueMapAsync = async (venue: EventVenueSummary): Promise<void> => {
+export const openExternalVenueMapAsync = async (venue: EventVenueSummary): Promise<void> => {
     const url = createExternalMapUrl(venue);
     const canOpenUrl = await Linking.canOpenURL(url);
 

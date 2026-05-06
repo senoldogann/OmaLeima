@@ -4,12 +4,14 @@ import { ClubEventsPanel } from "@/features/club-events/components/club-events-p
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import { fetchClubEventsSnapshotAsync } from "@/features/club-events/read-model";
 import { createServerComponentClient } from "@/lib/supabase/server";
+import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
 
 export default async function ClubEventsPage() {
   const supabase = await createServerComponentClient();
-  const [context, snapshot] = await Promise.all([
+  const [context, snapshot, locale] = await Promise.all([
     fetchClubEventContextAsync(supabase),
     fetchClubEventsSnapshotAsync(supabase),
+    getDashboardLocaleAsync(),
   ]);
   const canManageRewards = context.memberships.some((membership) => membership.canCreateEvents);
 
@@ -17,13 +19,14 @@ export default async function ClubEventsPage() {
     <DashboardShell
       activeHref="/club/events"
       areaLabel="Club operations"
+      locale={locale}
       navigationItems={getClubDashboardNavigationItems(canManageRewards)}
       roleLabel={context.access.primaryRole}
       subtitle="Create draft events for your active clubs, then continue with venues, rewards, and event-day preparation."
       title="Club events"
       userEmail={context.access.userEmail}
     >
-      <ClubEventsPanel snapshot={snapshot} />
+      <ClubEventsPanel locale={locale} snapshot={snapshot} />
     </DashboardShell>
   );
 }

@@ -18,6 +18,11 @@ type DeviceTokenRow = {
   enabled: boolean;
 };
 
+type ProfileRow = {
+  id: string;
+  status: string;
+};
+
 class ValidationError extends Error {}
 
 const isPlatform = (value: unknown): value is "IOS" | "ANDROID" =>
@@ -81,6 +86,27 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const { user } = authResult.value;
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,status")
+      .eq("id", user.id)
+      .single<ProfileRow>();
+
+    if (profileError !== null || profile === null) {
+      return errorResponse(403, "PROFILE_NOT_FOUND", "Device token registration requires a profile.", {
+        userId: user.id,
+        profileError: profileError?.message,
+        profileErrorCode: profileError?.code,
+      });
+    }
+
+    if (profile.status !== "ACTIVE") {
+      return errorResponse(403, "PROFILE_NOT_ACTIVE", "Device token registration requires an active profile.", {
+        userId: user.id,
+        profileStatus: profile.status,
+      });
+    }
 
     if (body.deviceId !== null) {
       const { error: disableError } = await supabase

@@ -11,6 +11,11 @@ import type {
 } from "@/types/app";
 
 type NotificationsModule = typeof ExpoNotifications;
+type LocalNotificationScheduleInput = {
+  identifier: string;
+  content: ExpoNotifications.NotificationContentInput;
+  date: Date;
+};
 
 let notificationsModulePromise: Promise<NotificationsModule | null> | null = null;
 const IOS_PROVISIONAL_STATUS = 3;
@@ -182,6 +187,56 @@ export const presentLocalNotificationAsync = async (
     content,
     trigger: null,
   });
+};
+
+export const scheduleLocalNotificationAtAsync = async ({
+  identifier,
+  content,
+  date,
+}: LocalNotificationScheduleInput): Promise<string | null> => {
+  const hasPermission = await hasGrantedNotificationPermissionAsync();
+
+  if (!hasPermission) {
+    return null;
+  }
+
+  await ensureAndroidNotificationChannelAsync();
+
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return null;
+  }
+
+  return notificationsModule.scheduleNotificationAsync({
+    identifier,
+    content,
+    trigger: {
+      type: notificationsModule.SchedulableTriggerInputTypes.DATE,
+      date,
+      channelId: Platform.OS === "android" ? "default" : undefined,
+    },
+  });
+};
+
+export const readScheduledNotificationsAsync = async (): Promise<ExpoNotifications.NotificationRequest[]> => {
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return [];
+  }
+
+  return notificationsModule.getAllScheduledNotificationsAsync();
+};
+
+export const cancelScheduledNotificationAsync = async (identifier: string): Promise<void> => {
+  const notificationsModule = await loadNotificationsModuleAsync();
+
+  if (notificationsModule === null) {
+    return;
+  }
+
+  await notificationsModule.cancelScheduledNotificationAsync(identifier);
 };
 
 export const readPushPermissionStateAsync = async (): Promise<PushPermissionState> => {

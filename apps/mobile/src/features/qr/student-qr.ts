@@ -189,6 +189,7 @@ const fetchGenerateQrTokenAsync = async (
   const response = await fetch(`${publicEnv.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/generate-qr-token`, {
     method: "POST",
     headers: {
+      apikey: publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },

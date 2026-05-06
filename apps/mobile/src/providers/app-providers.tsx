@@ -4,6 +4,8 @@ import { useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { AnnouncementPopupBridge } from "@/features/announcements/announcement-popup-bridge";
+import { AnnouncementPushRouterBridge } from "@/features/notifications/announcement-push-router";
+import { StudentEventReminderBridge } from "@/features/notifications/student-event-reminders";
 import { StudentRewardCelebrationProvider } from "@/features/notifications/student-reward-celebration";
 import { StudentRewardNotificationBridge } from "@/features/notifications/student-reward-notifications";
 import { UiPreferencesProvider } from "@/features/preferences/ui-preferences-provider";
@@ -20,6 +22,8 @@ export const AppProviders = ({ children }: PropsWithChildren) => {
         <SessionProvider>
           <NativePushDiagnosticsProvider>
             <StudentRewardCelebrationProvider>
+              <AnnouncementPushRouterBridge />
+              <StudentEventReminderBridge />
               <StudentRewardNotificationBridge />
               <AnnouncementPopupBridge />
               {children}

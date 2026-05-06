@@ -43,6 +43,7 @@ export default function BusinessUpdatesScreen() {
         compact={false}
         detailPathname="/business/announcement-detail"
         maxItems={15}
+        returnToPathname="/business/updates"
         title={language === "fi" ? "Yrityksen tiedotevirta" : "Business update feed"}
         userId={userId}
       />

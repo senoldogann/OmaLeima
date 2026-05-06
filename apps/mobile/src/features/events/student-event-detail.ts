@@ -74,6 +74,11 @@ type StampRow = {
   validation_status: "VALID" | "MANUAL_REVIEW" | "REVOKED";
 };
 
+type VenueStampState = {
+  collectedStampCount: number;
+  stampedAt: string | null;
+};
+
 type UseStudentEventDetailQueryParams = {
   eventId: string;
   studentId: string;
@@ -213,17 +218,38 @@ const mapRewardTiers = (rows: RewardTierRow[]): RewardTierSummary[] =>
     claimInstructions: row.claim_instructions,
   }));
 
+const createVenueStampStateByBusinessId = (stamps: StampRow[]): Map<string, VenueStampState> => {
+  const stampStateByBusinessId = new Map<string, VenueStampState>();
+
+  stamps.forEach((stamp) => {
+    const currentState = stampStateByBusinessId.get(stamp.business_id) ?? {
+      collectedStampCount: 0,
+      stampedAt: null,
+    };
+    const currentStampedAtTime =
+      currentState.stampedAt === null ? Number.NEGATIVE_INFINITY : new Date(currentState.stampedAt).getTime();
+    const nextStampedAtTime = new Date(stamp.scanned_at).getTime();
+
+    stampStateByBusinessId.set(stamp.business_id, {
+      collectedStampCount: currentState.collectedStampCount + 1,
+      stampedAt: nextStampedAtTime > currentStampedAtTime ? stamp.scanned_at : currentState.stampedAt,
+    });
+  });
+
+  return stampStateByBusinessId;
+};
+
 const mapVenues = (
   rows: EventVenueRow[],
   businesses: BusinessRow[],
   stamps: StampRow[]
 ): EventVenueSummary[] => {
   const businessById = new Map(businesses.map((business) => [business.id, business]));
-  const stampByBusinessId = new Map(stamps.map((stamp) => [stamp.business_id, stamp]));
+  const stampStateByBusinessId = createVenueStampStateByBusinessId(stamps);
 
   return rows.flatMap((row) => {
     const business = businessById.get(row.business_id);
-    const stamp = stampByBusinessId.get(row.business_id) ?? null;
+    const stampState = stampStateByBusinessId.get(row.business_id) ?? null;
 
     if (typeof business === "undefined") {
       return [];
@@ -244,8 +270,9 @@ const mapVenues = (
         venueOrder: row.venue_order,
         stampLabel: row.stamp_label,
         customInstructions: row.custom_instructions,
-        stampStatus: stamp === null ? "PENDING" : "COLLECTED",
-        stampedAt: stamp?.scanned_at ?? null,
+        stampStatus: stampState === null ? "PENDING" : "COLLECTED",
+        collectedStampCount: stampState?.collectedStampCount ?? 0,
+        stampedAt: stampState?.stampedAt ?? null,
       },
     ];
   });

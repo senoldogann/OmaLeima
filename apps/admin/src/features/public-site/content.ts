@@ -1,3 +1,4 @@
+import { getBusinessApplicationHref } from "@/features/public-site/business-application-content";
 import {
   getPublicLegalLinks,
   publicCompanyInfo,
@@ -8,6 +9,8 @@ import {
 export { publicSiteUrl, type PublicLocale } from "@/features/public-site/site-config";
 
 export type PublicLandingContent = {
+  applyHref: string;
+  applyLabel: string;
   contactHref: string;
   contactLabel: string;
   description: string;
@@ -20,14 +23,6 @@ export type PublicLandingContent = {
   footerNote: string;
   footerPhoneLabel: string;
   footerPostalLabel: string;
-  growthModelFootnote: string;
-  growthModelItems: ReadonlyArray<{
-    body: string;
-    eyebrow: string;
-    title: string;
-  }>;
-  growthModelSubtitle: string;
-  growthModelTitle: string;
   heroTitle: string;
   interestHref: string;
   interestLabel: string;
@@ -65,42 +60,22 @@ const interestHref = publicCompanyInfo.instagramUrl;
 
 export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingContent> = {
   en: {
+    applyHref: getBusinessApplicationHref("en"),
+    applyLabel: "Apply as a partner",
     contactHref: "/en/contact",
     contactLabel: "Contact us",
     description:
-      "OmaLeima turns Finnish student event stamp cards into a secure digital flow: QR checkpoints, reward progress, and calm event-day operations for organizers, clubs, venues, and students.",
+      "OmaLeima turns Finnish student event stamp cards into one calm digital flow: QR checkpoints, reward progress, and clearer event-day operations for organizers, venues, clubs, and students.",
     eyebrow: "Digital leima pass",
     footerAddressLabel: "Business address",
     footerBusinessIdLabel: "Business ID",
     footerCompanyLabel: "Company details",
     footerLegalItems: getPublicLegalLinks("en"),
     footerLegalLabel: "Legal",
-    footerNote: "Built for Finnish student culture. Early pilot conversations are open.",
+    footerNote: "Built for Finnish student culture. Pilot conversations are open.",
     footerPhoneLabel: "Phone",
     footerPostalLabel: "Mailing address",
-    growthModelFootnote:
-      "Pilot recommendation: keep the student app and organizer core free, then charge venues and sponsors for verified traffic, offer redemption, and post-event reporting.",
-    growthModelItems: [
-      {
-        body: "Students get a reason to open the app before, during, and after the night: no lost stamp card, live progress, rewards, leaderboard, venue map, and timely announcements.",
-        eyebrow: "Students",
-        title: "Use it because the night is easier",
-      },
-      {
-        body: "Clubs can run the paperless flow for free in the pilot, then use sponsor proof, venue performance, fraud control, and announcement reach to fund the event.",
-        eyebrow: "Organizers",
-        title: "Free core, sponsor-ready operations",
-      },
-      {
-        body: "Venues pay for measurable student footfall: event participation, promoted reward slots, verified offer redemptions, and a clean report after the event.",
-        eyebrow: "Businesses",
-        title: "Revenue from verified student traffic",
-      },
-    ],
-    growthModelSubtitle:
-      "Students and clubs should not feel like the product is another cost. The business model works when OmaLeima proves attention, movement, and redemptions to venues.",
-    growthModelTitle: "A pilot package that makes sense for Finland.",
-    heroTitle: "Leimas and rewards in one system.",
+    heroTitle: "Leimas and rewards in one clean system.",
     interestHref,
     interestLabel: "Follow @omaleima",
     localeLabel: "EN",
@@ -109,14 +84,14 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     metaDescription:
       "OmaLeima is a digital leima pass for Finnish student events, appro nights, QR checkpoints, rewards, and organizer operations.",
     navItems: [
-      { href: "#culture", label: "Culture" },
       { href: "#flow", label: "Flow" },
-      { href: "#model", label: "Model" },
+      { href: "#culture", label: "Culture" },
       { href: "#event-day", label: "Event day" },
       { href: "/en/contact", label: "Contact" },
+      { href: "/en/apply", label: "Apply" },
     ],
     ogLocale: "en_US",
-    productTitle: "Built for appro nights, venues, and reward moments.",
+    productTitle: "Built for appro nights, venue checkpoints, and reward moments that should feel simple on the phone.",
     sectionLabel: "Built for Finnish student culture",
     statItems: [
       { label: "QR-secured checkpoints", value: "Live" },
@@ -129,7 +104,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
         title: "Event nights feel lighter",
       },
       {
-        body: "Venues scan quickly, avoid duplicate stamps, and keep the line moving without confusing manual checks.",
+        body: "Venue staff scan quickly, avoid duplicate stamps, and keep the line moving without confusing manual checks.",
         title: "Scanning stays operational",
       },
       {
@@ -139,17 +114,17 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     ],
     supportItems: [
       {
-        body: "Invite clubs, student unions, and venue partners into one event-day system without building custom ops each time.",
+        body: "Bring clubs, student unions, and venue partners into one event-day system without building custom ops every time.",
         title: "Organizer setup",
       },
       {
-        body: "Reward milestones, venue participation, and event communication stay visible across the full event window.",
+        body: "Reward milestones, venue participation, and announcements stay visible across the full event window.",
         title: "Reward visibility",
       },
     ],
     timelineItems: [
       {
-        body: "Students join an event and receive a dynamic QR that represents the active event context.",
+        body: "Students join an event and receive a dynamic QR bound to the active event context.",
         step: "01",
         title: "Join the event",
       },
@@ -166,10 +141,12 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     ],
   },
   fi: {
+    applyHref: getBusinessApplicationHref("fi"),
+    applyLabel: "Hae kumppaniksi",
     contactHref: "/contact",
     contactLabel: "Ota yhteyttä",
     description:
-      "OmaLeima muuttaa opiskelijatapahtumien leimakortit turvalliseksi digitaaliseksi virraksi: QR-tarkistukset, palkintojen eteneminen ja rauhallinen tapahtumapäivän operointi yhdessä paketissa.",
+      "OmaLeima muuttaa opiskelijatapahtumien leimakortit yhdeksi rauhalliseksi digitaaliseksi virraksi: QR-tarkistukset, palkintojen eteneminen ja selkeä tapahtumapäivän operointi.",
     eyebrow: "Digitaalinen leimapassi",
     footerAddressLabel: "Toimipaikan osoite",
     footerBusinessIdLabel: "Y-tunnus",
@@ -179,29 +156,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     footerNote: "Rakennettu suomalaiseen opiskelijakulttuuriin. Pilottikeskustelut ovat avoinna.",
     footerPhoneLabel: "Puhelin",
     footerPostalLabel: "Postiosoite",
-    growthModelFootnote:
-      "Pilottisuositus: opiskelijasovellus ja järjestäjän peruskäyttö pidetään ilmaisena, ja tulot haetaan yrityksiltä sekä sponsoreilta mitattavan kävijävirran, lunastusten ja raportoinnin kautta.",
-    growthModelItems: [
-      {
-        body: "Opiskelijalle syy avata sovellus syntyy illan aikana: ei kadonnutta paperikorttia, reaaliaikainen eteneminen, palkinnot, leaderboard, kartta ja tiedotteet.",
-        eyebrow: "Opiskelijat",
-        title: "Käyttö helpottaa iltaa",
-      },
-      {
-        body: "Klubi voi ajaa paperittoman pilotin ilman perusmaksua ja näyttää sponsoreille yrityskohtaiset leimat, osallistujavirran, viestinnän ja väärinkäytön eston.",
-        eyebrow: "Järjestäjät",
-        title: "Ilmainen perusmalli, sponsorivalmis data",
-      },
-      {
-        body: "Yritys maksaa mitattavasta opiskelijavirrasta: tapahtumapaikasta, näkyvästä palkintopaikasta, kuponkilunastuksista ja tapahtuman jälkiraportista.",
-        eyebrow: "Yritykset",
-        title: "Tulot todennetusta opiskelijaliikenteestä",
-      },
-    ],
-    growthModelSubtitle:
-      "Opiskelijoille ja klubeille tuotteen ei pidä tuntua uudelta kululta. Malli toimii, kun OmaLeima todistaa yrityksille huomion, liikkeen ja lunastukset.",
-    growthModelTitle: "Suomeen sopiva pilottipaketti.",
-    heroTitle: "Leimat ja palkinnot yhdessä.",
+    heroTitle: "Leimat ja palkinnot yhdessä selkeässä virrassa.",
     interestHref,
     interestLabel: "Seuraa @omaleima",
     localeLabel: "FI",
@@ -210,14 +165,14 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     metaDescription:
       "OmaLeima on digitaalinen leimapassi suomalaisiin opiskelijatapahtumiin, approihin, QR-tarkistuksiin, palkintoihin ja järjestäjien operointiin.",
     navItems: [
-      { href: "#culture", label: "Kulttuuri" },
       { href: "#flow", label: "Toiminta" },
-      { href: "#model", label: "Malli" },
+      { href: "#culture", label: "Kulttuuri" },
       { href: "#event-day", label: "Tapahtumapäivä" },
       { href: "/contact", label: "Yhteys" },
+      { href: "/apply", label: "Hae mukaan" },
     ],
     ogLocale: "fi_FI",
-    productTitle: "Rakennettu approihin, yrityksiin ja palkintohetkiin.",
+    productTitle: "Rakennettu approihin, yrityspisteisiin ja palkintohetkiin, joiden pitäisi tuntua puhelimessa kevyiltä.",
     sectionLabel: "Rakennettu suomalaiseen opiskelijakulttuuriin",
     statItems: [
       { label: "QR-varmistetut checkpointit", value: "Live" },
@@ -240,11 +195,11 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     ],
     supportItems: [
       {
-        body: "Kutsu klubit, opiskelijajärjestöt ja yrityskumppanit samaan tapahtumapäivän järjestelmään ilman erillisiä ad hoc -prosesseja.",
+        body: "Tuo klubit, opiskelijajärjestöt ja yrityskumppanit samaan tapahtumapäivän järjestelmään ilman irrallisia ad hoc -prosesseja.",
         title: "Järjestäjän käyttöönotto",
       },
       {
-        body: "Palkintorajojen eteneminen, yritysten osallistuminen ja tapahtumaviestintä pysyvät näkyvillä koko tapahtuman ajan.",
+        body: "Palkintorajojen eteneminen, yritysten osallistuminen ja tiedotteet pysyvät näkyvillä koko tapahtuman ajan.",
         title: "Palkintojen näkyvyys",
       },
     ],

@@ -37,11 +37,18 @@ const parsePerBusinessLimit = (rules: Record<string, unknown>): number => {
 
   const perBusinessLimit = (stampPolicy as Record<string, unknown>).perBusinessLimit;
 
-  if (typeof perBusinessLimit !== "number" || !Number.isInteger(perBusinessLimit)) {
+  const normalizedPerBusinessLimit =
+    typeof perBusinessLimit === "number"
+      ? perBusinessLimit
+      : typeof perBusinessLimit === "string" && /^\d+$/.test(perBusinessLimit)
+        ? Number.parseInt(perBusinessLimit, 10)
+        : null;
+
+  if (normalizedPerBusinessLimit === null || !Number.isInteger(normalizedPerBusinessLimit)) {
     return defaultPerBusinessLimit;
   }
 
-  return Math.min(Math.max(perBusinessLimit, defaultPerBusinessLimit), maximumPerBusinessLimit);
+  return Math.min(Math.max(normalizedPerBusinessLimit, defaultPerBusinessLimit), maximumPerBusinessLimit);
 };
 
 const parseRulesState = (value: string): ParsedRulesState => {
@@ -69,10 +76,16 @@ const buildRulesJson = (value: string, perBusinessLimit: number): string => {
     rules = {};
   }
 
+  const existingStampPolicy =
+    rules.stampPolicy !== null && !Array.isArray(rules.stampPolicy) && typeof rules.stampPolicy === "object"
+      ? (rules.stampPolicy as Record<string, unknown>)
+      : {};
+
   return JSON.stringify(
     {
       ...rules,
       stampPolicy: {
+        ...existingStampPolicy,
         perBusinessLimit,
       },
     },
@@ -90,7 +103,7 @@ export const EventRulesBuilder = ({ disabled, onChange, value }: EventRulesBuild
         <div className="stack-sm">
           <span className="field-label">Stamp policy</span>
           <p className="muted-text">
-            Controls how many valid leimat one student can collect from the same business in this event.
+            Controls the total number of valid leimat one student can collect from the same business during this event.
           </p>
         </div>
         <span className="status-pill">Typed rules</span>
@@ -98,18 +111,18 @@ export const EventRulesBuilder = ({ disabled, onChange, value }: EventRulesBuild
 
       <div className="detail-grid">
         <label className="field">
-          <span className="field-label">Same venue limit</span>
+          <span className="field-label">Same venue total stamp limit</span>
           <select
             className="field-input"
             disabled={disabled}
             onChange={(event) => onChange(buildRulesJson(value, Number.parseInt(event.target.value, 10)))}
             value={String(rulesState.perBusinessLimit)}
           >
-            <option value="1">1 leima per business</option>
-            <option value="2">2 leimat per business</option>
-            <option value="3">3 leimat per business</option>
-            <option value="4">4 leimat per business</option>
-            <option value="5">5 leimat per business</option>
+            <option value="1">1 total leima from the same business</option>
+            <option value="2">2 total leimat from the same business</option>
+            <option value="3">3 total leimat from the same business</option>
+            <option value="4">4 total leimat from the same business</option>
+            <option value="5">5 total leimat from the same business</option>
           </select>
         </label>
 

@@ -3,6 +3,7 @@ import { getClubDashboardNavigationItems } from "@/features/dashboard/sections";
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import { ClubRewardsPanel } from "@/features/club-rewards/components/club-rewards-panel";
 import { fetchClubRewardsSnapshotAsync } from "@/features/club-rewards/read-model";
+import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
 import { createServerComponentClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -15,19 +16,23 @@ export default async function ClubRewardsPage() {
     redirect("/forbidden");
   }
 
-  const snapshot = await fetchClubRewardsSnapshotAsync(supabase);
+  const [snapshot, locale] = await Promise.all([
+    fetchClubRewardsSnapshotAsync(supabase),
+    getDashboardLocaleAsync(),
+  ]);
 
   return (
     <DashboardShell
       activeHref="/club/rewards"
       areaLabel="Club operations"
+      locale={locale}
       navigationItems={getClubDashboardNavigationItems(canManageRewards)}
       roleLabel={context.access.primaryRole}
       subtitle="Manage event reward thresholds, stock visibility, and claim handoff instructions from one organizer surface."
       title="Reward tiers"
       userEmail={context.access.userEmail}
     >
-      <ClubRewardsPanel snapshot={snapshot} />
+      <ClubRewardsPanel locale={locale} snapshot={snapshot} />
     </DashboardShell>
   );
 }

@@ -1,4 +1,4 @@
-import type { ReactElement, PropsWithChildren } from "react";
+import type { ReactElement, PropsWithChildren, Ref } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -21,9 +21,10 @@ const lightBackgroundSource = require("../../assets/backgrounds/gravity-lines-li
 type AppScreenProps = PropsWithChildren<{
   contentContainerStyle?: StyleProp<ViewStyle>;
   refreshControl?: ReactElement<RefreshControlProps>;
+  scrollViewRef?: Ref<ScrollView>;
 }>;
 
-export const AppScreen = ({ children, contentContainerStyle, refreshControl }: AppScreenProps) => {
+export const AppScreen = ({ children, contentContainerStyle, refreshControl, scrollViewRef }: AppScreenProps) => {
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const backgroundSource = theme.mode === "dark" ? darkBackgroundSource : lightBackgroundSource;
@@ -49,6 +50,7 @@ export const AppScreen = ({ children, contentContainerStyle, refreshControl }: A
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl}
+          ref={scrollViewRef}
           style={styles.scrollView}
         >
           {children}

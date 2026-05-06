@@ -27,7 +27,7 @@ export const ReviewedApplicationCard = ({ application }: ReviewedApplicationCard
     <div className="stack-sm">
       <div className="review-card-header">
         <div className="stack-sm">
-          <h3 className="section-title">{application.businessName}</h3>
+          <p className="card-title">{application.businessName}</p>
           <p className="muted-text">
             {application.contactName} · {formatBusinessApplicationLocation(application.city, application.country)}
           </p>

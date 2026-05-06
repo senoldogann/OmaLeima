@@ -331,8 +331,8 @@ export default function BusinessScannerScreen() {
       eventDayTitle: language === "fi" ? "Skanneri pysyy auki" : "Scanner stays awake",
       eventDayBody:
         language === "fi"
-          ? "Pidä tämä näkymä auki tiskillä. Valittu piste pysyy paikallaan ja kamera on valmis seuraavalle opiskelijalle."
-          : "Keep this view open at the desk. The selected checkpoint stays in place and the camera is ready for the next student.",
+          ? "Valitse piste ja pidä kamera valmiina seuraavaa opiskelijaa varten."
+          : "Pick the checkpoint and keep the camera ready for the next student.",
       queueReady: language === "fi" ? "Valmis jonolle" : "Ready for the line",
       selectedCheckpoint: language === "fi" ? "Valittu piste" : "Selected checkpoint",
       screenAwake: language === "fi" ? "Näyttö hereillä" : "Screen awake",
@@ -365,11 +365,11 @@ export default function BusinessScannerScreen() {
           ? "Useampi tapahtuma on käynnissä. Valitse oikea ennen QR-lukua."
           : "Multiple events are live. Choose the right one before reading a QR.",
       selectedEventLabel: language === "fi" ? "Valittu" : "Selected",
-      manualTokenTitle: "Manual token scan",
+      manualTokenTitle: language === "fi" ? "Testitoken" : "Test token",
       manualTokenBody:
         language === "fi"
-          ? "Käytä vain testissä tai jos kamera ei ole käytettävissä. Token luetaan samalla turvatulla scanner-kontekstilla."
-          : "Use this only for smoke tests or when camera scanning is not practical. The token uses the same secured scanner context.",
+          ? "Kayta vain testiin tai jos kamera ei ole kaytettavissa."
+          : "Use only for tests or when camera access is unavailable.",
       manualTokenPlaceholder: "Paste LEIMA_STAMP_QR token",
       manualTokenSubmit: language === "fi" ? "Skannaa token" : "Scan token",
       manualTokenMissing:
@@ -447,6 +447,8 @@ export default function BusinessScannerScreen() {
   const eventSelectorStride = eventSelectorCardWidth + 12;
   const selectedBusinessId = selectedEvent?.businessId ?? null;
   const selectedBusinessName = selectedEvent?.businessName ?? null;
+  const topBarMeta =
+    selectedEvent === null ? labels.eventDayBody : `${selectedEvent.businessName} · ${selectedEvent.city}`;
   const isScannerDeviceReady = scannerDeviceState.status === "ready";
   const isScannerPinRequired = scannerDeviceState.status === "ready" && scannerDeviceState.device.pinRequired;
 
@@ -663,7 +665,7 @@ export default function BusinessScannerScreen() {
         <View style={styles.topBarCopy}>
           <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.business.scanner}</Text>
-          <Text style={styles.metaText}>{labels.eventDayBody}</Text>
+          <Text style={styles.metaText}>{topBarMeta}</Text>
         </View>
         <Pressable
           accessibilityLabel={isSigningOut ? copy.common.signingOut : copy.common.signOut}
@@ -1505,12 +1507,12 @@ const createStyles = (theme: MobileTheme) => {
       textAlignVertical: "top",
     },
     manualTokenPanel: {
-      backgroundColor: theme.colors.surfaceL1,
+      backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.inner,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 10,
-      padding: 14,
+      gap: 8,
+      padding: 12,
     },
     primaryButton: {
       alignItems: "center",

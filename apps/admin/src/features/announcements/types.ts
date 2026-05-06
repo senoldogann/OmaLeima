@@ -20,6 +20,7 @@ export type AnnouncementRecord = {
   endsAt: string | null;
   imageUrl: string | null;
   priority: number;
+  pushDeliveryStatus: "FAILED" | "NOT_SENT" | "PARTIAL" | "SENT";
   startsAt: string;
   status: AnnouncementStatus;
   title: string;

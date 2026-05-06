@@ -18,8 +18,10 @@ import type {
   DepartmentTagMergeTarget,
   DepartmentTagRecord,
 } from "@/features/department-tags/types";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 
 type ModerationTagCardProps = {
+  locale: DashboardLocale;
   mergeTargets: DepartmentTagMergeTarget[];
   tag: DepartmentTagRecord;
 };
@@ -36,7 +38,7 @@ const renderActionState = (state: DepartmentTagActionState) => {
   );
 };
 
-export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps) => {
+export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCardProps) => {
   const router = useRouter();
   const [selectedTargetId, setSelectedTargetId] = useState<string>("");
   const [mergeState, setMergeState] = useState<DepartmentTagActionState>({
@@ -63,7 +65,10 @@ export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps)
     if (selectedTargetId.length === 0) {
       setMergeState({
         code: "TARGET_REQUIRED",
-        message: "Select a canonical target before merging.",
+        message:
+          locale === "fi"
+            ? "Valitse kanoninen kohdetagi ennen yhdistamista."
+            : "Select a canonical target before merging.",
         tone: "error",
       });
       return;
@@ -147,15 +152,15 @@ export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps)
     <article className="panel moderation-card">
       <div className="stack-md">
         <div className="review-card-header">
-          <div className="stack-sm">
-            <div className="eyebrow">Needs moderation</div>
-            <h3 className="section-title">{tag.title}</h3>
-            <p className="muted-text">{formatDepartmentTagMeta(tag)}</p>
+        <div className="stack-sm">
+            <div className="eyebrow">{locale === "fi" ? "Vaatii moderointia" : "Needs moderation"}</div>
+            <p className="card-title">{tag.title}</p>
+            <p className="muted-text">{formatDepartmentTagMeta(tag, locale)}</p>
           </div>
           <div className="badge-group">
-            <span className="status-pill">{formatDepartmentTagSource(tag.sourceType)}</span>
+            <span className="status-pill">{formatDepartmentTagSource(tag.sourceType, locale)}</span>
             <span className={getDepartmentTagStatusClassName(tag.status)}>
-              {formatDepartmentTagStatus(tag.status)}
+              {formatDepartmentTagStatus(tag.status, locale)}
             </span>
           </div>
         </div>
@@ -166,29 +171,31 @@ export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps)
             <dd>{tag.slug}</dd>
           </div>
           <div className="detail-item">
-            <dt className="field-label">Created</dt>
+            <dt className="field-label">{locale === "fi" ? "Luotu" : "Created"}</dt>
             <dd>{formatDepartmentTagDateTime(tag.createdAt)}</dd>
           </div>
           <div className="detail-item">
-            <dt className="field-label">Updated</dt>
+            <dt className="field-label">{locale === "fi" ? "Paivitetty" : "Updated"}</dt>
             <dd>{formatDepartmentTagDateTime(tag.updatedAt)}</dd>
           </div>
           <div className="detail-item">
-            <dt className="field-label">Creator</dt>
-            <dd>{formatDepartmentTagCreator(tag)}</dd>
+            <dt className="field-label">{locale === "fi" ? "Luoja" : "Creator"}</dt>
+            <dd>{formatDepartmentTagCreator(tag, locale)}</dd>
           </div>
         </dl>
 
         <form className="stack-sm" onSubmit={(event) => void handleMergeSubmit(event)}>
           <label className="field">
-            <span className="field-label">Merge into active canonical tag</span>
+            <span className="field-label">
+              {locale === "fi" ? "Yhdista aktiiviseen paatagiin" : "Merge into active canonical tag"}
+            </span>
             <select
               className="field-input"
               disabled={isPending || availableTargets.length === 0}
               onChange={(event) => setSelectedTargetId(event.target.value)}
               value={selectedTargetId}
             >
-              <option value="">Select target</option>
+              <option value="">{locale === "fi" ? "Valitse kohde" : "Select target"}</option>
               {availableTargets.map((target) => (
                 <option key={target.id} value={target.id}>
                   {formatDepartmentTagMergeTarget(target.title, target.universityName, target.city)}
@@ -199,7 +206,13 @@ export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps)
 
           <div className="moderation-actions">
             <button className="button button-primary" disabled={isPending || availableTargets.length === 0} type="submit">
-              {isMergePending ? "Merging..." : "Merge tag"}
+              {isMergePending
+                ? locale === "fi"
+                  ? "Yhdistetaan..."
+                  : "Merging..."
+                : locale === "fi"
+                  ? "Yhdista tagi"
+                  : "Merge tag"}
             </button>
             <button
               className="button button-danger"
@@ -207,7 +220,13 @@ export const ModerationTagCard = ({ mergeTargets, tag }: ModerationTagCardProps)
               onClick={() => void handleBlockClick()}
               type="button"
             >
-              {isBlockPending ? "Blocking..." : "Block tag"}
+              {isBlockPending
+                ? locale === "fi"
+                  ? "Estetaan..."
+                  : "Blocking..."
+                : locale === "fi"
+                  ? "Esta tagi"
+                  : "Block tag"}
             </button>
           </div>
 

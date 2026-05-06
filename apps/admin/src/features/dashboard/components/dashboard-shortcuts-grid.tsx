@@ -34,7 +34,7 @@ const resolveBadgeClassName = (tone: DashboardShortcut["badgeTone"]): string => 
 export const DashboardShortcutsGrid = ({ shortcuts }: DashboardShortcutsGridProps) => (
     <section className="shortcut-grid">
         {shortcuts.map((shortcut) => (
-            <Link key={shortcut.href} className="shortcut-card" href={shortcut.href}>
+            <Link key={`${shortcut.href}-${shortcut.title}`} className="shortcut-card" href={shortcut.href}>
                 <span className="shortcut-icon" aria-hidden>
                     <NavIcon name={shortcut.iconName} />
                 </span>

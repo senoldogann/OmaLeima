@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { SvgXml } from "react-native-svg";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -23,6 +24,10 @@ import type { BusinessMembershipSummary } from "@/features/business/types";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import {
+  useBusinessScannerLoginQrQuery,
+  useBusinessScannerLoginQrSvgQuery,
+} from "@/features/scanner/business-scanner-login";
 import {
   type BusinessScannerDeviceSummary,
   useClearBusinessScannerDevicePinMutation,
@@ -161,6 +166,7 @@ export default function BusinessProfileScreen() {
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
   const [isBusinessProfileExpanded, setIsBusinessProfileExpanded] = useState<boolean>(false);
+  const [isScannerDevicesExpanded, setIsScannerDevicesExpanded] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BusinessProfileDraft | null>(null);
   const [editingScannerDeviceId, setEditingScannerDeviceId] = useState<string | null>(null);
@@ -209,6 +215,27 @@ export default function BusinessProfileScreen() {
     businessId: selectedMembership?.businessId ?? "",
     isEnabled: selectedMembership !== null,
   });
+  const scannerLoginQrQuery = useBusinessScannerLoginQrQuery({
+    businessId: selectedMembership?.businessId ?? "",
+    isEnabled: canEditSelectedMembership && selectedMembership !== null,
+  });
+  const scannerLoginQrSvgQuery = useBusinessScannerLoginQrSvgQuery({
+    token: scannerLoginQrQuery.data?.qrPayload.token ?? "",
+    isEnabled: canEditSelectedMembership && scannerLoginQrQuery.data !== undefined,
+  });
+  const scannerDeviceCount = scannerDevicesQuery.data?.length ?? 0;
+  const scannerDeviceSummary =
+    scannerDevicesQuery.isLoading
+      ? language === "fi"
+        ? "Ladataan laitteita"
+        : "Loading devices"
+      : scannerDevicesQuery.error !== null
+        ? language === "fi"
+          ? "Lataus epaonnistui"
+          : "Load failed"
+        : language === "fi"
+          ? `${scannerDeviceCount} laitetta`
+          : `${scannerDeviceCount} device${scannerDeviceCount === 1 ? "" : "s"}`;
 
   useEffect(() => {
     if (memberships.length === 0) {
@@ -369,7 +396,6 @@ export default function BusinessProfileScreen() {
         <View style={styles.topBarCopy}>
           <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{copy.common.profile}</Text>
-          <Text style={styles.metaText}>{copy.business.profileMeta}</Text>
         </View>
       </View>
 
@@ -458,12 +484,12 @@ export default function BusinessProfileScreen() {
           <View style={styles.scannerWorkflowCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionEyebrow}>{language === "fi" ? "Tapahtumat" : "Events"}</Text>
-              <Text style={styles.sectionTitle}>{language === "fi" ? "Skannerin työvuoro" : "Scanner workflow"}</Text>
+              <Text style={styles.sectionTitle}>{language === "fi" ? "Skanneri" : "Scanner"}</Text>
             </View>
             <Text style={styles.bodyText}>
               {language === "fi"
-                ? "Tapahtumiin liittyminen ja skannerin avaaminen tehdään tapahtumanäkymässä. Skannerirooli voi skannata liittyneissä tapahtumissa, mutta yritysprofiilia muokkaavat owner ja manager."
-                : "Join events and open the scanner from the event view. Scanner role can scan joined events, while owner and manager edit the business profile."}
+                ? "Avaa tapahtumat ja siirry skanneriin suoraan aktiivisesta pisteestä."
+                : "Open events and jump into the scanner from the active checkpoint."}
             </Text>
             <View style={styles.quickActionRow}>
               <Pressable onPress={() => router.push("/business/events")} style={[styles.primaryButton, styles.quickActionButton]}>
@@ -485,6 +511,67 @@ export default function BusinessProfileScreen() {
               </Pressable>
             </View>
           </View>
+
+          {canEditSelectedMembership ? (
+            <View style={styles.ownerQrCard}>
+              <View style={styles.ownerQrCopy}>
+                <Text style={styles.sectionEyebrow}>
+                  {language === "fi" ? "Henkilokunta" : "Staff access"}
+                </Text>
+                <Text style={styles.sectionTitle}>
+                  {language === "fi" ? "Scanner QR" : "Scanner QR"}
+                </Text>
+                <Text style={styles.bodyText}>
+                  {language === "fi"
+                    ? "Nayta tama QR tyontekijalle. Han avaa yrityskirjautumisen, valitsee QR-skannauksen ja laite saa oman scanner-oikeuden."
+                    : "Show this QR to staff. They open business sign-in, scan it, and this phone gets its own scanner access."}
+                </Text>
+              </View>
+
+              <View style={styles.ownerQrSurface}>
+                {scannerLoginQrSvgQuery.data ? (
+                  <SvgXml height={184} width={184} xml={scannerLoginQrSvgQuery.data} />
+                ) : (
+                  <View style={styles.ownerQrPlaceholder}>
+                    <AppIcon color={theme.colors.lime} name="scan" size={28} />
+                    <Text style={styles.metaText}>
+                      {scannerLoginQrQuery.isLoading || scannerLoginQrSvgQuery.isLoading
+                        ? language === "fi"
+                          ? "Luodaan QR..."
+                          : "Creating QR..."
+                        : language === "fi"
+                          ? "QR ei ole valmis"
+                          : "QR not ready"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.ownerQrActionRow}>
+                <Text style={styles.metaText}>
+                  {scannerLoginQrQuery.data
+                    ? language === "fi"
+                      ? "QR paivittyy automaattisesti."
+                      : "QR refreshes automatically."
+                    : language === "fi"
+                      ? "Owner/manager oikeus vaaditaan."
+                      : "Owner/manager access required."}
+                </Text>
+                <Pressable onPress={() => void scannerLoginQrQuery.refetch()} style={styles.scannerDeviceActionButton}>
+                  <Text style={styles.scannerDeviceActionText}>
+                    {language === "fi" ? "Paivita" : "Refresh"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {scannerLoginQrQuery.error ? (
+                <Text style={styles.errorText}>{scannerLoginQrQuery.error.message}</Text>
+              ) : null}
+              {scannerLoginQrSvgQuery.error ? (
+                <Text style={styles.errorText}>{scannerLoginQrSvgQuery.error.message}</Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {memberships.length > 1 ? (
             <View style={styles.businessSwitchRow}>
@@ -515,7 +602,7 @@ export default function BusinessProfileScreen() {
                 {language === "fi" ? "Yritysprofiili" : "Business profile"}
               </Text>
               <Text style={styles.collapseTitle}>
-                {language === "fi" ? "Näkyvyys ja tapahtumapäivä" : "Visibility and event-day context"}
+                {language === "fi" ? "Yrityksen tiedot" : "Business details"}
               </Text>
             </View>
             <View style={[styles.collapseIcon, isBusinessProfileExpanded ? styles.collapseIconOpen : null]}>
@@ -587,37 +674,52 @@ export default function BusinessProfileScreen() {
             </InfoCard>
           ) : null}
 
-          <InfoCard
-            eyebrow={language === "fi" ? "Skannerit" : "Scanners"}
-            title={language === "fi" ? "Laitteet" : "Devices"}
+          <Pressable
+            onPress={() => setIsScannerDevicesExpanded((isExpanded) => !isExpanded)}
+            style={styles.collapseHeader}
           >
-            {scannerDevicesQuery.isLoading ? (
-              <Text style={styles.bodyText}>
-                {language === "fi" ? "Ladataan skannerilaitteita." : "Loading scanner devices."}
-              </Text>
-            ) : null}
+            <View style={styles.collapseHeaderCopy}>
+              <Text style={styles.collapseEyebrow}>{language === "fi" ? "Skannerit" : "Scanners"}</Text>
+              <Text style={styles.collapseTitle}>{language === "fi" ? "Skannerilaitteet" : "Scanner devices"}</Text>
+              <Text style={styles.metaText}>{scannerDeviceSummary}</Text>
+            </View>
+            <View style={[styles.collapseIcon, isScannerDevicesExpanded ? styles.collapseIconOpen : null]}>
+              <AppIcon color={theme.colors.textPrimary} name="chevron-down" size={18} />
+            </View>
+          </Pressable>
 
-            {scannerDevicesQuery.error ? (
-              <View style={styles.inlineErrorBlock}>
-                <Text style={styles.errorText}>{scannerDevicesQuery.error.message}</Text>
-                <Pressable onPress={() => void scannerDevicesQuery.refetch()} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
-                </Pressable>
-              </View>
-            ) : null}
+          {isScannerDevicesExpanded ? (
+            <InfoCard
+              eyebrow={language === "fi" ? "Skannerit" : "Scanners"}
+              title={language === "fi" ? "Laitteet" : "Devices"}
+            >
+              {scannerDevicesQuery.isLoading ? (
+                <Text style={styles.bodyText}>
+                  {language === "fi" ? "Ladataan skannerilaitteita." : "Loading scanner devices."}
+                </Text>
+              ) : null}
 
-            {!scannerDevicesQuery.isLoading &&
-              scannerDevicesQuery.error === null &&
-              (scannerDevicesQuery.data ?? []).length === 0 ? (
-              <Text style={styles.bodyText}>
-                {language === "fi"
-                  ? "Skannerilaitteet ilmestyvät tähän, kun henkilökunta avaa skannerin."
-                  : "Scanner devices appear here after staff opens the scanner."}
-              </Text>
-            ) : null}
+              {scannerDevicesQuery.error ? (
+                <View style={styles.inlineErrorBlock}>
+                  <Text style={styles.errorText}>{scannerDevicesQuery.error.message}</Text>
+                  <Pressable onPress={() => void scannerDevicesQuery.refetch()} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
 
-            <View style={styles.scannerDeviceList}>
-              {(scannerDevicesQuery.data ?? []).map((device) => {
+              {!scannerDevicesQuery.isLoading &&
+                scannerDevicesQuery.error === null &&
+                (scannerDevicesQuery.data ?? []).length === 0 ? (
+                <Text style={styles.bodyText}>
+                  {language === "fi"
+                    ? "Skannerilaitteet ilmestyvät tähän, kun henkilökunta avaa skannerin."
+                    : "Scanner devices appear here after staff opens the scanner."}
+                </Text>
+              ) : null}
+
+              <View style={styles.scannerDeviceList}>
+                {(scannerDevicesQuery.data ?? []).map((device) => {
                 const isEditing = editingScannerDeviceId === device.id;
                 const isPinEditing = editingScannerPinDeviceId === device.id;
                 const canRenameDevice =
@@ -800,22 +902,23 @@ export default function BusinessProfileScreen() {
                     ) : null}
                   </View>
                 );
-              })}
-            </View>
+                })}
+              </View>
 
-            {renameScannerDeviceMutation.error ? (
-              <Text style={styles.errorText}>{renameScannerDeviceMutation.error.message}</Text>
-            ) : null}
-            {revokeScannerDeviceMutation.error ? (
-              <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
-            ) : null}
-            {setScannerPinMutation.error ? (
-              <Text style={styles.errorText}>{setScannerPinMutation.error.message}</Text>
-            ) : null}
-            {clearScannerPinMutation.error ? (
-              <Text style={styles.errorText}>{clearScannerPinMutation.error.message}</Text>
-            ) : null}
-          </InfoCard>
+              {renameScannerDeviceMutation.error ? (
+                <Text style={styles.errorText}>{renameScannerDeviceMutation.error.message}</Text>
+              ) : null}
+              {revokeScannerDeviceMutation.error ? (
+                <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
+              ) : null}
+              {setScannerPinMutation.error ? (
+                <Text style={styles.errorText}>{setScannerPinMutation.error.message}</Text>
+              ) : null}
+              {clearScannerPinMutation.error ? (
+                <Text style={styles.errorText}>{clearScannerPinMutation.error.message}</Text>
+              ) : null}
+            </InfoCard>
+          ) : null}
 
           <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={copy.common.profile}>
             <View style={styles.preferenceSection}>
@@ -1132,6 +1235,38 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
       textAlign: "center",
+    },
+    ownerQrActionRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    ownerQrCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 16,
+      padding: 18,
+    },
+    ownerQrCopy: {
+      gap: 8,
+    },
+    ownerQrPlaceholder: {
+      alignItems: "center",
+      gap: 10,
+      justifyContent: "center",
+      minHeight: 184,
+      minWidth: 184,
+    },
+    ownerQrSurface: {
+      alignItems: "center",
+      alignSelf: "center",
+      backgroundColor: "#ffffff",
+      borderRadius: 28,
+      justifyContent: "center",
+      padding: 14,
     },
     modalBackdrop: {
       backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.66)" : "rgba(12, 16, 12, 0.22)",
@@ -1450,6 +1585,6 @@ const createStyles = (theme: MobileTheme) =>
     },
     topBarCopy: {
       flex: 1,
-      gap: 6,
+      gap: 4,
     },
   });

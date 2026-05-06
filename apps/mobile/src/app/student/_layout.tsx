@@ -135,7 +135,7 @@ export default function StudentTabsLayout() {
         },
       })}
     >
-      <Tabs.Screen name="events" options={{ title: copy.common.events }} />
+      <Tabs.Screen name="events" options={{ title: language === "fi" ? "Eventit" : copy.common.events }} />
       <Tabs.Screen name="active-event" options={{ title: copy.common.myQr }} />
       <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
       <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />

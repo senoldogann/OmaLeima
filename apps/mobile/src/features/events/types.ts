@@ -59,6 +59,7 @@ export type EventVenueSummary = {
   stampLabel: string | null;
   customInstructions: string | null;
   stampStatus: "COLLECTED" | "PENDING";
+  collectedStampCount: number;
   stampedAt: string | null;
 };
 

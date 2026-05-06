@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppIcon } from "@/components/app-icon";
@@ -8,6 +8,10 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import {
+  createVenueAddressLine,
+  openExternalVenueMapAsync,
+} from "@/features/events/components/student-event-venue-map";
 import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
@@ -18,13 +22,14 @@ import {
 } from "@/features/events/student-event-detail";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useStudentRewardInventoryRealtime } from "@/features/realtime/student-realtime";
-import { useActiveAppState } from "@/features/qr/student-qr";
+import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
 import type { AppReadinessState } from "@/types/app";
 import type {
   CancelEventRegistrationResult,
   EventRegistrationState,
   EventRuleValue,
+  EventVenueSummary,
   JoinEventResult,
   RewardTierSummary,
   StudentEventDetail,
@@ -88,6 +93,72 @@ const formatRuleValue = (value: EventRuleValue): string => {
   return JSON.stringify(value);
 };
 
+const extractPerBusinessLimit = (value: EventRuleValue): number | null => {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const rawLimit = value.perBusinessLimit;
+
+    if (typeof rawLimit === "number" && Number.isInteger(rawLimit) && rawLimit > 0) {
+      return rawLimit;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry !== "string") {
+        continue;
+      }
+
+      const match = /^perBusinessLimit:(\d+)$/.exec(entry.trim());
+
+      if (match === null) {
+        continue;
+      }
+
+      return Number.parseInt(match[1], 10);
+    }
+  }
+
+  if (typeof value === "string") {
+    const match = /^perBusinessLimit:(\d+)$/.exec(value.trim());
+
+    if (match !== null) {
+      return Number.parseInt(match[1], 10);
+    }
+  }
+
+  return null;
+};
+
+const createRuleLabel = (key: string, language: "fi" | "en"): string => {
+  if (key === "stampPolicy") {
+    return language === "fi" ? "Leimasääntö" : "Stamp policy";
+  }
+
+  return key;
+};
+
+const createRuleDescription = (
+  key: string,
+  value: EventRuleValue,
+  language: "fi" | "en"
+): string => {
+  if (key === "stampPolicy") {
+    const perBusinessLimit = extractPerBusinessLimit(value);
+
+    if (perBusinessLimit !== null) {
+      return language === "fi"
+        ? `Samasta pisteestä voi kerätä enintään ${perBusinessLimit} leimaa tämän tapahtuman aikana.`
+        : `You can collect up to ${perBusinessLimit} stamps from the same venue during this event.`;
+    }
+  }
+
+  return formatRuleValue(value);
+};
+
 const getRegistrationBadge = (
   registrationState: EventRegistrationState,
   language: "fi" | "en"
@@ -134,21 +205,34 @@ const getJoinAvailability = (
     };
   }
 
-  if (event.status !== "PUBLISHED") {
+  if (event.status === "CANCELLED") {
     return {
       canJoin: false,
-      label: language === "fi" ? "Ilmoittautuminen suljettu" : "Registration closed",
+      label: language === "fi" ? "Tapahtuma peruttu" : "Event cancelled",
       detail:
         language === "fi"
-          ? "Tapahtuma ei ole enää liittymisvaiheessa."
-          : "This event is no longer in a pre-start join state.",
+          ? "Tämä tapahtuma on peruttu."
+          : "This event has been cancelled.",
       state: "warning",
     };
   }
 
   const now = Date.now();
   const startTime = new Date(event.startAt).getTime();
+  const endTime = new Date(event.endAt).getTime();
   const joinDeadlineTime = new Date(event.joinDeadlineAt).getTime();
+
+  if (now >= endTime) {
+    return {
+      canJoin: false,
+      label: language === "fi" ? "Tapahtuma päättynyt" : "Event ended",
+      detail:
+        language === "fi"
+          ? `Tapahtuma päättyi ${formatter.format(new Date(event.endAt))}.`
+          : `This event ended at ${formatter.format(new Date(event.endAt))}.`,
+      state: "warning",
+    };
+  }
 
   if (now >= joinDeadlineTime || now >= startTime) {
     return {
@@ -249,7 +333,19 @@ const getCancelAvailability = (
     return null;
   }
 
-  if (Date.now() >= new Date(event.startAt).getTime() || event.status !== "PUBLISHED") {
+  if (event.status === "CANCELLED") {
+    return {
+      canCancel: false,
+      label: language === "fi" ? "Tapahtuma peruttu" : "Event cancelled",
+      detail:
+        language === "fi"
+          ? "Peruttua tapahtumaa ei voi enää muokata ilmoittautumisesta."
+          : "A cancelled event can no longer be changed from registration.",
+      state: "warning",
+    };
+  }
+
+  if (Date.now() >= new Date(event.startAt).getTime()) {
     return {
       canCancel: false,
       label: language === "fi" ? "Peruminen suljettu" : "Cancellation closed",
@@ -340,10 +436,42 @@ const getRewardChipColor = (rewardTier: RewardTierSummary, theme: MobileTheme): 
   return theme.colors.chromeTintWarm;
 };
 
+const getVenueStatusBadge = (
+  venue: EventVenueSummary,
+  language: "fi" | "en"
+): { label: string; state: AppReadinessState } =>
+  venue.stampStatus === "COLLECTED"
+    ? { label: language === "fi" ? "Leima saatu" : "Collected", state: "ready" }
+    : { label: language === "fi" ? "Odottaa" : "Pending", state: "pending" };
+
+const getEventTimelineBadge = (
+  event: StudentEventDetail,
+  now: number,
+  language: "fi" | "en"
+): { label: string; state: AppReadinessState } => {
+  const startTime = new Date(event.startAt).getTime();
+  const endTime = new Date(event.endAt).getTime();
+
+  if (event.status === "CANCELLED") {
+    return { label: language === "fi" ? "peruttu" : "cancelled", state: "warning" };
+  }
+
+  if (now >= endTime) {
+    return { label: language === "fi" ? "päättynyt" : "completed", state: "warning" };
+  }
+
+  if (now >= startTime) {
+    return { label: language === "fi" ? "käynnissä" : "active", state: "ready" };
+  }
+
+  return { label: language === "fi" ? "tulossa" : "upcoming", state: "pending" };
+};
+
 export default function StudentEventDetailScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const isAppActive = useActiveAppState();
+  const now = useCurrentTime(isFocused && isAppActive);
   const params = useLocalSearchParams<EventDetailRouteParams>();
   const { session } = useSession();
   const { copy, language, localeTag } = useUiPreferences();
@@ -371,6 +499,8 @@ export default function StudentEventDetailScreen() {
   const joinMutation = useJoinEventMutation();
   const cancelRegistrationMutation = useCancelEventRegistrationMutation();
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<EventVenueSummary | null>(null);
+  const [venueNotice, setVenueNotice] = useState<string | null>(null);
 
   useEffect(() => {
     void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
@@ -398,6 +528,11 @@ export default function StudentEventDetailScreen() {
   const cancelPresentation = getCancelResultPresentation(cancelRegistrationMutation.data, language);
   const coverSource =
     event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
+  const hasEventStarted = event !== null && now >= new Date(event.startAt).getTime();
+  const shouldShowRegistrationSection = event !== null && !hasEventStarted;
+  const selectedVenueStatus = selectedVenue === null ? null : getVenueStatusBadge(selectedVenue, language);
+  const selectedVenueAddress = selectedVenue === null ? null : createVenueAddressLine(selectedVenue);
+  const eventTimelineBadge = event === null ? null : getEventTimelineBadge(event, now, language);
 
   const handleJoinPress = async (): Promise<void> => {
     if (studentId === null || event === null) {
@@ -442,6 +577,31 @@ export default function StudentEventDetailScreen() {
     router.replace("/student/events");
   };
 
+  const handleVenuePress = (venue: EventVenueSummary): void => {
+    setVenueNotice(null);
+    setSelectedVenue(venue);
+  };
+
+  const handleVenueMapPress = async (): Promise<void> => {
+    if (selectedVenue === null) {
+      return;
+    }
+
+    setVenueNotice(null);
+
+    try {
+      await openExternalVenueMapAsync(selectedVenue);
+    } catch (error) {
+      setVenueNotice(
+        error instanceof Error
+          ? error.message
+          : language === "fi"
+            ? "Karttaa ei voitu avata."
+            : "Could not open the map."
+      );
+    }
+  };
+
   return (
     <AppScreen>
       <Pressable onPress={handleBackPress} style={themeStyles.backButton}>
@@ -476,10 +636,12 @@ export default function StudentEventDetailScreen() {
             <View style={themeStyles.heroEdgeFade} />
             <View style={themeStyles.heroContent}>
               <View style={themeStyles.heroBadgeRow}>
-                <StatusBadge
-                  label={event.status === "PUBLISHED" ? (language === "fi" ? "julkaistu" : "published") : language === "fi" ? "päättynyt" : "completed"}
-                  state={event.status === "PUBLISHED" ? "ready" : "warning"}
-                />
+                {eventTimelineBadge ? (
+                  <StatusBadge
+                    label={eventTimelineBadge.label}
+                    state={eventTimelineBadge.state}
+                  />
+                ) : null}
                 {registrationBadge ? (
                   <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
                 ) : null}
@@ -513,108 +675,96 @@ export default function StudentEventDetailScreen() {
             </Text>
           </View>
 
-          <View style={themeStyles.sectionDivider} />
+          {shouldShowRegistrationSection ? (
+            <>
+              <View style={themeStyles.sectionDivider} />
 
-          <View style={themeStyles.sectionBlock}>
-            <View style={themeStyles.sectionHeader}>
-              <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Ilmoittautuminen" : "Registration"}</Text>
-              <Text style={themeStyles.sectionTitle}>{joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}</Text>
-            </View>
-            <Text style={themeStyles.bodyText}>{joinAvailability?.detail ?? ""}</Text>
-            {joinPresentation ? (
-              <View style={themeStyles.inlineStatusRow}>
-                <StatusBadge label={joinPresentation.state} state={joinPresentation.state} />
-                <Text style={themeStyles.metaText}>{joinPresentation.body}</Text>
+              <View style={themeStyles.sectionBlock}>
+                <View style={themeStyles.sectionHeader}>
+                  <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Ilmoittautuminen" : "Registration"}</Text>
+                  <Text style={themeStyles.sectionTitle}>{joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}</Text>
+                </View>
+                <Text style={themeStyles.bodyText}>{joinAvailability?.detail ?? ""}</Text>
+                {joinPresentation ? (
+                  <View style={themeStyles.inlineStatusRow}>
+                    <StatusBadge label={joinPresentation.state} state={joinPresentation.state} />
+                    <Text style={themeStyles.metaText}>{joinPresentation.body}</Text>
+                  </View>
+                ) : null}
+                {cancelPresentation ? (
+                  <View style={themeStyles.inlineStatusRow}>
+                    <StatusBadge label={cancelPresentation.state} state={cancelPresentation.state} />
+                    <Text style={themeStyles.metaText}>{cancelPresentation.body}</Text>
+                  </View>
+                ) : null}
+                {actionNotice !== null ? (
+                  <View style={themeStyles.inlineStatusRow}>
+                    <StatusBadge label={language === "fi" ? "virhe" : "error"} state="error" />
+                    <Text style={themeStyles.metaText}>
+                      {actionNotice.title}: {actionNotice.body}
+                    </Text>
+                  </View>
+                ) : null}
+                {joinAvailability?.canJoin ? (
+                  <Pressable
+                    disabled={joinMutation.isPending}
+                    onPress={() => void handleJoinPress()}
+                    style={[themeStyles.primaryButton, joinMutation.isPending ? themeStyles.disabledButton : null]}
+                  >
+                    <Text style={themeStyles.primaryButtonText}>
+                      {joinMutation.isPending
+                        ? language === "fi"
+                          ? "Liitytään..."
+                          : "Joining..."
+                        : joinAvailability.label}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {cancelAvailability ? (
+                  <>
+                    <Text style={themeStyles.metaText}>{cancelAvailability.detail}</Text>
+                    <Pressable
+                      disabled={!cancelAvailability.canCancel || cancelRegistrationMutation.isPending}
+                      onPress={() => void handleCancelRegistrationPress()}
+                      style={[
+                        themeStyles.secondaryButton,
+                        !cancelAvailability.canCancel || cancelRegistrationMutation.isPending ? themeStyles.disabledButton : null,
+                      ]}
+                    >
+                      <Text style={themeStyles.secondaryButtonText}>
+                        {cancelRegistrationMutation.isPending
+                          ? language === "fi"
+                            ? "Perutaan..."
+                            : "Cancelling..."
+                          : cancelAvailability.label}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : null}
               </View>
-            ) : null}
-            {cancelPresentation ? (
-              <View style={themeStyles.inlineStatusRow}>
-                <StatusBadge label={cancelPresentation.state} state={cancelPresentation.state} />
-                <Text style={themeStyles.metaText}>{cancelPresentation.body}</Text>
-              </View>
-            ) : null}
-            {actionNotice !== null ? (
-              <View style={themeStyles.inlineStatusRow}>
-                <StatusBadge label={language === "fi" ? "virhe" : "error"} state="error" />
-                <Text style={themeStyles.metaText}>
-                  {actionNotice.title}: {actionNotice.body}
-                </Text>
-              </View>
-            ) : null}
-            {joinAvailability?.canJoin ? (
-              <Pressable
-                disabled={joinMutation.isPending}
-                onPress={() => void handleJoinPress()}
-                style={[themeStyles.primaryButton, joinMutation.isPending ? themeStyles.disabledButton : null]}
-              >
-                <Text style={themeStyles.primaryButtonText}>
-                  {joinMutation.isPending
-                    ? language === "fi"
-                      ? "Liitytään..."
-                      : "Joining..."
-                    : joinAvailability.label}
-                </Text>
-              </Pressable>
-            ) : null}
-            {cancelAvailability ? (
-              <>
-                <Text style={themeStyles.metaText}>{cancelAvailability.detail}</Text>
-                <Pressable
-                  disabled={!cancelAvailability.canCancel || cancelRegistrationMutation.isPending}
-                  onPress={() => void handleCancelRegistrationPress()}
-                  style={[
-                    themeStyles.secondaryButton,
-                    !cancelAvailability.canCancel || cancelRegistrationMutation.isPending ? themeStyles.disabledButton : null,
-                  ]}
-                >
-                  <Text style={themeStyles.secondaryButtonText}>
-                    {cancelRegistrationMutation.isPending
-                      ? language === "fi"
-                        ? "Perutaan..."
-                        : "Cancelling..."
-                      : cancelAvailability.label}
-                  </Text>
-                </Pressable>
-              </>
-            ) : null}
-          </View>
+            </>
+          ) : null}
 
           <View style={themeStyles.sectionDivider} />
 
           <View style={themeStyles.sectionBlock}>
             <View style={themeStyles.sectionHeader}>
               <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Pisteet" : "Venues"}</Text>
-              <Text style={themeStyles.sectionTitle}>{language === "fi" ? "Pisteet ja palkinnot" : "Venues & rewards"}</Text>
+              <Text style={themeStyles.sectionTitle}>{language === "fi" ? "Avaa piste ja näe lisätiedot" : "Tap a venue for details"}</Text>
             </View>
             {event.venues.length > 0 ? (
-              <View style={themeStyles.listGroup}>
+              <ScrollView
+                contentContainerStyle={themeStyles.venueRail}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+              >
                 {event.venues.map((venue) => (
-                  <View key={venue.id} style={themeStyles.venueCard}>
-                    <CoverImageSurface
-                      imageStyle={themeStyles.venueCoverImage}
-                      source={venue.coverImageUrl === null ? null : { uri: venue.coverImageUrl }}
-                      style={themeStyles.venueCover}
-                    >
-                      <View style={themeStyles.venueCoverOverlay} />
-                      <View style={themeStyles.venueStatusRow}>
-                        <View style={themeStyles.venueOrderBubble}>
-                          <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
-                        </View>
-                        <StatusBadge
-                          label={
-                            venue.stampStatus === "COLLECTED"
-                              ? language === "fi"
-                                ? "Leima saatu"
-                                : "Collected"
-                              : language === "fi"
-                                ? "Odottaa"
-                                : "Pending"
-                          }
-                          state={venue.stampStatus === "COLLECTED" ? "ready" : "pending"}
-                        />
-                      </View>
-                    </CoverImageSurface>
-                    <View style={themeStyles.venueHeader}>
+                  <Pressable
+                    key={venue.id}
+                    onPress={() => handleVenuePress(venue)}
+                    style={themeStyles.venueMiniCard}
+                  >
+                    <View style={themeStyles.venueMiniHeader}>
                       <CoverImageSurface
                         imageStyle={themeStyles.venueLogoImage}
                         source={venue.logoUrl === null ? null : { uri: venue.logoUrl }}
@@ -624,24 +774,25 @@ export default function StudentEventDetailScreen() {
                           <AppIcon color={theme.colors.textPrimary} name="business" size={17} />
                         ) : null}
                       </CoverImageSurface>
-                      <View style={themeStyles.venueCopy}>
-                        <Text style={themeStyles.listTitle}>{venue.name}</Text>
-                        <Text style={themeStyles.metaLine}>
-                          {venue.stampedAt === null
-                            ? venue.city
-                            : `${venue.city} · ${language === "fi" ? "haettu" : "scanned"} ${formatter.format(new Date(venue.stampedAt))}`}
-                        </Text>
+                      <View style={themeStyles.venueOrderBubble}>
+                        <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
                       </View>
                     </View>
-                    {venue.stampLabel ? (
-                      <Text style={themeStyles.metaLine}>
-                        {language === "fi" ? "Leima" : "Stamp label"}: {venue.stampLabel}
+                    <View style={themeStyles.venueCopy}>
+                      <Text numberOfLines={2} style={themeStyles.listTitle}>{venue.name}</Text>
+                      <Text numberOfLines={1} style={themeStyles.metaLine}>
+                        {venue.stampedAt === null
+                          ? venue.city
+                          : `${venue.city} · ${language === "fi" ? "haettu" : "scanned"} ${formatter.format(new Date(venue.stampedAt))}`}
                       </Text>
-                    ) : null}
-                    {venue.customInstructions ? <Text style={themeStyles.metaLine}>{venue.customInstructions}</Text> : null}
-                  </View>
+                    </View>
+                    <StatusBadge
+                      label={getVenueStatusBadge(venue, language).label}
+                      state={getVenueStatusBadge(venue, language).state}
+                    />
+                  </Pressable>
                 ))}
-              </View>
+              </ScrollView>
             ) : (
               <Text style={themeStyles.bodyText}>
                 {language === "fi" ? "Pisteitä ei ole vielä näkyvissä." : "No joined venues are visible yet for this event."}
@@ -685,14 +836,122 @@ export default function StudentEventDetailScreen() {
                 <View style={themeStyles.rulesGroup}>
                   {Object.entries(event.rules).map(([key, value]) => (
                     <View key={key} style={themeStyles.ruleRow}>
-                      <Text style={themeStyles.listTitle}>{key}</Text>
-                      <Text style={themeStyles.metaLine}>{formatRuleValue(value)}</Text>
+                      <Text style={themeStyles.listTitle}>{createRuleLabel(key, language)}</Text>
+                      <Text style={themeStyles.metaLine}>{createRuleDescription(key, value, language)}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             </>
           ) : null}
+
+          <Modal
+            animationType="fade"
+            onRequestClose={() => setSelectedVenue(null)}
+            transparent
+            visible={selectedVenue !== null}
+          >
+            <View style={themeStyles.modalBackdrop}>
+              <View style={themeStyles.venueModalSheet}>
+                {selectedVenue !== null ? (
+                  <ScrollView contentContainerStyle={themeStyles.venueModalContent} showsVerticalScrollIndicator={false}>
+                    <View style={themeStyles.venueModalHeader}>
+                      <View style={themeStyles.venueModalHeaderCopy}>
+                        <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Mekan" : "Venue"}</Text>
+                        <Text style={themeStyles.sectionTitle}>{selectedVenue.name}</Text>
+                        {selectedVenueStatus ? (
+                          <StatusBadge label={selectedVenueStatus.label} state={selectedVenueStatus.state} />
+                        ) : null}
+                      </View>
+                      <Pressable onPress={() => setSelectedVenue(null)} style={themeStyles.venueModalCloseButton}>
+                        <AppIcon color={theme.colors.textPrimary} name="x" size={18} />
+                      </Pressable>
+                    </View>
+
+                    <View style={themeStyles.venueModalSummary}>
+                      <CoverImageSurface
+                        imageStyle={themeStyles.venueLogoImage}
+                        source={selectedVenue.logoUrl === null ? null : { uri: selectedVenue.logoUrl }}
+                        style={themeStyles.venueModalLogo}
+                      >
+                        {selectedVenue.logoUrl === null ? (
+                          <AppIcon color={theme.colors.textPrimary} name="business" size={20} />
+                        ) : null}
+                      </CoverImageSurface>
+                      <View style={themeStyles.venueCopy}>
+                        {selectedVenueAddress ? <Text style={themeStyles.metaLine}>{selectedVenueAddress}</Text> : null}
+                        {selectedVenue.stampedAt !== null ? (
+                          <Text style={themeStyles.metaLine}>
+                            {language === "fi"
+                              ? `Leima haettu ${formatter.format(new Date(selectedVenue.stampedAt))}`
+                              : `Stamped ${formatter.format(new Date(selectedVenue.stampedAt))}`}
+                          </Text>
+                        ) : null}
+                        {selectedVenue.stampLabel ? (
+                          <Text style={themeStyles.metaLine}>
+                            {language === "fi" ? "Leima" : "Stamp"}: {selectedVenue.stampLabel}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    {selectedVenue.customInstructions ? (
+                      <View style={themeStyles.listRow}>
+                        <Text style={themeStyles.listTitle}>{language === "fi" ? "Mitä paikan päällä tehdään" : "What to do there"}</Text>
+                        <Text style={themeStyles.metaLine}>{selectedVenue.customInstructions}</Text>
+                      </View>
+                    ) : null}
+
+                    <Pressable onPress={() => void handleVenueMapPress()} style={themeStyles.primaryButton}>
+                      <Text style={themeStyles.primaryButtonText}>
+                        {language === "fi" ? "Avaa kartassa" : "Open in Maps"}
+                      </Text>
+                    </Pressable>
+
+                    {venueNotice !== null ? <Text style={themeStyles.metaText}>{venueNotice}</Text> : null}
+
+                    <View style={themeStyles.sectionHeader}>
+                      <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Palkinnot" : "Rewards"}</Text>
+                      <Text style={themeStyles.sectionTitle}>
+                        {language === "fi" ? "Saatavilla tässä tapahtumassa" : "Available in this event"}
+                      </Text>
+                    </View>
+
+                    {event.rewardTiers.length > 0 ? (
+                      <View style={themeStyles.rewardGroup}>
+                        {event.rewardTiers.map((rewardTier) => (
+                          <View key={`venue-modal:${rewardTier.id}`} style={themeStyles.listRow}>
+                            <View style={themeStyles.rewardHeader}>
+                              <View
+                                style={[
+                                  themeStyles.rewardRequirementBadge,
+                                  { backgroundColor: getRewardChipColor(rewardTier, theme) },
+                                ]}
+                              >
+                                <Text style={themeStyles.rewardRequirementText}>
+                                  {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
+                                </Text>
+                              </View>
+                              <Text style={themeStyles.listTitle}>{rewardTier.title}</Text>
+                            </View>
+                            <Text style={themeStyles.metaLine}>{getRewardInventoryCopy(rewardTier, language)}</Text>
+                            {rewardTier.description ? <Text style={themeStyles.metaLine}>{rewardTier.description}</Text> : null}
+                            {rewardTier.claimInstructions ? <Text style={themeStyles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={themeStyles.bodyText}>
+                        {language === "fi"
+                          ? "Tähän tapahtumaan ei ole vielä julkaistu palkintoja."
+                          : "No rewards are published for this event yet."}
+                      </Text>
+                    )}
+                  </ScrollView>
+                ) : null}
+              </View>
+            </View>
+          </Modal>
         </>
       ) : null}
     </AppScreen>
@@ -846,6 +1105,14 @@ const createStyles = (theme: MobileTheme) => {
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
+    modalBackdrop: {
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.72)",
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 18,
+      paddingVertical: 32,
+    },
     primaryButton: {
       alignItems: "center",
       alignSelf: "stretch",
@@ -929,6 +1196,76 @@ const createStyles = (theme: MobileTheme) => {
     venueCopy: {
       flex: 1,
       gap: 4,
+    },
+    venueMiniCard: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 10,
+      minHeight: 152,
+      padding: 14,
+      width: 176,
+      ...interactiveSurfaceShadowStyle,
+    },
+    venueMiniHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    venueModalCloseButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    venueModalContent: {
+      gap: 14,
+    },
+    venueModalHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    venueModalHeaderCopy: {
+      flex: 1,
+      gap: 6,
+      minWidth: 0,
+    },
+    venueModalLogo: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 56,
+      justifyContent: "center",
+      overflow: "hidden",
+      width: 56,
+    },
+    venueModalSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.scene,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      maxHeight: "86%",
+      overflow: "hidden",
+      padding: 18,
+      width: "100%",
+    },
+    venueModalSummary: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+    },
+    venueRail: {
+      gap: 10,
+      paddingRight: 8,
     },
     venueCard: {
       backgroundColor: theme.colors.surfaceL2,

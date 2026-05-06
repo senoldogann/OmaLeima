@@ -87,7 +87,7 @@ export const RewardTierCard = ({ tier }: RewardTierCardProps) => {
       <div className="stack-md">
         <div className="review-card-header">
           <div className="stack-sm">
-            <h3 className="section-title">{tier.title}</h3>
+            <p className="card-title">{tier.title}</p>
             <p className="muted-text">
               {tier.eventName} · {formatRewardType(tier.rewardType)} · {tier.requiredStampCount} leima
             </p>
@@ -248,11 +248,21 @@ export const RewardTierCard = ({ tier }: RewardTierCardProps) => {
           </form>
         ) : (
           <div className="pagination-row">
-            <button className="button button-secondary" onClick={() => setIsEditing(true)} type="button">
+            <button
+              className="button button-secondary"
+              disabled={!tier.canEdit}
+              onClick={() => setIsEditing(true)}
+              type="button"
+            >
               Edit tier
             </button>
           </div>
         )}
+        {!tier.canEdit ? (
+          <p className="muted-text">
+            Reward tiers stay visible after the event ends, but only draft, published, or active events can be edited.
+          </p>
+        ) : null}
       </div>
     </article>
   );
