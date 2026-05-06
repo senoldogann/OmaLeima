@@ -42,6 +42,49 @@ Standartlar: AGENTS.md, zero-trust backend, service-role only privileged writes,
 - `git --no-pager diff --check`
 - Hosted deploy/apply after local validation if production smoke is needed
 
+## Current Plan (Scanner Provisioning Duplicate Scan + Device Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-provisioning-device-cleanup`
+- **Goal:** Business owner QR scanner provisioning tek okutmayla tek transaction calistirsin; silinen scanner cihazlari business profil listesinde gorunmesin; Edge Function hatalari generic degil actionable olsun.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Architectural Decisions
+
+- `BusinessQrSignIn` icinde React state'e ek olarak `useRef` tabanli synchronous lock kullanilacak. QR callback ilk girdiginde lock set edilir ve kamera kapatilir; boylece ayni frame/dalga icinde ikinci callback anonymous sign-in baslatamaz.
+- Basarisiz provisioning'de lock serbest birakilir, fakat scanner kapali kalir; kullanici bilincli olarak tekrar `Scan owner QR` basarak yeni deneme baslatir. Basarili provisioning'de lock route degisimi tamamlanana kadar serbest birakilmaz.
+- Mobile Supabase Functions helper'i `FunctionsHttpError`/`FunctionsRelayError` response body clone'unu okuyup `status`, `message`, `details.provisionStatus` gibi alanlari anlamli hata mesajina cevirir.
+- Business scanner devices query sadece `status = ACTIVE` kayitlari dondurur. Revoke islemi DB'de audit/history icin row'u `REVOKED` tutmaya devam eder; UI listesi aktif cihaz envanteri olur.
+- `provision-business-scanner-session` Edge Function RPC non-success status'unu error response status alaninda aynen korur.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Edge Cases
+
+- Ayni QR callback storm'u gelirse sadece ilk callback islem baslatir; sonrakiler lock yuzunden no-op olur.
+- QR token zaten kullanilmissa mobil hata `QR_ALREADY_USED`/`QR_EXPIRED` gibi durumlari gosterebilir; generic non-2xx olmaz.
+- Anonymous sign-in rate limit artik callback storm yuzunden tetiklenmemeli. Gercek manuel tekrar denemelerde Supabase rate limit yine olabilir; bu durumda Supabase'in kendi auth hatasi gosterilir.
+- Revoke sonrasi cihaz row'u DB'de kalir ama aktif listeye donmez; scan history ve audit korunur.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Prompt
+
+Sen Expo Camera, Supabase Auth ve Supabase Edge Functions konusunda deneyimli bir mobil/backend guvenilirlik muhendisisin.
+Hedef: Owner QR scanner provisioning flow'unda ayni QR'in kamera callback storm'u ile birden fazla anonymous sign-in/provision istegi baslatmasini engelle; revoked scanner cihazlari business profil listesinde gizle; Edge Function non-2xx hata nedenlerini mobilde net goster.
+Mimari: mobile `BusinessQrSignIn` icinde ref lock + camera close; shared mobile function error parser; `business_scanner_devices` query active-only; Edge Function status preservation. Existing RPC ve DB history modeli korunur.
+Kapsam: mobile scanner login/device helper/profile, `provision-business-scanner-session` Edge Function, working docs, validation ve deploy. Unrelated dashboard shell degisikligine dokunma.
+Cikti: strict typed TS/TSX/Deno TS degisiklikleri, Supabase function deploy, mobile/admin validation ve Vercel deploy.
+Yasaklar: `any` yok, sessiz fallback yok, scanner session'i client'ta fake etme yok, revoked DB row'larini silip history bozmak yok, unrelated dirty worktree revert yok.
+Standartlar: AGENTS.md, explicit errors, minimal diff, zero-trust backend, physical smoke-ready behavior.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `supabase db lint --local`
+- Deploy `provision-business-scanner-session`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- Vercel production deploy after merge
+
 ## Current Plan (Scanner QR Login Redirect Regression)
 
 - **Date:** 2026-05-06

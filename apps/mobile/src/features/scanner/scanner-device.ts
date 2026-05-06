@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
+import { readSupabaseFunctionErrorMessageAsync } from "@/lib/supabase-function-errors";
 
 import type { ScannerDevicePlatform, ScannerDeviceRegistration } from "@/features/scanner/types";
 
@@ -324,6 +325,7 @@ const fetchBusinessScannerDevicesAsync = async (businessId: string): Promise<Bus
     .from("business_scanner_devices")
     .select("id,business_id,label,platform,status,created_by,first_seen_at,last_seen_at,updated_at,pin_set_at")
     .eq("business_id", businessId)
+    .eq("status", "ACTIVE")
     .order("status", { ascending: true })
     .order("last_seen_at", { ascending: false })
     .returns<BusinessScannerDeviceRow[]>();
@@ -369,7 +371,12 @@ const revokeBusinessScannerDeviceAsync = async ({
   });
 
   if (error !== null) {
-    throw new Error(`Failed to revoke scanner device ${scannerDeviceId}: ${error.message}`);
+    throw new Error(
+      await readSupabaseFunctionErrorMessageAsync({
+        error,
+        fallbackContext: `Failed to revoke scanner device ${scannerDeviceId}`,
+      })
+    );
   }
 
   if (!isRevokeBusinessScannerAccessResponse(data)) {

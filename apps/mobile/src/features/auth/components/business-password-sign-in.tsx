@@ -32,6 +32,7 @@ const BusinessQrSignIn = () => {
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isProvisioning, setIsProvisioning] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const provisioningLockRef = useRef<boolean>(false);
 
   const handleOpenScannerPress = async (): Promise<void> => {
     setErrorMessage(null);
@@ -49,7 +50,7 @@ const BusinessQrSignIn = () => {
   };
 
   const handleBarcodeScanned = async (result: BarcodeScanningResult): Promise<void> => {
-    if (isProvisioning) {
+    if (provisioningLockRef.current || isProvisioning) {
       return;
     }
 
@@ -59,9 +60,12 @@ const BusinessQrSignIn = () => {
       return;
     }
 
+    provisioningLockRef.current = true;
+    setIsScannerOpen(false);
     setIsProvisioning(true);
     setScannerProvisioningActive(true);
     setErrorMessage(null);
+    let didProvisionSuccessfully = false;
 
     try {
       await supabase.auth.signOut();
@@ -93,12 +97,16 @@ const BusinessQrSignIn = () => {
       queryClient.setQueryData(sessionAccessQueryKey(scannerUserId), access);
       setIsScannerOpen(false);
       router.replace(provisionedSession.homeHref);
+      didProvisionSuccessfully = true;
     } catch (error) {
       await supabase.auth.signOut();
       setErrorMessage(error instanceof Error ? error.message : "Unknown QR scanner sign-in error.");
     } finally {
       setScannerProvisioningActive(false);
       setIsProvisioning(false);
+      if (!didProvisionSuccessfully) {
+        provisioningLockRef.current = false;
+      }
     }
   };
 
