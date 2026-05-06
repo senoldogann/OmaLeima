@@ -2,6 +2,18 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Business Profile Event Count)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before editing.
+- [x] Confirm hosted business active/upcoming joined event counts through Supabase MCP.
+- [x] Inspect business profile, events, scanner, and shared overview query code.
+- [x] Update working docs with the focused REASONS plan.
+- [x] Fix selected-business profile event count without changing scanner gating.
+- [x] Run mobile validation and hosted data sanity checks.
+- [x] Use available Computer/iOS/Android tooling for simulator readiness or UI smoke.
+- [x] Record remaining physical-device/manual Google login blockers.
+- [ ] Commit, merge to main, push, and deploy if runtime web changes require it.
+
 ## Current Todos (Storage Bucket Listing Hardening)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before continuing.

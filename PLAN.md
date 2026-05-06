@@ -2,6 +2,45 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Business Profile Event Count)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/business-profile-event-count`
+- **Goal:** Make business profile event counts match the real scanner-ready joined events and validate the business mobile flow.
+
+## Business Profile Event Count Architectural Decisions
+
+- Reuse `useBusinessHomeOverviewQuery`; do not add a duplicate Supabase query.
+- Compute active and upcoming joined event counts for `selectedMembership.businessId`.
+- Render `Tapahtumat/Events` badge as active + upcoming joined event count because the destination page covers both live scanner queue and upcoming joined events.
+- Keep the scanner button behavior based on active joined count only, because scanner is valid only for live events.
+
+## Business Profile Event Count Edge Cases
+
+- Multiple business memberships should not inflate the selected business profile count.
+- Active-only situations should no longer show zero on the events button.
+- Upcoming-only situations should still route to events instead of scanner.
+- Completed joined events remain visible in `/business/events`, but they should not be counted as scanner/actionable profile events.
+
+## Business Profile Event Count Prompt
+
+Sen Expo React Native business scanner/profile akisi konusunda deneyimli bir mobil product engineer'sin.
+Hedef: Business profile quick action'daki `Tapahtumat (...)` sayacini gercek selected-business active + upcoming joined event state'iyle hizala ve scanner akisini bozmadan dogrula.
+Mimari: mevcut `businessHomeOverviewQuery` verisinden selected business icin turetilmis count; yeni Supabase query veya backend degisikligi yok.
+Kapsam: business mobile profile count, working docs, validation, simulator/device readiness. Scanner RPC, event join RPC, Supabase schema ve admin web yok.
+Cikti: strict typed TSX degisikligi, hosted data cross-check, mobile validation, simulator smoke raporu.
+Yasaklar: fallback veri uydurma yok, scanner active gating'i genisletme yok, unrelated UI refactor yok, credential output/log yok.
+Standartlar: AGENTS.md, minimal diff, explicit validation, business event state consistency.
+
+## Business Profile Event Count Validation Plan
+
+- Hosted SQL cross-check for active/upcoming joined event counts.
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run audit:native-simulator-smoke`
+- iOS/Android simulator readiness checks where local tooling allows.
+- `git --no-pager diff --check`
+
 ## Current Plan (Storage Bucket Listing Hardening)
 
 - **Date:** 2026-05-06

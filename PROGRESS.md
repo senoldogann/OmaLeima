@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `bug/business-profile-event-count`
+- **Yapılan iş:** Business profile `Events/Tapahtumat` quick-action sayaci duzeltildi. Profil artik sadece upcoming event sayisini degil, secili business icin active + upcoming joined event sayisini gosteriyor; `Open scanner` aksiyonu da secili business'in ilk aktif `eventVenueId` degeriyle scanner'a gidiyor. Boylece baska business membership'i varsa profil/scanner context'i karismiyor.
+- **Neden yapıldı:** Kullanici isletme profilinde `tapahtumat(0)` gorundugunu, ancak ayni isletmenin 3 aktif scanner-ready event'e kayitli oldugunu bildirdi. Hosted Supabase verisi `OmaLeima Bar` icin `active=3`, `upcoming=0` oldugunu dogruladi; profil bug'i active eventleri saymayan UI-derived count'tan kaynaklandi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run audit:native-simulator-smoke` ve `git --no-pager diff --check` temiz. Hosted Supabase real business login/data smoke business manager icin `active=3`, `upcoming=0`, `profileBadgeAfterFix=3` dondu. Android `Pixel_9` emulator'da current JS bundle calisti; business manager login sonrasi profile ekraninda `Events (3)` ve `Open scanner` gorundu, scanner ekranina gecis `Students Ready Party` selected event ile acildi. iOS Simulator build/install basarili, fakat dev-client runtime eski `exp.direct` URL redbox'inda kaldigi icin iOS UI smoke tamamlanamadi.
+- **Sıradaki önerilen adım:** Branch main'e merge/push edilmeli. Sonra fiziksel iPhone'da veya temiz iOS dev-client state ile business profile/scanner smoke tekrarlanmali; Android tarafinda camera permission verilip QR scan smoke devam ettirilebilir.
+- **Açık risk/blokaj:** iOS dev-client URL state'i `http://2wed-2q-senoldogan33-8081.exp.direct/...` redbox'ina takili kaldi; Expo run:ios build succeeded but simulator still eski redbox overlay'ini gosterdi. Tam camera scan smoke icin Android/iOS kamera permission ve gercek QR kaynagi gerekir. Credential dosyasi test icin kullanildi, final output'a secret yazilmadi.
+
+- **Tarih:** 2026-05-06
 - **Branch:** `feature/storage-bucket-listing-hardening`
 - **Yapılan iş:** Supabase public media bucket listing yuzeyi kapatildi. Hosted Supabase uzerinde `announcement-media`, `business-media` ve `event-media` bucket'lari icin `storage.objects` tablosundaki broad `public` SELECT policy'leri dogrulandi, repository'de bu bucket'lara runtime `.list()` bagimliligi olmadigi kontrol edildi ve `restrict_public_media_bucket_listing` migration'i hosted Supabase'e MCP ile uygulandi. Local migration dosyasi `20260506150000_restrict_public_media_bucket_listing.sql` eklendi.
 - **Neden yapıldı:** Kullanici dogru Supabase/Codex Security tooling ile siradaki en mantikli adimlara devam edilmesini istedi. Supabase advisor tarafinda kalan en net, dusuk riskli guvenlik borcu public bucket metadata/listing yuzeyiydi; public object URL delivery korunarak metadata listing daraltildi.
@@ -1892,6 +1900,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ### Tamamlanan Görevler (Changelog)
 
+- *2026-05-06*: Business profile event count fix tamamlandi; secili isletme icin active + upcoming joined event sayisi profile quick action'a yansiyor ve Android emulator smoke `Events (3)` + scanner route ile dogrulandi.
 - *2026-05-06*: Supabase public media bucket listing hardening tamamlandi; announcement/business/event public bucket metadata SELECT policy'leri kaldirildi ve public image URL smoke'u korunarak dogrulandi.
 - *2026-05-06*: Admin/mobile/public Finnish copy tone review tamamlandı; kalan dirty localization diff'i production'a uygun tona çekildi, admin/mobile validation ve Codex Security diff scan temiz geçti.
 - *2026-05-06*: Scanner revoke sonrası reprovision flow düzeltildi; stale scanner installation id temizlenip aktif business kullanıcı için tek retry ile yeni cihaz kaydı açılıyor, hosted Supabase `device_model` + backwards-compatible RPC default migration'ları ve `provision-business-scanner-session` deploy tamamlandı.

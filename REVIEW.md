@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Business Profile Event Count)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/business-profile-event-count`
+- **Scope:** Fix the business profile quick-action event count and run business-side validation/simulator readiness checks.
+
+## Business Profile Event Count Findings
+
+- Hosted Supabase confirms `OmaLeima Bar` currently has 3 active joined events and 0 upcoming joined events.
+- `business/scanner` reads `homeOverviewQuery.data?.joinedActiveEvents` and correctly exposes active scanner-ready event venues.
+- `business/profile` uses the same overview query, but the `Tapahtumat (...)` quick action renders only `upcomingJoinedEventCount`, so active scanner-ready events are counted as zero.
+- The profile quick action navigates to `/business/events`, which contains live, upcoming, past joined events, and opportunities. The badge should therefore count joined active + joined upcoming events for the selected business, not only upcoming events across all memberships.
+
+## Business Profile Event Count Review Outcome
+
+Keep scanner behavior unchanged and fix only the profile summary badge. Derive selected-business active/upcoming event counts from the existing overview data so the profile matches the scanner/event surfaces without adding a new query.
+
 ## Current Review (Storage Bucket Listing Hardening)
 
 - **Date:** 2026-05-06

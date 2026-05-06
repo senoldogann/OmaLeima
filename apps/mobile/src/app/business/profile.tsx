@@ -209,8 +209,24 @@ export default function BusinessProfileScreen() {
   const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
-  const activeJoinedEventCount = homeOverviewQuery.data?.joinedActiveEvents.length ?? 0;
-  const upcomingJoinedEventCount = homeOverviewQuery.data?.joinedUpcomingEvents.length ?? 0;
+  const selectedBusinessIdForEvents = selectedMembership?.businessId ?? null;
+  const selectedBusinessActiveJoinedEvents = useMemo(
+    () =>
+      (homeOverviewQuery.data?.joinedActiveEvents ?? []).filter(
+        (event) => event.businessId === selectedBusinessIdForEvents
+      ),
+    [homeOverviewQuery.data?.joinedActiveEvents, selectedBusinessIdForEvents]
+  );
+  const selectedBusinessUpcomingJoinedEventCount = useMemo(
+    () =>
+      (homeOverviewQuery.data?.joinedUpcomingEvents ?? []).filter(
+        (event) => event.businessId === selectedBusinessIdForEvents
+      ).length,
+    [homeOverviewQuery.data?.joinedUpcomingEvents, selectedBusinessIdForEvents]
+  );
+  const actionableJoinedEventCount =
+    selectedBusinessActiveJoinedEvents.length + selectedBusinessUpcomingJoinedEventCount;
+  const selectedBusinessActiveEventVenueId = selectedBusinessActiveJoinedEvents[0]?.eventVenueId ?? null;
   const scannerDeviceTimeFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(language === "fi" ? "fi-FI" : "en-US", {
@@ -506,17 +522,27 @@ export default function BusinessProfileScreen() {
                 <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={16} />
                 <Text style={styles.primaryButtonText}>
                   {language === "fi"
-                    ? `Tapahtumat (${upcomingJoinedEventCount})`
-                    : `Events (${upcomingJoinedEventCount})`}
+                    ? `Tapahtumat (${actionableJoinedEventCount})`
+                    : `Events (${actionableJoinedEventCount})`}
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => router.push(activeJoinedEventCount > 0 ? "/business/scanner" : "/business/events")}
+                onPress={() => {
+                  if (selectedBusinessActiveEventVenueId === null) {
+                    router.push("/business/events");
+                    return;
+                  }
+
+                  router.push({
+                    pathname: "/business/scanner",
+                    params: { eventVenueId: selectedBusinessActiveEventVenueId },
+                  });
+                }}
                 style={[styles.secondaryButton, styles.quickActionButton]}
               >
                 <AppIcon color={theme.colors.textPrimary} name="scan" size={16} />
                 <Text style={styles.secondaryButtonText}>
-                  {activeJoinedEventCount > 0 ? copy.business.openScanner : copy.business.manageEvents}
+                  {selectedBusinessActiveEventVenueId !== null ? copy.business.openScanner : copy.business.manageEvents}
                 </Text>
               </Pressable>
             </View>
