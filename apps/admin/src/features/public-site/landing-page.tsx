@@ -47,6 +47,7 @@ const timelineCardImages = [
 
 const stepIcons = [UsersIcon, QrCodeIcon, StarIcon] as const;
 const proofIcons = [ZapIcon, ShieldCheckIcon, UsersIcon] as const;
+const supportIcons = [UsersIcon, StarIcon, ShieldCheckIcon, ZapIcon] as const;
 
 export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
   const content = getPublicLandingContent(locale);
@@ -205,13 +206,20 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
               : "Students see progress, venues scan quickly, and organizers stay on top of the night without paper cards."}
           </p>
 
-          <div className="public-proof-list">
-            {content.supportItems.map((item) => (
-              <article key={item.title} className="public-proof-item">
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            ))}
+          <div className="public-point-list">
+            {content.supportItems.map((item, index) => {
+              const SupportIcon = supportIcons[index as 0 | 1 | 2 | 3];
+
+              return (
+                <article key={item.title} className="public-point-row">
+                  <SupportIcon className="public-card-icon" />
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
 
