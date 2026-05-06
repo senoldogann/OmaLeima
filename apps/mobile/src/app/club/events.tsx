@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +25,7 @@ import { pickClubEventCoverAsync, uploadClubEventCoverAsync } from "@/features/c
 import {
   useCancelClubEventMutation,
   useCreateClubEventMutation,
+  useDeleteDraftClubEventMutation,
   useUpdateClubEventMutation,
 } from "@/features/club/club-event-mutations";
 import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
@@ -359,6 +361,7 @@ export default function ClubEventsScreen() {
   const createMutation = useCreateClubEventMutation();
   const updateMutation = useUpdateClubEventMutation();
   const cancelMutation = useCancelClubEventMutation();
+  const deleteMutation = useDeleteDraftClubEventMutation();
   const memberships = useMemo(
     () => dashboardQuery.data?.memberships ?? [],
     [dashboardQuery.data?.memberships]
@@ -577,10 +580,56 @@ export default function ClubEventsScreen() {
     }
   };
 
+  const handleDeleteDraftEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
+    if (userId === null || isPending) {
+      return;
+    }
+
+    hapticImpact(ImpactStyle.Medium);
+    setActionNotice(null);
+    setContextMenuEventId(null);
+
+    try {
+      const result = await deleteMutation.mutateAsync({
+        eventId: event.eventId,
+        userId,
+      });
+
+      assertClubEventMutationSucceeded(result);
+      hapticNotification(NotificationType.Success);
+      setSelectedEventId(null);
+      handleSelectCreateMode();
+    } catch (error) {
+      hapticNotification(NotificationType.Error);
+      setActionNotice(createClubEventActionNotice(error, language));
+    }
+  };
+
+  const handleDeleteDraftEventPress = (event: ClubDashboardEventSummary): void => {
+    Alert.alert(
+      language === "fi" ? "Poista luonnos?" : "Delete draft?",
+      language === "fi"
+        ? "Tapahtumaluonnos poistetaan pysyvästi. Julkaistut ja aktiiviset tapahtumat perutaan, jotta historia säilyy."
+        : "This permanently removes the draft event. Published and active events should be cancelled so history stays intact.",
+      [
+        {
+          style: "cancel",
+          text: language === "fi" ? "Peruuta" : "Cancel",
+        },
+        {
+          onPress: () => void handleDeleteDraftEventAsync(event),
+          style: "destructive",
+          text: language === "fi" ? "Poista" : "Delete",
+        },
+      ]
+    );
+  };
+
   const latestMessage =
     createMutation.data?.message ??
     updateMutation.data?.message ??
     cancelMutation.data?.message ??
+    deleteMutation.data?.message ??
     null;
   const latestError = actionNotice;
 
@@ -590,10 +639,11 @@ export default function ClubEventsScreen() {
       createMutation.reset();
       updateMutation.reset();
       cancelMutation.reset();
+      deleteMutation.reset();
     },
     successNoticeDurationMs
   );
-  const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
+  const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
   const submitButtonLabel = (() => {
     if (isPending) {
       return language === "fi" ? "Tallennetaan..." : "Saving...";
@@ -771,7 +821,10 @@ export default function ClubEventsScreen() {
       >
         <Pressable style={styles.actionSheetBackdrop} onPress={() => setContextMenuEventId(null)}>
           <Pressable style={styles.actionSheet} onPress={() => {}}>
-            {contextMenuEvent !== null && canEditEvent(contextMenuEvent) ? (
+            {contextMenuEvent !== null &&
+            hasCreateAccess &&
+            contextMenuEvent.timelineState !== "COMPLETED" &&
+            contextMenuEvent.timelineState !== "CANCELLED" ? (
               <Pressable
                 onPress={() => {
                   const ev = contextMenuEvent;
@@ -784,6 +837,18 @@ export default function ClubEventsScreen() {
                 style={styles.actionSheetItem}
               >
                 <Text style={styles.actionSheetItemText}>{language === "fi" ? "Muokkaa" : "Edit"}</Text>
+              </Pressable>
+            ) : null}
+            {contextMenuEvent !== null &&
+            contextMenuEvent.canManageEvent &&
+            contextMenuEvent.status === "DRAFT" ? (
+              <Pressable
+                onPress={() => handleDeleteDraftEventPress(contextMenuEvent)}
+                style={styles.actionSheetItem}
+              >
+                <Text style={styles.actionSheetItemDangerText}>
+                  {language === "fi" ? "Poista luonnos" : "Delete draft"}
+                </Text>
               </Pressable>
             ) : null}
             <Pressable onPress={() => setContextMenuEventId(null)} style={styles.actionSheetItem}>
@@ -1658,6 +1723,12 @@ const createStyles = (theme: MobileTheme) =>
     actionSheetItemMutedText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    actionSheetItemDangerText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
