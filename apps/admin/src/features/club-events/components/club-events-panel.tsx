@@ -239,11 +239,13 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
   const [isUpdatePending, setIsUpdatePending] = useState<boolean>(false);
   const [isCancelPending, setIsCancelPending] = useState<boolean>(false);
   const [isCoverUploading, setIsCoverUploading] = useState<boolean>(false);
+  const [isEditingEvent, setIsEditingEvent] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"memberships" | "create-event" | "manage-events">("memberships");
 
   const handleSelectEvent = (event: ClubEventRecord): void => {
     setSelectedEventId(event.eventId);
     setUpdatePayload(canEditEvent(event) ? createUpdatePayload(event) : null);
+    setIsEditingEvent(true);
     setUpdateActionState({
       code: null,
       message: null,
@@ -770,7 +772,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
         </div>
       </section>
 
-      <section className="panel" style={{ display: activeTab !== "manage-events" ? "none" : undefined }}>
+      <section className="panel" style={{ display: activeTab !== "manage-events" || !isEditingEvent ? "none" : undefined }}>
         <div className="review-card-header">
           <div className="stack-sm">
             <div className="eyebrow">{copy.manageEvent}</div>

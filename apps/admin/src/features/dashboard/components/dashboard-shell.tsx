@@ -69,10 +69,10 @@ export const DashboardShell = async ({
             <strong>{userEmail ?? shellCopy.sessionFallback}</strong>
           </div>
 
-          <Link className="dashboard-locale-switch" href={localeSwitchHref} hrefLang={alternateLocale}>
+          <a className="dashboard-locale-switch" href={localeSwitchHref} hrefLang={alternateLocale}>
             <span>{shellCopy.localeSwitchTitle}</span>
             <strong>{shellCopy.localeSwitchLabel}</strong>
-          </Link>
+          </a>
         </div>
 
         <nav aria-label={`${shellCopy.areaLabel} navigation`} className="stack-sm sidebar-nav">

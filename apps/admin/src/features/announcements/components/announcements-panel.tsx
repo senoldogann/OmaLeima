@@ -599,7 +599,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     const isAnnouncementActive = isAnnouncementActiveNow(announcement, renderedNow);
 
     return (
-      <article className="panel" key={announcement.announcementId}>
+      <article className="panel review-card-compact" key={announcement.announcementId}>
         <div className="stack-sm">
           <div className="split-row">
             <span className="field-label">{getAnnouncementSenderLabel(announcement, copy)}</span>
@@ -891,7 +891,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             <p className="muted-text">{copy.emptyAnnouncements}</p>
           </article>
         ) : (
-          <div className="card-list">{snapshot.announcements.map(renderAnnouncementCard)}</div>
+          <div className="content-grid">{snapshot.announcements.map(renderAnnouncementCard)}</div>
         )}
       </section>
     </div>
