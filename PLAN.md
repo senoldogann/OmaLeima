@@ -2332,6 +2332,7 @@ Standartlar: AGENTS.md §5 güvenlik/RLS prensipleri, mevcut mobile tasarım dil
 - Collect a compact, optional model label from `expo-device` and send it through both scanner page registration and owner QR provisioning.
 - Store the model as nullable `business_scanner_devices.device_model` and include it in active device queries.
 - Keep revoked devices hidden from the business profile list; only active devices remain visible.
+- Preserve older mobile bundles by giving direct scanner registration `p_device_model` a `default null`; newer bundles can send model metadata without forcing immediate native/JS rollout.
 
 ## Scanner Reprovision Edge Cases
 
@@ -2339,6 +2340,7 @@ Standartlar: AGENTS.md §5 güvenlik/RLS prensipleri, mevcut mobile tasarım dil
 - If an owner/manager reuses the same phone after revoking a scanner device, the retry can create a new active scanner device without a login loop.
 - If the model name is unavailable, the UI falls back to the existing platform label.
 - Older Edge Function clients that do not send `deviceModel` should still provision successfully with `null`.
+- Older direct scanner registration clients that do not send `p_device_model` should still reach the same authorization checks and register/update behavior.
 
 ## Scanner Reprovision Prompt
 

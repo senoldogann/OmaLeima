@@ -726,6 +726,8 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Add optional device model storage and RPC payload wiring.
 - [x] Reset stale revoked scanner installation ids and retry active business registration once.
 - [x] Show scanner device model in the business profile device list.
+- [x] Run Codex Security diff scan and confirm no reportable scanner reprovision findings.
+- [x] Add backwards-compatible RPC default for older mobile bundles.
 - [x] Run focused validation and update handoff.
 
 ## Current Todos (Scanner Density + Refresh Spinner + Swipe Clamp)

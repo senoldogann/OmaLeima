@@ -1694,10 +1694,11 @@ Implement a focused mobile + Supabase fix. Remove the empty joined-event venue p
 - An active owner/manager opening the scanner on the same phone should not be trapped by a stale revoked installation id.
 - Device model storage must be optional so web and older app clients keep working.
 - RPC migrations must avoid overloaded function ambiguity by dropping the old signatures before recreating the updated functions.
+- Direct scanner registration must remain compatible with older mobile bundles that do not yet send `deviceModel`.
 
 ## Scanner Reprovision Review Outcome
 
-Reset the local scanner installation id when the RPC reports `DEVICE_REVOKED`, then retry registration once for the current authenticated actor. This lets legitimate active business users re-register the phone as a fresh device while revoked anonymous scanner users still fail authorization and must use owner QR provisioning again. Add nullable `device_model` storage and pass it through both direct registration and owner QR provisioning.
+Reset the local scanner installation id when the RPC reports `DEVICE_REVOKED`, then retry registration once for the current authenticated actor. This lets legitimate active business users re-register the phone as a fresh device while revoked anonymous scanner users still fail authorization and must use owner QR provisioning again. Add nullable `device_model` storage and pass it through both direct registration and owner QR provisioning. Keep `p_device_model default null` on direct registration so older bundles do not fail before the refreshed app code lands on devices.
 
 ## Current Review (Scanner Density + Refresh Spinner + Swipe Clamp)
 
