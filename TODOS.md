@@ -13,6 +13,18 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Deploy the owner access Edge Function, apply the hosted migration, and deploy the admin web route.
 - [x] Record outcome and remaining hosted deploy/smoke notes.
 
+## Current Todos (Scanner Provisioning Duplicate Scan + Device Cleanup)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before editing.
+- [x] Inspect business scanner device query/list, QR login callback, provisioning helper, Edge Function, and hosted edge logs.
+- [x] Update working docs with REASONS scope for duplicate scan/device cleanup.
+- [x] Add synchronous QR scan lock and close camera immediately after first QR read.
+- [x] Parse Supabase Edge Function HTTP error response bodies on mobile.
+- [x] Hide revoked scanner devices from business profile active device list.
+- [x] Preserve specific provisioning status codes in the Edge Function response and deploy it.
+- [x] Run mobile/admin/Supabase validation and diff checks.
+- [ ] Merge to main, push, and deploy Vercel production.
+
 ## Current Todos (Scanner QR Login Redirect Regression)
 
 - [x] Re-read AGENTS, master plan, progress, todos, and plan before editing.

@@ -20,6 +20,25 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 
 This slice should add a post-approval admin action that creates or reuses the contact email auth user, links it as `BUSINESS_OWNER` + `business_staff OWNER`, and returns a recovery/onboarding link when Supabase can generate one. The reviewed applications read-model should show whether a business and owner membership already exist.
 
+## Current Review (Scanner Provisioning Duplicate Scan + Device Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-provisioning-device-cleanup`
+- **Scope:** Business owner QR scanner provisioning duplicate camera callbacks, Edge Function error visibility, and business scanner device list cleanup.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Findings
+
+- Supabase Edge Function logs show the reported flow clearly: a `provision-business-scanner-session` `200` response is followed immediately by many `400` responses for the same QR flow. This means the camera callback is firing multiple times before React state disables scanning.
+- `BusinessQrSignIn` uses `isProvisioning` React state as the only duplicate guard. State updates are asynchronous, so several `onBarcodeScanned` callbacks can enter the async provisioning path before `isProvisioning` becomes true in the closure.
+- Each duplicate callback signs out, signs in anonymously, and calls the provisioning Edge Function again. After the first success consumes the QR grant, duplicates fail with non-2xx responses; repeated anonymous sign-ins then hit Supabase Auth rate limits.
+- Mobile currently surfaces Supabase Functions HTTP errors as the generic `Edge Function returned a non-2xx status code` message. The Edge Function response body already contains useful status/details, but mobile does not read it.
+- `useBusinessScannerDevicesQuery` loads all scanner devices for a business, including `REVOKED`. That makes deleted devices continue appearing as `Poistettu`, while the requested product behavior is to remove them from the visible list.
+- The hosted `provision-business-scanner-session` function currently maps most RPC non-success statuses to `FORBIDDEN`, losing specific statuses such as `QR_INVALID`, `QR_CONTEXT_MISMATCH`, and `ACTOR_NOT_ALLOWED`.
+
+## Scanner Provisioning Duplicate Scan + Device Cleanup Review Outcome
+
+This slice should add a synchronous ref lock and close the camera immediately after a QR read so only one provisioning transaction can start per scan. Mobile should parse Edge Function HTTP response bodies for actionable error messages. Business device listing should query only active devices so revoked devices disappear after successful revoke. The Edge Function should preserve specific provisioning statuses in error responses and then be redeployed.
+
 ## Current Review (Scanner QR Login Redirect Regression)
 
 - **Date:** 2026-05-06

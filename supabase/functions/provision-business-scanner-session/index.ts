@@ -1,6 +1,6 @@
 import { verifyBusinessScannerLoginToken } from "../_shared/businessScannerLoginJwt.ts";
 import { readRuntimeEnv } from "../_shared/env.ts";
-import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
+import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody, type ErrorCode } from "../_shared/http.ts";
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
 
 type ProvisionBusinessScannerSessionRequest = {
@@ -79,6 +79,43 @@ const isProvisionBusinessScannerDeviceResult = (value: unknown): value is Provis
   return typeof candidate.status === "string";
 };
 
+type ProvisioningFailureStatus = Exclude<ProvisionBusinessScannerDeviceResult["status"], "SUCCESS">;
+
+const resolveProvisioningFailureStatusCode = (status: ProvisioningFailureStatus): number => {
+  if (status === "ACTOR_NOT_ALLOWED") {
+    return 403;
+  }
+
+  if (status === "PROFILE_NOT_FOUND") {
+    return 409;
+  }
+
+  return 400;
+};
+
+const resolveProvisioningFailureMessage = (status: ProvisioningFailureStatus): string => {
+  switch (status) {
+    case "ACTOR_NOT_ALLOWED":
+      return "The owner QR is no longer allowed to provision scanner access.";
+    case "INSTALLATION_ID_REQUIRED":
+      return "Scanner device installation id is missing.";
+    case "INSTALLATION_ID_TOO_LONG":
+      return "Scanner device installation id is too long.";
+    case "PROFILE_NOT_FOUND":
+      return "Anonymous scanner profile was not created before provisioning.";
+    case "QR_ALREADY_USED":
+      return "This scanner QR was already used. Ask the owner to show a fresh QR.";
+    case "QR_CONTEXT_MISMATCH":
+      return "Scanner QR context does not match the approved business.";
+    case "QR_EXPIRED":
+      return "Scanner QR expired. Ask the owner to show a fresh QR.";
+    case "QR_INVALID":
+      return "Scanner QR is invalid.";
+    case "QR_NOT_FOUND":
+      return "Scanner QR grant was not found. Ask the owner to show a fresh QR.";
+  }
+};
+
 Deno.serve(async (request: Request): Promise<Response> => {
   const methodResponse = assertPostRequest(request);
 
@@ -140,12 +177,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     if (provisionResult.status !== "SUCCESS") {
-      const statusCode = provisionResult.status === "QR_ALREADY_USED" || provisionResult.status === "QR_EXPIRED" ? 400 : 403;
+      const provisioningStatus = provisionResult.status;
 
-      return errorResponse(statusCode, provisionResult.status === "QR_ALREADY_USED" ? "QR_ALREADY_USED" : "FORBIDDEN", "Scanner provisioning was rejected.", {
+      return errorResponse(resolveProvisioningFailureStatusCode(provisioningStatus), provisioningStatus as ErrorCode, resolveProvisioningFailureMessage(provisioningStatus), {
         businessId: verifiedToken.payload.businessId,
         scannerUserId: user.id,
-        provisionStatus: provisionResult.status,
+        provisionStatus: provisioningStatus,
       });
     }
 

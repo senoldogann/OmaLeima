@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import * as QRCode from "qrcode";
 
 import { supabase } from "@/lib/supabase";
+import { readSupabaseFunctionErrorMessageAsync } from "@/lib/supabase-function-errors";
 
 import {
   createScannerDeviceLabel,
@@ -114,7 +115,12 @@ const fetchBusinessScannerLoginQrAsync = async (businessId: string): Promise<Bus
   });
 
   if (error !== null) {
-    throw new Error(`Failed to generate scanner login QR for business ${businessId}: ${error.message}`);
+    throw new Error(
+      await readSupabaseFunctionErrorMessageAsync({
+        error,
+        fallbackContext: `Failed to generate scanner login QR for business ${businessId}`,
+      })
+    );
   }
 
   if (!isBusinessScannerLoginQr(data)) {
@@ -141,7 +147,12 @@ export const provisionBusinessScannerSessionAsync = async ({
   });
 
   if (error !== null) {
-    throw new Error(`Failed to provision scanner session: ${error.message}`);
+    throw new Error(
+      await readSupabaseFunctionErrorMessageAsync({
+        error,
+        fallbackContext: "Failed to provision scanner session",
+      })
+    );
   }
 
   if (!isProvisionBusinessScannerSessionResult(data)) {
