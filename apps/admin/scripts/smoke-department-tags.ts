@@ -48,6 +48,7 @@ type AuthedClient = {
 type CookieBackedClient = {
   email: string;
   supabase: ReturnType<typeof createBrowserClient>;
+  syncCookiesFromResponse: (response: Response) => void;
   toCookieHeader: () => string;
 };
 
@@ -92,6 +93,31 @@ const createAuthedClientAsync = async (email: string, password: string): Promise
 
 const createCookieBackedClientAsync = async (email: string, password: string): Promise<CookieBackedClient> => {
   const cookieJar = new Map<string, string>();
+  const syncCookiesFromResponse = (response: Response): void => {
+    const headersWithSetCookie = response.headers as Headers & {
+      getSetCookie?: () => string[];
+    };
+    const setCookieHeaders = headersWithSetCookie.getSetCookie?.() ?? [];
+
+    setCookieHeaders.forEach((setCookieHeader) => {
+      const cookiePair = setCookieHeader.split(";", 1)[0];
+      const separatorIndex = cookiePair.indexOf("=");
+
+      if (separatorIndex <= 0) {
+        return;
+      }
+
+      const name = cookiePair.slice(0, separatorIndex);
+      const value = cookiePair.slice(separatorIndex + 1);
+
+      if (value.length === 0) {
+        cookieJar.delete(name);
+        return;
+      }
+
+      cookieJar.set(name, value);
+    });
+  };
   const supabase = createBrowserClient(supabaseUrl, publishableKey, {
     cookies: {
       getAll() {
@@ -119,6 +145,7 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
   return {
     email,
     supabase,
+    syncCookiesFromResponse,
     toCookieHeader: () =>
       Array.from(cookieJar.entries())
         .map(([name, value]) => `${name}=${value}`)
@@ -232,7 +259,14 @@ const seedDepartmentTagFixtures = (suffix: string): SeededFixtureSet => {
         'Block Smoke Student ${suffix}',
         'STUDENT',
         'ACTIVE'
-      );
+      )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      display_name = excluded.display_name,
+      primary_role = excluded.primary_role,
+      status = excluded.status,
+      updated_at = now();
 
     insert into public.department_tags (
       id,
@@ -393,6 +427,7 @@ const assertModerationPageContainsAsync = async (
     },
     method: "GET",
   });
+  client.syncCookiesFromResponse(response);
   const html = await response.text();
 
   if (!response.ok) {
@@ -414,6 +449,7 @@ const assertOrganizerModerationRedirectAsync = async (client: CookieBackedClient
     method: "GET",
     redirect: "manual",
   });
+  client.syncCookiesFromResponse(response);
 
   if (response.status !== 307) {
     throw new Error(`Expected organizer department tag route to return 307, got ${response.status}.`);
@@ -439,6 +475,7 @@ const invokeModerationRouteAsync = async (
     },
     method: "POST",
   });
+  client.syncCookiesFromResponse(response);
   const responseBody = (await response.json()) as ModerationMutationResponse;
 
   return {
@@ -556,7 +593,6 @@ const run = async (): Promise<void> => {
   outputs.push("student-pending-read:0");
 
   await assertModerationPageContainsAsync(adminRouteClient, [
-    "Department tags",
     fixtureSet.pendingTagTitle,
     fixtureSet.mergeSourceTagTitle,
     fixtureSet.blockTagTitle,

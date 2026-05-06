@@ -48,6 +48,7 @@ type AuthedClient = {
 type CookieBackedClient = {
   email: string;
   supabase: ReturnType<typeof createBrowserClient>;
+  syncCookiesFromResponse: (response: Response) => void;
   toCookieHeader: () => string;
 };
 
@@ -116,6 +117,31 @@ const createAuthedClientAsync = async (email: string, password: string): Promise
 
 const createCookieBackedClientAsync = async (email: string, password: string): Promise<CookieBackedClient> => {
   const cookieJar = new Map<string, string>();
+  const syncCookiesFromResponse = (response: Response): void => {
+    const headersWithSetCookie = response.headers as Headers & {
+      getSetCookie?: () => string[];
+    };
+    const setCookieHeaders = headersWithSetCookie.getSetCookie?.() ?? [];
+
+    setCookieHeaders.forEach((setCookieHeader) => {
+      const cookiePair = setCookieHeader.split(";", 1)[0];
+      const separatorIndex = cookiePair.indexOf("=");
+
+      if (separatorIndex <= 0) {
+        return;
+      }
+
+      const name = cookiePair.slice(0, separatorIndex);
+      const value = cookiePair.slice(separatorIndex + 1);
+
+      if (value.length === 0) {
+        cookieJar.delete(name);
+        return;
+      }
+
+      cookieJar.set(name, value);
+    });
+  };
   const supabase = createBrowserClient(supabaseUrl, publishableKey, {
     cookies: {
       getAll() {
@@ -143,6 +169,7 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
   return {
     email,
     supabase,
+    syncCookiesFromResponse,
     toCookieHeader: () =>
       Array.from(cookieJar.entries())
         .map(([name, value]) => `${name}=${value}`)
@@ -232,7 +259,14 @@ const seedClubStaffFixtureAsync = async (suffix: string): Promise<ClubStaffFixtu
       'Club Reward Staff ${suffix}',
       'CLUB_STAFF',
       'ACTIVE'
-    );
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      display_name = excluded.display_name,
+      primary_role = excluded.primary_role,
+      status = excluded.status,
+      updated_at = now();
 
     insert into public.club_members (
       id,
@@ -341,6 +375,7 @@ const invokeCreateRouteAsync = async (
     },
     method: "POST",
   });
+  client.syncCookiesFromResponse(response);
   const responseBody = (await response.json()) as RewardTierMutationResponse;
 
   return {
@@ -361,6 +396,7 @@ const invokeUpdateRouteAsync = async (
     },
     method: "POST",
   });
+  client.syncCookiesFromResponse(response);
   const responseBody = (await response.json()) as RewardTierMutationResponse;
 
   return {
@@ -426,6 +462,7 @@ const assertRewardsPageContainsAsync = async (
     },
     method: "GET",
   });
+  client.syncCookiesFromResponse(response);
   const html = await response.text();
 
   if (!response.ok) {
@@ -448,6 +485,7 @@ const assertRewardsRouteRedirectAsync = async (
     method: "GET",
     redirect: "manual",
   });
+  client.syncCookiesFromResponse(response);
 
   if (response.status !== 307) {
     throw new Error(`Expected /club/rewards to redirect, got ${response.status}.`);
