@@ -23,7 +23,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Hide revoked scanner devices from business profile active device list.
 - [x] Preserve specific provisioning status codes in the Edge Function response and deploy it.
 - [x] Run mobile/admin/Supabase validation and diff checks.
-- [ ] Merge to main, push, and deploy Vercel production.
+- [x] Merge to main, push, and deploy Vercel production.
 
 ## Current Todos (Scanner QR Login Redirect Regression)
 
