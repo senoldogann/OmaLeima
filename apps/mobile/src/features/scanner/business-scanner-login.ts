@@ -6,6 +6,7 @@ import { readSupabaseFunctionErrorMessageAsync } from "@/lib/supabase-function-e
 
 import {
   createScannerDeviceLabel,
+  getScannerDeviceModel,
   getScannerDevicePlatform,
   getScannerInstallationIdAsync,
 } from "@/features/scanner/scanner-device";
@@ -137,8 +138,10 @@ export const provisionBusinessScannerSessionAsync = async ({
   const installationId = await getScannerInstallationIdAsync();
   const platform = getScannerDevicePlatform();
   const label = createScannerDeviceLabel(businessName ?? "OmaLeima", platform);
+  const deviceModel = getScannerDeviceModel();
   const { data, error } = await supabase.functions.invoke("provision-business-scanner-session", {
     body: {
+      deviceModel,
       installationId,
       label,
       platform,

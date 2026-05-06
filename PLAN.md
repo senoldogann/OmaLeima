@@ -2319,6 +2319,46 @@ Standartlar: AGENTS.md §5 güvenlik/RLS prensipleri, mevcut mobile tasarım dil
 - Scoped `git --no-pager diff --check -- ...` for touched mobile/docs files.
 - `code-reviewer` on the touched mobile files; resolve actionable findings before handoff.
 
+## Current Plan (Scanner Reprovision After Revoke)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-reprovision-after-revoke`
+- **Goal:** Prevent stale revoked scanner installation ids from forcing active business users back to login, require revoked scanner accounts to provision again, and show device model metadata in business scanner device management.
+
+## Scanner Reprovision Architectural Decisions
+
+- Keep the security decision in Supabase RPCs: revoked/foreign installation rows still return `DEVICE_REVOKED` and unauthorized actors still return `ACTOR_NOT_ALLOWED`.
+- Handle stale local device identity in the mobile scanner helper by deleting the stored installation id and retrying registration once after `DEVICE_REVOKED`.
+- Collect a compact, optional model label from `expo-device` and send it through both scanner page registration and owner QR provisioning.
+- Store the model as nullable `business_scanner_devices.device_model` and include it in active device queries.
+- Keep revoked devices hidden from the business profile list; only active devices remain visible.
+- Preserve older mobile bundles by giving direct scanner registration `p_device_model` a `default null`; newer bundles can send model metadata without forcing immediate native/JS rollout.
+
+## Scanner Reprovision Edge Cases
+
+- If a revoked anonymous scanner auth session still exists locally, retrying with a new installation id must still fail because the actor no longer has active business staff access.
+- If an owner/manager reuses the same phone after revoking a scanner device, the retry can create a new active scanner device without a login loop.
+- If the model name is unavailable, the UI falls back to the existing platform label.
+- Older Edge Function clients that do not send `deviceModel` should still provision successfully with `null`.
+- Older direct scanner registration clients that do not send `p_device_model` should still reach the same authorization checks and register/update behavior.
+
+## Scanner Reprovision Prompt
+
+Sen bir Supabase + Expo scanner provisioning guvenlik uzmanisin.
+Hedef: revoked scanner cihazlarin eski installation id ile login/scan dongusune sokmasini engelle, aktif isletme kullanicisinin ayni telefonu temiz cihaz olarak yeniden kaydedebilmesini sagla ve skannerilaitteet listesinde cihaz modelini goster.
+Mimari: Supabase RPC source of truth korunacak, Expo SecureStore/localStorage scanner installation id resetlenecek, register flow tek kez retry edecek, owner QR provisioning ayni device metadata payload'unu kullanacak.
+Kapsam: scanner device helper, business scanner login helper, provision edge function, scanner devices profile list, nullable DB migration ve calisma dokumanlari. Scanner stamp RPC, unrelated admin copy ve pricing yok.
+Cikti: strict typed TypeScript/SQL, nullable `device_model`, overloadsiz RPC migration, model-aware device list, validation commands.
+Yasaklar: revoked scanner-only hesaba owner QR olmadan tekrar yetki vermek yok, RLS/authorization guard zayiflatmak yok, catch-all silent fallback yok, unrelated dirty dosyalari revert etmek yok.
+Standartlar: AGENTS.md, explicit errors, minimal diff, strict typing, Supabase atomic RPC semantics.
+
+## Scanner Reprovision Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`.
+- Scoped ESLint for touched mobile TypeScript/TSX files.
+- `supabase db lint` or local migration validation when the local Supabase stack is reachable.
+- Scoped `git --no-pager diff --check` for touched files.
+
 ## Current Plan (Scanner Density + Refresh Spinner + Swipe Clamp)
 
 - **Date:** 2026-05-04
