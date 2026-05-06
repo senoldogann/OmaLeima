@@ -1,17 +1,23 @@
+import { Suspense } from "react";
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
-import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
+import { getDashboardLocaleAsync, type DashboardLocale } from "@/features/dashboard/i18n";
 import { adminDashboardNavigationItems } from "@/features/dashboard/sections";
 import { OversightPanel } from "@/features/oversight/components/oversight-panel";
 import { fetchAdminOversightSnapshotAsync } from "@/features/oversight/read-model";
 import { createServerComponentClient } from "@/lib/supabase/server";
 
+async function OversightPanelFetcher({ locale }: { locale: DashboardLocale }) {
+  const supabase = await createServerComponentClient();
+  const snapshot = await fetchAdminOversightSnapshotAsync(supabase);
+  return <OversightPanel locale={locale} snapshot={snapshot} />;
+}
+
 export default async function AdminOversightPage() {
   const supabase = await createServerComponentClient();
-  const [access, locale, snapshot] = await Promise.all([
+  const [access, locale] = await Promise.all([
     resolveAdminAccessAsync(supabase),
     getDashboardLocaleAsync(),
-    fetchAdminOversightSnapshotAsync(supabase),
   ]);
 
   return (
@@ -25,7 +31,9 @@ export default async function AdminOversightPage() {
       title="Platform oversight"
       userEmail={access.userEmail}
     >
-      <OversightPanel locale={locale} snapshot={snapshot} />
+      <Suspense fallback={<article className="panel"><p className="muted-text">{locale === "fi" ? "Ladataan / Loading..." : "Loading..."}</p></article>}>
+        <OversightPanelFetcher locale={locale} />
+      </Suspense>
     </DashboardShell>
   );
 }

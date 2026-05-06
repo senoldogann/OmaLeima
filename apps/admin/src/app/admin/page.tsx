@@ -1,6 +1,7 @@
 // Admin home: actionable shortcut cards + ozet metrik seridi.
 // Eski statik bullet listesi yerine canli sayilarla gercek bir operasyon panosu sunar.
 
+import { Suspense } from "react";
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { fetchAdminAnnouncementsSnapshotAsync } from "@/features/announcements/read-model";
 import { fetchBusinessApplicationsReviewQueueAsync } from "@/features/business-applications/read-model";
@@ -51,10 +52,9 @@ const buildAdminOverviewMetrics = (source: AdminOverviewSource): DashboardOvervi
   },
 ];
 
-export default async function AdminPage() {
+async function AdminPageContent() {
   const supabase = await createServerComponentClient();
-  const [access, oversightSnapshot, businessApplications, announcementsSnapshot] = await Promise.all([
-    resolveAdminAccessAsync(supabase),
+  const [oversightSnapshot, businessApplications, announcementsSnapshot] = await Promise.all([
     fetchAdminOversightSnapshotAsync(supabase),
     fetchBusinessApplicationsReviewQueueAsync(supabase, 1),
     fetchAdminAnnouncementsSnapshotAsync(supabase),
@@ -75,15 +75,7 @@ export default async function AdminPage() {
   });
 
   return (
-    <DashboardShell
-      activeHref="/admin"
-      areaLabel="Platform admin"
-      navigationItems={adminDashboardNavigationItems}
-      roleLabel={access.primaryRole}
-      subtitle="Moderate platform-wide supply, review incoming business applications, and keep event integrity visible from one operational surface."
-      title="Operations dashboard"
-      userEmail={access.userEmail}
-    >
+    <>
       <section className="overview-strip" aria-label="Operational pulse">
         {metrics.map((metric) => (
           <article key={metric.label} className={`overview-tile overview-tile-${metric.tone}`}>
@@ -95,6 +87,27 @@ export default async function AdminPage() {
       </section>
 
       <DashboardShortcutsGrid shortcuts={shortcuts} />
+    </>
+  );
+}
+
+export default async function AdminPage() {
+  const supabase = await createServerComponentClient();
+  const access = await resolveAdminAccessAsync(supabase);
+
+  return (
+    <DashboardShell
+      activeHref="/admin"
+      areaLabel="Platform admin"
+      navigationItems={adminDashboardNavigationItems}
+      roleLabel={access.primaryRole}
+      subtitle="Moderate platform-wide supply, review incoming business applications, and keep event integrity visible from one operational surface."
+      title="Operations dashboard"
+      userEmail={access.userEmail}
+    >
+      <Suspense fallback={<article className="panel"><p className="muted-text">Ladataan / Loading...</p></article>}>
+        <AdminPageContent />
+      </Suspense>
     </DashboardShell>
   );
 }
