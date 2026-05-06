@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Yapılan iş:** Public-site deploy sonrasi temiz `main` uzerinden pre-release code review/refactor branch'i acildi. `code-reviewer` subagent genis correctness/release review icin baslatildi. Codex Security repository-wide scan guidance ve zorunlu reference'lar okundu; runtime inventory, high-impact coverage ledger, finding-discovery checkpoint ve exhaustive checklist artefact'leri olusturuldu: `/tmp/codex-security-scans/OmaLeima/b744395_20260506T125200Z_repo_sweep/artifacts/`.
+- **Neden yapıldı:** Kullanici bundan sonraki sureclere gecmeden once kapsamli code-review/security-review/refactoring turunun baslamasini istedi.
+- **Doğrulama:** Bu commit runtime code degistirmiyor; `git --no-pager diff --check` temiz kosulacak. Ilk frontier pass service-role routes, public intake Turnstile/rate-limit, auth session routes, scanner provisioning RPC/Edge Function, Supabase RPC grants, redirect/HTML/script/fetch sinks uzerinde yapildi. Henuz final no-finding raporu degil; scan in-progress.
+- **Sıradaki önerilen adım:** `code-reviewer` subagent sonucunu bekle, reportable bulgulari severity'ye gore triage et ve yalnizca minimal risk-reducing fixes/refactor uygula. Ilk acik rows: scanner provisioning latest SQL body, `scan_stamp_atomic` latest hotfix, mobile QR login lifecycle, announcement push deep-link scanner guards, admin/club mutation route guard pass.
+- **Açık risk/blokaj:** Repository-wide Codex Security exhaustive scan tamamlanmadi; checklist'teki dosyalar tek tek kapanmali. Subagent bu devir aninda halen calisiyor.
+
+- **Tarih:** 2026-05-06
 - **Branch:** `feature/public-gallery-polish`
 - **Yapılan iş:** Worktree'de kalan public website polish degisiklikleri ayri branch'e alindi. Landing page'e static local image asset'leriyle appro night gallery section'i eklendi; Finnish public copy/legal/navbar aria metinleri daha temiz hale getirildi. Auth, API route, Supabase, Edge Function, payment veya mobile runtime davranisina dokunulmadi.
 - **Neden yapıldı:** Kullanici calisma agacindaki degisikliklerin GitHub'a yollanmasini ve Vercel production deploy alinmasini istedi; bu public-site diff'i upcoming buyuk code-review/refactor turundan once temiz sekilde main'e tasinmaliydi.

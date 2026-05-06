@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Pre-Release Code Review Refactor Sweep)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Start a comprehensive pre-release code review, security review, and risk-reducing refactor pass after public-site deploy.
+
+## Pre-Release Sweep Initial Findings
+
+- `main` is clean and includes the deployed public gallery polish (`b744395`).
+- The repository has three primary runtime surfaces: Expo mobile app (`apps/mobile`), Next.js public/admin/club app (`apps/admin`), and Supabase SQL/Edge Functions (`supabase`).
+- Highest-risk invariants to review first are role/session boundaries, anonymous scanner provisioning, QR/stamp/reward atomicity, organizer/admin mutations, public intake hardening, push deep-link routing, and Supabase RLS/RPC grants.
+- A full repository-wide Codex Security scan requires a runtime inventory, coverage ledger, and file-by-file pass. This branch starts that process and should not mix unrelated feature work into the review branch.
+
+## Pre-Release Sweep Review Outcome
+
+Use two tracks: code-reviewer subagent for broad correctness/release findings, and Codex Security-guided review for high-impact security boundary coverage. Apply only small refactors or fixes that have clear risk reduction and pass the existing validation suite.
+
 ## Current Review (Public Gallery Polish)
 
 - **Date:** 2026-05-06

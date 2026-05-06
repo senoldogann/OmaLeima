@@ -2,6 +2,48 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Pre-Release Code Review Refactor Sweep)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Begin the final broad review/refactor cycle before more product work.
+
+## Pre-Release Sweep Architectural Decisions
+
+- Keep this branch review-first: no broad rewrites and no cosmetic-only refactors.
+- Partition review by runtime boundary: mobile app, admin/public web, Supabase database/RLS/RPC, and Supabase Edge Functions.
+- Prioritize fixes that protect product invariants: role isolation, QR/stamp/reward integrity, scanner provisioning lifecycle, public intake gating, and push routing correctness.
+- Use existing validation commands before any merge: mobile/admin typecheck/lint, admin build, Supabase lint, and targeted smoke scripts for touched surfaces.
+
+## Pre-Release Sweep Edge Cases
+
+- Anonymous scanner accounts use the authenticated Postgres role, so RLS policies must be reviewed as if anonymous sessions can reach authenticated policies until backend provisioning gates them.
+- Scanner device deletion/revocation must preserve business statistics while removing access.
+- Public contact/apply pages must remain server-side Turnstile-gated and should not regain direct anon Supabase write paths.
+- Code review findings should distinguish real release blockers from acceptable future hardening.
+
+## Pre-Release Sweep Prompt
+
+Sen senior full-stack release reviewer, Supabase security reviewer ve Expo/Next.js refactor engineer olarak calisiyorsun.
+Hedef: OmaLeima production V1 oncesinde mobil, web/admin ve Supabase yuzeylerinde gercek bug, security risk ve release-readiness eksiklerini bul; yalnizca risk azaltan minimal refactor/fixleri uygula.
+Mimari: review-first branch; role-boundary shard'lari, RLS/RPC/Edge Function shard'lari, QR/stamp/reward invariant shard'i, public intake shard'i ve push/deep-link shard'i.
+Kapsam: repo genelinde review, artifact/ledger, targeted validation ve gerekirse minimal fixes. Yeni urun ozelligi, pricing/Stripe geri ekleme, cosmetic redesign ve unrelated rewrite yok.
+Cikti: ordered findings, risk-reducing patches if needed, validation report, updated working docs and handoff.
+Yasaklar: `any` yok, secret basmak yok, fallback ile sessiz hata yutmak yok, user/unrelated changes revert yok, auth/RLS bypass yok.
+Standartlar: AGENTS.md, Codex Security workflow, existing test strategy, explicit validation, small commits.
+
+## Pre-Release Sweep Validation Plan
+
+- Code-reviewer subagent broad review report.
+- Codex Security repository-wide inventory and high-impact coverage ledger.
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `supabase db lint --local`
+- Targeted smoke scripts for any touched runtime area.
+
 ## Current Plan (Public Gallery Polish)
 
 - **Date:** 2026-05-06

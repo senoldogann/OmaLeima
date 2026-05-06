@@ -2,6 +2,19 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Pre-Release Code Review Refactor Sweep)
+
+- [x] Confirm main is clean after public-site push and Vercel deploy.
+- [x] Create a fresh review/refactor branch from main.
+- [x] Start a code-reviewer subagent for broad correctness/release review.
+- [x] Read Codex Security repository-wide scan guidance and required references.
+- [x] Update working docs with the REASONS review/refactor plan.
+- [x] Build runtime inventory and high-impact security coverage ledger.
+- [x] Run first-pass targeted high-risk searches across mobile, admin, Supabase SQL, and Edge Functions.
+- [ ] Wait for code-reviewer findings and triage reportable issues.
+- [ ] Apply only minimal risk-reducing fixes/refactors.
+- [ ] Run full validation suite for touched surfaces.
+
 ## Current Todos (Public Gallery Polish)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before touching the worktree.
