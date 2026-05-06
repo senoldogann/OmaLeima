@@ -5,6 +5,15 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `main`
+- **Yapılan iş:** Anasayfa (`/`), Başvuru (`/apply`) ve İletişim (`/contact`) sayfaları için mobil uyumluluk (responsiveness) eksiklikleri giderildi. `globals.css` içerisine `@media (max-width: 980px)` sorgusu eklenerek; `.public-poster-grid`, `.public-spotlight-shell`, `.public-proof-shell`, `.public-page-grid` grid yapıları tek sütuna (`1fr`) düşürüldü. Ayrıca `order: -1` kullanılarak mobil cihazlarda metinlerin her zaman görsellerden önce gelmesi sağlandı. `.public-final-cta` butonları mobilde tam genişliğe yayılarak dikey olarak hizalandı.
+- **Neden yapıldı:** Public site V2 tasarımı tamamlanmıştı ancak büyük ekranlara yönelik oluşturulan CSS grid yapıları dar ekranlarda çöküyordu/yan yana kalıyordu. Kullanıcıdan gelen "Anasayfa, apply ve contact sayfaları responsive değil" geri bildirimi doğrultusunda çözüldü.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck` sıfır hata verdi. Gridlerin mobilde nasıl davranacağı doğrudan standart CSS ile test edilebilir duruma getirildi.
+- **Sıradaki önerilen adım:** Vercel deployment'ı tamamlandıktan sonra mobil cihazdan (veya Chrome dev tools ile) anasayfa, başvuru ve iletişim sayfalarının görünümü kontrol edilmelidir.
+- **Açık risk/blokaj:** Yok, işlem tamamlandı.
+
+
+- **Tarih:** 2026-05-06
 - **Branch:** `feature/security-hardening-review`
 - **Yapılan iş:** Scanner QR login regresyonunun kalan modal kök nedeni kapatildi. `AnnouncementPopupBridge` artik session olusur olusmaz popup duyuru cekmiyor; sadece access cozulmus, unsupported olmayan ve scanner-only olmayan kullanicilarda aktif oluyor. `AnnouncementPushRouterBridge` de scanner provisioning sirasinda access query/deep-link yapmiyor ve scanner-only session'larda pending announcement push payload'ini route etmeden temizliyor. Boylece owner QR okutma akisi sirasinda anonymous session yaratildiginda duyuru popup'i business login overlay'ine bind olup provisioning'i bozamiyor.
 - **Neden yapıldı:** Kullanici QR okutulduktan sonra popup duyurunun login ekraninin uzerinde gorundugunu ve saniyeler icinde tekrar login ekranina dondugunu bildirdi. Onceki cache fix'i access redirect'i stabilize ediyordu, fakat popup bridge hala transitional anonymous session'a erken baglaniyordu.
