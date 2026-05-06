@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Public Gallery Polish)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/public-gallery-polish`
+- **Scope:** Ship the remaining public website gallery/copy worktree changes and verify they are safe to deploy.
+
+## Public Gallery Polish Findings
+
+- The dirty worktree is limited to the public website presentation layer: landing page structure, global public-site CSS, public content/legal copy, navbar aria label, and four static PNG assets under `apps/admin/public/images/public`.
+- The diff does not touch auth/session handling, API routes, Supabase queries, Edge Functions, payments, dashboard authorization, or mobile runtime code.
+- The new gallery uses static local image paths through Next `Image`, so the main risks are build failures, oversized assets, layout overflow, and visual clutter rather than data/security boundary changes.
+- The copy changes are Finnish wording refinements and one aria-label typo fix; they do not alter route semantics or CTA destinations.
+
+## Public Gallery Polish Review Outcome
+
+Treat this as a public-site deploy slice. Validate admin typecheck/lint/build, run a diff-scoped security pass, smoke the rendered homepage at desktop/mobile widths, then merge/push/deploy before starting the broader review/refactor branch.
+
 ## Current Review (Business Profile Event Count)
 
 - **Date:** 2026-05-06

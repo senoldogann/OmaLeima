@@ -2,6 +2,17 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Public Gallery Polish)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before touching the worktree.
+- [x] Move the remaining public-site dirty worktree changes onto an isolated branch.
+- [x] Inspect changed public landing, CSS, content/legal/nav, and image assets.
+- [x] Update working docs with the focused REASONS plan.
+- [x] Run admin typecheck, lint, build, diff check, and diff-scoped security review.
+- [x] Smoke the rendered homepage desktop/mobile.
+- [ ] Commit, merge to main, push, and deploy Vercel production.
+- [ ] Start the broad code-review/refactor branch from clean main.
+
 ## Current Todos (Business Profile Event Count)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before editing.

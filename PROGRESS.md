@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `feature/public-gallery-polish`
+- **Yapılan iş:** Worktree'de kalan public website polish degisiklikleri ayri branch'e alindi. Landing page'e static local image asset'leriyle appro night gallery section'i eklendi; Finnish public copy/legal/navbar aria metinleri daha temiz hale getirildi. Auth, API route, Supabase, Edge Function, payment veya mobile runtime davranisina dokunulmadi.
+- **Neden yapıldı:** Kullanici calisma agacindaki degisikliklerin GitHub'a yollanmasini ve Vercel production deploy alinmasini istedi; bu public-site diff'i upcoming buyuk code-review/refactor turundan once temiz sekilde main'e tasinmaliydi.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build` ve `git --no-pager diff --check` temiz. Diff-scoped Codex Security scan no-finding: `/tmp/codex-security-scans/OmaLeima/7bab316_20260506T123937Z_public_gallery/report.md`. Rendered homepage smoke desktop/mobile: `200`, 4 gallery item, no framework overlay, no console errors, no horizontal overflow. Screenshot artefacts: `/tmp/omaleima-public-gallery-desktop.png`, `/tmp/omaleima-public-gallery-mobile.png`, `/tmp/omaleima-public-gallery-element-visible.png`, `/tmp/omaleima-public-gallery-mobile-section.png`.
+- **Sıradaki önerilen adım:** Branch main'e merge/push edilip Vercel production deploy alinmali. Ardindan temiz `main` uzerinden kapsamli code review/security review/refactor branch'i acilmali.
+- **Açık risk/blokaj:** Playwright MCP transport kapandigi icin rendered smoke Playwright CLI ile alindi. Browser plugin runtime callable gorunmedi. Bu slice web-only; mobil build/device smoke gerektirmiyor.
+
+- **Tarih:** 2026-05-06
 - **Branch:** `bug/business-profile-event-count`
 - **Yapılan iş:** Business profile `Events/Tapahtumat` quick-action sayaci duzeltildi. Profil artik sadece upcoming event sayisini degil, secili business icin active + upcoming joined event sayisini gosteriyor; `Open scanner` aksiyonu da secili business'in ilk aktif `eventVenueId` degeriyle scanner'a gidiyor. Boylece baska business membership'i varsa profil/scanner context'i karismiyor.
 - **Neden yapıldı:** Kullanici isletme profilinde `tapahtumat(0)` gorundugunu, ancak ayni isletmenin 3 aktif scanner-ready event'e kayitli oldugunu bildirdi. Hosted Supabase verisi `OmaLeima Bar` icin `active=3`, `upcoming=0` oldugunu dogruladi; profil bug'i active eventleri saymayan UI-derived count'tan kaynaklandi.

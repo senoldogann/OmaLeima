@@ -348,7 +348,7 @@ const termsByLocale: Record<PublicLocale, LegalDocumentContent> = {
       },
       {
         paragraphs: [
-          "Julkinen verkkosivu esittelee OmaLeimaa, joka on digitaalinen leimapassikonsepti suomalaisiin opiskelijatapahtumiin, approihin, yrityscheckpointeihin ja palkintovirtoihin.",
+          "Julkinen verkkosivu esittelee OmaLeimaa, joka on digitaalinen leimapassikonsepti suomalaisiin opiskelijatapahtumiin, approihin, yritysrastituksiin ja palkintovirtoihin.",
           "Näillä julkisilla sivuilla ei tällä hetkellä ole kuluttajille suunnattua verkkokauppaa tai maksullista loppukäyttäjätilausta.",
         ],
         title: "3. Palvelun kuvaus",

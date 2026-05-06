@@ -79,7 +79,7 @@ export const PublicNavbar = ({
       <div aria-hidden="true" className="public-navbar-spacer" />
       <div className="public-navbar-wrap">
         <nav
-          aria-label={locale === "fi" ? "Paanavigaatio" : "Main navigation"}
+          aria-label={locale === "fi" ? "Päänavigaatio" : "Main navigation"}
           className="public-navbar"
           data-open={isMenuOpen ? "true" : "false"}
         >

@@ -49,6 +49,25 @@ const stepIcons = [UsersIcon, QrCodeIcon, StarIcon] as const;
 const proofIcons = [ZapIcon, ShieldCheckIcon, UsersIcon] as const;
 const supportIcons = [UsersIcon, StarIcon, ShieldCheckIcon, ZapIcon] as const;
 
+const galleryImages = [
+  {
+    alt: "Yksi scan. Leima heti. – OmaLeima QR-skannaus baarissa.",
+    src: "/images/public/scene-promo-bar-scan.png",
+  },
+  {
+    alt: "Leimat mukana. Ilta vasta alkaa. – Opiskelijat OmaLeima-sovelluksen kanssa.",
+    src: "/images/public/scene-promo-leimat-mukana.png",
+  },
+  {
+    alt: "Leimat kasaan. Palkinto auki. – Opiskelijat juhlivat palkintoa.",
+    src: "/images/public/scene-promo-palkinto-auki.png",
+  },
+  {
+    alt: "Koko ilta samassa sovelluksessa. – Opiskelijaryhmä appro-illalla.",
+    src: "/images/public/scene-promo-koko-ilta.png",
+  },
+] as const;
+
 export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
   const content = getPublicLandingContent(locale);
 
@@ -144,6 +163,26 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         </div>
       </section>
 
+      <section aria-label={locale === "fi" ? "Appro-illan tunnelma" : "Appro night experience"} className="public-shell public-gallery-shell">
+        <div className="public-gallery-head">
+          <p className="eyebrow">{locale === "fi" ? "Hetket tallessa" : "Moments captured"}</p>
+          <h2>{locale === "fi" ? "Tältä appro-ilta näyttää" : "This is what an appro night looks like"}</h2>
+        </div>
+        <div className="public-gallery-grid">
+          {galleryImages.map((img) => (
+            <div key={img.src} className="public-gallery-item">
+              <Image
+                alt={img.alt}
+                className="public-image public-image-cover public-image-position-center"
+                fill
+                sizes="(max-width: 640px) calc(50vw - 28px), (max-width: 980px) calc(50vw - 36px), calc(25vw - 24px)"
+                src={img.src}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="public-shell public-spotlight-shell" id="culture">
         <div className="public-spotlight-media public-image-surface public-media-soft">
           <Image
@@ -197,12 +236,12 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
           <p className="eyebrow">{locale === "fi" ? "Rakennettu tapahtumapäivään" : "Built for event day"}</p>
           <h2>
             {locale === "fi"
-              ? "Appro, QR-skannaus ja palkinnot samassa rauhallisessa virrassa."
+              ? "Appro, QR-skannaus ja palkinnot sujuvasti samassa järjestelmässä."
               : "Appro flow, QR scanning, and rewards in one calm system."}
           </h2>
           <p className="public-proof-description">
             {locale === "fi"
-              ? "Opiskelija näkee etenemisen, venue skannaa nopeasti ja järjestäjä pysyy tilanteen tasalla ilman paperikortteja."
+              ? "Opiskelija näkee etenemisen, ravintola skannaa nopeasti ja järjestäjä pysyy tilanteen tasalla ilman paperikortteja."
               : "Students see progress, venues scan quickly, and organizers stay on top of the night without paper cards."}
           </p>
 

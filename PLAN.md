@@ -2,6 +2,46 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Public Gallery Polish)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/public-gallery-polish`
+- **Goal:** Commit, push, and deploy the remaining public website polish changes without mixing them into the upcoming broad review/refactor work.
+
+## Public Gallery Polish Architectural Decisions
+
+- Keep the gallery as static public assets rendered by the existing public landing page component.
+- Reuse the current public-site CSS naming and `public-shell` layout system instead of introducing a new design system.
+- Keep this branch presentation-only; no API, auth, Supabase, payment, or mobile changes.
+- Validate through the admin app because the public website is hosted inside `apps/admin`.
+
+## Public Gallery Polish Edge Cases
+
+- Narrow mobile screens should render the gallery as two columns, not overflow horizontally.
+- Large PNG assets should not break the production build; Next image optimization can serve them from the public folder.
+- Finnish copy edits must preserve route labels, anchors, and search metadata intent.
+- The upcoming repository-wide review/refactor must start from clean `main`, not from an uncommitted public-site diff.
+
+## Public Gallery Polish Prompt
+
+Sen Next.js public-site release engineer ve security-conscious frontend reviewer olarak calisiyorsun.
+Hedef: mevcut worktree'deki public landing gallery/copy degisikliklerini izole branch'te validate et, commit/push et, main'e merge et ve Vercel production'a deploy et.
+Mimari: `apps/admin` public-site componentleri + static public image assets; existing CSS layout utilities korunur.
+Kapsam: sadece public website presentation diff'i, working docs, validation, git ve Vercel deploy. Auth, Supabase, Edge Functions, mobile ve pricing yok.
+Cikti: strict TypeScript/CSS asset degisiklikleri, diff-scoped security sonucu, rendered homepage smoke, production deployment URL.
+Yasaklar: secret basmak yok, unrelated branch/history revert yok, API/auth davranisi degistirmek yok, yeni payment/self-serve flow eklemek yok.
+Standartlar: AGENTS.md, minimal diff, explicit validation, clean main before broad review/refactor.
+
+## Public Gallery Polish Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- Diff-scoped Codex Security review.
+- Rendered homepage smoke at desktop and mobile widths.
+- Vercel production deploy and live HTTP smoke.
+
 ## Current Plan (Business Profile Event Count)
 
 - **Date:** 2026-05-06

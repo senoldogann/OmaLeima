@@ -154,7 +154,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     contactHref: "/contact",
     contactLabel: "Ota yhteyttä",
     description:
-      "OmaLeima muuttaa paperiset leimakortit digitaaliseksi leimapassiksi: QR-rastit, palkintojen eteneminen ja selkeä tapahtumapäivän operointi yhdessä sovelluksessa.",
+      "OmaLeima tekee paperisista leimakorteista digitaalisen leimapassin: QR-rastit, palkintojen eteneminen ja selkeä tapahtumapäivän hallinta yhdessä sovelluksessa.",
     eyebrow: "Digitaalinen leimapassi",
     footerAddressLabel: "Toimipaikan osoite",
     footerBusinessIdLabel: "Y-tunnus",
@@ -171,7 +171,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     localeSwitchHref: "/en",
     localeSwitchLabel: "In English",
     metaDescription:
-      "OmaLeima on digitaalinen leimapassi opiskelijatapahtumiin, approihin, QR-rastituksiin, palkintoihin ja järjestäjien operointiin.",
+      "OmaLeima on digitaalinen leimapassi opiskelijatapahtumiin, approihin, QR-rastituksiin, palkintoihin ja tapahtumien järjestämiseen.",
     navItems: [
       { href: "#flow", label: "Toiminta" },
       { href: "#culture", label: "Kulttuuri" },
@@ -180,7 +180,7 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
       { href: "/apply", label: "Hae mukaan" },
     ],
     ogLocale: "fi_FI",
-    productTitle: "Rakennettu approihin, rastipisteisiin ja palkintohetkiin, joiden pitää tuntua puhelimessa kevyiltä.",
+    productTitle: "Tehty approihin, rastipisteisiin ja palkintohetkiin – kaiken pitää sujua kevyesti puhelimessa.",
     sectionLabel: "Tehty opiskelijakulttuuria varten",
     statItems: [
       { label: "QR-varmistetut rastit", value: "Live" },
@@ -197,13 +197,13 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
         title: "Skannaus pysyy sujuvana",
       },
       {
-        body: "Järjestäjät näkevät palkintojen etenemisen, tiedotteet ja rastit yhdestä selkeästä hallintapinnasta.",
-        title: "Klubi pysyy ohjaksissa",
+        body: "Järjestäjät näkevät palkintojen etenemisen, tiedotteet ja rastit yhdestä selkeästä näkymästä.",
+        title: "Klubi pysyy hallinnassa",
       },
     ],
     supportItems: [
       {
-        body: "Tuo klubit, opiskelijajärjestöt ja yrityskumppanit samaan tapahtumapäivän järjestelmään ilman irrallisia ad hoc -prosesseja.",
+        body: "Tuo klubit, opiskelijajärjestöt ja yrityskumppanit samaan tapahtumapäivän järjestelmään ilman erillisiä ratkaisuja.",
         title: "Helppo käyttöönotto",
       },
       {
@@ -221,12 +221,12 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     ],
     timelineItems: [
       {
-        body: "Opiskelija liittyy tapahtumaan ja saa dynaamisen QR-koodin, joka vastaa aktiivista tapahtumakontekstia.",
+        body: "Opiskelija liittyy tapahtumaan ja saa dynaamisen QR-koodin, joka on sidottu kyseiseen tapahtumaan.",
         step: "01",
         title: "Liity tapahtumaan",
       },
       {
-        body: "Yrityksen henkilökunta skannaa QR-koodin, ja backend tarkistaa ajan, säännöt ja tuplaleimasuojan.",
+        body: "Yrityksen henkilökunta skannaa QR-koodin, ja järjestelmä tarkistaa ajan, säännöt ja tuplaleimasuojan.",
         step: "02",
         title: "Kerää leimoja",
       },
