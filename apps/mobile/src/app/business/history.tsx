@@ -176,6 +176,7 @@ export default function BusinessHistoryScreen() {
         language === "fi"
           ? `Historia perustuu viimeisimpään ${RECENT_SCAN_LIMIT} skannaukseen tältä käyttäjältä.`
           : `History is based on the latest ${RECENT_SCAN_LIMIT} scans owned by this operator.`,
+      allShown: language === "fi" ? "Kaikki skannaukset näytetään" : "All scans are shown",
       scannedAt: language === "fi" ? "Skannattu" : "Scanned",
       scanRows: language === "fi" ? "skannausta" : "scans",
       unknownBusiness: language === "fi" ? "Tuntematon toimija" : "Unknown business",
@@ -556,6 +557,9 @@ export default function BusinessHistoryScreen() {
                   </View>
                 </View>
               ))}
+              {!isRecentWindowCapped ? (
+                <Text style={styles.listEndNotice}>— {labels.allShown} —</Text>
+              ) : null}
             </View>
           )}
         </>
@@ -866,5 +870,13 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
+    },
+    listEndNotice: {
+      color: theme.colors.textDim,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+      paddingVertical: 12,
     },
   });

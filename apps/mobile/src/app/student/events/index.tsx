@@ -8,6 +8,7 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
+import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
 import { EventCard } from "@/features/events/components/event-card";
 import { StudentEventVenueMap } from "@/features/events/components/student-event-venue-map";
 import {
@@ -67,7 +68,7 @@ const createJoinActionNotice = (status: JoinEventResultStatus, language: "fi" | 
     EVENT_NOT_FOUND: {
       body:
         language === "fi"
-          ? "Tapahtumaa ei loytynyt enaa. Paivita lista ja yrita uudelleen."
+          ? "Tapahtumaa ei löytynyt enää. Päivitä lista ja yritä uudelleen."
           : "The event could not be found anymore. Refresh the list and try again.",
       title: language === "fi" ? "Tapahtuma puuttuu" : "Event not found",
     },
@@ -95,14 +96,14 @@ const createJoinActionNotice = (status: JoinEventResultStatus, language: "fi" | 
     PROFILE_NOT_FOUND: {
       body:
         language === "fi"
-          ? "Opiskelijaprofiilia ei loytynyt. Avaa profiili ja tarkista tiedot."
+          ? "Opiskelijaprofiilia ei löytynyt. Avaa profiili ja tarkista tiedot."
           : "The student profile could not be found. Open your profile and verify your details.",
-      title: language === "fi" ? "Profiilia ei loytynyt" : "Profile not found",
+      title: language === "fi" ? "Profiilia ei löytynyt" : "Profile not found",
     },
     ROLE_NOT_ALLOWED: {
       body:
         language === "fi"
-          ? "Tama rooli ei voi liittya tapahtumaan."
+          ? "Tämä rooli ei voi liittyä tapahtumaan."
           : "This role is not allowed to join the event.",
       title: language === "fi" ? "Rooli ei kelpaa" : "Role not allowed",
     },
@@ -356,6 +357,8 @@ export default function StudentEventsScreen() {
         </View>
         <StudentProfileHeaderAction />
       </View>
+
+      <MobileRoleSwitchCard currentArea="student" />
 
       {eventsQuery.error ? (
         <View style={styles.messageCard}>

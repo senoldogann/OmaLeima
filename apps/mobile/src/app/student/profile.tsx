@@ -16,6 +16,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { LegalLinksCard } from "@/features/legal/legal-links-card";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
 import {
@@ -129,17 +130,17 @@ const createPushRegistrationDetail = (
   if (language === "fi") {
     switch (pushState.state) {
       case "granted":
-        return "Ilmoituslupa on myonnetty. Viimeistellaan laitteen rekisterointia.";
+        return "Ilmoituslupa on myönnetty. Viimeistellään laitteen rekisteröintiä.";
       case "denied":
-        return "Ilmoituslupaa ei myonnetty, joten laitetta ei voitu ottaa kayttoon.";
+        return "Ilmoituslupaa ei myönnetty, joten laitetta ei voitu ottaa käyttöön.";
       case "unavailable":
-        return "Ilmoitukset eivat ole kaytettavissa tassa ymparistossa.";
+        return "Ilmoitukset eivät ole käytettävissä tässä ympäristössä.";
       case "misconfigured":
-        return "Ilmoitusten asetukset ovat puutteelliset. Yrita uudelleen myohemmin.";
+        return "Ilmoitusten asetukset ovat puutteelliset. Yritä uudelleen myöhemmin.";
       case "error":
         return pushState.backendStatus === "UNAUTHORIZED"
-          ? "Istunto on vanhentunut. Kirjaudu uudelleen ja yrita uudelleen."
-          : "Laitteen ilmoitusrekisterointi ei onnistunut. Yrita uudelleen.";
+          ? "Istunto on vanhentunut. Kirjaudu uudelleen ja yritä uudelleen."
+          : "Laitteen ilmoitusrekisteröinti ei onnistunut. Yritä uudelleen.";
     }
   }
 
@@ -241,10 +242,10 @@ export default function StudentProfileScreen() {
       pushState?.state === "misconfigured" ||
       pushState?.state === "unavailable"
       ? language === "fi"
-        ? "Yrita uudelleen"
+        ? "Yritä uudelleen"
         : "Retry setup"
       : language === "fi"
-        ? "Ota ilmoitukset kayttoon"
+        ? "Ota ilmoitukset käyttöön"
         : "Enable notifications";
 
   useEffect(() => {
@@ -502,6 +503,8 @@ export default function StudentProfileScreen() {
           <SignOutButton />
         </View>
       </View>
+
+      <LegalLinksCard language={language} />
 
       <SupportRequestSheet
         area="STUDENT"
