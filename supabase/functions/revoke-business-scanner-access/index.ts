@@ -107,6 +107,19 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
+    if (device.scanner_user_id === user.id) {
+      return errorResponse(
+        409,
+        "SELF_REVOKE_NOT_ALLOWED",
+        "The currently signed-in scanner device cannot revoke its own scanner access.",
+        {
+          businessId: body.businessId,
+          scannerDeviceId: device.id,
+          userId: user.id,
+        },
+      );
+    }
+
     const { error: revokeError } = await supabase
       .from("business_scanner_devices")
       .update({

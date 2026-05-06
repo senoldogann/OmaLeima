@@ -725,7 +725,9 @@ export default function BusinessProfileScreen() {
                 const canRenameDevice =
                   device.createdBy === userId || canEditSelectedMembership;
                 const canManagePin = device.status === "ACTIVE" && canRenameDevice;
-                const canRevokeDevice = canEditSelectedMembership && device.status === "ACTIVE";
+                const isCurrentUserScannerDevice = device.scannerUserId === userId;
+                const canRevokeDevice =
+                  canEditSelectedMembership && device.status === "ACTIVE" && !isCurrentUserScannerDevice;
                 const isMutationPending =
                   renameScannerDeviceMutation.isPending ||
                   revokeScannerDeviceMutation.isPending ||
@@ -895,6 +897,13 @@ export default function BusinessProfileScreen() {
                                   {language === "fi" ? "Poista" : "Revoke"}
                                 </Text>
                               </Pressable>
+                            ) : null}
+                            {isCurrentUserScannerDevice ? (
+                              <Text style={styles.scannerDeviceMeta}>
+                                {language === "fi"
+                                  ? "Tama on nykyinen kirjautunut laite."
+                                  : "This is the currently signed-in device."}
+                              </Text>
                             ) : null}
                           </>
                         )}

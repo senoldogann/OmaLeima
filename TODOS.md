@@ -2,6 +2,19 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Scanner Revoke Session Cleanup)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before editing.
+- [x] Inspect scanner device profile UI, scanner screen, revoke Edge Function, registration RPC, and realtime publication state.
+- [x] Update working docs with REASONS scope.
+- [x] Add scanner user id to mobile device summaries and hide self-revoke actions.
+- [x] Block self-revoke in `revoke-business-scanner-access`.
+- [x] Add realtime publication migration for scanner devices.
+- [x] Subscribe scanner screen to current device revocation and sign out immediately.
+- [x] Remove manual pasted token scanning UI from scanner screen.
+- [x] Run mobile/Supabase validation and diff checks.
+- [x] Deploy/apply hosted Supabase changes and update handoff.
+
 ## Current Todos (Business Owner Onboarding Handoff)
 
 - [x] Inspect approved business application RPC, admin route pattern, reviewed card UI, and auth admin helpers.
