@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Storage Bucket Listing Hardening)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/storage-bucket-listing-hardening`
+- **Scope:** Close Supabase advisor storage listing exposure for public media buckets without breaking existing public object URLs.
+
+## Storage Bucket Listing Hardening Findings
+
+- Hosted Supabase still has three broad `storage.objects` SELECT policies for `announcement-media`, `business-media`, and `event-media` with `roles = {public}`.
+- The app code uploads to these buckets and renders public object URLs through `getPublicUrl`; repository search did not find runtime `.list()` usage for these buckets.
+- Supabase public buckets can serve known public object URLs without a public `storage.objects` SELECT policy, so the broad read policies add listing surface without being needed by the current app flow.
+- The remaining anonymous SECURITY DEFINER execute count includes helper/read functions and should not be blindly revoked in this slice because it could break public listings or RLS helper behavior.
+
+## Storage Bucket Listing Hardening Review Outcome
+
+Remove only the broad public storage object SELECT policies for public media buckets. Keep upload/manage policies unchanged and validate that known public object URLs remain reachable after the hosted migration.
+
 ## Current Review (Release Smoke Readiness)
 
 - **Date:** 2026-05-06

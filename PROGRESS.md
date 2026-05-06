@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `feature/storage-bucket-listing-hardening`
+- **Yapılan iş:** Supabase public media bucket listing yuzeyi kapatildi. Hosted Supabase uzerinde `announcement-media`, `business-media` ve `event-media` bucket'lari icin `storage.objects` tablosundaki broad `public` SELECT policy'leri dogrulandi, repository'de bu bucket'lara runtime `.list()` bagimliligi olmadigi kontrol edildi ve `restrict_public_media_bucket_listing` migration'i hosted Supabase'e MCP ile uygulandi. Local migration dosyasi `20260506150000_restrict_public_media_bucket_listing.sql` eklendi.
+- **Neden yapıldı:** Kullanici dogru Supabase/Codex Security tooling ile siradaki en mantikli adimlara devam edilmesini istedi. Supabase advisor tarafinda kalan en net, dusuk riskli guvenlik borcu public bucket metadata/listing yuzeyiydi; public object URL delivery korunarak metadata listing daraltildi.
+- **Doğrulama:** Hosted SQL policy kontrolu migration oncesi 3 hedef policy, migration sonrasi `[]` dondu. Migration oncesi ve sonrasi representative public media URL'leri `200 image/png` dondu. `supabase db lint --local`, `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:routes`, `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:business-applications` ve `git --no-pager diff --check` temiz.
+- **Sıradaki önerilen adım:** Branch main'e merge/push edildikten sonra fiziksel iPhone/Android release smoke'a don: owner QR scanner provisioning, scanner revoke realtime logout, student QR scan/reward unlock ve announcement push tap-to-detail. Ayrica Supabase advisor'daki kalan anonymous-policy warnings icin function-by-function/policy-by-policy ayrintili review yapilmali.
+- **Açık risk/blokaj:** `supabase migration up --local` tam ileri alinmadi; onceki bilinen pending `20260506072253_business_scanner_qr_provisioning.sql` Supabase CLI parse problemi halen local migration apply icin risk. Bu slice hosted MCP migration ve `supabase db lint --local` ile dogrulandi. Leaked-password-protection ve anonymous auth captcha gibi dashboard/auth config warning'leri kod migration'i degil, ayrica ayar gerektiriyor.
+
+- **Tarih:** 2026-05-06
 - **Branch:** `feature/release-smoke-readiness`
 - **Yapılan iş:** Release smoke readiness turu kosuldu ve stale mobile scanner smoke beklentisi duzeltildi. `audit:hosted-business-scan-readiness` artik kaldirilan manual token UI'ini aramak yerine production scanner'in camera-based QR-only akisini dogruluyor; mobile README ve `docs/TESTING.md` ayni gercek smoke yoluna hizalandi. Supabase MCP ile hosted project/migration state dogrulandi, Supabase security advisor bulgulari incelendi ve privileged SECURITY DEFINER mutation/trigger RPC'leri icin `PUBLIC`/`anon` execute yetkisini kapatan migration hosted Supabase'e uygulandi.
 - **Neden yapıldı:** Kullanici siradaki en mantikli adimlarla devam edilmesini, dogru Supabase/Codex Security/Expo/Web tooling'in kullanilmasini istedi. Mevcut release gate eski manuel scanner fallback kararina takiliyordu; ayrica anonymous auth acikken unauthenticated RPC execute yuzeyi gereksiz risk olusturuyordu.
@@ -1884,6 +1892,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ### Tamamlanan Görevler (Changelog)
 
+- *2026-05-06*: Supabase public media bucket listing hardening tamamlandi; announcement/business/event public bucket metadata SELECT policy'leri kaldirildi ve public image URL smoke'u korunarak dogrulandi.
 - *2026-05-06*: Admin/mobile/public Finnish copy tone review tamamlandı; kalan dirty localization diff'i production'a uygun tona çekildi, admin/mobile validation ve Codex Security diff scan temiz geçti.
 - *2026-05-06*: Scanner revoke sonrası reprovision flow düzeltildi; stale scanner installation id temizlenip aktif business kullanıcı için tek retry ile yeni cihaz kaydı açılıyor, hosted Supabase `device_model` + backwards-compatible RPC default migration'ları ve `provision-business-scanner-session` deploy tamamlandı.
 - *2026-05-06*: Release smoke harness stabilization tamamlandi; auth trigger sonrasi profile fixture duplicate hatalari, route smoke stale cookie `AUTH_REQUIRED` hatalari ve department-tags stale copy assertion'i duzeltildi.

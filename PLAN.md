@@ -2,6 +2,44 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Storage Bucket Listing Hardening)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/storage-bucket-listing-hardening`
+- **Goal:** Remove public bucket listing exposure from Supabase media buckets while preserving public image delivery and existing upload/manage flows.
+
+## Storage Bucket Listing Hardening Architectural Decisions
+
+- Add a privilege-only migration that drops the three broad public SELECT policies on `storage.objects` for `announcement-media`, `business-media`, and `event-media`.
+- Do not add replacement read policies because public buckets already serve known public object URLs and the application does not list these buckets from client/admin code.
+- Keep authenticated upload/update/delete policies intact so organizer/admin media management behavior stays unchanged.
+- Apply the same SQL to hosted Supabase through the Supabase MCP and verify policy removal with direct SQL.
+
+## Storage Bucket Listing Hardening Edge Cases
+
+- If any hidden client flow depended on listing bucket contents, it would now fail; repository search found no such flow.
+- Existing image URLs should continue to work because delivery uses `/storage/v1/object/public/...` public object URLs.
+- This does not resolve every anonymous-auth advisor warning; broader helper/RLS warnings need a separate function-by-function access review.
+
+## Storage Bucket Listing Hardening Prompt
+
+Sen Supabase Storage ve RLS guvenligi konusunda deneyimli bir backend guvenlik muhendisisin.
+Hedef: Public media bucket'larda bucket listing yuzeyini kapat, fakat mevcut public image URL rendering ve authenticated upload/manage akislarini bozma.
+Mimari: `storage.objects` uzerindeki broad public SELECT policy'lerini kaldiran idempotent SQL migration; yeni client fallback veya bucket listing davranisi eklenmez.
+Kapsam: sadece Supabase storage policy migration, working docs ve validation. Mobile/web runtime UI, auth, Edge Functions ve pricing yok.
+Cikti: SQL migration, hosted Supabase apply, policy/object URL smoke sonuc raporu.
+Yasaklar: public URL erisimini kiracak private bucket donusumu yok, helper function grant'lerini korlemesine revoke etmek yok, `anon` auth'u kapatmak yok, unrelated code edit yok.
+Standartlar: AGENTS.md, minimal diff, explicit validation, zero-trust storage metadata access.
+
+## Storage Bucket Listing Hardening Validation Plan
+
+- Hosted SQL check before and after migration for the targeted storage policies.
+- Hosted public object URL smoke for representative existing media objects.
+- `supabase db lint --local`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:routes`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:business-applications`
+- `git --no-pager diff --check`
+
 ## Current Plan (Admin/Mobile Copy Tone Review)
 
 - **Date:** 2026-05-06

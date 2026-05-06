@@ -2,6 +2,18 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Storage Bucket Listing Hardening)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before continuing.
+- [x] Use Codex Security/Build Web/Supabase-context tooling and avoid unrelated connectors.
+- [x] Confirm hosted public media bucket listing policies are still present.
+- [x] Search repository media flows for runtime bucket listing dependency.
+- [x] Add the storage policy hardening migration and working-doc context.
+- [x] Apply the migration to hosted Supabase with the Supabase MCP.
+- [x] Verify targeted policies are gone and existing public object URLs still serve.
+- [x] Re-run local lint/smoke checks and record remaining release risks.
+- [x] Commit, merge to main, push, and deploy only if runtime code changes require it.
+
 ## Current Todos (Release Smoke Readiness)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before continuing.
