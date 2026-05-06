@@ -2,6 +2,20 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Release Smoke Harness Stabilization)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review after compact before continuing.
+- [x] Use Codex Security, Build Web Apps, Expo, iOS, Android, Supabase, and Vercel-capable tooling where relevant without invoking unrelated app connectors.
+- [x] Inspect dirty worktree changes and separate unrelated copy/localization edits from actionable release issues.
+- [x] Run admin/mobile typecheck, lint, build, Supabase lint, RLS smoke, announcement push smoke, and mobile readiness audits.
+- [x] Verify hosted Supabase project, migrations, and edge function state with the Supabase MCP.
+- [x] Identify stale smoke fixture profile inserts caused by auth profile triggers.
+- [x] Make affected smoke profile fixtures idempotent with `on conflict` updates.
+- [x] Sync route smoke cookie jars from response `Set-Cookie` headers.
+- [x] Remove brittle static department-tags copy assertion from the smoke script.
+- [x] Re-run targeted club/admin smoke scripts on the explicit local Next server.
+- [x] Record validation status and remaining physical-device/browser deploy notes.
+
 ## Current Todos (Scanner Revoke Session Cleanup)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before editing.

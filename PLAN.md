@@ -2,6 +2,51 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Release Smoke Harness Stabilization)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/smoke-fixture-profile-upsert`
+- **Goal:** Release-readiness turunda kirilan admin smoke fixture'larini product code'a dokunmadan tekrar guvenilir hale getirmek.
+
+## Release Smoke Harness Stabilization Architectural Decisions
+
+- Profile fixture SQL, `auth.users` trigger'i profile row'unu daha once olusturduysa `on conflict (id) do update` ile role/status/display_name'i smoke senaryosuna gore duzeltecek.
+- Cookie-backed route smoke client'lari response `Set-Cookie` degerlerini kendi jar'ina geri yazacak. Boylece Next/Supabase session refresh sonrasi ayni smoke icindeki sonraki route request'leri stale cookie ile `AUTH_REQUIRED` almayacak.
+- Static localized heading assertion'i yerine dinamik fixture title'lari kontrol edilecek; copy/localization degisiklikleri route data smoke'unu gereksiz yere kirmayacak.
+- Product runtime code, Supabase schema ve Edge Functions bu slice'ta degismeyecek.
+
+## Release Smoke Harness Stabilization Edge Cases
+
+- Empty `Set-Cookie` value cookie removal olarak ele alinacak.
+- `Headers.getSetCookie()` yoksa helper no-op kalacak; mevcut request cookie jar davranisi bozulmayacak.
+- Existing seeded profile normalde yoksa `insert` path calisir; auth trigger row'u olusturduysa `update` path calisir.
+- Local ports 3001/3002 baska servislerce kullaniliyorsa smoke'lar explicit `ADMIN_APP_BASE_URL` ile dogru Next server'a yonlendirilir.
+
+## Release Smoke Harness Stabilization Prompt
+
+Sen Next.js/Supabase route smoke harness ve guvenlik validasyonu konusunda deneyimli bir full-stack QA muhendisisin.
+Hedef: Anonymous-auth/profile trigger hardening sonrasi kirilan admin/club smoke fixture'larini product code'a dokunmadan idempotent ve session-refresh-safe hale getir.
+Mimari: SQL fixture `on conflict` upsert; script-local cookie jar response sync; brittle static copy assertion removal; existing smoke route contracts korunur.
+Kapsam: sadece `apps/admin/scripts/smoke-*.ts` fixture/session harness ve working docs. Mobil runtime, Supabase migrations, Edge Functions ve mevcut unrelated copy degisikliklerine dokunma.
+Cikti: strict typed TypeScript script degisiklikleri, admin typecheck/lint/build ve targeted smoke sonuclari.
+Yasaklar: `any` yok, route auth'u bypass etme yok, product authorization koduna test icin fallback ekleme yok, unrelated dirty worktree revert/stage yok.
+Standartlar: AGENTS.md, explicit failures, minimal diff, real local route-backed smoke.
+
+## Release Smoke Harness Stabilization Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `supabase db lint --local`
+- `npm --prefix apps/admin run smoke:rls-core`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:club-events`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:club-rewards`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:club-claims`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:club-department-tags`
+- `ADMIN_APP_BASE_URL=http://localhost:3021 npm --prefix apps/admin run smoke:department-tags`
+- `npm --prefix apps/admin run smoke:announcement-push`
+- Mobile repo-level readiness audits and `git --no-pager diff --check`
+
 ## Current Plan (Scanner Revoke Session Cleanup)
 
 - **Date:** 2026-05-06

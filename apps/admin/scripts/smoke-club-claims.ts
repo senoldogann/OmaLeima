@@ -210,7 +210,14 @@ const seedClubStaffFixtureAsync = async (suffix: string): Promise<ClubStaffFixtu
       'Club Claim Staff ${suffix}',
       'CLUB_STAFF',
       'ACTIVE'
-    );
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      display_name = excluded.display_name,
+      primary_role = excluded.primary_role,
+      status = excluded.status,
+      updated_at = now();
 
     insert into public.club_members (
       id,

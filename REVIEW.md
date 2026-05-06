@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Release Smoke Harness Stabilization)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/smoke-fixture-profile-upsert`
+- **Scope:** Diff-scoped release/security validation and admin smoke harness compatibility after anonymous-auth profile triggers.
+
+## Release Smoke Harness Stabilization Findings
+
+- Current dirty worktree contains admin/public/mobile Finnish copy changes that are unrelated to the scanner revoke slice. They do not touch auth, RLS, Edge Function, or data mutation logic, but they must be validated because copy changes can still break TypeScript literals, static rendering, or smoke assertions.
+- `smoke:club-events`, `smoke:club-claims`, `smoke:club-rewards`, `smoke:club-department-tags`, and `smoke:department-tags` seeded `auth.users` and then inserted the matching `public.profiles` row as if no auth trigger existed. After anonymous-auth/profile trigger hardening, the trigger already creates the profile row, so direct fixture inserts can collide on `profiles_pkey`.
+- The longer route-backed club smoke scripts reuse a manual cookie jar. Next/Supabase route handlers can refresh session cookies through `Set-Cookie`; without syncing those response cookies back into the smoke client, later requests in the same script can return `AUTH_REQUIRED` even though earlier requests succeeded.
+- The `smoke:department-tags` route content assertion expected the old English static heading `Department tags`. Dashboard copy/localization now allows localized headings, so the smoke should assert dynamic fixture content instead of brittle shell copy.
+
+## Release Smoke Harness Stabilization Review Outcome
+
+This slice should keep product code unchanged and stabilize only smoke fixtures: make profile seeding idempotent with `on conflict`, keep route smoke cookie jars current from response `Set-Cookie`, and avoid brittle static copy assertions. The security pass found no diff-introduced security candidate in the dirty copy changes; the main actionable release issue is the stale smoke harness.
+
 ## Current Review (Scanner Revoke Session Cleanup)
 
 - **Date:** 2026-05-06
