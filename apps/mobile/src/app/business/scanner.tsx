@@ -27,7 +27,7 @@ import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { registerBusinessScannerDeviceAsync } from "@/features/scanner/scanner-device";
+import { registerBusinessScannerDeviceAsync, ScannerDeviceRevokedError } from "@/features/scanner/scanner-device";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type {
   ScannerAttemptResult,
@@ -70,6 +70,16 @@ const emptyScannerLocation = {
   latitude: null,
   longitude: null,
 } as const satisfies ScannerLocationPayload;
+
+const isRevokedScannerDeviceRecord = (value: unknown): value is { status: "REVOKED" } => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return candidate.status === "REVOKED";
+};
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
@@ -365,17 +375,10 @@ export default function BusinessScannerScreen() {
           ? "Useampi tapahtuma on käynnissä. Valitse oikea ennen QR-lukua."
           : "Multiple events are live. Choose the right one before reading a QR.",
       selectedEventLabel: language === "fi" ? "Valittu" : "Selected",
-      manualTokenTitle: language === "fi" ? "Testitoken" : "Test token",
-      manualTokenBody:
+      scannerAccessRevoked:
         language === "fi"
-          ? "Kayta vain testiin tai jos kamera ei ole kaytettavissa."
-          : "Use only for tests or when camera access is unavailable.",
-      manualTokenPlaceholder: "Paste LEIMA_STAMP_QR token",
-      manualTokenSubmit: language === "fi" ? "Skannaa token" : "Scan token",
-      manualTokenMissing:
-        language === "fi"
-          ? "Liitä LEIMA_STAMP_QR token ennen manuaalista skannausta."
-          : "Paste a LEIMA_STAMP_QR token before manual scanning.",
+          ? "Tama skannerilaite poistettiin. Kirjaudutaan ulos."
+          : "This scanner device was revoked. Signing out.",
     }),
     [copy.business.noActiveEvents, language]
   );
@@ -391,12 +394,12 @@ export default function BusinessScannerScreen() {
   const [isScannerLocked, setIsScannerLocked] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [manualQrToken, setManualQrToken] = useState<string>("");
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ScannerAttemptResult | null>(null);
   const [scannerDeviceRetryNonce, setScannerDeviceRetryNonce] = useState<number>(0);
   const scanInFlightRef = useRef<boolean>(false);
+  const revokeSignOutRef = useRef<boolean>(false);
   const eventSelectorScrollRef = useRef<ScrollView | null>(null);
   const [scannerDeviceState, setScannerDeviceState] = useState<ScannerDeviceState>(
     createInitialScannerDeviceState
@@ -500,6 +503,26 @@ export default function BusinessScannerScreen() {
           return;
         }
 
+        if (error instanceof ScannerDeviceRevokedError) {
+          revokeSignOutRef.current = true;
+          scanInFlightRef.current = true;
+          setIsScannerLocked(true);
+          setIsSubmitting(false);
+          setSubmitError(labels.scannerAccessRevoked);
+          setScannerDeviceState({
+            device: null,
+            error: labels.scannerAccessRevoked,
+            status: "error",
+          });
+
+          void supabase.auth.signOut().then(({ error: signOutError }) => {
+            if (signOutError !== null) {
+              setSignOutError(signOutError.message);
+            }
+          });
+          return;
+        }
+
         setScannerDeviceState({
           device: null,
           error: error instanceof Error ? error.message : "Unknown scanner device registration error.",
@@ -513,7 +536,7 @@ export default function BusinessScannerScreen() {
     return () => {
       isActive = false;
     };
-  }, [scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
+  }, [labels.scannerAccessRevoked, scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
 
   useEffect(() => {
     if (activeJoinedEvents.length <= 1) {
@@ -526,6 +549,54 @@ export default function BusinessScannerScreen() {
       y: 0,
     });
   }, [activeJoinedEvents.length, eventSelectorStride, selectedEventIndex]);
+
+  useEffect(() => {
+    if (scannerDeviceState.status !== "ready") {
+      revokeSignOutRef.current = false;
+      return;
+    }
+
+    const scannerDeviceId = scannerDeviceState.device.scannerDeviceId;
+    const channel = supabase
+      .channel(`business-scanner-device:${scannerDeviceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          filter: `id=eq.${scannerDeviceId}`,
+          schema: "public",
+          table: "business_scanner_devices",
+        },
+        (payload) => {
+          if (!isRevokedScannerDeviceRecord(payload.new) || revokeSignOutRef.current) {
+            return;
+          }
+
+          revokeSignOutRef.current = true;
+          scanInFlightRef.current = true;
+          setIsScannerLocked(true);
+          setIsSubmitting(false);
+          setSubmitError(labels.scannerAccessRevoked);
+
+          if (userId !== null) {
+            void queryClient.invalidateQueries({
+              queryKey: businessScanHistoryQueryKey(userId),
+            });
+          }
+
+          void supabase.auth.signOut().then(({ error }) => {
+            if (error !== null) {
+              setSignOutError(error.message);
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [labels.scannerAccessRevoked, queryClient, scannerDeviceState, userId]);
 
   const handleEventSelectorScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
@@ -629,17 +700,6 @@ export default function BusinessScannerScreen() {
     }
 
     void submitScanAsync(result.data.trim());
-  };
-
-  const scanPastedToken = async (): Promise<void> => {
-    const qrToken = manualQrToken.trim();
-
-    if (qrToken.length === 0) {
-      setSubmitError(labels.manualTokenMissing);
-      return;
-    }
-
-    await submitScanAsync(qrToken);
   };
 
   const handleSignOutPress = async (): Promise<void> => {
@@ -901,29 +961,6 @@ export default function BusinessScannerScreen() {
                     </View>
                   )}
 
-                  <View style={styles.manualTokenPanel}>
-                    <Text style={styles.eventDayEyebrow}>{labels.manualTokenTitle}</Text>
-                    <Text style={styles.metaText}>{labels.manualTokenBody}</Text>
-                    <TextInput
-                      accessibilityLabel={labels.manualTokenPlaceholder}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!isSubmitting && !isScannerLocked}
-                      multiline
-                      onChangeText={setManualQrToken}
-                      placeholder={labels.manualTokenPlaceholder}
-                      placeholderTextColor={theme.colors.textDim}
-                      style={styles.manualTokenInput}
-                      value={manualQrToken}
-                    />
-                    <Pressable
-                      disabled={isSubmitting || isScannerLocked}
-                      onPress={() => void scanPastedToken()}
-                      style={[styles.secondaryButton, isSubmitting || isScannerLocked ? styles.disabledButton : null]}
-                    >
-                      <Text style={styles.secondaryButtonText}>{labels.manualTokenSubmit}</Text>
-                    </Pressable>
-                  </View>
                 </View>
               ) : null}
             </>
@@ -1492,27 +1529,6 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
-    },
-    manualTokenInput: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.button,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      minHeight: 86,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      textAlignVertical: "top",
-    },
-    manualTokenPanel: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 8,
-      padding: 12,
     },
     primaryButton: {
       alignItems: "center",

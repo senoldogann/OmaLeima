@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Scanner Revoke Session Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-revoke-session-cleanup`
+- **Scope:** Business scanner device self-revoke protection, realtime scanner logout on revocation, and scanner screen manual token removal.
+
+## Scanner Revoke Session Cleanup Findings
+
+- `revoke-business-scanner-access` currently allows an owner/manager to revoke a scanner device even when `device.scanner_user_id` equals the acting user. It skips deleting that auth user, but still marks the active device revoked; on the same phone this makes the scanner register flow return `DEVICE_REVOKED`.
+- The business profile device UI does not load `scanner_user_id`, so it cannot distinguish "my current account/device" from a staff scanner device provisioned by the owner QR.
+- Scanner devices are not currently added to the Supabase Realtime publication. A scanner device that is revoked while the scanner screen is open will only discover it on the next scan/refresh path, not immediately.
+- `business/scanner.tsx` still renders a manual pasted token panel. With the owner QR and live camera flow in place, this is now a QA/testing affordance leaking into the operational scanner UI.
+
+## Scanner Revoke Session Cleanup Review Outcome
+
+This slice should block self-revoke both in UI and Edge Function, expose `scanner_user_id` to the device summary so only other scanner devices can be revoked, add `business_scanner_devices` to realtime, and subscribe the scanner screen to its own device row so a revoked scanner signs out immediately. The manual token input should be removed from the production scanner screen.
+
 ## Current Review (Business Owner Onboarding Handoff)
 
 - **Date:** 2026-05-06

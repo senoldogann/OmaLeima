@@ -2,6 +2,47 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Scanner Revoke Session Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-revoke-session-cleanup`
+- **Goal:** Business owner kendi aktif scanner hesabini telefondan revoke edemesin; revoke edilen scanner cihazlar aninda cikis yapsin; scanner ekranindan manuel token QA alanini kaldir.
+
+## Scanner Revoke Session Cleanup Architectural Decisions
+
+- `business_scanner_devices` read modeline `scanner_user_id` eklenecek ve mobile summary `scannerUserId` tasiyacak. Business profile revoke butonu sadece aktif ve `scannerUserId !== currentUserId` olan cihazlarda gorunecek.
+- Backend Edge Function `revoke-business-scanner-access` self-revoke durumunu device update'ten once `SELF_REVOKE_NOT_ALLOWED` ile reddedecek. UI gizlense bile API dogrudan cagrilirsa kendi session/device bozulmayacak.
+- New Supabase migration `business_scanner_devices` tablosunu `supabase_realtime` publication'a idempotent ekleyecek.
+- Scanner screen, device registration ready olduktan sonra kendi `scannerDeviceId` row'una realtime UPDATE subscription kuracak. Payload `status = REVOKED` oldugunda scanner state kilitlenecek, cache invalidation yapilacak ve `supabase.auth.signOut()` calisacak.
+- Manual pasted token state, labels, handler, panel and styles removed from `business/scanner.tsx`; QR camera remains the only operational scan path.
+
+## Scanner Revoke Session Cleanup Edge Cases
+
+- Realtime payload gelmeden auth admin delete session'i dusururse mevcut auth state listener login'e gonderir; realtime path sadece daha hizli/temiz bir cikis saglar.
+- Realtime delivery unavailable olursa scan RPC/device registration still fail-closed kalir; manual fallback eklenmez.
+- Legacy devices with `scanner_user_id = null` can still be revoked by owner/manager because they are not provably the current user's scanner account.
+- Repeated realtime revoke payloads sign-out idempotent davranmali; ref guard duplicate signOut cagrilarini engeller.
+
+## Scanner Revoke Session Cleanup Prompt
+
+Sen Supabase Realtime, Edge Function auth lifecycle ve Expo scanner UI konusunda deneyimli bir mobil/backend guvenlik muhendisisin.
+Hedef: Business scanner cihaz revoke akisini self-revoke'e kapat, revoke edilen scanner session'lari realtime olarak logout et, ve scanner ekranindaki manuel token QA alanini production UI'dan kaldir.
+Mimari: service-role Edge Function self-revoke guard; mobile scanner-device read model `scanner_user_id`; scanner screen row-level realtime subscription; Supabase realtime publication migration; minimal UI subtraction.
+Kapsam: `apps/mobile/src/features/scanner/scanner-device.ts`, `apps/mobile/src/app/business/profile.tsx`, `apps/mobile/src/app/business/scanner.tsx`, `supabase/functions/revoke-business-scanner-access/index.ts`, new migration, working docs and validation/deploy. Public-site/content copy ve unrelated translation changes'e dokunma.
+Cikti: strict typed TS/TSX/Deno TS/SQL degisiklikleri, explicit errors, local validation, hosted migration/function deploy.
+Yasaklar: `any` yok, client-only security yok, scanner auth'u fake etme yok, scan history row'larini silme yok, unrelated dirty worktree revert/stage yok.
+Standartlar: AGENTS.md, zero-trust backend, explicit session lifecycle, minimal diff.
+
+## Scanner Revoke Session Cleanup Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `supabase db lint --local`
+- `git --no-pager diff --check`
+- Deploy `revoke-business-scanner-access`
+- Apply hosted realtime publication migration
+- Vercel deploy only if admin/web code changes are included; otherwise not needed for mobile/Supabase-only slice.
+
 ## Current Plan (Business Owner Onboarding Handoff)
 
 - **Date:** 2026-05-06

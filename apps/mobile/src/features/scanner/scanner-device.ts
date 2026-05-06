@@ -33,6 +33,13 @@ type RegisterBusinessScannerDeviceParams = {
   businessName: string;
 };
 
+export class ScannerDeviceRevokedError extends Error {
+  constructor(label: string, businessId: string) {
+    super(`Scanner device ${label} was revoked for business ${businessId}.`);
+    this.name = "ScannerDeviceRevokedError";
+  }
+}
+
 type BusinessScannerDeviceRow = {
   id: string;
   business_id: string;
@@ -40,6 +47,7 @@ type BusinessScannerDeviceRow = {
   platform: ScannerDevicePlatform;
   status: "ACTIVE" | "REVOKED";
   created_by: string;
+  scanner_user_id: string | null;
   first_seen_at: string;
   last_seen_at: string;
   updated_at: string;
@@ -96,6 +104,7 @@ export type BusinessScannerDeviceSummary = {
   platform: ScannerDevicePlatform;
   status: "ACTIVE" | "REVOKED";
   createdBy: string;
+  scannerUserId: string | null;
   firstSeenAt: string;
   lastSeenAt: string;
   updatedAt: string;
@@ -311,6 +320,7 @@ const mapBusinessScannerDeviceRow = (row: BusinessScannerDeviceRow): BusinessSca
   platform: row.platform,
   status: row.status,
   createdBy: row.created_by,
+  scannerUserId: row.scanner_user_id,
   firstSeenAt: row.first_seen_at,
   lastSeenAt: row.last_seen_at,
   updatedAt: row.updated_at,
@@ -323,7 +333,7 @@ export const businessScannerDevicesQueryKey = (businessId: string) =>
 const fetchBusinessScannerDevicesAsync = async (businessId: string): Promise<BusinessScannerDeviceSummary[]> => {
   const { data, error } = await supabase
     .from("business_scanner_devices")
-    .select("id,business_id,label,platform,status,created_by,first_seen_at,last_seen_at,updated_at,pin_set_at")
+    .select("id,business_id,label,platform,status,created_by,scanner_user_id,first_seen_at,last_seen_at,updated_at,pin_set_at")
     .eq("business_id", businessId)
     .eq("status", "ACTIVE")
     .order("status", { ascending: true })
@@ -458,7 +468,7 @@ export const registerBusinessScannerDeviceAsync = async ({
   }
 
   if (data.status === "DEVICE_REVOKED") {
-    throw new Error(`Scanner device ${data.label} was revoked for business ${businessId}.`);
+    throw new ScannerDeviceRevokedError(data.label, businessId);
   }
 
   return {
