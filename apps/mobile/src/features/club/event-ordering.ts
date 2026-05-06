@@ -23,6 +23,10 @@ const compareEventStartTimes = (
     return rightTime - leftTime;
   }
 
+  if (leftEvent.timelineState === "DRAFT" && rightEvent.timelineState === "DRAFT") {
+    return rightTime - leftTime;
+  }
+
   return leftTime - rightTime;
 };
 
