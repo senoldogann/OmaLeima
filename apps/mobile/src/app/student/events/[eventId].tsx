@@ -15,6 +15,7 @@ import {
 import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
 import {
   useCancelEventRegistrationMutation,
   useJoinEventMutation,
@@ -151,8 +152,8 @@ const createRuleDescription = (
 
     if (perBusinessLimit !== null) {
       return language === "fi"
-        ? `Samasta pisteestä voi kerätä enintään ${perBusinessLimit} leimaa tämän tapahtuman aikana.`
-        : `You can collect up to ${perBusinessLimit} stamps from the same venue during this event.`;
+        ? `Samasta pisteestä voi kerätä enintään ${perBusinessLimit} leimaa tämän tapahtuman aikana. Jokainen leima vaatii oman onnistuneen skannauksen ja tuoreen QR:n.`
+        : `You can collect up to ${perBusinessLimit} stamps from the same venue during this event. Each stamp needs its own successful scan and fresh QR.`;
     }
   }
 
@@ -506,6 +507,19 @@ export default function StudentEventDetailScreen() {
     void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
   }, [detailQuery.data?.coverImageUrl]);
 
+  const joinPresentation = getJoinResultPresentation(joinMutation.data, language);
+  const cancelPresentation = getCancelResultPresentation(cancelRegistrationMutation.data, language);
+  const successPresentationKey = joinPresentation?.body ?? cancelPresentation?.body ?? null;
+
+  useTransientSuccessKey(
+    successPresentationKey,
+    () => {
+      joinMutation.reset();
+      cancelRegistrationMutation.reset();
+    },
+    successNoticeDurationMs
+  );
+
   if (eventId === null) {
     return (
       <AppScreen>
@@ -521,11 +535,10 @@ export default function StudentEventDetailScreen() {
   }
 
   const event = detailQuery.data ?? null;
+  const totalUserStamps = event ? event.venues.reduce((sum, v) => sum + v.collectedStampCount, 0) : 0;
   const registrationBadge = event ? getRegistrationBadge(event.registrationState, language) : null;
   const joinAvailability = event ? getJoinAvailability(event, language, formatter) : null;
   const cancelAvailability = event ? getCancelAvailability(event, language, formatter) : null;
-  const joinPresentation = getJoinResultPresentation(joinMutation.data, language);
-  const cancelPresentation = getCancelResultPresentation(cancelRegistrationMutation.data, language);
   const coverSource =
     event === null ? undefined : getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
   const hasEventStarted = event !== null && now >= new Date(event.startAt).getTime();
@@ -656,14 +669,23 @@ export default function StudentEventDetailScreen() {
           <View style={themeStyles.sectionBlock}>
             <View style={themeStyles.metaGrid}>
               <View style={themeStyles.metaCard}>
+                <View style={themeStyles.metaCardIcon}>
+                  <AppIcon name="map-pin" size={14} color={theme.colors.lime} />
+                </View>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Paikka" : "Place"}</Text>
                 <Text style={themeStyles.metaCardValue}>{event.city}</Text>
               </View>
               <View style={themeStyles.metaCard}>
+                <View style={themeStyles.metaCardIcon}>
+                  <AppIcon name="calendar" size={14} color={theme.colors.lime} />
+                </View>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
                 <Text style={themeStyles.metaCardValue}>{dateFormatter.format(new Date(event.startAt))}</Text>
               </View>
               <View style={themeStyles.metaCard}>
+                <View style={themeStyles.metaCardIcon}>
+                  <AppIcon name="calendar" size={14} color={theme.colors.lime} />
+                </View>
                 <Text style={themeStyles.metaCardLabel}>{language === "fi" ? "Aika" : "Time"}</Text>
                 <Text style={themeStyles.metaCardValue}>
                   {timeFormatter.format(new Date(event.startAt))} – {timeFormatter.format(new Date(event.endAt))}
@@ -679,7 +701,7 @@ export default function StudentEventDetailScreen() {
             <>
               <View style={themeStyles.sectionDivider} />
 
-              <View style={themeStyles.sectionBlock}>
+              <View style={joinAvailability?.canJoin ? themeStyles.registrationCard : themeStyles.sectionBlock}>
                 <View style={themeStyles.sectionHeader}>
                   <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Ilmoittautuminen" : "Registration"}</Text>
                   <Text style={themeStyles.sectionTitle}>{joinAvailability?.label ?? (language === "fi" ? "Liity tapahtumaan" : "Join event")}</Text>
@@ -774,9 +796,15 @@ export default function StudentEventDetailScreen() {
                           <AppIcon color={theme.colors.textPrimary} name="business" size={17} />
                         ) : null}
                       </CoverImageSurface>
-                      <View style={themeStyles.venueOrderBubble}>
-                        <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
-                      </View>
+                      {venue.stampedAt !== null ? (
+                        <View style={[themeStyles.venueOrderBubble, themeStyles.venueStampedBubble]}>
+                          <AppIcon name="check" size={14} color={theme.colors.actionPrimaryText} />
+                        </View>
+                      ) : (
+                        <View style={themeStyles.venueOrderBubble}>
+                          <Text style={themeStyles.venueOrderText}>{venue.venueOrder ?? "-"}</Text>
+                        </View>
+                      )}
                     </View>
                     <View style={themeStyles.venueCopy}>
                       <Text numberOfLines={2} style={themeStyles.listTitle}>{venue.name}</Text>
@@ -802,7 +830,7 @@ export default function StudentEventDetailScreen() {
             {event.rewardTiers.length > 0 ? (
               <View style={themeStyles.rewardGroup}>
                 {event.rewardTiers.map((rewardTier) => (
-                  <View key={rewardTier.id} style={themeStyles.listRow}>
+                  <View key={rewardTier.id} style={totalUserStamps >= rewardTier.requiredStampCount ? themeStyles.rewardUnlockedRow : themeStyles.rewardLockedRow}>
                     <View style={themeStyles.rewardHeader}>
                       <View
                         style={[
@@ -810,6 +838,9 @@ export default function StudentEventDetailScreen() {
                           { backgroundColor: getRewardChipColor(rewardTier, theme) },
                         ]}
                       >
+                        <View style={themeStyles.rewardBadgeIcon}>
+                          <AppIcon name="check" size={11} color={theme.colors.textPrimary} />
+                        </View>
                         <Text style={themeStyles.rewardRequirementText}>
                           {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
                         </Text>
@@ -836,8 +867,11 @@ export default function StudentEventDetailScreen() {
                 <View style={themeStyles.rulesGroup}>
                   {Object.entries(event.rules).map(([key, value]) => (
                     <View key={key} style={themeStyles.ruleRow}>
-                      <Text style={themeStyles.listTitle}>{createRuleLabel(key, language)}</Text>
-                      <Text style={themeStyles.metaLine}>{createRuleDescription(key, value, language)}</Text>
+                      <View style={themeStyles.ruleBullet} />
+                      <View style={themeStyles.ruleContent}>
+                        <Text style={themeStyles.listTitle}>{createRuleLabel(key, language)}</Text>
+                        <Text style={themeStyles.metaLine}>{createRuleDescription(key, value, language)}</Text>
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -853,6 +887,7 @@ export default function StudentEventDetailScreen() {
           >
             <View style={themeStyles.modalBackdrop}>
               <View style={themeStyles.venueModalSheet}>
+                <View style={themeStyles.venueModalAccentLine} />
                 {selectedVenue !== null ? (
                   <ScrollView contentContainerStyle={themeStyles.venueModalContent} showsVerticalScrollIndicator={false}>
                     <View style={themeStyles.venueModalHeader}>
@@ -920,7 +955,7 @@ export default function StudentEventDetailScreen() {
                     {event.rewardTiers.length > 0 ? (
                       <View style={themeStyles.rewardGroup}>
                         {event.rewardTiers.map((rewardTier) => (
-                          <View key={`venue-modal:${rewardTier.id}`} style={themeStyles.listRow}>
+                          <View key={`venue-modal:${rewardTier.id}`} style={totalUserStamps >= rewardTier.requiredStampCount ? themeStyles.rewardUnlockedRow : themeStyles.rewardLockedRow}>
                             <View style={themeStyles.rewardHeader}>
                               <View
                                 style={[
@@ -928,6 +963,9 @@ export default function StudentEventDetailScreen() {
                                   { backgroundColor: getRewardChipColor(rewardTier, theme) },
                                 ]}
                               >
+                                <View style={themeStyles.rewardBadgeIcon}>
+                                  <AppIcon name="check" size={11} color={theme.colors.textPrimary} />
+                                </View>
                                 <Text style={themeStyles.rewardRequirementText}>
                                   {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
                                 </Text>
@@ -1081,6 +1119,9 @@ const createStyles = (theme: MobileTheme) => {
       paddingVertical: 12,
       ...interactiveSurfaceShadowStyle,
     },
+    metaCardIcon: {
+      marginBottom: 2,
+    },
     metaCardLabel: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.bold,
@@ -1127,6 +1168,9 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
     },
+    rewardBadgeIcon: {
+      opacity: 0.7,
+    },
     rewardGroup: {
       gap: 10,
       marginTop: 10,
@@ -1135,8 +1179,11 @@ const createStyles = (theme: MobileTheme) => {
       gap: 10,
     },
     rewardRequirementBadge: {
+      alignItems: "center",
       alignSelf: "flex-start",
       borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
       paddingHorizontal: 10,
       paddingVertical: 6,
     },
@@ -1172,11 +1219,50 @@ const createStyles = (theme: MobileTheme) => {
       letterSpacing: -0.3,
       lineHeight: 24,
     },
+    registrationCard: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 14,
+      padding: 16,
+    },
+    rewardLockedRow: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderLeftColor: theme.colors.borderDefault,
+      borderLeftWidth: 3,
+      borderRadius: theme.radius.card,
+      gap: 8,
+      padding: 16,
+      ...interactiveSurfaceShadowStyle,
+    },
+    rewardUnlockedRow: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderLeftColor: theme.colors.lime,
+      borderLeftWidth: 3,
+      borderRadius: theme.radius.card,
+      gap: 8,
+      padding: 16,
+      ...interactiveSurfaceShadowStyle,
+    },
+    ruleBullet: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 6,
+      marginTop: 6,
+      width: 6,
+    },
+    ruleContent: {
+      flex: 1,
+      gap: 4,
+    },
     rulesGroup: {
       gap: 10,
     },
     ruleRow: {
-      gap: 4,
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
     },
     secondaryButton: {
       alignSelf: "flex-start",
@@ -1248,8 +1334,16 @@ const createStyles = (theme: MobileTheme) => {
       overflow: "hidden",
       width: 56,
     },
+    venueModalAccentLine: {
+      alignSelf: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 3,
+      marginBottom: 16,
+      width: 40,
+    },
     venueModalSheet: {
-      backgroundColor: theme.colors.surfaceL1,
+      backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.scene,
       borderWidth: theme.mode === "light" ? 1 : 0,
@@ -1314,6 +1408,9 @@ const createStyles = (theme: MobileTheme) => {
       height: 34,
       justifyContent: "center",
       width: 34,
+    },
+    venueStampedBubble: {
+      backgroundColor: theme.colors.lime,
     },
     venueOrderText: {
       color: theme.colors.textPrimary,

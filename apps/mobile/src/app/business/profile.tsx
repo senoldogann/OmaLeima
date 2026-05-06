@@ -23,6 +23,8 @@ import { useBusinessHomeOverviewQuery } from "@/features/business/business-home"
 import type { BusinessMembershipSummary } from "@/features/business/types";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { LegalLinksCard } from "@/features/legal/legal-links-card";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import {
   useBusinessScannerLoginQrQuery,
@@ -186,6 +188,12 @@ export default function BusinessProfileScreen() {
   const [uploadingMediaKind, setUploadingMediaKind] = useState<BusinessMediaKind | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const updateBusinessProfileMutation = useUpdateBusinessProfileMutation();
+
+  useTransientSuccessKey(
+    updateBusinessProfileMutation.isSuccess ? "business-profile-saved" : null,
+    () => updateBusinessProfileMutation.reset(),
+    successNoticeDurationMs
+  );
   const renameScannerDeviceMutation = useRenameBusinessScannerDeviceMutation();
   const revokeScannerDeviceMutation = useRevokeBusinessScannerDeviceMutation();
   const setScannerPinMutation = useSetBusinessScannerDevicePinMutation();
@@ -450,6 +458,34 @@ export default function BusinessProfileScreen() {
             style={styles.businessHero}
           >
             <View style={styles.heroOverlay} />
+            {canEditSelectedMembership ? (
+              <View style={styles.heroMediaButtons}>
+                <Pressable
+                  disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                  onPress={() => void handleMediaPress("cover")}
+                  style={[styles.heroMediaBtn, uploadingMediaKind !== null ? styles.disabledButton : null]}
+                >
+                  <AppIcon color="rgba(255,255,255,0.92)" name="tools" size={13} />
+                  <Text style={styles.heroMediaBtnText}>
+                    {uploadingMediaKind === "cover"
+                      ? language === "fi" ? "Ladataan..." : "Uploading..."
+                      : language === "fi" ? "Vaihda kansikuva" : "Change cover"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                  onPress={() => void handleMediaPress("logo")}
+                  style={[styles.heroMediaBtn, uploadingMediaKind !== null ? styles.disabledButton : null]}
+                >
+                  <AppIcon color="rgba(255,255,255,0.92)" name="tools" size={13} />
+                  <Text style={styles.heroMediaBtnText}>
+                    {uploadingMediaKind === "logo"
+                      ? language === "fi" ? "Ladataan..." : "Uploading..."
+                      : language === "fi" ? "Vaihda logo" : "Change logo"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.heroContent}>
               <CoverImageSurface
                 fallbackSource={getFallbackCoverSource("qrPass")}
@@ -471,40 +507,6 @@ export default function BusinessProfileScreen() {
             </View>
           </CoverImageSurface>
 
-          {canEditSelectedMembership ? (
-            <View style={styles.mediaActionRow}>
-              <Pressable
-                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
-                onPress={() => void handleMediaPress("cover")}
-                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
-              >
-                <Text style={styles.mediaButtonText}>
-                  {uploadingMediaKind === "cover"
-                    ? language === "fi"
-                      ? "Ladataan..."
-                      : "Uploading..."
-                    : language === "fi"
-                      ? "Vaihda kansikuva"
-                      : "Change cover"}
-                </Text>
-              </Pressable>
-              <Pressable
-                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
-                onPress={() => void handleMediaPress("logo")}
-                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
-              >
-                <Text style={styles.mediaButtonText}>
-                  {uploadingMediaKind === "logo"
-                    ? language === "fi"
-                      ? "Ladataan..."
-                      : "Uploading..."
-                    : language === "fi"
-                      ? "Vaihda logo"
-                      : "Change logo"}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
           {mediaError ? <Text style={styles.errorText}>{mediaError}</Text> : null}
 
           <View style={styles.scannerWorkflowCard}>
@@ -552,14 +554,14 @@ export default function BusinessProfileScreen() {
             <View style={styles.ownerQrCard}>
               <View style={styles.ownerQrCopy}>
                 <Text style={styles.sectionEyebrow}>
-                  {language === "fi" ? "Henkilokunta" : "Staff access"}
+                  {language === "fi" ? "Henkilökunta" : "Staff access"}
                 </Text>
                 <Text style={styles.sectionTitle}>
                   {language === "fi" ? "Scanner QR" : "Scanner QR"}
                 </Text>
                 <Text style={styles.bodyText}>
                   {language === "fi"
-                    ? "Nayta tama QR tyontekijalle. Han avaa yrityskirjautumisen, valitsee QR-skannauksen ja laite saa oman scanner-oikeuden."
+                    ? "Näytä tämä QR henkilöstölle. He avaavat yrityskirjautumisen, skannaavat koodin ja saavat laitekohtaisen skannausroolin."
                     : "Show this QR to staff. They open business sign-in, scan it, and this phone gets its own scanner access."}
                 </Text>
               </View>
@@ -587,15 +589,15 @@ export default function BusinessProfileScreen() {
                 <Text style={styles.metaText}>
                   {scannerLoginQrQuery.data
                     ? language === "fi"
-                      ? "QR paivittyy automaattisesti."
+                      ? "QR päivittyy automaattisesti."
                       : "QR refreshes automatically."
                     : language === "fi"
-                      ? "Owner/manager oikeus vaaditaan."
+                      ? "Omistaja- tai managerioikeus vaaditaan."
                       : "Owner/manager access required."}
                 </Text>
                 <Pressable onPress={() => void scannerLoginQrQuery.refetch()} style={styles.scannerDeviceActionButton}>
                   <Text style={styles.scannerDeviceActionText}>
-                    {language === "fi" ? "Paivita" : "Refresh"}
+                    {language === "fi" ? "Päivitä" : "Refresh"}
                   </Text>
                 </Pressable>
               </View>
@@ -652,7 +654,60 @@ export default function BusinessProfileScreen() {
               title={language === "fi" ? "Yrityksen tiedot" : "Business details"}
             >
               <View style={styles.formStack}>
-                {fieldConfigs.map((config) => (
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Perustiedot" : "Basic info"}
+                </Text>
+                {fieldConfigs.filter(c => (["name", "yTunnus", "contactPersonName"] as string[]).includes(c.field as string)).map((config) => (
+                  <View key={config.field} style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <TextInput
+                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                      multiline={config.multiline}
+                      onChangeText={(value) => updateDraftField(config.field, value)}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={[
+                        styles.input,
+                        config.multiline ? styles.textArea : null,
+                        !canEditSelectedMembership ? styles.readOnlyInput : null,
+                      ]}
+                      textAlignVertical={config.multiline ? "top" : "center"}
+                      value={draft[config.field]}
+                    />
+                  </View>
+                ))}
+
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Yhteystiedot" : "Contact"}
+                </Text>
+                {fieldConfigs.filter(c => (["contactEmail", "phone", "address", "city", "websiteUrl", "instagramUrl"] as string[]).includes(c.field as string)).map((config) => (
+                  <View key={config.field} style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <TextInput
+                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                      multiline={config.multiline}
+                      onChangeText={(value) => updateDraftField(config.field, value)}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={[
+                        styles.input,
+                        config.multiline ? styles.textArea : null,
+                        !canEditSelectedMembership ? styles.readOnlyInput : null,
+                      ]}
+                      textAlignVertical={config.multiline ? "top" : "center"}
+                      value={draft[config.field]}
+                    />
+                  </View>
+                ))}
+
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Toiminta" : "Operations"}
+                </Text>
+                {fieldConfigs.filter(c => (["openingHours", "announcement"] as string[]).includes(c.field as string)).map((config) => (
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
@@ -1009,6 +1064,8 @@ export default function BusinessProfileScreen() {
               <SignOutButton />
             </View>
           </InfoCard>
+
+          <LegalLinksCard language={language} />
         </>
       ) : null}
 
@@ -1094,6 +1151,39 @@ export default function BusinessProfileScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
+    formGroupHeader: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      marginTop: 6,
+      textTransform: "uppercase",
+    },
+    heroMediaButtons: {
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "space-between",
+      left: 14,
+      position: "absolute",
+      right: 14,
+      top: 14,
+      zIndex: 3,
+    },
+    heroMediaBtn: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.54)",
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    heroMediaBtnText: {
+      color: "rgba(255,255,255,0.92)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.regular,

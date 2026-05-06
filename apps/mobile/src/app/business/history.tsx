@@ -372,19 +372,16 @@ export default function BusinessHistoryScreen() {
           <Text style={styles.screenTitle}>{labels.screenTitle}</Text>
           <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
         </View>
-      </View>
-
-      <View style={styles.actionRow}>
-        <Pressable onPress={() => router.push("/business/scanner")} style={styles.primaryButton}>
-          <AppIcon color={theme.colors.actionPrimaryText} name="scan" size={18} />
-          <Text style={styles.primaryButtonText}>{labels.openScanner}</Text>
-        </Pressable>
-        {isScannerOnlyBusinessUser ? null : (
-          <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
-            <AppIcon color={theme.colors.textPrimary} name="calendar" size={17} />
-            <Text style={styles.secondaryButtonText}>{labels.openEvents}</Text>
+        <View style={styles.topBarShortcuts}>
+          <Pressable onPress={() => router.push("/business/scanner")} style={styles.topBarShortcut}>
+            <Text style={styles.topBarShortcutText}>→ {labels.openScanner}</Text>
           </Pressable>
-        )}
+          {isScannerOnlyBusinessUser ? null : (
+            <Pressable onPress={() => router.push("/business/events")} style={styles.topBarShortcut}>
+              <Text style={styles.topBarShortcutText}>→ {labels.openEvents}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {historyQuery.isLoading ? (
@@ -412,22 +409,34 @@ export default function BusinessHistoryScreen() {
             <Text style={styles.bodyText}>{labels.currentViewBody}</Text>
             {isRecentWindowCapped ? <Text style={styles.windowNotice}>{labels.recentWindowNotice}</Text> : null}
             <View style={styles.metricGrid}>
-              {metricCards.map((metricCard) => (
-                <View
-                  key={metricCard.key}
-                  style={[
-                    styles.metricCard,
-                    metricCard.tone === "accent"
-                      ? styles.metricCardAccent
-                      : metricCard.tone === "warning"
-                        ? styles.metricCardWarning
-                        : null,
-                  ]}
-                >
-                  <Text style={styles.metricValue}>{metricCard.value}</Text>
-                  <Text style={styles.metricLabel}>{metricCard.label}</Text>
-                </View>
-              ))}
+              {metricCards.map((metricCard) => {
+                const iconName = metricCard.key === "valid" ? "check" as const
+                  : metricCard.key === "students" ? "user" as const
+                  : metricCard.key === "review" ? "info" as const
+                  : "history" as const;
+                const iconColor = metricCard.tone === "accent"
+                  ? theme.colors.lime
+                  : metricCard.tone === "warning"
+                    ? theme.colors.warning
+                    : theme.colors.textMuted;
+                return (
+                  <View
+                    key={metricCard.key}
+                    style={[
+                      styles.metricCard,
+                      metricCard.tone === "accent"
+                        ? styles.metricCardAccent
+                        : metricCard.tone === "warning"
+                          ? styles.metricCardWarning
+                          : null,
+                    ]}
+                  >
+                    <AppIcon color={iconColor} name={iconName} size={18} />
+                    <Text style={styles.metricValue}>{metricCard.value}</Text>
+                    <Text style={styles.metricLabel}>{metricCard.label}</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
 
@@ -475,11 +484,13 @@ export default function BusinessHistoryScreen() {
             <View style={styles.stack}>
               {groupedSections.map((section) => (
                 <View key={section.dayKey} style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{section.dayLabel}</Text>
-                    <Text style={styles.sectionMeta}>
-                      {numberFormatter.format(section.entries.length)} {labels.scanRows}
-                    </Text>
+                  <View style={styles.daySectionHeader}>
+                    <Text style={styles.daySectionTitle}>{section.dayLabel}</Text>
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>
+                        {numberFormatter.format(section.entries.length)} {labels.scanRows}
+                      </Text>
+                    </View>
                   </View>
 
                   <View style={styles.sectionList}>
@@ -494,6 +505,8 @@ export default function BusinessHistoryScreen() {
                             {
                               backgroundColor: statusMeta.backgroundColor,
                               borderColor: statusMeta.borderColor,
+                              borderLeftWidth: 3,
+                              borderLeftColor: statusMeta.chipBorderColor,
                             },
                           ]}
                         >
@@ -810,6 +823,43 @@ const createStyles = (theme: MobileTheme) =>
     topBarCopy: {
       flex: 1,
       gap: 6,
+    },
+    topBarShortcuts: {
+      gap: 6,
+      alignItems: "flex-end",
+    },
+    topBarShortcut: {
+      paddingVertical: 4,
+    },
+    topBarShortcutText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    daySectionHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    daySectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
+    },
+    countBadge: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+    },
+    countBadgeText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     windowNotice: {
       color: theme.colors.textMuted,

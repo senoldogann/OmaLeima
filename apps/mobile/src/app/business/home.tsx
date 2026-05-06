@@ -8,10 +8,12 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
+import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { BusinessJoinedEventSummary } from "@/features/business/types";
 import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
+import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
@@ -44,6 +46,7 @@ export default function BusinessHomeScreen() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [isConfirmingSignOut, setIsConfirmingSignOut] = useState<boolean>(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const formatter = useMemo(
@@ -104,7 +107,20 @@ export default function BusinessHomeScreen() {
     joinedEvents.length === 1 ? styles.eventRailContentSingle : null,
   ];
 
+  const handleSignOutConfirmPress = (): void => {
+    hapticImpact(ImpactStyle.Light);
+    setIsConfirmingSignOut(true);
+    setSignOutError(null);
+  };
+
+  const handleSignOutCancelPress = (): void => {
+    hapticImpact(ImpactStyle.Light);
+    setIsConfirmingSignOut(false);
+    setSignOutError(null);
+  };
+
   const handleSignOutPress = async (): Promise<void> => {
+    hapticNotification(NotificationType.Warning);
     setIsSigningOut(true);
     setSignOutError(null);
 
@@ -113,6 +129,7 @@ export default function BusinessHomeScreen() {
     if (error !== null) {
       setSignOutError(error.message);
       setIsSigningOut(false);
+      setIsConfirmingSignOut(false);
       return;
     }
 
@@ -124,7 +141,7 @@ export default function BusinessHomeScreen() {
       <View style={styles.screenHeaderRow}>
         <View style={styles.screenHeaderCopy}>
           <Text style={styles.screenEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
-          <Text style={styles.screenTitle}>{copy.common.business}</Text>
+          <Text style={styles.screenTitle}>{homeOverviewQuery.data?.memberships[0]?.businessName ?? copy.common.business}</Text>
           <Text style={styles.metaText}>{copy.business.homeMeta}</Text>
         </View>
         <View style={styles.headerActions}>
@@ -132,17 +149,40 @@ export default function BusinessHomeScreen() {
             <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
             <Text style={styles.headerButtonText}>{copy.business.profileButton}</Text>
           </Pressable>
-          <Pressable
-            disabled={isSigningOut}
-            onPress={() => void handleSignOutPress()}
-            style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
-          >
-            {isSigningOut ? (
-              <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-            ) : (
+          {isConfirmingSignOut ? (
+            <View style={styles.signOutConfirmRow}>
+              <Pressable
+                accessibilityHint={language === "fi" ? "Kirjautuu ulos tililtä" : "Signs out of the account"}
+                accessibilityLabel={language === "fi" ? "Kyllä, kirjaudu ulos" : "Yes, sign out"}
+                disabled={isSigningOut}
+                onPress={() => void handleSignOutPress()}
+                style={[styles.iconButtonDanger, isSigningOut ? styles.disabledButton : null]}
+              >
+                {isSigningOut ? (
+                  <ActivityIndicator color={theme.colors.danger} size="small" />
+                ) : (
+                  <AppIcon color={theme.colors.danger} name="logout" size={17} />
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityLabel={language === "fi" ? "Peruuta" : "Cancel"}
+                disabled={isSigningOut}
+                onPress={handleSignOutCancelPress}
+                style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
+              >
+                <AppIcon color={theme.colors.textPrimary} name="x" size={17} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              accessibilityHint={language === "fi" ? "Pyytää kirjautumisesta ulos vahvistuksen" : "Asks for sign-out confirmation"}
+              accessibilityLabel={language === "fi" ? "Kirjaudu ulos" : "Sign out"}
+              onPress={handleSignOutConfirmPress}
+              style={styles.iconButton}
+            >
               <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
-            )}
-          </Pressable>
+            </Pressable>
+          )}
         </View>
       </View>
       {signOutError !== null ? <Text style={styles.errorText}>{signOutError}</Text> : null}
@@ -150,14 +190,17 @@ export default function BusinessHomeScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={styles.summaryStrip}>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.lime} name="scan" size={18} />
             <Text style={styles.summaryLabel}>{copy.business.live}</Text>
             <Text style={styles.summaryValue}>{activeJoinedEvents.length}</Text>
           </View>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.textMuted} name="calendar" size={18} />
             <Text style={styles.summaryLabel}>{copy.business.upcoming}</Text>
             <Text style={styles.summaryValue}>{joinedUpcomingEvents.length}</Text>
           </View>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.textMuted} name="history" size={18} />
             <Text style={styles.summaryLabel}>{labels.past}</Text>
             <Text style={styles.summaryValue}>{joinedCompletedEvents.length}</Text>
           </View>
@@ -180,9 +223,20 @@ export default function BusinessHomeScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <MobileRoleSwitchCard currentArea="business" />
+      ) : null}
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={[styles.scannerCard, activeJoinedEvents.length > 0 ? styles.scannerCardReady : null]}>
           <View style={styles.scannerCardHeader}>
-            <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+            {activeJoinedEvents.length > 0 ? (
+              <View style={styles.scannerEyebrowRow}>
+                <View style={styles.liveDot} />
+                <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+              </View>
+            ) : (
+              <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+            )}
             <Text style={styles.scannerTitle}>
               {activeJoinedEvents.length > 0
                 ? labels.scannerReadyTitle
@@ -482,6 +536,20 @@ const createStyles = (theme: MobileTheme) =>
       justifyContent: "center",
       width: 42,
     },
+    iconButtonDanger: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.danger,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
+    signOutConfirmRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
     screenHeaderCopy: {
       flex: 1,
       gap: 6,
@@ -519,7 +587,7 @@ const createStyles = (theme: MobileTheme) =>
       padding: 18,
     },
     scannerCardReady: {
-      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.06)" : "rgba(200, 255, 71, 0.12)",
+      backgroundColor: theme.colors.limeSurface,
       borderColor: theme.colors.limeBorder,
     },
     scannerCardHeader: {
@@ -593,6 +661,17 @@ const createStyles = (theme: MobileTheme) =>
     summaryStrip: {
       flexDirection: "row",
       gap: 10,
+    },
+    scannerEyebrowRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    liveDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
     },
     summaryValue: {
       color: theme.colors.lime,

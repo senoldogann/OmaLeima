@@ -716,19 +716,45 @@ export default function ClubEventsScreen() {
                   onPress={() => setContextMenuEventId(event.eventId)}
                   style={styles.eventListCard}
                 >
-                  <View style={styles.eventListCardTopRow}>
-                    <StatusBadge
-                      label={timelineStateLabel(event.timelineState, language)}
-                      state={timelineStateBadgeState(event.timelineState)}
-                    />
-                    <Text style={styles.metaText}>{formatter.format(new Date(event.startAt))}</Text>
+                  <CoverImageSurface
+                    fallbackSource={getEventCoverSourceWithFallback(null, "clubControl")}
+                    imageStyle={styles.eventListCardImage}
+                    source={event.coverImageUrl === null ? null : { uri: event.coverImageUrl }}
+                    style={styles.eventListCardCover}
+                  >
+                    <View style={styles.eventListCardOverlay} />
+                    <View style={styles.eventListCardBadgeRow}>
+                      <StatusBadge
+                        label={timelineStateLabel(event.timelineState, language)}
+                        state={timelineStateBadgeState(event.timelineState)}
+                      />
+                    </View>
+                  </CoverImageSurface>
+                  <View style={styles.eventListCardCopy}>
+                    <View style={styles.eventListCardTopRow}>
+                      <Text style={styles.eventListCardTitle}>{event.name}</Text>
+                    </View>
+                    <View style={styles.eventListCardMeta}>
+                      {event.city ? (
+                        <View style={styles.eventListCardMetaItem}>
+                          <AppIcon color={theme.colors.textMuted} name="map-pin" size={12} />
+                          <Text style={styles.metaText}>{event.city}</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.eventListCardMetaItem}>
+                        <AppIcon color={theme.colors.textMuted} name="calendar" size={12} />
+                        <Text style={styles.metaText}>{formatter.format(new Date(event.startAt))}</Text>
+                      </View>
+                      <View style={styles.eventListCardMetaItem}>
+                        <AppIcon color={theme.colors.textMuted} name="user" size={12} />
+                        <Text style={styles.metaText}>
+                          {event.registeredParticipantCount}{" "}
+                          {language === "fi" ? "os." : "part."}
+                          {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <Text style={styles.eventListCardTitle}>{event.name}</Text>
-                  <Text style={styles.metaText}>
-                    {event.registeredParticipantCount}{" "}
-                    {language === "fi" ? "osallistujaa" : "participants"}
-                    {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
-                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -1656,8 +1682,37 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.card,
       borderWidth: theme.mode === "light" ? 1 : 0,
+      overflow: "hidden",
+    },
+    eventListCardBadgeRow: {
+      alignItems: "flex-start",
+      flex: 1,
+      padding: 10,
+    },
+    eventListCardCopy: {
       gap: 8,
-      padding: 14,
+      padding: 12,
+    },
+    eventListCardCover: {
+      minHeight: 96,
+      position: "relative",
+    },
+    eventListCardImage: {
+      borderRadius: 0,
+    },
+    eventListCardMeta: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    eventListCardMetaItem: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+    },
+    eventListCardOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.22)",
     },
     eventListCardTitle: {
       color: theme.colors.textPrimary,
@@ -1686,7 +1741,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
       paddingBottom: 16,
       paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingTop: 58,
     },
     formModalHeaderCopy: {
       flex: 1,

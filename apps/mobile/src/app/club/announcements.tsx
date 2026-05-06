@@ -1631,7 +1631,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
       paddingBottom: 16,
       paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingTop: 58,
     },
     formModalHeaderCopy: {
       flex: 1,

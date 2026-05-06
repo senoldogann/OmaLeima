@@ -82,7 +82,7 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
         platform: "OmaLeima Support",
         read: language === "fi" ? "Luettu" : "Read",
         retry: language === "fi" ? "Yritä uudelleen" : "Retry",
-        senderLabel: language === "fi" ? "Lahettaja" : "Sender",
+        senderLabel: language === "fi" ? "Lähettäjä" : "Sender",
         unavailableBody:
             language === "fi"
                 ? "Tiedote ei ole enää saatavilla tälle tilille tai se on poistunut näkyvistä."
@@ -182,6 +182,7 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                     <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={18} />
                     <Text style={styles.backButtonText}>{labels.back}</Text>
                 </Pressable>
+                <Text style={styles.topBarTitle}>{labels.detailTitle}</Text>
             </View>
 
             {userId === null ? (
@@ -236,8 +237,13 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                     </CoverImageSurface>
 
                     <View style={styles.copyStack}>
-                        <Text style={styles.metaText}>{formatDetailDate(localeTag, announcement.startsAt)}</Text>
+                        <View style={styles.accentDivider} />
+                        <View style={styles.dateRow}>
+                            <AppIcon color={theme.colors.textMuted} name="calendar" size={13} />
+                            <Text style={styles.metaText}>{formatDetailDate(localeTag, announcement.startsAt)}</Text>
+                        </View>
                         <View style={styles.sourceRow}>
+                            <AppIcon color={theme.colors.textMuted} name="user" size={13} />
                             <Text style={styles.sourceLabel}>{labels.senderLabel}</Text>
                             <Text style={styles.sourceValue}>{announcement.clubName ?? labels.platform}</Text>
                         </View>
@@ -249,6 +255,11 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                                 onPress={() => void handleMarkReadPress()}
                                 style={[styles.secondaryButton, announcement.isRead || acknowledgeMutation.isPending ? styles.disabledButton : null]}
                             >
+                                <AppIcon
+                                    color={announcement.isRead ? theme.colors.lime : theme.colors.textPrimary}
+                                    name="check"
+                                    size={15}
+                                />
                                 <Text style={styles.secondaryButtonText}>{announcement.isRead ? labels.read : labels.markRead}</Text>
                             </Pressable>
                             {announcement.ctaUrl !== null ? (
@@ -291,9 +302,14 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
 
 const createStyles = (theme: MobileTheme) =>
     StyleSheet.create({
+        accentDivider: {
+            backgroundColor: theme.colors.lime,
+            borderRadius: 999,
+            height: 3,
+            width: 40,
+        },
         actionRow: {
             flexDirection: "row",
-            flexWrap: "wrap",
             gap: 10,
         },
         backButton: {
@@ -331,6 +347,11 @@ const createStyles = (theme: MobileTheme) =>
             borderWidth: 1,
             overflow: "hidden",
         },
+        dateRow: {
+            alignItems: "center",
+            flexDirection: "row",
+            gap: 6,
+        },
         disabledButton: {
             opacity: 0.56,
         },
@@ -341,7 +362,7 @@ const createStyles = (theme: MobileTheme) =>
             lineHeight: theme.typography.lineHeights.bodySmall,
         },
         hero: {
-            minHeight: 250,
+            minHeight: 280,
             overflow: "hidden",
         },
         heroContent: {
@@ -398,6 +419,7 @@ const createStyles = (theme: MobileTheme) =>
             alignItems: "center",
             backgroundColor: theme.colors.lime,
             borderRadius: theme.radius.button,
+            flex: 1,
             flexDirection: "row",
             gap: 7,
             justifyContent: "center",
@@ -418,6 +440,8 @@ const createStyles = (theme: MobileTheme) =>
             borderColor: theme.colors.borderDefault,
             borderRadius: theme.radius.button,
             borderWidth: 1,
+            flexDirection: "row",
+            gap: 7,
             justifyContent: "center",
             minHeight: 44,
             paddingHorizontal: 15,
@@ -462,8 +486,15 @@ const createStyles = (theme: MobileTheme) =>
             lineHeight: theme.typography.lineHeights.title,
         },
         topBar: {
-            alignItems: "flex-start",
+            alignItems: "center",
             flexDirection: "row",
+            justifyContent: "space-between",
             marginBottom: 2,
+        },
+        topBarTitle: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.typography.families.semibold,
+            fontSize: theme.typography.sizes.bodySmall,
+            lineHeight: theme.typography.lineHeights.bodySmall,
         },
     });
