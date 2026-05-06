@@ -1675,6 +1675,30 @@ Implement the fix at shared component and read-model roots. `AutoAdvancingRail` 
 
 Implement a focused mobile + Supabase fix. Remove the empty joined-event venue pill from the preview modal, add bordered secondary event buttons and compact scanner text, remove redundant back buttons from bottom-tab root screens, pass selected scanner event/venue context through mobile scan transport, require that context in `scan-qr`, validate the selected event venue inside both Edge Function and atomic RPC, replace explicit student QR selector with a swipeable hero rail, replace business scanner selector with a swipeable selected-event rail that pauses camera while moving, and add shared announcement detail screens backed by ID-specific announcement queries reachable from feed cards.
 
+## Current Review (Scanner Reprovision After Revoke)
+
+- **Date:** 2026-05-06
+- **Branch:** `bug/scanner-reprovision-after-revoke`
+- **Scope:** Fix revoked scanner device sessions getting stuck on the old installation id, keep revoked devices out of the active device list, and show the physical device model in the business scanner devices section when available.
+
+## Scanner Reprovision Existing Logic Checked
+
+- `register_business_scanner_device` returns `DEVICE_REVOKED` when the same `business_id + installation_id` row is revoked or belongs to another scanner user.
+- Mobile stores one scanner installation id in SecureStore/localStorage and reuses it across business owner, manager, and anonymous scanner sessions.
+- The scanner screen signs out immediately on `ScannerDeviceRevokedError`, which can also affect an active business owner using the same phone after revoking a previous scanner device.
+- Owner QR provisioning can create or reactivate devices, but the current payload does not store the physical model, so `Skannerilaitteet` can only show generic platform labels.
+
+## Scanner Reprovision Risks
+
+- A revoked scanner-only account must not regain scanner access without the owner QR flow.
+- An active owner/manager opening the scanner on the same phone should not be trapped by a stale revoked installation id.
+- Device model storage must be optional so web and older app clients keep working.
+- RPC migrations must avoid overloaded function ambiguity by dropping the old signatures before recreating the updated functions.
+
+## Scanner Reprovision Review Outcome
+
+Reset the local scanner installation id when the RPC reports `DEVICE_REVOKED`, then retry registration once for the current authenticated actor. This lets legitimate active business users re-register the phone as a fresh device while revoked anonymous scanner users still fail authorization and must use owner QR provisioning again. Add nullable `device_model` storage and pass it through both direct registration and owner QR provisioning.
+
 ## Current Review (Scanner Density + Refresh Spinner + Swipe Clamp)
 
 - **Date:** 2026-05-04

@@ -74,6 +74,16 @@ const formatScannerDevicePlatform = (platform: BusinessScannerDeviceSummary["pla
   return platformLabels[platform];
 };
 
+const formatScannerDeviceHardware = (device: BusinessScannerDeviceSummary): string => {
+  const platformLabel = formatScannerDevicePlatform(device.platform);
+
+  if (device.deviceModel === null) {
+    return platformLabel;
+  }
+
+  return `${device.deviceModel} · ${platformLabel}`;
+};
+
 const formatScannerDeviceTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
 
@@ -757,7 +767,7 @@ export default function BusinessProfileScreen() {
                           </Text>
                         )}
                         <Text style={styles.scannerDeviceMeta}>
-                          {formatScannerDevicePlatform(device.platform)} ·{" "}
+                          {formatScannerDeviceHardware(device)} ·{" "}
                           {language === "fi" ? "nähty" : "seen"}{" "}
                           {formatScannerDeviceTime(scannerDeviceTimeFormatter, device.lastSeenAt)}
                         </Text>

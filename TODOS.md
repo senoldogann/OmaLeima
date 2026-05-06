@@ -718,6 +718,16 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Run mobile/function validation and deep review subagents.
 - [x] Update `PROGRESS.md` handoff.
 
+## Current Todos (Scanner Reprovision After Revoke)
+
+- [x] Re-read project rules, master plan, progress, todos, and plan.
+- [x] Inspect scanner device registration, owner QR provisioning, revoke edge function, and business profile scanner device list.
+- [x] Update working docs for the scanner reprovision slice.
+- [x] Add optional device model storage and RPC payload wiring.
+- [x] Reset stale revoked scanner installation ids and retry active business registration once.
+- [x] Show scanner device model in the business profile device list.
+- [x] Run focused validation and update handoff.
+
 ## Current Todos (Scanner Density + Refresh Spinner + Swipe Clamp)
 
 - [x] Re-read project rules, master plan, progress, todos, and plan.

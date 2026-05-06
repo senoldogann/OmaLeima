@@ -27,7 +27,11 @@ import { InfoCard } from "@/components/info-card";
 import { businessScanHistoryQueryKey } from "@/features/business/business-history";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { registerBusinessScannerDeviceAsync, ScannerDeviceRevokedError } from "@/features/scanner/scanner-device";
+import {
+  registerBusinessScannerDeviceAsync,
+  resetScannerInstallationIdAsync,
+  ScannerDeviceRevokedError,
+} from "@/features/scanner/scanner-device";
 import { scanQrWithTimeoutAsync } from "@/features/scanner/scanner";
 import type {
   ScannerAttemptResult,
@@ -584,11 +588,13 @@ export default function BusinessScannerScreen() {
             });
           }
 
-          void supabase.auth.signOut().then(({ error }) => {
-            if (error !== null) {
-              setSignOutError(error.message);
-            }
-          });
+          void resetScannerInstallationIdAsync()
+            .then(() => supabase.auth.signOut())
+            .then(({ error }) => {
+              if (error !== null) {
+                setSignOutError(error.message);
+              }
+            });
         }
       )
       .subscribe();

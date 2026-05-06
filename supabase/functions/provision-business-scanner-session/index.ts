@@ -4,6 +4,7 @@ import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJso
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
 
 type ProvisionBusinessScannerSessionRequest = {
+  deviceModel: string | null;
   installationId: string;
   label: string | null;
   platform: "ANDROID" | "IOS" | "UNKNOWN" | "WEB";
@@ -51,8 +52,13 @@ const parseRequestBody = (body: Record<string, unknown>): ProvisionBusinessScann
     throw new Error("label must be a string when provided.");
   }
 
+  if (typeof body.deviceModel !== "string" && body.deviceModel !== null && typeof body.deviceModel !== "undefined") {
+    throw new Error("deviceModel must be a string when provided.");
+  }
+
   return {
     qrToken: body.qrToken,
+    deviceModel: typeof body.deviceModel === "string" ? body.deviceModel : null,
     installationId: body.installationId,
     platform: body.platform,
     label: typeof body.label === "string" ? body.label : null,
@@ -152,6 +158,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       "provision_business_scanner_device_atomic",
       {
         p_business_id: verifiedToken.payload.businessId,
+        p_device_model: body.deviceModel,
         p_installation_id: body.installationId,
         p_issued_by: verifiedToken.payload.sub,
         p_jti: verifiedToken.payload.jti,

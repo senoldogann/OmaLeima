@@ -1,3 +1,4 @@
+import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
@@ -33,9 +34,17 @@ type RegisterBusinessScannerDeviceParams = {
   businessName: string;
 };
 
+type RegisterBusinessScannerDeviceRpcParams = {
+  businessId: string;
+  deviceModel: string | null;
+  installationId: string;
+  label: string;
+  platform: ScannerDevicePlatform;
+};
+
 export class ScannerDeviceRevokedError extends Error {
   constructor(label: string, businessId: string) {
-    super(`Scanner device ${label} was revoked for business ${businessId}.`);
+    super(`Scanner device ${label} was revoked for business ${businessId}. Register this device again.`);
     this.name = "ScannerDeviceRevokedError";
   }
 }
@@ -45,6 +54,7 @@ type BusinessScannerDeviceRow = {
   business_id: string;
   label: string;
   platform: ScannerDevicePlatform;
+  device_model: string | null;
   status: "ACTIVE" | "REVOKED";
   created_by: string;
   scanner_user_id: string | null;
@@ -102,6 +112,7 @@ export type BusinessScannerDeviceSummary = {
   businessId: string;
   label: string;
   platform: ScannerDevicePlatform;
+  deviceModel: string | null;
   status: "ACTIVE" | "REVOKED";
   createdBy: string;
   scannerUserId: string | null;
@@ -181,6 +192,19 @@ const writeStoredInstallationIdAsync = async (installationId: string): Promise<v
   await SecureStore.setItemAsync(scannerInstallationKey, installationId);
 };
 
+export const resetScannerInstallationIdAsync = async (): Promise<void> => {
+  if (expoRuntimeOs === "web") {
+    if (!isBrowserStorageAvailable()) {
+      return;
+    }
+
+    window.localStorage.removeItem(scannerInstallationKey);
+    return;
+  }
+
+  await SecureStore.deleteItemAsync(scannerInstallationKey);
+};
+
 export const getScannerInstallationIdAsync = async (): Promise<string> => {
   const storedInstallationId = await readStoredInstallationIdAsync();
 
@@ -219,6 +243,27 @@ export const createScannerDeviceLabel = (businessName: string, platform: Scanner
   };
 
   return `${businessName} ${platformLabel[platform]} scanner`;
+};
+
+const cleanDeviceModelPart = (value: string | null): string | null => {
+  const cleanedValue = value?.trim() ?? "";
+
+  return cleanedValue.length > 0 ? cleanedValue : null;
+};
+
+export const getScannerDeviceModel = (): string | null => {
+  const manufacturer = cleanDeviceModelPart(Device.manufacturer);
+  const modelName = cleanDeviceModelPart(Device.modelName);
+
+  if (manufacturer === null && modelName === null) {
+    return null;
+  }
+
+  const parts = [manufacturer, modelName].filter((part): part is string => part !== null);
+  const uniqueParts = parts.filter((part, index) => parts.indexOf(part) === index);
+  const model = uniqueParts.join(" ");
+
+  return model.length > 120 ? model.slice(0, 120) : model;
 };
 
 const isRegisterScannerDeviceRpcResponse = (value: unknown): value is RegisterScannerDeviceRpcResponse => {
@@ -318,6 +363,7 @@ const mapBusinessScannerDeviceRow = (row: BusinessScannerDeviceRow): BusinessSca
   businessId: row.business_id,
   label: row.label,
   platform: row.platform,
+  deviceModel: row.device_model,
   status: row.status,
   createdBy: row.created_by,
   scannerUserId: row.scanner_user_id,
@@ -333,7 +379,7 @@ export const businessScannerDevicesQueryKey = (businessId: string) =>
 const fetchBusinessScannerDevicesAsync = async (businessId: string): Promise<BusinessScannerDeviceSummary[]> => {
   const { data, error } = await supabase
     .from("business_scanner_devices")
-    .select("id,business_id,label,platform,status,created_by,scanner_user_id,first_seen_at,last_seen_at,updated_at,pin_set_at")
+    .select("id,business_id,label,platform,device_model,status,created_by,scanner_user_id,first_seen_at,last_seen_at,updated_at,pin_set_at")
     .eq("business_id", businessId)
     .eq("status", "ACTIVE")
     .order("status", { ascending: true })
@@ -441,15 +487,16 @@ const clearBusinessScannerDevicePinAsync = async ({
   }
 };
 
-export const registerBusinessScannerDeviceAsync = async ({
+const registerBusinessScannerDeviceRpcAsync = async ({
   businessId,
-  businessName,
-}: RegisterBusinessScannerDeviceParams): Promise<ScannerDeviceRegistration> => {
-  const installationId = await getScannerInstallationIdAsync();
-  const platform = getScannerDevicePlatform();
-  const label = createScannerDeviceLabel(businessName, platform);
+  deviceModel,
+  installationId,
+  label,
+  platform,
+}: RegisterBusinessScannerDeviceRpcParams): Promise<RegisterScannerDeviceRpcResponse> => {
   const { data, error } = await supabase.rpc("register_business_scanner_device", {
     p_business_id: businessId,
+    p_device_model: deviceModel,
     p_installation_id: installationId,
     p_label: label,
     p_platform: platform,
@@ -461,6 +508,37 @@ export const registerBusinessScannerDeviceAsync = async ({
 
   if (!isRegisterScannerDeviceRpcResponse(data)) {
     throw new Error(`Scanner device registration returned an invalid response for business ${businessId}.`);
+  }
+
+  return data;
+};
+
+export const registerBusinessScannerDeviceAsync = async ({
+  businessId,
+  businessName,
+}: RegisterBusinessScannerDeviceParams): Promise<ScannerDeviceRegistration> => {
+  const platform = getScannerDevicePlatform();
+  const label = createScannerDeviceLabel(businessName, platform);
+  const deviceModel = getScannerDeviceModel();
+  const installationId = await getScannerInstallationIdAsync();
+  let data = await registerBusinessScannerDeviceRpcAsync({
+    businessId,
+    deviceModel,
+    installationId,
+    label,
+    platform,
+  });
+
+  if (data.status === "DEVICE_REVOKED") {
+    await resetScannerInstallationIdAsync();
+    const replacementInstallationId = await getScannerInstallationIdAsync();
+    data = await registerBusinessScannerDeviceRpcAsync({
+      businessId,
+      deviceModel,
+      installationId: replacementInstallationId,
+      label,
+      platform,
+    });
   }
 
   if (data.status === "ACTOR_NOT_ALLOWED") {
