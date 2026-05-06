@@ -13,6 +13,9 @@ const absoluteDateTimePattern =
 
 export class ClubEventValidationError extends Error {}
 
+const defaultPerBusinessLimit = 1;
+const maximumPerBusinessLimit = 5;
+
 export const isUuid = (value: string): boolean => uuidPattern.test(value);
 
 const parseFiniteInteger = (value: string, fieldName: string): number | null => {
@@ -76,16 +79,28 @@ export const parseRulesJsonOrThrow = (value: string): EventRules => {
       throw new ClubEventValidationError("stampPolicy must be a JSON object.");
     }
 
-    const perBusinessLimit = (stampPolicy as Record<string, unknown>).perBusinessLimit;
+    const stampPolicyObject = stampPolicy as Record<string, unknown>;
+    const rawPerBusinessLimit = stampPolicyObject.perBusinessLimit;
+    const normalizedPerBusinessLimit =
+      typeof rawPerBusinessLimit === "number"
+        ? rawPerBusinessLimit
+        : typeof rawPerBusinessLimit === "string" && /^\d+$/.test(rawPerBusinessLimit)
+          ? Number.parseInt(rawPerBusinessLimit, 10)
+          : null;
 
     if (
-      typeof perBusinessLimit !== "number" ||
-      !Number.isInteger(perBusinessLimit) ||
-      perBusinessLimit < 1 ||
-      perBusinessLimit > 5
+      normalizedPerBusinessLimit === null ||
+      !Number.isInteger(normalizedPerBusinessLimit) ||
+      normalizedPerBusinessLimit < defaultPerBusinessLimit ||
+      normalizedPerBusinessLimit > maximumPerBusinessLimit
     ) {
       throw new ClubEventValidationError("stampPolicy.perBusinessLimit must be an integer between 1 and 5.");
     }
+
+    rules.stampPolicy = {
+      ...stampPolicyObject,
+      perBusinessLimit: normalizedPerBusinessLimit,
+    };
   }
 
   return rules as EventRules;

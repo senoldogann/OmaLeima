@@ -39,7 +39,7 @@ export const PublicLegalPage = ({ documentType, locale }: PublicLegalPageProps) 
   ] as const;
 
   return (
-    <main className="public-home public-home-v2 public-legal-page">
+    <main className="public-home public-home-v2 public-page-root public-legal-page">
       <ScrollRevealProvider />
       <PublicNavbar
         contactHref={landingContent.contactHref}
@@ -52,21 +52,21 @@ export const PublicLegalPage = ({ documentType, locale }: PublicLegalPageProps) 
         navItems={navItems}
       />
 
-      <section className="public-shell public-legal-hero">
-        <div className="public-legal-hero-copy">
+      <section className="public-shell public-page-hero public-page-hero-compact">
+        <div className="public-page-hero-copy">
           <p className="eyebrow">
             {locale === "fi" ? "Yleinen tieto" : "Public information"}
           </p>
           <h1>{documentContent.title}</h1>
-          <p>{documentContent.intro}</p>
+          <p className="public-page-lead">{documentContent.intro}</p>
         </div>
-        <div className="public-legal-meta">
+        <div className="public-page-meta-pill">
           <span>{locale === "fi" ? "Päivitetty" : "Last updated"}</span>
           <strong>{documentContent.updatedAt}</strong>
         </div>
       </section>
 
-      <section className="public-shell public-legal-shell">
+      <section className="public-shell public-page-grid-shell public-legal-shell-v2">
         <div className="public-legal-grid">
           {documentContent.sections.map((section) => (
             <article key={section.title} className="public-legal-card">

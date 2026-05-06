@@ -27,9 +27,34 @@ type BusinessApplicationRow = {
   website_url: string | null;
 };
 
-const mapBusinessApplicationRecord = (row: BusinessApplicationRow): BusinessApplicationRecord => ({
+type BusinessRow = {
+  application_id: string | null;
+  id: string;
+};
+
+type BusinessOwnerRow = {
+  business_id: string;
+  user_id: string;
+  profiles: {
+    email: string;
+  } | null;
+};
+
+type OwnerAccessSummary = BusinessApplicationRecord["ownerAccess"];
+
+const mapBusinessApplicationRecord = (
+  row: BusinessApplicationRow,
+  businessByApplicationId: Map<string, BusinessRow>,
+  ownerByBusinessId: Map<string, BusinessOwnerRow>
+): BusinessApplicationRecord => {
+  const business = businessByApplicationId.get(row.id) ?? null;
+  const owner = business !== null ? ownerByBusinessId.get(business.id) ?? null : null;
+  const ownerAccess = mapOwnerAccessSummary(row.status, business, owner);
+
+  return {
   id: row.id,
   address: row.address,
+  businessId: business?.id ?? null,
   businessName: row.business_name,
   city: row.city,
   contactEmail: row.contact_email,
@@ -41,9 +66,47 @@ const mapBusinessApplicationRecord = (row: BusinessApplicationRow): BusinessAppl
   phone: row.phone,
   rejectionReason: row.rejection_reason,
   reviewedAt: row.reviewed_at,
+  ownerAccess,
   status: row.status,
   websiteUrl: normalizeExternalReviewUrl(row.website_url),
-});
+  };
+};
+
+const mapOwnerAccessSummary = (
+  status: BusinessApplicationStatus,
+  business: BusinessRow | null,
+  owner: BusinessOwnerRow | null
+): OwnerAccessSummary => {
+  if (status !== "APPROVED") {
+    return {
+      ownerEmail: null,
+      ownerUserId: null,
+      status: "NOT_APPLICABLE",
+    };
+  }
+
+  if (business === null) {
+    return {
+      ownerEmail: null,
+      ownerUserId: null,
+      status: "MISSING_BUSINESS",
+    };
+  }
+
+  if (owner === null) {
+    return {
+      ownerEmail: null,
+      ownerUserId: null,
+      status: "MISSING_OWNER",
+    };
+  }
+
+  return {
+    ownerEmail: owner.profiles?.email ?? null,
+    ownerUserId: owner.user_id,
+    status: "OWNER_READY",
+  };
+};
 
 const businessApplicationSelect =
   "id,business_name,contact_name,contact_email,phone,address,city,country,website_url,instagram_url,message,status,rejection_reason,created_at,reviewed_at";
@@ -68,7 +131,7 @@ const fetchPagedPendingApplicationsAsync = async (
     throw new Error(`Failed to load pending business applications: ${error.message}`);
   }
 
-  return data.map(mapBusinessApplicationRecord);
+  return hydrateApplicationRecordsAsync(supabase, data);
 };
 
 const fetchRecentlyReviewedApplicationsAsync = async (supabase: SupabaseClient): Promise<BusinessApplicationRecord[]> => {
@@ -86,7 +149,67 @@ const fetchRecentlyReviewedApplicationsAsync = async (supabase: SupabaseClient):
     throw new Error(`Failed to load reviewed business applications: ${error.message}`);
   }
 
-  return data.map(mapBusinessApplicationRecord);
+  return hydrateApplicationRecordsAsync(supabase, data);
+};
+
+const fetchBusinessesByApplicationIdsAsync = async (
+  supabase: SupabaseClient,
+  applicationIds: string[]
+): Promise<Map<string, BusinessRow>> => {
+  if (applicationIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("id,application_id")
+    .in("application_id", applicationIds)
+    .returns<BusinessRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load businesses for reviewed applications: ${error.message}`);
+  }
+
+  return new Map(data.flatMap((business) => (business.application_id === null ? [] : [[business.application_id, business]])));
+};
+
+const fetchOwnersByBusinessIdsAsync = async (
+  supabase: SupabaseClient,
+  businessIds: string[]
+): Promise<Map<string, BusinessOwnerRow>> => {
+  if (businessIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("business_staff")
+    .select("business_id,user_id,profiles(email)")
+    .in("business_id", businessIds)
+    .eq("role", "OWNER")
+    .eq("status", "ACTIVE")
+    .returns<BusinessOwnerRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load business owners for reviewed applications: ${error.message}`);
+  }
+
+  return new Map(data.map((owner) => [owner.business_id, owner]));
+};
+
+const hydrateApplicationRecordsAsync = async (
+  supabase: SupabaseClient,
+  rows: BusinessApplicationRow[]
+): Promise<BusinessApplicationRecord[]> => {
+  const businessByApplicationId = await fetchBusinessesByApplicationIdsAsync(
+    supabase,
+    rows.filter((row) => row.status === "APPROVED").map((row) => row.id)
+  );
+  const ownerByBusinessId = await fetchOwnersByBusinessIdsAsync(
+    supabase,
+    Array.from(businessByApplicationId.values()).map((business) => business.id)
+  );
+
+  return rows.map((row) => mapBusinessApplicationRecord(row, businessByApplicationId, ownerByBusinessId));
 };
 
 const fetchPendingApplicationCountAsync = async (supabase: SupabaseClient): Promise<number> => {

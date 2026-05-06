@@ -9,9 +9,11 @@ import type {
   ClubDashboardTimelineState,
   ClubMembershipRole,
   ClubMembershipSummary,
+  EventRules,
 } from "@/features/club/types";
 
 const dashboardEventLimit = 50;
+const defaultPerBusinessLimit = 1;
 
 type ClubMembershipRow = {
   club_id: string;
@@ -40,6 +42,7 @@ type EventRow = {
   max_participants: number | null;
   minimum_stamps_required: number;
   name: string;
+  rules: EventRules;
   start_at: string;
   status: ClubDashboardEventSummary["status"];
   visibility: ClubDashboardEventSummary["visibility"];
@@ -129,7 +132,7 @@ const fetchEventsByClubIdsAsync = async (clubIds: string[]): Promise<EventRow[]>
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,club_id,name,description,city,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required"
+      "id,club_id,name,description,city,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules"
     )
     .in("club_id", clubIds)
     .gte("end_at", oldestRelevantEndAt)
@@ -143,6 +146,29 @@ const fetchEventsByClubIdsAsync = async (clubIds: string[]): Promise<EventRow[]>
   }
 
   return data;
+};
+
+const parsePerBusinessLimit = (rules: EventRules): number => {
+  const stampPolicy = rules.stampPolicy;
+
+  if (stampPolicy === null || Array.isArray(stampPolicy) || typeof stampPolicy !== "object") {
+    return defaultPerBusinessLimit;
+  }
+
+  const perBusinessLimit = stampPolicy.perBusinessLimit;
+
+  const normalizedPerBusinessLimit =
+    typeof perBusinessLimit === "number"
+      ? perBusinessLimit
+      : typeof perBusinessLimit === "string" && /^\d+$/.test(perBusinessLimit)
+        ? Number.parseInt(perBusinessLimit, 10)
+        : null;
+
+  if (normalizedPerBusinessLimit === null || !Number.isInteger(normalizedPerBusinessLimit)) {
+    return defaultPerBusinessLimit;
+  }
+
+  return Math.min(Math.max(normalizedPerBusinessLimit, defaultPerBusinessLimit), 5);
 };
 
 const fetchEventRegistrationsAsync = async (eventIds: string[]): Promise<EventRegistrationRow[]> => {
@@ -377,7 +403,9 @@ const mapEvents = (
       maxParticipants: row.max_participants,
       minimumStampsRequired: row.minimum_stamps_required,
       name: row.name,
+      perBusinessLimit: parsePerBusinessLimit(row.rules),
       registeredParticipantCount: metrics.registeredParticipantCount,
+      rules: row.rules,
       rewardTierCount: metrics.rewardTierCount,
       startAt: row.start_at,
       status: row.status,

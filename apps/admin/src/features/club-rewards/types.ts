@@ -21,11 +21,13 @@ export type ManageableRewardEvent = {
 };
 
 export type ClubRewardTierRecord = {
+  canEdit: boolean;
   claimInstructions: string | null;
   createdAt: string;
   description: string | null;
   eventId: string;
   eventName: string;
+  eventStatus: ManageableRewardEvent["eventStatus"];
   inventoryClaimed: number;
   inventoryRemaining: number | null;
   inventoryTotal: number | null;

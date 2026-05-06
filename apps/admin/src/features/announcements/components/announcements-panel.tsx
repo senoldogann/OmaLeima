@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
 import {
   submitAnnouncementArchiveRequestAsync,
   submitAnnouncementCreateRequestAsync,
@@ -17,9 +16,226 @@ import type {
   AnnouncementRecord,
   AnnouncementSnapshot,
 } from "@/features/announcements/types";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { createClient } from "@/lib/supabase/client";
 
 type AnnouncementsPanelProps = {
+  locale: DashboardLocale;
   snapshot: AnnouncementSnapshot;
+};
+
+type AnnouncementAudienceOption =
+  | "ALL"
+  | "BUSINESSES"
+  | "CLUBS"
+  | "STUDENTS";
+
+type AnnouncementCopy = {
+  actionsHintCreate: string;
+  actionsHintEdit: string;
+  announcementsTab: string;
+  archive: string;
+  archiving: string;
+  audience: string;
+  audienceLabels: Record<AnnouncementAudienceOption, string>;
+  cancelEdit: string;
+  club: string;
+  composeTab: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  draftStatus: string;
+  edit: string;
+  emptyAnnouncements: string;
+  endsAt: string;
+  endsAtEmpty: string;
+  image: string;
+  imagePreview: string;
+  imageUploaded: string;
+  imageUploadError: string;
+  imageUrl: string;
+  latestAnnouncements: string;
+  message: string;
+  noEndDate: string;
+  pendingRowsSuffix: string;
+  placeholderBody: string;
+  placeholderCtaLabel: string;
+  placeholderImageUrl: string;
+  placeholderTitle: string;
+  platformAnnouncement: string;
+  platformSender: string;
+  priority: string;
+  publishedStatus: string;
+  pushAlreadySent: string;
+  pushPartiallySent: string;
+  pushReady: string;
+  pushSent: string;
+  pushUnavailableEnded: string;
+  pushUnavailableNotPublished: string;
+  pushUnavailableStartsLater: string;
+  pushWithFailures: string;
+  resetForm: string;
+  saveAnnouncement: string;
+  saveStatusCreate: string;
+  saveStatusUpdate: string;
+  saving: string;
+  scopeTitleClub: string;
+  scopeTitlePlatform: string;
+  sendPush: string;
+  sendingPush: string;
+  sourceAnnouncementTitleCreate: string;
+  sourceAnnouncementTitleEdit: string;
+  startsAt: string;
+  status: string;
+  title: string;
+  updateAnnouncement: string;
+  updating: string;
+  uploadAnnouncementImage: string;
+  uploadImage: string;
+  uploadingImage: string;
+};
+
+type AnnouncementPushAvailability = {
+  canSendPush: boolean;
+  reason: string;
+};
+
+const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
+  en: {
+    actionsHintCreate: "This creates the source announcement. Send push from the announcement card after publishing.",
+    actionsHintEdit: "Update the announcement, archive it, or send push from the card after publishing.",
+    announcementsTab: "Announcements",
+    archive: "Archive",
+    archiving: "Archiving...",
+    audience: "Audience",
+    audienceLabels: {
+      ALL: "All",
+      BUSINESSES: "Businesses",
+      CLUBS: "Clubs",
+      STUDENTS: "Students",
+    },
+    cancelEdit: "Cancel edit",
+    club: "Club",
+    composeTab: "Compose",
+    ctaLabel: "CTA label",
+    ctaUrl: "CTA URL",
+    draftStatus: "Draft",
+    edit: "Edit",
+    emptyAnnouncements: "No announcements are visible for this scope yet.",
+    endsAt: "Ends at",
+    endsAtEmpty: "No end date",
+    image: "Image",
+    imagePreview: "Announcement image preview",
+    imageUploaded: "Announcement image uploaded successfully.",
+    imageUploadError: "Unknown announcement image upload error.",
+    imageUrl: "Image URL",
+    latestAnnouncements: "Latest announcements",
+    message: "Message",
+    noEndDate: "No end date",
+    pendingRowsSuffix: "rows",
+    placeholderBody: "Write a short, clear message for your audience.",
+    placeholderCtaLabel: "Open event",
+    placeholderImageUrl: "https://...",
+    placeholderTitle: "New event-day update",
+    platformAnnouncement: "Platform announcement",
+    platformSender: "OmaLeima Support",
+    priority: "Priority",
+    publishedStatus: "Published",
+    pushAlreadySent: "Push already sent successfully.",
+    pushPartiallySent: "Push was only partially delivered. Retry is allowed for failed recipients.",
+    pushReady: "Push is ready to send.",
+    pushSent: "Push sent",
+    pushUnavailableEnded: "Push window has already ended.",
+    pushUnavailableNotPublished: "Only published announcements can send push.",
+    pushUnavailableStartsLater: "Push becomes available after the start time.",
+    pushWithFailures: "Previous push delivery failed. Retry is allowed.",
+    resetForm: "Reset form",
+    saveAnnouncement: "Save announcement",
+    saveStatusCreate: "Save announcement",
+    saveStatusUpdate: "Update announcement",
+    saving: "Saving...",
+    scopeTitleClub: "Club announcement",
+    scopeTitlePlatform: "Platform announcement",
+    sendPush: "Send push",
+    sendingPush: "Sending push...",
+    sourceAnnouncementTitleCreate: "Publish an in-app popup",
+    sourceAnnouncementTitleEdit: "Update announcement",
+    startsAt: "Starts at",
+    status: "Status",
+    title: "Title",
+    updateAnnouncement: "Update announcement",
+    updating: "Updating...",
+    uploadAnnouncementImage: "Upload announcement image",
+    uploadImage: "Upload image",
+    uploadingImage: "Uploading image...",
+  },
+  fi: {
+    actionsHintCreate: "Tama luo lahdetiedotteen. Laheta push tiedotekortilta julkaisun jalkeen.",
+    actionsHintEdit: "Paivita tiedote, arkistoi se tai laheta push tiedotekortilta julkaisun jalkeen.",
+    announcementsTab: "Tiedotteet",
+    archive: "Arkistoi",
+    archiving: "Arkistoidaan...",
+    audience: "Kohderyhmä",
+    audienceLabels: {
+      ALL: "Kaikki",
+      BUSINESSES: "Yritykset",
+      CLUBS: "Klubit",
+      STUDENTS: "Opiskelijat",
+    },
+    cancelEdit: "Peru muokkaus",
+    club: "Klubi",
+    composeTab: "Laadi",
+    ctaLabel: "CTA-teksti",
+    ctaUrl: "CTA-osoite",
+    draftStatus: "Luonnos",
+    edit: "Muokkaa",
+    emptyAnnouncements: "Tälle näkymälle ei vielä näy tiedotteita.",
+    endsAt: "Päättyy",
+    endsAtEmpty: "Ei päättymisaikaa",
+    image: "Kuva",
+    imagePreview: "Tiedotekuvan esikatselu",
+    imageUploaded: "Tiedotekuva ladattiin onnistuneesti.",
+    imageUploadError: "Tuntematon tiedotekuvan latausvirhe.",
+    imageUrl: "Kuvan URL",
+    latestAnnouncements: "Viimeisimmät tiedotteet",
+    message: "Viesti",
+    noEndDate: "Ei päättymisaikaa",
+    pendingRowsSuffix: "riviä",
+    placeholderBody: "Kirjoita lyhyt ja selkea viesti kohderyhmalle.",
+    placeholderCtaLabel: "Avaa tapahtuma",
+    placeholderImageUrl: "https://...",
+    placeholderTitle: "Uusi tapahtumapaivan ohje",
+    platformAnnouncement: "Alustan tiedote",
+    platformSender: "OmaLeima Support",
+    priority: "Prioriteetti",
+    publishedStatus: "Julkaistu",
+    pushAlreadySent: "Push on jo lahetetty onnistuneesti.",
+    pushPartiallySent: "Push lahti vain osittain. Epaonnistuneet vastaanottajat voi yrittaa uudelleen.",
+    pushReady: "Push on valmis lahetettavaksi.",
+    pushSent: "Push lahetetty",
+    pushUnavailableEnded: "Push-ikkuna on jo paattynyt.",
+    pushUnavailableNotPublished: "Vain julkaistut tiedotteet voivat lahettaa pushin.",
+    pushUnavailableStartsLater: "Push avautuu vasta aloitusajan jalkeen.",
+    pushWithFailures: "Edellinen push-jakelu epaonnistui. Uusintayritys on sallittu.",
+    resetForm: "Tyhjenna lomake",
+    saveAnnouncement: "Tallenna tiedote",
+    saveStatusCreate: "Tallenna tiedote",
+    saveStatusUpdate: "Paivita tiedote",
+    saving: "Tallennetaan...",
+    scopeTitleClub: "Klubin tiedote",
+    scopeTitlePlatform: "Alustan tiedote",
+    sendPush: "Laheta push",
+    sendingPush: "Lahetetaan pushia...",
+    sourceAnnouncementTitleCreate: "Julkaise sovelluksen sisainen popup",
+    sourceAnnouncementTitleEdit: "Paivita tiedote",
+    startsAt: "Alkaa",
+    status: "Tila",
+    title: "Otsikko",
+    updateAnnouncement: "Paivita tiedote",
+    updating: "Paivitetaan...",
+    uploadAnnouncementImage: "Lataa tiedotekuva",
+    uploadImage: "Lataa kuva",
+    uploadingImage: "Ladataan kuvaa...",
+  },
 };
 
 const toLocalDateTimeInput = (value: Date): string => {
@@ -28,6 +244,8 @@ const toLocalDateTimeInput = (value: Date): string => {
 
   return localDate.toISOString().slice(0, 16);
 };
+
+const announcementClockRefreshMs = 30_000;
 
 const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreatePayload => {
   const startsAt = toLocalDateTimeInput(new Date());
@@ -63,8 +281,8 @@ const createPayloadFromAnnouncement = (
   title: announcement.title,
 });
 
-const formatDate = (value: string): string =>
-  new Intl.DateTimeFormat("fi-FI", {
+const formatDate = (locale: DashboardLocale, value: string): string =>
+  new Intl.DateTimeFormat(locale === "fi" ? "fi-FI" : "en-GB", {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
@@ -79,8 +297,78 @@ const renderState = (state: AnnouncementActionState) => {
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
 };
 
-export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
+const isAnnouncementActiveNow = (announcement: AnnouncementRecord, now: number): boolean => {
+  if (announcement.status !== "PUBLISHED") {
+    return false;
+  }
+
+  const startsAtMs = new Date(announcement.startsAt).getTime();
+
+  if (now < startsAtMs) {
+    return false;
+  }
+
+  if (announcement.endsAt === null) {
+    return true;
+  }
+
+  return now < new Date(announcement.endsAt).getTime();
+};
+
+const readPushAvailability = (
+  announcement: AnnouncementRecord,
+  copy: AnnouncementCopy,
+  now: number
+): AnnouncementPushAvailability => {
+  if (announcement.status !== "PUBLISHED") {
+    return {
+      canSendPush: false,
+      reason: copy.pushUnavailableNotPublished,
+    };
+  }
+
+  if (announcement.pushDeliveryStatus === "SENT") {
+    return {
+      canSendPush: false,
+      reason: copy.pushAlreadySent,
+    };
+  }
+
+  const startsAtMs = new Date(announcement.startsAt).getTime();
+
+  if (now < startsAtMs) {
+    return {
+      canSendPush: false,
+      reason: copy.pushUnavailableStartsLater,
+    };
+  }
+
+  if (announcement.endsAt !== null && now >= new Date(announcement.endsAt).getTime()) {
+    return {
+      canSendPush: false,
+      reason: copy.pushUnavailableEnded,
+    };
+  }
+
+  return {
+    canSendPush: true,
+    reason:
+      announcement.pushDeliveryStatus === "PARTIAL"
+        ? copy.pushPartiallySent
+        : announcement.pushDeliveryStatus === "FAILED"
+        ? copy.pushWithFailures
+        : copy.pushReady,
+  };
+};
+
+const getAnnouncementSenderLabel = (
+  announcement: AnnouncementRecord,
+  copy: AnnouncementCopy
+): string => announcement.clubName ?? copy.platformSender;
+
+export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps) => {
   const router = useRouter();
+  const copy = copyByLocale[locale];
   const [payload, setPayload] = useState<AnnouncementCreatePayload>(createInitialPayload(snapshot));
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState<boolean>(false);
@@ -92,15 +380,34 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
     message: null,
     tone: "idle",
   });
+  const [renderedNow, setRenderedNow] = useState<number>(() => Date.now());
   const canCreate = snapshot.scope === "ADMIN" || snapshot.clubOptions.length > 0;
-  const title = snapshot.scope === "ADMIN" ? "Platform announcement" : "Club announcement";
-  const audienceOptions = useMemo(
-    () => (snapshot.scope === "ADMIN" ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"] : ["ALL", "STUDENTS", "CLUBS"]),
+  const scopeTitle = snapshot.scope === "ADMIN" ? copy.scopeTitlePlatform : copy.scopeTitleClub;
+  const audienceOptions = useMemo<AnnouncementAudienceOption[]>(
+    () =>
+      snapshot.scope === "ADMIN"
+        ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"]
+        : ["ALL", "STUDENTS", "CLUBS"],
     [snapshot.scope]
   );
   const isEditingAnnouncement = editingAnnouncementId !== null;
-  const isFormDisabled = !canCreate || isPending || isImageUploading || pendingArchiveAnnouncementId !== null;
+  const isFormDisabled =
+    !canCreate ||
+    isPending ||
+    isImageUploading ||
+    pendingArchiveAnnouncementId !== null ||
+    pendingPushAnnouncementId !== null;
   const [activeTab, setActiveTab] = useState<"compose" | "announcements">("compose");
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setRenderedNow(Date.now());
+    }, announcementClockRefreshMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const resetForm = (): void => {
     setEditingAnnouncementId(null);
@@ -110,6 +417,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   const handleEditPress = (announcement: AnnouncementRecord): void => {
     setEditingAnnouncementId(announcement.announcementId);
     setPayload(createPayloadFromAnnouncement(announcement));
+    setActiveTab("compose");
     setActionState({
       code: null,
       message: null,
@@ -152,13 +460,13 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
       }));
       setActionState({
         code: "IMAGE_UPLOADED",
-        message: "Announcement image uploaded successfully.",
+        message: copy.imageUploaded,
         tone: "success",
       });
     } catch (error) {
       setActionState({
         code: "IMAGE_UPLOAD_ERROR",
-        message: error instanceof Error ? error.message : "Unknown announcement image upload error.",
+        message: error instanceof Error ? error.message : copy.imageUploadError,
         tone: "error",
       });
     } finally {
@@ -239,6 +547,17 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   };
 
   const handleSendPushPress = async (announcement: AnnouncementRecord): Promise<void> => {
+    const pushAvailability = readPushAvailability(announcement, copy, Date.now());
+
+    if (!pushAvailability.canSendPush) {
+      setActionState({
+        code: "ANNOUNCEMENT_PUSH_NOT_AVAILABLE",
+        message: pushAvailability.reason,
+        tone: "error",
+      });
+      return;
+    }
+
     setPendingPushAnnouncementId(announcement.announcementId);
     setActionState({
       code: null,
@@ -250,7 +569,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
       const response = await submitAnnouncementPushRequestAsync(announcement.announcementId);
       const deliveryText =
         typeof response.notificationsSent === "number" || typeof response.notificationsFailed === "number"
-          ? ` Sent ${response.notificationsSent ?? 0}, failed ${response.notificationsFailed ?? 0}.`
+          ? ` ${copy.pushSent}: ${response.notificationsSent ?? 0}, failed ${response.notificationsFailed ?? 0}.`
           : "";
 
       setActionState({
@@ -274,17 +593,19 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   };
 
   const renderAnnouncementCard = (announcement: AnnouncementRecord) => {
-    const canSendPush = announcement.status === "PUBLISHED";
+    const pushAvailability = readPushAvailability(announcement, copy, renderedNow);
     const canArchive = announcement.status !== "ARCHIVED";
+    const canSendPush = pushAvailability.canSendPush;
+    const isAnnouncementActive = isAnnouncementActiveNow(announcement, renderedNow);
 
     return (
       <article className="panel" key={announcement.announcementId}>
         <div className="stack-sm">
           <div className="split-row">
-            <span className="field-label">{announcement.clubName ?? "Platform"}</span>
+            <span className="field-label">{getAnnouncementSenderLabel(announcement, copy)}</span>
             <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
           </div>
-          <h3 className="section-title">{announcement.title}</h3>
+          <p className="card-title">{announcement.title}</p>
           {announcement.imageUrl !== null ? (
             <div
               aria-hidden="true"
@@ -294,11 +615,26 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           ) : null}
           <p className="muted-text">{announcement.body}</p>
           <div className="meta-grid">
-            <span>{announcement.audience}</span>
-            <span>Starts {formatDate(announcement.startsAt)}</span>
-            <span>{announcement.endsAt === null ? "No end date" : `Ends ${formatDate(announcement.endsAt)}`}</span>
-            <span>Priority {announcement.priority}</span>
+            <span>{copy.audienceLabels[announcement.audience]}</span>
+            <span>{`${copy.startsAt} ${formatDate(locale, announcement.startsAt)}`}</span>
+            <span>
+              {announcement.endsAt === null
+                ? copy.endsAtEmpty
+                : `${copy.endsAt} ${formatDate(locale, announcement.endsAt)}`}
+            </span>
+            <span>{`${copy.priority} ${announcement.priority}`}</span>
           </div>
+          <p className="muted-text">
+            {announcement.pushDeliveryStatus === "SENT"
+              ? copy.pushAlreadySent
+              : announcement.pushDeliveryStatus === "PARTIAL"
+                ? copy.pushPartiallySent
+              : announcement.pushDeliveryStatus === "FAILED"
+                ? copy.pushWithFailures
+                : isAnnouncementActive
+                  ? copy.pushReady
+                  : pushAvailability.reason}
+          </p>
           {announcement.ctaLabel !== null && announcement.ctaUrl !== null ? (
             <a className="text-link" href={announcement.ctaUrl} rel="noreferrer" target="_blank">
               {announcement.ctaLabel}
@@ -311,7 +647,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
               onClick={() => handleEditPress(announcement)}
               type="button"
             >
-              Edit
+              {copy.edit}
             </button>
             {canArchive ? (
               <button
@@ -320,7 +656,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
                 onClick={() => void handleArchivePress(announcement)}
                 type="button"
               >
-                {pendingArchiveAnnouncementId === announcement.announcementId ? "Archiving..." : "Archive"}
+                {pendingArchiveAnnouncementId === announcement.announcementId ? copy.archiving : copy.archive}
               </button>
             ) : null}
             <button
@@ -329,7 +665,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
               onClick={() => void handleSendPushPress(announcement)}
               type="button"
             >
-              {pendingPushAnnouncementId === announcement.announcementId ? "Sending push..." : "Send push"}
+              {pendingPushAnnouncementId === announcement.announcementId ? copy.sendingPush : copy.sendPush}
             </button>
           </div>
         </div>
@@ -340,31 +676,39 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
   return (
     <div className="stack-lg">
       <div className="tab-nav">
-        <button className={activeTab === "compose" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("compose")} type="button">Compose</button>
-        <button className={activeTab === "announcements" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("announcements")} type="button">Announcements</button>
+        <button
+          className={activeTab === "compose" ? "tab-btn tab-btn-active" : "tab-btn"}
+          onClick={() => setActiveTab("compose")}
+          type="button"
+        >
+          {copy.composeTab}
+        </button>
+        <button
+          className={activeTab === "announcements" ? "tab-btn tab-btn-active" : "tab-btn"}
+          onClick={() => setActiveTab("announcements")}
+          type="button"
+        >
+          {copy.announcementsTab}
+        </button>
       </div>
 
       <section className="panel panel-accent" style={{ display: activeTab !== "compose" ? "none" : undefined }}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <div className="form-grid-full stack-sm">
-            <span className="field-label">{isEditingAnnouncement ? "Edit" : title}</span>
+            <span className="field-label">{scopeTitle}</span>
             <h3 className="section-title">
-              {isEditingAnnouncement ? "Update announcement" : "Publish an in-app popup"}
+              {isEditingAnnouncement ? copy.sourceAnnouncementTitleEdit : copy.sourceAnnouncementTitleCreate}
             </h3>
-            <p className="muted-text">
-              {isEditingAnnouncement
-                ? "Update the announcement, archive it, or send push from the card after publishing."
-                : "This creates the source announcement. Send push from the announcement card after publishing."}
-            </p>
+            <p className="muted-text">{isEditingAnnouncement ? copy.actionsHintEdit : copy.actionsHintCreate}</p>
           </div>
 
           {snapshot.scope === "CLUB" ? (
             <label className="field-stack">
-              <span className="field-label">Club</span>
+              <span className="field-label">{copy.club}</span>
               <select
                 disabled={isFormDisabled || isEditingAnnouncement}
-                value={payload.clubId}
                 onChange={(event) => setPayload((current) => ({ ...current, clubId: event.target.value }))}
+                value={payload.clubId}
               >
                 {snapshot.clubOptions.map((club) => (
                   <option key={club.clubId} value={club.clubId}>
@@ -376,44 +720,44 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           ) : null}
 
           <label className="field-stack">
-            <span className="field-label">Audience</span>
+            <span className="field-label">{copy.audience}</span>
             <select
               disabled={isFormDisabled}
-              value={payload.audience}
               onChange={(event) =>
                 setPayload((current) => ({
                   ...current,
                   audience: event.target.value as AnnouncementCreatePayload["audience"],
                 }))
               }
+              value={payload.audience}
             >
               {audienceOptions.map((audience) => (
                 <option key={audience} value={audience}>
-                  {audience}
+                  {copy.audienceLabels[audience]}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="field-stack">
-            <span className="field-label">Status</span>
+            <span className="field-label">{copy.status}</span>
             <select
               disabled={isFormDisabled}
-              value={payload.status}
               onChange={(event) =>
                 setPayload((current) => ({
                   ...current,
                   status: event.target.value as AnnouncementCreatePayload["status"],
                 }))
               }
+              value={payload.status}
             >
-              <option value="PUBLISHED">PUBLISHED</option>
-              <option value="DRAFT">DRAFT</option>
+              <option value="PUBLISHED">{copy.publishedStatus}</option>
+              <option value="DRAFT">{copy.draftStatus}</option>
             </select>
           </label>
 
           <label className="field-stack">
-            <span className="field-label">Priority</span>
+            <span className="field-label">{copy.priority}</span>
             <input
               disabled={isFormDisabled}
               max="10"
@@ -425,28 +769,28 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           </label>
 
           <label className="field-stack form-grid-full">
-            <span className="field-label">Title</span>
+            <span className="field-label">{copy.title}</span>
             <input
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, title: event.target.value }))}
-              placeholder="Uusi appropäivän ohje"
+              placeholder={copy.placeholderTitle}
               value={payload.title}
             />
           </label>
 
           <label className="field-stack form-grid-full">
-            <span className="field-label">Message</span>
+            <span className="field-label">{copy.message}</span>
             <textarea
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, body: event.target.value }))}
-              placeholder="Kirjoita lyhyt, selkeä viesti opiskelijoille."
+              placeholder={copy.placeholderBody}
               rows={5}
               value={payload.body}
             />
           </label>
 
           <label className="field-stack">
-            <span className="field-label">Starts at</span>
+            <span className="field-label">{copy.startsAt}</span>
             <input
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, startsAt: event.target.value }))}
@@ -456,7 +800,7 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           </label>
 
           <label className="field-stack">
-            <span className="field-label">Ends at</span>
+            <span className="field-label">{copy.endsAt}</span>
             <input
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, endsAt: event.target.value }))}
@@ -466,27 +810,27 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
           </label>
 
           <label className="field-stack">
-            <span className="field-label">CTA label</span>
+            <span className="field-label">{copy.ctaLabel}</span>
             <input
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, ctaLabel: event.target.value }))}
-              placeholder="Avaa tapahtuma"
+              placeholder={copy.placeholderCtaLabel}
               value={payload.ctaLabel}
             />
           </label>
 
           <label className="field-stack">
-            <span className="field-label">CTA URL</span>
+            <span className="field-label">{copy.ctaUrl}</span>
             <input
               disabled={isFormDisabled}
               onChange={(event) => setPayload((current) => ({ ...current, ctaUrl: event.target.value }))}
-              placeholder="https://..."
+              placeholder={copy.placeholderImageUrl}
               value={payload.ctaUrl}
             />
           </label>
 
           <div className="field-stack form-grid-full">
-            <span className="field-label">Image</span>
+            <span className="field-label">{copy.image}</span>
             <label className="upload-dropzone">
               <input
                 accept="image/jpeg,image/png,image/webp"
@@ -494,21 +838,21 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
                 onChange={(event) => void handleImageFileChange(event)}
                 type="file"
               />
-              <span>{isImageUploading ? "Uploading image..." : "Upload announcement image"}</span>
+              <span>{isImageUploading ? copy.uploadingImage : copy.uploadAnnouncementImage}</span>
             </label>
             {payload.imageUrl.trim().length > 0 ? (
               <div
-                aria-label="Announcement image preview"
+                aria-label={copy.imagePreview}
                 className="announcement-image-preview"
                 style={{ backgroundImage: `url(${payload.imageUrl})` }}
               />
             ) : null}
             <label className="field-stack">
-              <span className="field-label">Image URL</span>
+              <span className="field-label">{copy.imageUrl}</span>
               <input
                 disabled={isFormDisabled}
                 onChange={(event) => setPayload((current) => ({ ...current, imageUrl: event.target.value }))}
-                placeholder="https://..."
+                placeholder={copy.placeholderImageUrl}
                 value={payload.imageUrl}
               />
             </label>
@@ -519,17 +863,17 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
             <div className="button-row">
               <button className="primary-action" disabled={isFormDisabled} type="submit">
                 {isImageUploading
-                  ? "Uploading image..."
+                  ? copy.uploadingImage
                   : isPending
                     ? isEditingAnnouncement
-                      ? "Updating..."
-                      : "Saving..."
+                      ? copy.updating
+                      : copy.saving
                     : isEditingAnnouncement
-                      ? "Update announcement"
-                      : "Save announcement"}
+                      ? copy.saveStatusUpdate
+                      : copy.saveStatusCreate}
               </button>
               <button className="secondary-action" disabled={isFormDisabled} onClick={resetForm} type="button">
-                {isEditingAnnouncement ? "Cancel edit" : "Reset form"}
+                {isEditingAnnouncement ? copy.cancelEdit : copy.resetForm}
               </button>
             </div>
           </div>
@@ -538,12 +882,13 @@ export const AnnouncementsPanel = ({ snapshot }: AnnouncementsPanelProps) => {
 
       <section className="stack-md" style={{ display: activeTab !== "announcements" ? "none" : undefined }}>
         <div className="split-row">
-          <h3 className="section-title">Latest announcements</h3>
-          <span className="field-label">{snapshot.announcements.length} rows</span>
+          <h3 className="section-title">{copy.latestAnnouncements}</h3>
+          <span className="field-label">{`${snapshot.announcements.length} ${copy.pendingRowsSuffix}`}</span>
         </div>
+        {renderState(actionState)}
         {snapshot.announcements.length === 0 ? (
           <article className="panel">
-            <p className="muted-text">No announcements are visible for this scope yet.</p>
+            <p className="muted-text">{copy.emptyAnnouncements}</p>
           </article>
         ) : (
           <div className="card-list">{snapshot.announcements.map(renderAnnouncementCard)}</div>

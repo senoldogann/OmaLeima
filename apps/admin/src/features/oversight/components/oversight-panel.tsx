@@ -2,13 +2,115 @@
 
 import { useState } from "react";
 
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { formatOversightClubMeta, formatOversightDateTime, formatOversightEventMeta } from "@/features/oversight/format";
 import type { AdminOversightSnapshot } from "@/features/oversight/types";
 import { FraudSignalReviewList } from "@/features/fraud-review/components/fraud-signal-review-list";
 
 type OversightPanelProps = {
+  locale: DashboardLocale;
   snapshot: AdminOversightSnapshot;
 };
+
+type OversightCopy = {
+  activeClubs: string;
+  activeClubsBody: string;
+  auditLogs: string;
+  auditLogs24h: string;
+  auditLogsBody: string;
+  catalogHealth: string;
+  clubsAndEvents: string;
+  created: string;
+  eventOperations: string;
+  fraudSignals: string;
+  fraudSignalsBody: string;
+  latestAuditLogs: string;
+  latestClubs: string;
+  latestFraudSignals: string;
+  noAuditLogs: string;
+  noActorOrResource: string;
+  noClubs: string;
+  noContactEmail: string;
+  noLocationMeta: string;
+  noFraudSignals: string;
+  noOperationalEvents: string;
+  operationalEvents: string;
+  operationalEventsBody: string;
+  showingAuditLogs: string;
+  showingClubs: string;
+  showingFraudSignals: string;
+  showingOperationalEvents: string;
+  timeRangeSeparator: string;
+  traceability: string;
+};
+
+const copyByLocale: Record<DashboardLocale, OversightCopy> = {
+  en: {
+    activeClubs: "Active clubs",
+    activeClubsBody: "Platform-wide active clubs visible to system admins.",
+    auditLogs: "Audit Logs",
+    auditLogs24h: "Audit logs in 24h",
+    auditLogsBody: "Recent system-side actions captured in the admin-visible audit trail.",
+    catalogHealth: "Catalog health",
+    clubsAndEvents: "Clubs & Events",
+    created: "Created",
+    eventOperations: "Event operations",
+    fraudSignals: "Fraud Signals",
+    fraudSignalsBody: "Signals still waiting for an explicit review or confirmation path.",
+    latestAuditLogs: "Latest audit logs",
+    latestClubs: "Latest clubs",
+    latestFraudSignals: "Latest open fraud signals",
+    noAuditLogs: "No audit logs are visible right now.",
+    noActorOrResource: "No actor or resource details",
+    noClubs: "No clubs are visible right now.",
+    noContactEmail: "No contact email",
+    noLocationMeta: "No city or university label",
+    noFraudSignals: "No fraud signals are visible right now.",
+    noOperationalEvents: "No operational events are visible right now.",
+    operationalEvents: "Operational events",
+    operationalEventsBody: "Draft, published, or active events that are still operationally relevant.",
+    showingAuditLogs: "Showing the latest {count} audit entries recorded by the backend.",
+    showingClubs: "Showing the latest {count} clubs by creation time.",
+    showingFraudSignals: "Showing the latest {count} fraud signals that still need operator attention.",
+    showingOperationalEvents: "Showing the next {count} upcoming or currently active events that still matter operationally.",
+    timeRangeSeparator: "to",
+    traceability: "Traceability",
+  },
+  fi: {
+    activeClubs: "Aktiiviset klubit",
+    activeClubsBody: "Koko alustan aktiiviset klubit, jotka ovat adminille nakyvissa.",
+    auditLogs: "Audit-lokit",
+    auditLogs24h: "Audit-lokit 24 h",
+    auditLogsBody: "Viimeisimmat jarjestelman toimet adminin audit trailissa.",
+    catalogHealth: "Katalogin tila",
+    clubsAndEvents: "Klubit ja tapahtumat",
+    created: "Luotu",
+    eventOperations: "Tapahtumaoperaatiot",
+    fraudSignals: "Fraud-signaalit",
+    fraudSignalsBody: "Signaalit, jotka odottavat viela tarkistusta tai vahvistusta.",
+    latestAuditLogs: "Viimeisimmat audit-lokit",
+    latestClubs: "Viimeisimmat klubit",
+    latestFraudSignals: "Viimeisimmat avoimet fraud-signaalit",
+    noAuditLogs: "Audit-lokeja ei ole nyt nakyvissa.",
+    noActorOrResource: "Ei toimija- tai resurssitietoja",
+    noClubs: "Klubeja ei ole nyt nakyvissa.",
+    noContactEmail: "Ei yhteyssahkopostia",
+    noLocationMeta: "Ei kaupunki- tai yliopistotietoa",
+    noFraudSignals: "Fraud-signaaleja ei ole nyt nakyvissa.",
+    noOperationalEvents: "Operatiivisia tapahtumia ei ole nyt nakyvissa.",
+    operationalEvents: "Operatiiviset tapahtumat",
+    operationalEventsBody: "Luonnokset, julkaistut ja aktiiviset tapahtumat, joilla on yha operatiivista merkitysta.",
+    showingAuditLogs: "Naytetaan viimeisimmat {count} backendin kirjaamaa audit-rivia.",
+    showingClubs: "Naytetaan viimeisimmat {count} klubia luontiajan mukaan.",
+    showingFraudSignals: "Naytetaan viimeisimmat {count} fraud-signaalia, jotka tarvitsevat operaattorin huomiota.",
+    showingOperationalEvents: "Naytetaan seuraavat {count} tulevaa tai kaynnissa olevaa tapahtumaa, joilla on viela operatiivista merkitysta.",
+    timeRangeSeparator: "-",
+    traceability: "Jaljitettavyys",
+  },
+};
+
+const interpolateCount = (template: string, count: number): string =>
+  template.replace("{count}", String(count));
 
 const withFallback = (value: string, fallback: string): string => (value.length > 0 ? value : fallback);
 
@@ -20,7 +122,8 @@ const renderMetadataLine = (value: string | null) => {
   return <p className="record-note">{value}</p>;
 };
 
-export const OversightPanel = ({ snapshot }: OversightPanelProps) => {
+export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
+  const copy = copyByLocale[locale];
   const [activeTab, setActiveTab] = useState<"clubs-events" | "fraud-signals" | "audit-logs">("clubs-events");
 
   return (
@@ -28,68 +131,68 @@ export const OversightPanel = ({ snapshot }: OversightPanelProps) => {
       <section className="metrics-grid metrics-grid-quad">
         <article className="panel panel-accent">
           <div className="stack-sm">
-            <span className="field-label">Active clubs</span>
+            <span className="field-label">{copy.activeClubs}</span>
             <strong className="metric-value">{snapshot.summary.activeClubCount}</strong>
-            <p className="muted-text">Platform-wide active clubs visible to system admins.</p>
+            <p className="muted-text">{copy.activeClubsBody}</p>
           </div>
         </article>
 
         <article className="panel">
           <div className="stack-sm">
-            <span className="field-label">Operational events</span>
+            <span className="field-label">{copy.operationalEvents}</span>
             <strong className="metric-value">{snapshot.summary.operationalEventCount}</strong>
-            <p className="muted-text">Draft, published, or active events that are still operationally relevant.</p>
+            <p className="muted-text">{copy.operationalEventsBody}</p>
           </div>
         </article>
 
         <article className="panel panel-warning">
           <div className="stack-sm">
-            <span className="field-label">Open fraud signals</span>
+            <span className="field-label">{copy.fraudSignals}</span>
             <strong className="metric-value">{snapshot.summary.openFraudSignalCount}</strong>
-            <p className="muted-text">Signals still waiting for an explicit review or confirmation path.</p>
+            <p className="muted-text">{copy.fraudSignalsBody}</p>
           </div>
         </article>
 
         <article className="panel">
           <div className="stack-sm">
-            <span className="field-label">Audit logs in 24h</span>
+            <span className="field-label">{copy.auditLogs24h}</span>
             <strong className="metric-value">{snapshot.summary.recentAuditCount}</strong>
-            <p className="muted-text">Recent system-side actions captured in the admin-visible audit trail.</p>
+            <p className="muted-text">{copy.auditLogsBody}</p>
           </div>
         </article>
       </section>
 
       <div className="tab-nav">
-        <button className={activeTab === "clubs-events" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("clubs-events")} type="button">Clubs &amp; Events</button>
-        <button className={activeTab === "fraud-signals" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("fraud-signals")} type="button">Fraud Signals</button>
-        <button className={activeTab === "audit-logs" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("audit-logs")} type="button">Audit Logs</button>
+        <button className={activeTab === "clubs-events" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("clubs-events")} type="button">{copy.clubsAndEvents}</button>
+        <button className={activeTab === "fraud-signals" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("fraud-signals")} type="button">{copy.fraudSignals}</button>
+        <button className={activeTab === "audit-logs" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("audit-logs")} type="button">{copy.auditLogs}</button>
       </div>
 
       <section className="content-grid" style={{ display: activeTab !== "clubs-events" ? "none" : undefined }}>
         <article className="panel">
           <div className="stack-sm">
-            <div className="eyebrow">Catalog health</div>
-            <h3 className="section-title">Latest clubs</h3>
-            <p className="muted-text">Showing the latest {snapshot.summary.latestClubLimit} clubs by creation time.</p>
+            <div className="eyebrow">{copy.catalogHealth}</div>
+            <h3 className="section-title">{copy.latestClubs}</h3>
+            <p className="muted-text">{interpolateCount(copy.showingClubs, snapshot.summary.latestClubLimit)}</p>
           </div>
 
           {snapshot.clubs.length === 0 ? (
-            <p className="muted-text">No clubs are visible right now.</p>
+            <p className="muted-text">{copy.noClubs}</p>
           ) : (
             <ul className="record-list">
               {snapshot.clubs.map((club) => (
-                <li key={club.id} className="record-item">
-                  <div className="record-main">
-                    <p className="record-title">{club.name}</p>
-                    <p className="record-meta">
-                      {withFallback(formatOversightClubMeta(club.city, club.universityName), "No city or university label")}
-                    </p>
-                    <p className="record-note">
-                      {club.contactEmail ?? "No contact email"} · Created {formatOversightDateTime(club.createdAt)}
-                    </p>
-                  </div>
-                  <span className="status-pill">{club.status}</span>
-                </li>
+                  <li key={club.id} className="record-item">
+                    <div className="record-main">
+                      <p className="record-title">{club.name}</p>
+                      <p className="record-meta record-meta-accent">
+                        {withFallback(formatOversightClubMeta(club.city, club.universityName), copy.noLocationMeta)}
+                      </p>
+                      <p className="record-note">
+                        {club.contactEmail ?? copy.noContactEmail} · {copy.created} {formatOversightDateTime(locale, club.createdAt)}
+                      </p>
+                    </div>
+                    <span className="status-pill">{club.status}</span>
+                  </li>
               ))}
             </ul>
           )}
@@ -97,22 +200,22 @@ export const OversightPanel = ({ snapshot }: OversightPanelProps) => {
 
         <article className="panel">
           <div className="stack-sm">
-            <div className="eyebrow">Event operations</div>
-            <h3 className="section-title">Operational events</h3>
-            <p className="muted-text">Showing the next {snapshot.summary.latestEventLimit} upcoming or currently active events that still matter operationally.</p>
+            <div className="eyebrow">{copy.eventOperations}</div>
+            <h3 className="section-title">{copy.operationalEvents}</h3>
+            <p className="muted-text">{interpolateCount(copy.showingOperationalEvents, snapshot.summary.latestEventLimit)}</p>
           </div>
 
           {snapshot.events.length === 0 ? (
-            <p className="muted-text">No operational events are visible right now.</p>
+            <p className="muted-text">{copy.noOperationalEvents}</p>
           ) : (
             <ul className="record-list">
               {snapshot.events.map((event) => (
-                <li key={event.id} className="record-item">
+                  <li key={event.id} className="record-item">
                   <div className="record-main">
                     <p className="record-title">{event.name}</p>
-                    <p className="record-meta">{formatOversightEventMeta(event.clubName, event.city, event.visibility)}</p>
+                    <p className="record-meta record-meta-accent">{formatOversightEventMeta(event.clubName, event.city, event.visibility)}</p>
                     <p className="record-note">
-                      {formatOversightDateTime(event.startAt)} to {formatOversightDateTime(event.endAt)}
+                      {formatOversightDateTime(locale, event.startAt)} {copy.timeRangeSeparator} {formatOversightDateTime(locale, event.endAt)}
                     </p>
                   </div>
                   <span className="status-pill">{event.status}</span>
@@ -127,25 +230,26 @@ export const OversightPanel = ({ snapshot }: OversightPanelProps) => {
         <article className="panel panel-warning" style={activeTab === "fraud-signals" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
             <div className="eyebrow">Integrity</div>
-            <h3 className="section-title">Latest open fraud signals</h3>
-            <p className="muted-text">Showing the latest {snapshot.summary.latestFraudLimit} fraud signals that still need operator attention.</p>
+            <h3 className="section-title">{copy.latestFraudSignals}</h3>
+            <p className="muted-text">{interpolateCount(copy.showingFraudSignals, snapshot.summary.latestFraudLimit)}</p>
           </div>
 
           <FraudSignalReviewList
-            emptyText="No fraud signals are visible right now."
+            emptyText={copy.noFraudSignals}
+            locale={locale}
             signals={snapshot.fraudSignals}
           />
         </article>
 
         <article className="panel" style={activeTab === "audit-logs" ? { gridColumn: "1 / -1" } : { display: "none" }}>
           <div className="stack-sm">
-            <div className="eyebrow">Traceability</div>
-            <h3 className="section-title">Latest audit logs</h3>
-            <p className="muted-text">Showing the latest {snapshot.summary.latestAuditLimit} audit entries recorded by the backend.</p>
+            <div className="eyebrow">{copy.traceability}</div>
+            <h3 className="section-title">{copy.latestAuditLogs}</h3>
+            <p className="muted-text">{interpolateCount(copy.showingAuditLogs, snapshot.summary.latestAuditLimit)}</p>
           </div>
 
           {snapshot.auditLogs.length === 0 ? (
-            <p className="muted-text">No audit logs are visible right now.</p>
+            <p className="muted-text">{copy.noAuditLogs}</p>
           ) : (
             <ul className="record-list">
               {snapshot.auditLogs.map((log) => (
@@ -157,11 +261,11 @@ export const OversightPanel = ({ snapshot }: OversightPanelProps) => {
                         [log.actorEmail, log.resourceType, log.resourceId]
                           .filter((value) => value !== null)
                           .join(" · "),
-                        "No actor or resource details"
+                        copy.noActorOrResource
                       )}
                     </p>
                     {renderMetadataLine(log.metadataSummary)}
-                    <p className="record-note">Created {formatOversightDateTime(log.createdAt)}</p>
+                    <p className="record-note">{copy.created} {formatOversightDateTime(locale, log.createdAt)}</p>
                   </div>
                 </li>
               ))}

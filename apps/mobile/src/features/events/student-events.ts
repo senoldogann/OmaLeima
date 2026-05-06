@@ -56,7 +56,11 @@ const deriveRegistrationState = (
   return registration;
 };
 
-const deriveTimelineState = (startAt: string, endAt: string, now: number): EventTimelineState | null => {
+export const deriveStudentEventTimelineState = (
+  startAt: string,
+  endAt: string,
+  now: number
+): EventTimelineState | null => {
   const startTime = new Date(startAt).getTime();
   const endTime = new Date(endAt).getTime();
 
@@ -76,7 +80,7 @@ const mapEventSummary = (
   now: number,
   registrationsByEventId: ReadonlyMap<string, EventRegistrationStatus>
 ): StudentEventSummary | null => {
-  const timelineState = deriveTimelineState(row.start_at, row.end_at, now);
+  const timelineState = deriveStudentEventTimelineState(row.start_at, row.end_at, now);
 
   if (timelineState === null) {
     return null;
@@ -100,10 +104,43 @@ const mapEventSummary = (
   };
 };
 
-const createBuckets = (events: StudentEventSummary[]): StudentEventsBuckets => ({
+export const createStudentEventsBuckets = (events: StudentEventSummary[]): StudentEventsBuckets => ({
   activeEvents: events.filter((event) => event.timelineState === "ACTIVE"),
   upcomingEvents: events.filter((event) => event.timelineState === "UPCOMING"),
 });
+
+export const flattenStudentEventsBuckets = (buckets: StudentEventsBuckets): StudentEventSummary[] => [
+  ...buckets.activeEvents,
+  ...buckets.upcomingEvents,
+];
+
+export const rehydrateStudentEventSummaries = (
+  events: StudentEventSummary[],
+  now: number
+): StudentEventSummary[] =>
+  events.flatMap((event) => {
+    const nextTimelineState = deriveStudentEventTimelineState(event.startAt, event.endAt, now);
+
+    if (nextTimelineState === null) {
+      return [];
+    }
+
+    if (nextTimelineState === event.timelineState) {
+      return [event];
+    }
+
+    return [
+      {
+        ...event,
+        timelineState: nextTimelineState,
+      },
+    ];
+  });
+
+export const rehydrateStudentEventsBuckets = (
+  buckets: StudentEventsBuckets,
+  now: number
+): StudentEventsBuckets => createStudentEventsBuckets(rehydrateStudentEventSummaries(flattenStudentEventsBuckets(buckets), now));
 
 const fetchVisibleEventsAsync = async (): Promise<EventRow[]> => {
   const { data, error } = await supabase
@@ -182,7 +219,7 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
     .map((row) => mapEventSummary(row, now, registrationsByEventId))
     .filter((event): event is StudentEventSummary => event !== null);
 
-  return createBuckets(visibleEvents);
+  return createStudentEventsBuckets(visibleEvents);
 };
 
 export const useStudentEventsQuery = ({

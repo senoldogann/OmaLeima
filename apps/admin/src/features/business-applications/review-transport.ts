@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveAdminAccessAsync } from "@/features/auth/access";
-import type { ReviewMutationResponse } from "@/features/business-applications/types";
+import type { OwnerAccessMutationResponse, ReviewMutationResponse } from "@/features/business-applications/types";
 
 type ReviewTransportResult = {
   response: ReviewMutationResponse;
@@ -51,6 +51,46 @@ export const invokeReviewEdgeFunctionAsync = async (
         typeof invokeResult.data?.message === "string"
           ? invokeResult.data.message
           : "Business application review request completed.",
+      status: typeof invokeResult.data?.status === "string" ? invokeResult.data.status : null,
+    },
+    status: 200,
+  };
+};
+
+export const invokeOwnerAccessEdgeFunctionAsync = async (
+  supabase: SupabaseClient,
+  body: Record<string, string>
+): Promise<{
+  response: OwnerAccessMutationResponse;
+  status: number;
+}> => {
+  const invokeResult = await supabase.functions.invoke<OwnerAccessMutationResponse>("admin-create-business-owner-access", {
+    body,
+  });
+
+  if (invokeResult.error !== null) {
+    return {
+      response: {
+        message: invokeResult.error.message,
+        status: "FUNCTION_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  return {
+    response: {
+      authUserCreated: invokeResult.data?.authUserCreated,
+      businessId: invokeResult.data?.businessId,
+      businessName: invokeResult.data?.businessName,
+      message:
+        typeof invokeResult.data?.message === "string"
+          ? invokeResult.data.message
+          : "Business owner access request completed.",
+      onboardingLink: invokeResult.data?.onboardingLink ?? null,
+      onboardingLinkError: invokeResult.data?.onboardingLinkError ?? null,
+      ownerEmail: invokeResult.data?.ownerEmail,
+      ownerUserId: invokeResult.data?.ownerUserId,
       status: typeof invokeResult.data?.status === "string" ? invokeResult.data.status : null,
     },
     status: 200,

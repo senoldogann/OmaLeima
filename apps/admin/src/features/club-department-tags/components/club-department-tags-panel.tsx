@@ -136,7 +136,7 @@ export const ClubDepartmentTagsPanel = ({ snapshot }: ClubDepartmentTagsPanelPro
               {snapshot.clubs.map((club) => (
                 <article key={club.clubId} className="panel review-card-compact">
                   <div className="stack-sm">
-                    <h3 className="section-title">{club.clubName}</h3>
+                    <p className="card-title">{club.clubName}</p>
                     <p className="muted-text">{formatManageableDepartmentTagClubMeta(club)}</p>
                     <p className="review-note">
                       {club.existingOfficialTagCount} official tag{club.existingOfficialTagCount === 1 ? "" : "s"}

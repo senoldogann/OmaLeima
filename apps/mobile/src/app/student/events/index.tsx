@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { useIsFocused } from "@react-navigation/native";
+
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
@@ -18,10 +20,11 @@ import { AutoAdvancingRail } from "@/features/foundation/components/auto-advanci
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
-import { useStudentEventsQuery } from "@/features/events/student-events";
+import { rehydrateStudentEventsBuckets, useStudentEventsQuery } from "@/features/events/student-events";
 import type { JoinEventResultStatus, StudentEventSummary } from "@/features/events/types";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
+import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
 import { useSession } from "@/providers/session-provider";
 
 type DiscoverySlide = {
@@ -128,13 +131,54 @@ const createErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice 
 const canShowJoinAction = (event: StudentEventSummary): boolean =>
   event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
 
+const eventCountdownWindowMs = 60 * 60 * 1000;
+
+const createCountdownLabel = (
+  event: StudentEventSummary,
+  now: number,
+  language: "fi" | "en"
+): string | null => {
+  if (event.registrationState !== "REGISTERED" || event.timelineState !== "UPCOMING") {
+    return null;
+  }
+
+  const remainingMs = new Date(event.startAt).getTime() - now;
+
+  if (remainingMs <= 0 || remainingMs > eventCountdownWindowMs) {
+    return null;
+  }
+
+  const remainingMinutes = Math.max(Math.ceil(remainingMs / 60000), 1);
+  const remainingHours = Math.floor(remainingMinutes / 60);
+  const minuteRemainder = remainingMinutes % 60;
+
+  if (remainingHours >= 1 && minuteRemainder > 0) {
+    return language === "fi"
+      ? `Alkaa ${remainingHours} t ${minuteRemainder} min`
+      : `Starts in ${remainingHours}h ${minuteRemainder}m`;
+  }
+
+  if (remainingHours >= 1) {
+    return language === "fi"
+      ? `Alkaa ${remainingHours} tunnin päästä`
+      : `Starts in ${remainingHours} ${remainingHours === 1 ? "hour" : "hours"}`;
+  }
+
+  return language === "fi"
+    ? `Alkaa ${remainingMinutes} min päästä`
+    : `Starts in ${remainingMinutes} min`;
+};
+
 export default function StudentEventsScreen() {
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const isAppActive = useActiveAppState();
   const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const { copy, language } = useUiPreferences();
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const now = useCurrentTime(isFocused && isAppActive);
   const studentId = session?.user.id ?? null;
   const [mapPreviewEvent, setMapPreviewEvent] = useState<StudentEventSummary | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
@@ -149,15 +193,15 @@ export default function StudentEventsScreen() {
     studentId: studentId ?? "",
     isEnabled: mapPreviewEvent !== null && studentId !== null,
   });
-
-  const activeEvents = useMemo(
-    () => eventsQuery.data?.activeEvents ?? [],
-    [eventsQuery.data?.activeEvents]
+  const liveEventBuckets = useMemo(
+    () =>
+      eventsQuery.data === undefined
+        ? { activeEvents: [], upcomingEvents: [] }
+        : rehydrateStudentEventsBuckets(eventsQuery.data, now),
+    [eventsQuery.data, now]
   );
-  const upcomingEvents = useMemo(
-    () => eventsQuery.data?.upcomingEvents ?? [],
-    [eventsQuery.data?.upcomingEvents]
-  );
+  const activeEvents = liveEventBuckets.activeEvents;
+  const upcomingEvents = liveEventBuckets.upcomingEvents;
   const coverImageUrls = useMemo(
     () => [...activeEvents, ...upcomingEvents].map((event) => event.coverImageUrl),
     [activeEvents, upcomingEvents]
@@ -219,24 +263,6 @@ export default function StudentEventsScreen() {
     ],
     [activeEvents.length, copy.student.discoveryEyebrow, copy.student.discoverySlides, language, upcomingEvents.length]
   );
-  const valueLabels = useMemo(
-    () => ({
-      eyebrow: language === "fi" ? "Miksi OmaLeima" : "Why OmaLeima",
-      title:
-        language === "fi"
-          ? "Haalarit pysyvät, paperikortti jää pois."
-          : "Keep the haalarit energy, lose the paper card.",
-      body:
-        language === "fi"
-          ? "Näet omat leimat, palkinnot, kartan ja järjestäjän tiedotteet samasta paikasta koko illan ajan."
-          : "Track leimas, rewards, the venue map, and organizer updates from one place during the whole night.",
-      pointA: language === "fi" ? "Ei kadonnutta korttia" : "No lost card",
-      pointB: language === "fi" ? "Palkinnot auki" : "Rewards unlock",
-      pointC: language === "fi" ? "Tiedot heti" : "Updates live",
-    }),
-    [language]
-  );
-
   const openEventDetail = (eventId: string): void => {
     router.push({
       pathname: "/student/events/[eventId]",
@@ -316,11 +342,6 @@ export default function StudentEventsScreen() {
 
               <View style={styles.heroMetaRow}>
                 <Text style={styles.heroMetaText}>{slide.meta}</Text>
-                <View style={styles.heroMetaDot} />
-                <View style={styles.heroMetaHint}>
-                  <Text style={styles.heroMetaText}>{language === "fi" ? "Auto" : "Auto"}</Text>
-                  <AppIcon color={theme.colors.lime} name="chevron-right" size={14} />
-                </View>
               </View>
             </View>
           </CoverImageSurface>
@@ -334,17 +355,6 @@ export default function StudentEventsScreen() {
           <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
         </View>
         <StudentProfileHeaderAction />
-      </View>
-
-      <View style={styles.studentValueCard}>
-        <Text style={styles.valueEyebrow}>{valueLabels.eyebrow}</Text>
-        <Text style={styles.valueTitle}>{valueLabels.title}</Text>
-        <Text style={styles.bodyText}>{valueLabels.body}</Text>
-        <View style={styles.valuePillRow}>
-          <Text style={styles.valuePill}>{valueLabels.pointA}</Text>
-          <Text style={styles.valuePill}>{valueLabels.pointB}</Text>
-          <Text style={styles.valuePill}>{valueLabels.pointC}</Text>
-        </View>
       </View>
 
       {eventsQuery.error ? (
@@ -401,6 +411,7 @@ export default function StudentEventsScreen() {
           <Text style={styles.sectionTitle}>{language === "fi" ? "Käynnissä nyt" : "Live now"}</Text>
           {activeEvents.map((event, index) => (
             <EventCard
+              countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
               isJoinPending={joinMutation.isPending}
               key={event.id}
@@ -418,6 +429,7 @@ export default function StudentEventsScreen() {
           <Text style={styles.sectionTitle}>{language === "fi" ? "Tulossa" : "Coming up"}</Text>
           {upcomingEvents.map((event, index) => (
             <EventCard
+              countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
               isJoinPending={joinMutation.isPending}
               key={event.id}
@@ -519,46 +531,6 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
       justifyContent: "space-between",
     },
-    studentValueCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.limeBorder,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
-      gap: 10,
-      padding: 18,
-    },
-    valueEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.2,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
-    },
-    valuePill: {
-      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.12)" : "rgba(74, 107, 10, 0.1)",
-      borderColor: theme.colors.limeBorder,
-      borderRadius: 999,
-      borderWidth: 1,
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-    },
-    valuePillRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      paddingTop: 2,
-    },
-    valueTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
-    },
     heroBand: {
       height: 260,
       position: "relative",
@@ -590,21 +562,10 @@ const createStyles = (theme: MobileTheme) =>
     heroImage: {
       borderRadius: 0,
     },
-    heroMetaDot: {
-      backgroundColor: theme.colors.limeBorder,
-      borderRadius: 999,
-      height: 4,
-      width: 4,
-    },
-    heroMetaHint: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 4,
-    },
     heroMetaRow: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
     },
     heroMetaText: {
       color: "rgba(248, 250, 245, 0.8)",

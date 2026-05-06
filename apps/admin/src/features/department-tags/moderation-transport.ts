@@ -73,6 +73,16 @@ export const invokeMergeDepartmentTagRpcAsync = async (
   });
 
   if (error !== null) {
+    if (error.message.includes("idx_profile_department_tags_one_primary")) {
+      return {
+        response: {
+          message: "The merge hit a primary department-tag conflict. Apply the latest department-tag sync migration and retry.",
+          status: "PRIMARY_TAG_CONFLICT",
+        },
+        status: 409,
+      };
+    }
+
     return {
       response: {
         message: error.message,

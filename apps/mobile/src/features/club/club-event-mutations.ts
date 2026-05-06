@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 
 import { clubDashboardQueryKey } from "@/features/club/club-dashboard";
-import type { ClubEventFormDraft } from "@/features/club/types";
+import type { ClubEventFormDraft, EventRuleValue, EventRules } from "@/features/club/types";
 import { supabase } from "@/lib/supabase";
 
 type ClubEventMutationResult = {
@@ -44,6 +44,7 @@ type ParsedClubEventDraft = {
   maxParticipants: number | null;
   minimumStampsRequired: number;
   name: string;
+  perBusinessLimit: number;
   startAtIso: string;
   startAtTime: number;
 };
@@ -97,6 +98,37 @@ const parseMinimumStampsOrThrow = (value: string): number => {
   return parsedValue;
 };
 
+const parsePerBusinessLimitOrThrow = (value: string): number => {
+  const normalizedValue = value.trim();
+  const parsedValue = Number.parseInt(normalizedValue, 10);
+
+  if (
+    !Number.isInteger(parsedValue) ||
+    parsedValue < 1 ||
+    parsedValue > 5 ||
+    String(parsedValue) !== normalizedValue
+  ) {
+    throw new Error("perBusinessLimit must be an integer between 1 and 5.");
+  }
+
+  return parsedValue;
+};
+
+const isEventRulesObject = (value: EventRuleValue | undefined): value is EventRules =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const buildEventRules = (existingRules: EventRules, perBusinessLimit: number): EventRules => {
+  const existingStampPolicy = isEventRulesObject(existingRules.stampPolicy) ? existingRules.stampPolicy : {};
+
+  return {
+    ...existingRules,
+    stampPolicy: {
+      ...existingStampPolicy,
+      perBusinessLimit,
+    },
+  };
+};
+
 const assertDraftFields = (draft: ClubEventFormDraft): void => {
   if (draft.name.trim().length < 3) {
     throw new Error("Event name must contain at least 3 characters.");
@@ -136,6 +168,7 @@ const parseDraft = (draft: ClubEventFormDraft): ParsedClubEventDraft => {
     maxParticipants: parseOptionalPositiveIntegerOrThrow(draft.maxParticipants, "maxParticipants"),
     minimumStampsRequired: parseMinimumStampsOrThrow(draft.minimumStampsRequired),
     name: draft.name.trim(),
+    perBusinessLimit: parsePerBusinessLimitOrThrow(draft.perBusinessLimit),
     startAtIso: startAt.isoValue,
     startAtTime: startAt.timeValue,
   };
@@ -239,7 +272,7 @@ const createClubEventAsync = async ({
     p_max_participants: parsedDraft.maxParticipants,
     p_minimum_stamps_required: parsedDraft.minimumStampsRequired,
     p_name: parsedDraft.name,
-    p_rules: {},
+    p_rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
     p_start_at: parsedDraft.startAtIso,
     p_visibility: draft.visibility,
   });
@@ -290,6 +323,7 @@ const updateClubEventAsync = async ({
       max_participants: parsedDraft.maxParticipants,
       minimum_stamps_required: parsedDraft.minimumStampsRequired,
       name: parsedDraft.name,
+      rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
       start_at: parsedDraft.startAtIso,
       status: draft.status,
       visibility: draft.visibility,

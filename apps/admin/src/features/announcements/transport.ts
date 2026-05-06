@@ -1,4 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  FunctionsHttpError,
+  FunctionsRelayError,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import type {
@@ -214,6 +218,49 @@ export const sendAnnouncementPushAsync = async (
   );
 
   if (invokeResult.error !== null) {
+    if (
+      invokeResult.error instanceof FunctionsHttpError ||
+      invokeResult.error instanceof FunctionsRelayError
+    ) {
+      const response = invokeResult.error.context;
+
+      if (response instanceof Response) {
+        let responseBody: Partial<AnnouncementMutationResponse> | null = null;
+
+        try {
+          responseBody = (await response.clone().json()) as Partial<AnnouncementMutationResponse>;
+        } catch {
+          responseBody = null;
+        }
+
+        return {
+          response: {
+            message:
+              typeof responseBody?.message === "string"
+                ? responseBody.message
+                : invokeResult.error.message,
+            notificationsCreated:
+              typeof responseBody?.notificationsCreated === "number"
+                ? responseBody.notificationsCreated
+                : undefined,
+            notificationsFailed:
+              typeof responseBody?.notificationsFailed === "number"
+                ? responseBody.notificationsFailed
+                : undefined,
+            notificationsSent:
+              typeof responseBody?.notificationsSent === "number"
+                ? responseBody.notificationsSent
+                : undefined,
+            status:
+              typeof responseBody?.status === "string"
+                ? responseBody.status
+                : "FUNCTION_ERROR",
+          },
+          status: response.status,
+        };
+      }
+    }
+
     return {
       response: {
         message: invokeResult.error.message,

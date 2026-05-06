@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,6 +21,16 @@ const isPasswordSessionResponseBody = (value: unknown): value is PasswordSession
   value !== null &&
   (("homeHref" in value && typeof value.homeHref === "string") ||
     ("error" in value && typeof value.error === "string"));
+
+type TurnstileApi = {
+  reset: () => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 const GoogleIcon = (): ReactElement => (
   <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24">
@@ -48,19 +59,89 @@ const KeyIcon = (): ReactElement => (
   </svg>
 );
 
-export const AdminLoginPanel = () => {
+type AdminLoginPanelProps = {
+  isProtectionRequired: boolean;
+  turnstileSiteKey: string | null;
+};
+
+const turnstileAction = "admin_login";
+
+export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: AdminLoginPanelProps) => {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isPasswordPending, setIsPasswordPending] = useState<boolean>(false);
   const [isGooglePending, setIsGooglePending] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(searchParams.get("error"));
+  const hasTurnstileSiteKey = typeof turnstileSiteKey === "string" && turnstileSiteKey.length > 0;
+  const isProtectionUnavailable = isProtectionRequired && !hasTurnstileSiteKey;
+
+  const readTurnstileToken = (): string => {
+    const hiddenInput = turnstileContainerRef.current?.querySelector<HTMLInputElement>(
+      'input[name="cf-turnstile-response"]'
+    );
+
+    return hiddenInput?.value.trim() ?? "";
+  };
+
+  const resetTurnstile = (): void => {
+    window.turnstile?.reset();
+  };
+
+  const verifyLoginProtectionAsync = async (): Promise<boolean> => {
+    if (isProtectionUnavailable) {
+      setErrorMessage("Login protection is not configured.");
+      return false;
+    }
+
+    const turnstileToken = readTurnstileToken();
+
+    if (hasTurnstileSiteKey && turnstileToken.length === 0) {
+      setErrorMessage("Complete the Cloudflare verification first.");
+      return false;
+    }
+
+    const response = await fetch("/api/auth/turnstile", {
+      body: JSON.stringify({
+        turnstileToken,
+      }),
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    const responseBody = (await response.json()) as unknown;
+
+    if (!response.ok) {
+      const message =
+        typeof responseBody === "object" &&
+        responseBody !== null &&
+        "error" in responseBody &&
+        typeof responseBody.error === "string"
+          ? responseBody.error
+          : "Login verification failed.";
+
+      setErrorMessage(message);
+      resetTurnstile();
+      return false;
+    }
+
+    return true;
+  };
 
   const handlePasswordSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setIsPasswordPending(true);
     setErrorMessage(null);
+
+    const isVerified = await verifyLoginProtectionAsync();
+
+    if (!isVerified) {
+      setIsPasswordPending(false);
+      return;
+    }
 
     const signInResult = await supabase.auth.signInWithPassword({
       email,
@@ -69,6 +150,7 @@ export const AdminLoginPanel = () => {
 
     if (signInResult.error !== null) {
       setErrorMessage(signInResult.error.message);
+      resetTurnstile();
       setIsPasswordPending(false);
       return;
     }
@@ -77,6 +159,7 @@ export const AdminLoginPanel = () => {
 
     if (session === null) {
       setErrorMessage("Password sign-in returned without a session.");
+      resetTurnstile();
       setIsPasswordPending(false);
       return;
     }
@@ -95,12 +178,14 @@ export const AdminLoginPanel = () => {
 
     if (!isPasswordSessionResponseBody(responseBody)) {
       setErrorMessage("Password session response had an unexpected shape.");
+      resetTurnstile();
       setIsPasswordPending(false);
       return;
     }
 
     if (!sessionResponse.ok || "error" in responseBody) {
       setErrorMessage("error" in responseBody ? responseBody.error : "Password session could not be persisted.");
+      resetTurnstile();
       setIsPasswordPending(false);
       return;
     }
@@ -112,6 +197,13 @@ export const AdminLoginPanel = () => {
     setIsGooglePending(true);
     setErrorMessage(null);
 
+    const isVerified = await verifyLoginProtectionAsync();
+
+    if (!isVerified) {
+      setIsGooglePending(false);
+      return;
+    }
+
     const redirectTo = `${window.location.origin}/auth/callback`;
     const signInResult = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -122,6 +214,7 @@ export const AdminLoginPanel = () => {
 
     if (signInResult.error !== null) {
       setErrorMessage(signInResult.error.message);
+      resetTurnstile();
       setIsGooglePending(false);
     }
   };
@@ -187,7 +280,28 @@ export const AdminLoginPanel = () => {
               />
             </label>
 
-            <button className="button button-primary" disabled={isPasswordPending || isGooglePending} type="submit">
+            {hasTurnstileSiteKey ? (
+              <div className="login-turnstile">
+                <Script
+                  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                  strategy="afterInteractive"
+                />
+                <span className="field-label">Cloudflare protection</span>
+                <div
+                  className="cf-turnstile"
+                  data-action={turnstileAction}
+                  data-sitekey={turnstileSiteKey}
+                  data-theme="dark"
+                  ref={turnstileContainerRef}
+                />
+              </div>
+            ) : null}
+
+            {isProtectionUnavailable ? (
+              <p className="inline-error">Login protection is not configured.</p>
+            ) : null}
+
+            <button className="button button-primary" disabled={isPasswordPending || isGooglePending || isProtectionUnavailable} type="submit">
               <KeyIcon />
               {isPasswordPending ? "Signing in..." : "Sign in with password"}
             </button>

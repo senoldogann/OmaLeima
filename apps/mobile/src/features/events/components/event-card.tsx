@@ -9,6 +9,7 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 import type { StudentEventSummary } from "@/features/events/types";
 
 type EventCardProps = {
+  countdownLabel?: string | null;
   event: StudentEventSummary;
   isJoinPending?: boolean;
   onJoinPress?: () => void;
@@ -50,7 +51,13 @@ const getRegistrationBadge = (
 const canJoinEventFromCard = (event: StudentEventSummary, onJoinPress: (() => void) | undefined): boolean =>
   onJoinPress !== undefined && event.timelineState === "UPCOMING" && event.registrationState === "NOT_REGISTERED";
 
-export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress }: EventCardProps) => {
+export const EventCard = ({
+  countdownLabel = null,
+  event,
+  isJoinPending = false,
+  onJoinPress,
+  onPress,
+}: EventCardProps) => {
   const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const timelineBadge = getTimelineBadge(event, language);
@@ -89,6 +96,11 @@ export const EventCard = ({ event, isJoinPending = false, onJoinPress, onPress }
       {/* İçerik: başlık, konum, rozetler */}
       <View style={styles.content}>
         <Text numberOfLines={2} style={styles.eventName}>{event.name}</Text>
+        {countdownLabel !== null ? (
+          <View style={styles.countdownPill}>
+            <Text numberOfLines={1} style={styles.countdownPillText}>{countdownLabel}</Text>
+          </View>
+        ) : null}
         <View style={styles.locationRow}>
           <AppIcon color={theme.colors.textMuted} name="map-pin" size={11} />
           <Text numberOfLines={1} style={styles.locationText}>
@@ -150,6 +162,22 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       gap: 5,
       minWidth: 0,
+    },
+    countdownPill: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    countdownPillText: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 11,
+      lineHeight: 14,
+      textTransform: "uppercase",
     },
     dateBadge: {
       alignItems: "center",

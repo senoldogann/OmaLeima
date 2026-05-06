@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import type { PublicLandingContent, PublicLocale } from "@/features/public-site/content";
 import { CloseIcon, ContactIcon, InstagramIcon, LanguageIcon, MenuIcon } from "@/features/public-site/public-icons";
+import { getPublicHomeHref } from "@/features/public-site/site-config";
 
 type PublicNavbarProps = {
   contactHref: string;
@@ -32,6 +33,7 @@ export const PublicNavbar = ({
 }: PublicNavbarProps) => {
   const [hasScrolled, setHasScrolled] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const homeHref = getPublicHomeHref(locale);
 
   useEffect(() => {
     const handleResize = () => {
@@ -87,10 +89,11 @@ export const PublicNavbar = ({
             data-scrolled={hasScrolled ? "true" : "false"}
           >
             <div className="public-brand-row">
-              <a
-                aria-label={locale === "fi" ? "Palaa sivun alkuun" : "Back to top"}
+              <Link
+                aria-label={locale === "fi" ? "Palaa etusivulle" : "Go to homepage"}
                 className="public-brand"
-                href="#top"
+                href={homeHref}
+                onClick={handleMenuClose}
               >
                 <span aria-hidden="true" className="brand-mark public-brand-mark">
                   <Image
@@ -105,7 +108,7 @@ export const PublicNavbar = ({
                 <div className="public-brand-copy">
                   <span>OmaLeima</span>
                 </div>
-              </a>
+              </Link>
 
               <button
                 aria-controls="public-mobile-menu"

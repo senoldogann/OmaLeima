@@ -141,11 +141,13 @@ const mapRewardTierRecords = (
 
     return [
       {
+        canEdit: event.canManageRewards,
         claimInstructions: row.claim_instructions,
         createdAt: row.created_at,
         description: row.description,
         eventId: row.event_id,
         eventName: event.name,
+        eventStatus: event.eventStatus,
         inventoryClaimed: row.inventory_claimed,
         inventoryRemaining,
         inventoryTotal: row.inventory_total,

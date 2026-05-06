@@ -33,6 +33,18 @@ const parseAnnouncementResponseAsync = async (
   const responseBody = (await response.json()) as Partial<AnnouncementMutationResponse>;
 
   return {
+    notificationsCreated:
+      typeof responseBody.notificationsCreated === "number"
+        ? responseBody.notificationsCreated
+        : undefined,
+    notificationsFailed:
+      typeof responseBody.notificationsFailed === "number"
+        ? responseBody.notificationsFailed
+        : undefined,
+    notificationsSent:
+      typeof responseBody.notificationsSent === "number"
+        ? responseBody.notificationsSent
+        : undefined,
     message:
       typeof responseBody.message === "string"
         ? responseBody.message

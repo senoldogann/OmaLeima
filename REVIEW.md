@@ -2,6 +2,452 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Business Owner Onboarding Handoff)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Scope:** Admin business application post-approval owner account and membership handoff.
+
+## Business Owner Onboarding Handoff Findings
+
+- `approve_business_application_atomic()` already creates a `businesses` row linked to the original `business_applications.id`, but it does not create a business owner auth user or `business_staff` membership.
+- The admin panel currently explains that operators should use bootstrap scripts after approval. That is not a production-ready admin workflow because it leaves account delivery outside the UI.
+- The existing review API pattern is safe: Next.js route checks platform-admin access, then invokes a Supabase Edge Function that uses service-role and database RPCs. The owner onboarding action should follow the same pattern.
+- Owner account linking needs to be idempotent. Re-clicking the action should reuse the existing profile/auth user and existing `business_staff` membership instead of creating duplicates.
+- Scanner staff no longer needs password delivery because owner-QR scanner provisioning exists. The business owner handoff should therefore focus on owner access and clear scanner QR onboarding instructions.
+
+## Business Owner Onboarding Handoff Review Outcome
+
+This slice should add a post-approval admin action that creates or reuses the contact email auth user, links it as `BUSINESS_OWNER` + `business_staff OWNER`, and returns a recovery/onboarding link when Supabase can generate one. The reviewed applications read-model should show whether a business and owner membership already exist.
+
+## Current Review (Scanner QR Login Redirect Regression)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Scope:** Business owner QR scanner login flow after anonymous-auth security hardening.
+
+## Scanner QR Login Redirect Regression Findings
+
+- Business QR login intentionally starts with `supabase.auth.signInAnonymously()` and then calls `provision-business-scanner-session` to activate the anonymous profile as `BUSINESS_STAFF/SCANNER`.
+- After the security hardening, anonymous profiles are correctly created as `SUSPENDED`. This is safe, but it creates a short-lived transitional state during QR provisioning.
+- The mobile auth layout and login screen both subscribe to `useSessionAccessQuery(session.user.id)`. As soon as anonymous sign-in succeeds, that query can resolve the transitional `SUSPENDED/STUDENT` profile as `unsupported` before provisioning finishes.
+- React Query can then keep the stale `session-access` result for the same anonymous user id. Even if the Edge Function successfully updates the profile to `ACTIVE` and creates `business_staff`, the business layout may still read the cached unsupported access and bounce the user away from scanner mode.
+- `BusinessQrSignIn` currently navigates directly to `provisionedSession.homeHref` after the Edge Function response without invalidating/refetching session access for the newly provisioned anonymous user.
+- `AnnouncementPopupBridge` also enabled on any authenticated session, not on resolved role access. During QR provisioning this let public popup announcements render over the business login screen while anonymous scanner activation was still in flight.
+- Scanner-only devices are operational kiosks, so announcement popups and announcement push deep-links should not compete with the scanner route.
+
+## Scanner QR Login Redirect Regression Review Outcome
+
+The QR login should explicitly treat anonymous sign-in as a provisioning transaction: capture the anonymous user id, call the provisioning Edge Function, invalidate/refetch `session-access` for that user, verify the resolved access is business/scanner, and only then navigate to `/business/scanner`. Announcement popup/push bridges must wait for resolved non-scanner access and stay quiet during provisioning. This keeps suspended-by-default anonymous auth secure without letting stale access cache or modal bridges redirect/distract the scanner back to login.
+
+## Current Review (Anonymous Auth Security Hardening)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/security-hardening-review`
+- **Scope:** Anonymous Supabase Auth enablement, RLS privilege expansion, profile role/status integrity, public intake bypasses, and push/device token registration guardrails.
+
+## Anonymous Auth Security Hardening Findings
+
+- Hosted Supabase anonymous sign-in is now enabled and a real anonymous sign-in smoke succeeds. Anonymous users receive the Postgres `authenticated` role, so every `to authenticated` policy must now be treated as reachable before Google/password identity proof.
+- `handle_new_auth_user()` currently creates email-less anonymous users with the default `profiles.status = ACTIVE` and `profiles.primary_role = STUDENT`. That makes scanner provisioning possible, but it also turns anonymous sessions into active student identities before any QR provisioning step.
+- `profiles` has an own-row update policy with only `id = auth.uid()` checks. Because RLS cannot restrict columns by itself, an authenticated or anonymous user could attempt to change sensitive fields such as `primary_role` or `status` unless the database blocks those writes explicitly.
+- `business_applications` still has an authenticated insert policy from a previous integrity migration. With anonymous auth enabled, direct Supabase inserts can bypass the public `/api/business-applications` Turnstile, origin, honeypot, fill-time, and validation controls.
+- `support_requests` allows authenticated users to create own support requests. That is acceptable for real active profiles, but anonymous suspended profiles should not be able to create support spam through direct Supabase client calls.
+- `register-device-token` authenticates the bearer token but does not check that the profile is active. Suspended anonymous users should not be able to register push tokens before becoming a provisioned scanner or real user.
+
+## Anonymous Auth Security Hardening Review Outcome
+
+This slice should keep anonymous sign-in available for owner-QR scanner onboarding, but make anonymous profiles suspended-by-default and require explicit backend provisioning to activate scanner accounts. Sensitive profile fields must be protected at the database trigger layer, direct public intake must stay behind server-side Turnstile routes, and push/support write surfaces must require active profiles.
+
+## Current Review (Owner QR Scanner Provisioning)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Business owner QR-based scanner provisioning across Supabase auth/device lifecycle and mobile business login/profile surfaces.
+
+## Owner QR Scanner Provisioning Findings
+
+- The project already has a solid scanner-device base: `business_scanner_devices`, registration RPCs, PIN support, scanner-only routing, and mobile device summaries. The missing piece is not scanning itself; it is credential-less staff onboarding.
+- Current scanner login is email/password based. That forces business owners to share credentials with staff, which creates a real offboarding and accountability problem when employees leave.
+- Supabase hosted state was checked with the Supabase MCP: production has no owner-QR scanner provisioning edge functions yet, and its latest migration is `fix_profile_department_tag_primary_merge_order`.
+- Supabase anonymous auth is the cleanest fit for device-local scanner accounts, but local config currently has anonymous sign-ins disabled and the auth profile trigger rejects email-less users. This must be fixed before the mobile QR login can work reliably.
+- Scan history and stats must remain business-owned even if a scanner device/account is revoked. Existing `stamps.scanner_user_id` and `qr_token_uses.scanner_user_id` constraints need to allow scanner user deletion without deleting historical event/business facts.
+- Revoking a device via the current RPC only marks `business_scanner_devices.status = REVOKED`. The requested lifecycle needs a service-role edge function that also disables/deletes the provisioned scanner auth user when the device belongs to a QR-provisioned scanner.
+
+## Owner QR Scanner Provisioning Review Outcome
+
+This slice should reuse the existing device table and scanner-only app routing, but add a secure QR grant layer: owner/manager generates a short-lived signed QR, scanner device signs in anonymously, provisioning atomically consumes the QR grant and creates an active `BUSINESS_STAFF/SCANNER` membership, and revocation removes that scanner access while preserving historical scan records.
+
+## Current Review (Public Website Simplification Redesign)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Public website landing and companion public pages (contact, apply, legal) with a cleaner, less crowded art-directed layout.
+
+## Public Website Simplification Redesign Findings
+
+- The current landing page has too many equally loud sections: hero, flow, large gallery, culture/story, growth model, pricing, support, and contact CTA. Even though each section is individually valid, together they dilute the message and make the page feel busy.
+- The public site still carries `growth model` and `pricing` storytelling that the user explicitly wants removed from this redesign pass. It adds strategic explanation where the homepage should instead behave like a poster plus a short product story.
+- `landing-page.tsx` also still imports `PricingCheckoutButton` and exposes `checkoutStatus`, so the public entrypoint is still shaped around self-serve Stripe even though the requested direction is manual contact/application and a simpler website.
+- The best reference direction from the user image is not “more components”; it is stronger hierarchy: one bold hero, three compact flow cards, one focused feature band, one short proof/support area, and a restrained footer.
+- Existing public pages (`contact`, `apply`, `legal`) already reuse the same navbar/footer, but visually they do not yet feel like part of the same calmer poster-like system as the desired landing direction.
+- The repo already has enough public assets for support sections, but the hero benefits from a new cleaner editorial image with controlled negative space. A new generated hero asset can give the page a stronger first impression without introducing bright off-theme colors.
+
+## Public Website Simplification Redesign Review Outcome
+
+This slice is now implemented as a smaller poster-style public site: the landing is reduced to hero, three-step flow, one product spotlight, one event-day proof block, and one closing CTA. Pricing/Stripe-driven homepage surfaces were removed, a new generated hero image is in place, and contact/apply/legal now use the same calmer shell so the public website reads as one coherent system instead of an accumulated set of sections.
+
+## Current Review (Cross-Role Mobile Design Audit Round Two)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Remaining dense Student, Club, and Business mobile screens after the first subtraction pass, with a focus on hierarchy, reduced explanatory copy, and flatter operational surfaces.
+
+## Cross-Role Mobile Design Audit Round Two Findings
+
+- The first mobile audit removed the loudest strategy copy, but the next bottleneck is now layout density rather than outright wrong content. Several screens still stack too many framed sections with generic headings like `Preferences`, `Profile settings`, or `Scanner workflow`, which makes the product feel heavier than it needs to.
+- `apps/mobile/src/app/student/profile.tsx` is functionally sound, but the current split between profile hero and a second large settings card adds an unnecessary layer of heading chrome. Notification setup also explains too much for a surface that should feel like quick account maintenance.
+- `apps/mobile/src/app/student/leaderboard.tsx` still carries duplicated orientation signals: a page heading, another event chooser heading, selected-event title, standings heading, and a separate current-user spotlight block. The flow is correct, but the page reads more like stacked modules than one continuous ranking workspace.
+- `apps/mobile/src/app/business/scanner.tsx` is the highest-value operational screen and therefore the one that most benefits from restraint. The current top meta paragraph is too long, and the manual token area is visually too prominent for a fallback/testing tool. The scanner should read as kiosk-first, with secondary tools visually demoted.
+- `apps/mobile/src/app/business/profile.tsx` and `apps/mobile/src/app/club/profile.tsx` both still feel card-heavy. The core information is valid, but headings and explanatory rows repeat the same intent, and collapsible/profile surfaces can be tightened without reducing capability.
+- `apps/mobile/src/app/club/upcoming.tsx` already has good data density, but the top subtitle and the framed filter block still spend too much vertical space before the user reaches the event cards.
+- `apps/mobile/src/app/student/updates.tsx` is close to good already; the remaining issue is small but real: its extra descriptive line does not add enough value to justify the space on a feed-first screen.
+
+## Cross-Role Mobile Design Audit Round Two Review Outcome
+
+This slice should keep the current dark/lime theme and shared components, but compress hierarchy across the remaining dense screens. The rule is simple: keep orientation, keep action, keep state, and remove the extra sentence or frame whenever the screen already proves its purpose through content.
+
+## Current Review (Cross-Role Mobile Design Audit)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Student, organizer, and business mobile screens with a product-design audit focused on clutter, repetition, weak hierarchy, and missing restraint.
+
+## Cross-Role Mobile Design Audit Findings
+
+- The overall theme system is strong enough; the main issue is not color, but density and mixed intent. Several mobile surfaces still contain internal business-model storytelling that belongs in the website or admin context, not inside operational app screens.
+- `apps/mobile/src/app/business/home.tsx` renders a `growthCard` about verified student traffic, sponsor slots, and reports. This is product strategy copy shown to a business operator who is trying to run scanning and event participation, so it competes with the actual job-to-be-done.
+- `apps/mobile/src/app/club/home.tsx` renders a similar `growthCard` about organizer monetization. On organizer mobile this reads like internal pitch material and breaks the otherwise event-day operational focus.
+- Student surfaces have a second kind of clutter: kinetic UI that explains its own carousel mechanics. `apps/mobile/src/app/student/events/index.tsx` shows `Auto` beside the hero rail metadata, and `apps/mobile/src/app/student/rewards.tsx` explains that the rewards rail slides automatically when idle. That copy is ornamental, not useful.
+- The repeated design smell across roles is "telling the user how the UI works" or "telling the operator how the business works" instead of keeping the screen centered on the user’s current task.
+- Shared operational components like `InfoCard`, rail sections, and announcement feeds are already visually cohesive enough that this slice can improve clarity by subtraction rather than by introducing new ornamental UI.
+
+## Cross-Role Mobile Design Audit Review Outcome
+
+This slice should keep the existing dark/lime visual language, but remove strategy/pitch blocks from business and organizer mobile homes, and strip self-explanatory carousel chrome from student event/reward rails. The target feel is calmer, more premium, and more role-specific: each screen should foreground action, status, and decision-making rather than product narration.
+
+## Current Review (Organizer Announcement Edit Focus + Login Language Menu)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Club mobile announcement edit visibility and login language selector UX cleanup.
+
+## Organizer Announcement Edit Focus + Login Language Menu Findings
+
+- Club mobile `announcements` screen fills the form with the tapped record for edit, but the user can stay deep in the lower feed area and never see that the edit state actually started. The form title changes, yet it is above the fold and easy to miss.
+- `AppScreen` owns the root `ScrollView`, but it does not expose a ref. Screens like club announcements therefore cannot intentionally scroll the main surface back to the form after a row tap.
+- Login screen language switching currently uses two full-width visible pills near the top of the card. Functionally correct, but visually noisy and harder to scale as the auth surface evolves.
+- `AppIcon` already contains `globe` and `chevron-down`, so the requested icon-first language affordance can be implemented without adding a new dependency or SVG asset.
+- The requested polish fits the existing dark/lime design language best when treated as a compact utility control rather than another primary segmented selector.
+
+## Organizer Announcement Edit Focus + Login Language Menu Review Outcome
+
+This slice should expose the root scroll position to the club announcements screen, auto-scroll back to the form when an announcement enters edit mode, and replace the visible FI/EN pill row on login with a compact globe-triggered dropdown menu that preserves the existing `useUiPreferences()` language state.
+
+## Current Review (Announcement Push Reliability + Dashboard Locale Cohesion)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Announcement push failure clarity and guardrails, admin/organizer dashboard locale consistency, department-tag merge primary-tag conflict, and mobile announcement push deep-link/source visibility.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Findings
+
+- Admin/club web `send push` action currently treats every non-2xx Edge Function response as the generic Supabase SDK message `Edge Function returned a non-2xx status code`. The actual function body already returns useful statuses like `ANNOUNCEMENT_ALREADY_SENT`, `ANNOUNCEMENT_NOT_ACTIVE`, and `NOTIFICATION_RECIPIENTS_NOT_FOUND`, but the transport layer drops that context.
+- `AnnouncementsPanel` enables `Send push` for every `PUBLISHED` record, even when the announcement has not started yet, has already ended, or already has successful delivery rows in `notifications`. Those cases predictably fail in the Edge Function and look random from the UI.
+- Admin/organizer dashboard locale switching is only fully wired on a subset of pages and panels. Some pages pass `DashboardLocale` into shell/panels, while others still rely on hard-coded English strings inside page bodies or panel components. This produces mixed-language sessions even when the cookie itself works.
+- The reported `idx_profile_department_tags_one_primary` merge failure is caused by the `sync_department_tag_profile_links()` trigger order. During a merge it promotes the target link to `is_primary = true` before the old source primary is removed or demoted, creating a transient second primary row for the same profile.
+- Mobile announcement detail already knows whether the item comes from a club or the platform, but the detail copy only shows `clubName ?? "OmaLeima"`. The user specifically wants the sender/source made explicit, especially for platform support announcements.
+- Notification tap handling is currently only captured in `NativePushDiagnosticsProvider`. There is no production router bridge that reads Expo notification responses and routes the signed-in user to the matching announcement detail screen, so push delivery works but click-through does not.
+
+## Announcement Push Reliability + Dashboard Locale Cohesion Review Outcome
+
+This slice should surface real announcement push errors back to the web UI, disable obviously unsendable push actions before the user clicks them, localize the announcement and department-tag moderation surfaces through the same dashboard locale cookie flow, fix the primary-tag merge ordering at the database trigger layer, and add a mobile notification-response bridge that routes announcement pushes directly into the role-appropriate detail screen while also showing the sender/source clearly in the detail UI.
+
+## Current Review (Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Student leima-pass duplicate stamp rendering, public brand navigation, monthly-only pricing/subscription checkout, and business apply/login Turnstile resilience.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Findings
+
+- Student event detail verisi venue stamp state'ini `Map(business_id -> stamp)` ile tek kayda indiriyor. Bu nedenle ayni business'ten iki gecerli stamp backend'de bulunsa bile `StudentLeimaPassCard` en fazla bir toplanmis slot gorebiliyor.
+- `StudentLeimaPassCard` collected slot listesini venue bazli uretiyor; stamp adedi degil venue adedi kadar ikon ciziyor. Ayni mekandan toplanan ikinci leima UI'da dogal olarak kayboluyor.
+- Public navbar brand link'i hala `href="#top"` kullaniyor. `/apply`, `/contact` veya `/en/*` gibi sayfalarda bu sadece ayni sayfada scroll dener; kullaniciyi gercek ana sayfaya goturmuyor.
+- Public pricing yapisi hala uc farkli tek-seferlik pilot paket mantiginda. Kullanici istegi bunun yerine tek bir aylik 29.99 EUR B2B plan.
+- Stripe Checkout route'u daha once one-time payment icin sertlestirilmis olsa da subscription mode'a gecince `line_items.price_data.recurring` ve `mode: "subscription"` gerekir; `invoice_creation` gibi payment-only alanlar cikarilmalidir.
+- `business-application-form.tsx`, `contact-form.tsx` ve `admin-login-panel.tsx` Cloudflare Turnstile'i explicit `window.turnstile.render(...)` ile kuruyor. Kullanicinin rapor ettigi CSP / Trusted Types / inline script sikayetleriyle birlikte dusununce, official implicit widget markup daha dayanikli ve daha az script bagimli bir yol.
+- Live `/apply` response'unda uygulamanin kendi code-level CSP header'i gorunmuyor; dolayisiyla mevcut kirilma buyuk ihtimalle explicit render yolunun tarayici/policy kombinasyonlariyla surtusmesinden geliyor, yalnizca origin/server route reddinden degil.
+- Scanner QR ile owner-device provisioning fikri mevcut `business_scanner_devices` altyapisiyla uyumlu gorunuyor; fakat bugunku scan auth kontrati dogrudan `auth.uid()` uzerinden aktif `business_staff` uyeligi bekliyor. Bu nedenle tam credential-less owner-QR scanner girisi ayri bir auth/device lifecycle slice'i gerektiriyor.
+
+## Leima Pass Count + Monthly Pricing + Apply Turnstile Resilience Review Outcome
+
+Bu slice'ta leima-pass ayni business'ten gelen coklu stamp'lari sayi olarak gostermeli, public brand link'i locale-aware home route'una donmeli, pricing tek aylik 29.99 EUR recurring Stripe Checkout'a inmeli ve apply/login/contact Turnstile yuzeyleri implicit widget render ile daha dayanikli hale gelmeli. Owner-QR scanner provisioning icin ise mevcut device altyapisi reuse edilecek, ama auth model degisimi gerektirdigi icin ayri bir implementation parcasi olarak ele alinacak.
+
+## Current Review (Stripe Live Checkout + Event Stamp Limit Parity)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Stripe live checkout production activation, reminder warning confirmation, and same-venue stamp-limit parity across mobile/web organizer flows.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Findings
+
+- Production pricing checkout initially failed with two real live-mode Stripe integration issues: `customer_update` was being sent without an explicit `customer`, and inline `price_data` had no explicit `tax_behavior` while live Stripe Tax settings did not define a default. Both caused hard `500` responses from `/api/pricing/checkout`.
+- Vercel production now has the required Stripe env pair present (`STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`), but those env changes only matter after a fresh production deploy.
+- The previously reported reminder warning root cause remains the invalid SecureStore key format. The current mobile reminder bridge already uses `student_event_reminder_fired_v1`, which is compatible with Expo SecureStore's key restrictions.
+- Mobile club event create/update flow had two real rule regressions: organizer edits overwrote the entire `events.rules` object with a fresh `stampPolicy` object, and legacy string-form `stampPolicy.perBusinessLimit` values were read as the default `1`. Editing an unrelated field could therefore silently tighten or erase stored event rules.
+- Web organizer rule builder had the same shape problem in a different form: it preserved top-level JSON keys but still replaced the whole `stampPolicy` object, and its server validation rejected legacy digit-string `perBusinessLimit` values. That made mobile/web parity incomplete.
+- The backend scan rule already enforces `perBusinessLimit` as a cap on how many separate valid stamps a student may collect from the same business during an event. It does not mean one scan yields multiple stamps. The current DB function compares existing valid stamp count against the configured per-business limit before returning `ALREADY_STAMPED`.
+
+## Stripe Live Checkout + Event Stamp Limit Parity Review Outcome
+
+This slice should keep Stripe checkout fail-closed but production-ready, preserve existing event rules during organizer edits, normalize legacy stamp-limit values on both mobile and web, and clarify the "same venue limit" UX so it reads as a total-per-event cap rather than a multi-stamp-per-scan setting.
+
+## Current Review (Student Event Detail + Reminder Warning Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Student mobile event detail timeline/rules rendering, reminder SecureStore warnings, and the reported event cover prefetch warnings.
+
+## Student Event Detail + Reminder Warning Cleanup Findings
+
+- Student event detail hero badge `getEventTimelineBadge()` icinde veritabani `status` alanina kismi olarak guveniyor. Student event listesi ise saf zaman bazli bucket kullaniyor. Bu fark yuzunden gelecekteki bir event detail ekraninda `päättynyt` gibi yanlis badge gorunebiliyor.
+- Event detail `Rules` bolumu `Object.entries(event.rules)` + `JSON.stringify()` ile ham JSON gosteriyor. `stampPolicy` verisi object, string veya eski array-semantigi ile gelebilecegi icin kullaniciya `perBusinessLimit` gibi raw backend formatlari siziyor.
+- `student-event-reminders.ts` icindeki SecureStore key'i `student-event-reminder-fired:v1` seklinde `:` iceriyor. Expo SecureStore bu karakteri key icinde kabul etmedigi icin `student-event-reminder-clear-failed` ve `student-event-reminder-sync-failed` warning'lerinin kok nedeni bu.
+- Kullanici logunda paylastigi iki event cover URL'si artik public olarak saglikli donuyor: `HEAD` istekleri `HTTP 200` ve anlamli `content-length`, `Range bytes=0-0` istekleri `HTTP 206` ile 1 byte dondu. Bu da raporlanan prefetch warning'lerinin su andaki bu iki obje icin aktif storage bozuklugu gostermedigini, daha cok onceki gecici durum veya stale cihaz logu oldugunu dusunduruyor.
+
+## Student Event Detail + Reminder Warning Cleanup Review Outcome
+
+Bu slice'ta event detail badge ve registration gating student listesiyle uyumlu sekilde zaman bazli hale getirilecek, `stampPolicy` insan-okunur metne cevrilecek, SecureStore key'i platform-safe karakter setine alinacak ve prefetch warning'i icin kod yerine once runtime gercek durumu dogrulanmis olacak.
+
+## Current Review (Pricing Checkout + Announcement/Admin Reliability)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Mobile announcement image/detail polish, mobile login language selector, public pricing Stripe checkout flow, and organizer/admin panel action reliability.
+
+## Pricing Checkout + Announcement/Admin Reliability Findings
+
+- Mobile announcement detail ekraninda gorunen ayri bir zoom CTA artik yok, fakat modal hala tum frame'i dolduran `CoverImageSurface` kullaniyor. Kullanici istegi "resme tikla, orijinal boyutta gor" oldugu icin zoom yuzeyi tam ekran `contain` mantigina cekilmeli ve gorunen ekstra aksiyon kalmamali.
+- Mobile login ekrani `useUiPreferences()` icinden sadece `copy` okuyor. Uygulama genelinde kalici `setLanguage()` altyapisi zaten mevcut, fakat giris sayfasinda hizli FI/EN secici yok.
+- Public pricing section su an tamamen application CTA'larina bagli. Stripe entegrasyonu yok, checkout route yok ve public package metni hala "Price ID'ler netlesince baglanir" diye bekleme durumunda.
+- Finlandiya vergi tarafinda guncel resmi kaynaklara gore genel KDV/ALV orani 2026 itibariyla `%25.5`. B2B akista sabit tax-rate hard-code etmek yerine Stripe Checkout + `automatic_tax` + `tax_id_collection` kullanmak daha guvenli; bu sayede Finlandiya ve diger uygun AB senaryolarinda vergi hesabini Stripe yapar.
+- `/club/announcements` ve `/admin/announcements` ayni `AnnouncementsPanel` component'ini paylasiyor. Bu yuzden paneldeki `Edit`, `Archive`, `Send push` akislari tek yerde duzeltilirse iki role de ayni anda etki eder.
+- `Edit` butonu formu doldursa bile kullanici announcements tab'inda kalabiliyor; bu da buton calismiyor hissi veriyor. Ayrica push response metriği client parse'da kaybolursa kullanici teslimat sonucunu eksik goruyor.
+- Admin panel icin mevcut smoke script zemini var: `smoke:routes`, `smoke:business-applications`, `smoke:club-events`, `smoke:club-rewards`, `smoke:club-claims`, `smoke:club-department-tags`, `smoke:department-tags`, `smoke:oversight`. Bu turda panel buton/row auditini kod incelemesi + mevcut smoke scriptleriyle birlestirmek mantikli.
+
+## Pricing Checkout + Announcement/Admin Reliability Review Outcome
+
+Bu slice'ta mobile login'e kalici dil secici eklenecek, announcement detail image zoom yuzeyi sadeleştirilecek, public pricing Stripe Checkout Sessions ile Finlandiya ALV mantigina uygun sekilde canli checkout-ready hale getirilecek, shared announcements paneldeki tab/action sorunlari kapatilacak ve organizer/admin yuzeyleri mevcut smoke scriptleriyle tekrar taranacak.
+
+## Current Review (Student Event Time Awareness + Venue Discovery)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Student mobile event list, countdown/reminder flow, event detail registration/venue UX, leaderboard filtering, and leima-pass venue identity feedback.
+
+## Student Event Time Awareness + Venue Discovery Findings
+
+- `useStudentEventsQuery` aktif ve yaklasan eventleri fetch anindaki `Date.now()` ile bucket'liyor. Ekran acik kaldiginda `UPCOMING -> ACTIVE` gecisi ancak manuel refresh/refetch ile gorunuyor.
+- Student Events ekrani zaten `activeEvents` + `upcomingEvents` uzerinden lokal discovery/render yapiyor; bu yuzden mevcut query sonucunu ekranda yeniden zamanlayarak gecisi UI tarafinda cozmeye uygun.
+- Event card premium compact layout'a gecmis durumda, fakat kayitli ogrenci icin `son 60 dakika` countdown veya reminder gorselligi yok.
+- Push altyapisi `presentLocalNotificationAsync` ve reward notification bridge uzerinden hazir. Event reminder icin eksik parca, kayitli eventlerin `startAt - 60 dakika` noktasina gore schedule/dedupe yapan ogrenci-side bridge.
+- Event detail route kayit/yoklama yuzeyini her durumda render ediyor. Kullanici istegine gore event basladigi anda bu `Ilmoittautuminen` blogu kalkmali.
+- Event detail'de venue'ler buyuk statik kartlar halinde listeleniyor. Kullanici daha kucuk kartlar, venue'ye tiklayinca detay/reward/map aksiyonu istiyor.
+- `StudentEventVenueMap` mevcut ama sadece map preview ekraninda kullaniliyor. Venue detayinda haritaya gecis icin ayni external maps mantigi tekrar kullanilabilir.
+- Leaderboard'da event secici zaten var; sayfayi bogmadan tarih filtresi eklemek icin event chip rail'inin ustune kucuk tarih chip katmani eklemek yeterli.
+- `StudentLeimaPassCard` stamp toplayan mekanlarin ikonlarini gosteriyor ama bunlar tiklanabilir degil; kullanici hangi mekan oldugunu hizli popup ile gorebilmek istiyor.
+
+## Student Event Time Awareness + Venue Discovery Review Outcome
+
+Bu slice'ta mevcut query/realtime yapisini bozmadan event verisi ekranda yeniden zamanlanacak, kayitli upcoming eventler icin local reminder bridge eklenecek, event detail kayit yuzeyi baslangic sonrasi kaldirilacak, venue'ler compact kart + detail modal akisina gecirilecek, leaderboard hafif tarih filtreleri alacak ve leima pass mekan kimligi popup ile tamamlanacak.
+
+## Current Review (Login Protection + Pricing/Business Intake)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Add Cloudflare Turnstile to admin login, add optional Finland-only access guard, publish practical pricing/business package, wire public business applications into the admin review queue, and close announcement popup after "Näytä lisää".
+
+## Login Protection + Pricing/Business Intake Findings
+
+- `/login` used client-side Supabase password/OAuth without a Cloudflare challenge. Existing contact form already proved Turnstile keys and server-side validation are available, so the login page can use the same token validation model before starting Supabase auth.
+- Cloudflare docs require server-side Turnstile validation; the widget alone is not protection. Login now needs a backend validation endpoint so forged tokens fail before password or Google auth begins.
+- Full Finland-only blocking is technically possible with Cloudflare WAF country rules or Vercel/Cloudflare country headers, but product-wise it is risky for SEO, App Store review, exchange students, roaming users, VPNs, and organizers traveling outside Finland. A safer first step is an env-controlled geofence mode that defaults off and can protect admin/login first.
+- The public contact form has a `business_signup` subject, but it creates `public_contact_submissions`, not rows in `business_applications`. Admin `/admin/business-applications` therefore needed a real public application intake path.
+- The current business approval flow already creates the business profile atomically. The missing piece was explaining the post-approval scanner/account handoff and making the public website send real applications to that queue.
+- The pricing package should not invent live Stripe payments without confirmed products, VAT/invoicing, and Stripe Price IDs. The safe slice is to publish pricing, route businesses into the admin queue, and make the package Stripe Checkout-ready once IDs exist.
+- Announcement popup "Näytä lisää" pushed the detail route while the unread popup remained visible over the destination. It needed a local dismiss state for the opened announcement.
+
+## Login Protection + Pricing/Business Intake Review Outcome
+
+Admin login now requires a Turnstile preflight for password and Google login when a site key is configured. A shared server-side Turnstile validator and client IP helper were added. `/apply` and `/en/apply` now submit protected business applications directly into `business_applications`; the public landing includes a pricing section with the free core, verified traffic, and premium event ops packages. Admin business applications now explains account/scanner credential handoff. Optional geofence proxy is available via `OMALEIMA_GEOFENCE_MODE=admin|all`, defaulting to `off`. Announcement popup closes locally after opening detail.
+
+## Current Review (QR Refresh + Navigation/Layout Regression)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Student QR refresh failure, announcement detail back/zoom behavior, and admin/organizer dashboard fixed sidebar + locale consistency.
+
+## QR Refresh + Navigation/Layout Findings
+
+- Student QR token refresh called the hosted `generate-qr-token` Edge Function with the user bearer token but without the Supabase `apikey` header. The Edge gateway can reject that request before the function logic runs, which matches the generic `QR päivitys epäonnistui` UI.
+- The QR screen hid the underlying function error message, making auth/registration/event-window issues indistinguishable from gateway failures.
+- Announcement detail used `router.back()` when a stack existed. If the user entered detail from Info after previously visiting Events, the native stack could return to Events instead of the explicit role-specific updates route.
+- The visible `Suurenna kuva` pill duplicated the image tap affordance. The detail hero can use the whole image as the tap target and open the zoom modal directly.
+- Dashboard sidebar was `sticky` inside the document flow. Long content could scroll the sign-out/menu region out of view. A fixed viewport sidebar with only the nav list scrollable is the safer desktop layout.
+- Dashboard locale defaulted to English when no cookie existed, while some pages/panels had explicit Finnish handling. That made navigation feel mixed between Finnish and English.
+
+## QR Refresh + Navigation/Layout Review Outcome
+
+The QR request now sends the public Supabase API key with the bearer token and displays the exact refresh error detail below the friendly message. Announcement detail back navigation now uses the explicit role route, image zoom opens by tapping the image without a visible pill button, dashboard desktop sidebar is fixed, and dashboard locale defaults to Finnish unless the user switches it.
+
+## Current Review (Student Info IA + Turnstile Production Finish)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Fix student tab label overflow, move duplicated student value/update surfaces to the right screens, add Turnstile production envs, deploy, and smoke contact protection.
+
+## Student Info IA Findings
+
+- Student bottom tab used full Finnish `Tapahtumat`, which can overflow on narrow physical iPhones. Route and page title can remain unchanged while the tab label uses shorter FI copy.
+- `Miksi OmaLeima` was useful onboarding/value copy, but placing it on the logged-in Events page duplicates the event discovery job and pushes event content down.
+- Login already has an image-backed auto-advancing hero rail, so the value copy belongs there as an additional slide.
+- Events had a compact announcement rail, while Info already had a full stacked announcement feed. That made announcements appear in two places and the stacked feed became visually heavy.
+- Student clubs already use a horizontal rail; keeping them inside Info below a horizontal announcement rail matches the requested “own scroll” behavior.
+- Vercel production lacked only the Turnstile pair. After adding both keys and redeploying, `/contact` HTML includes the Turnstile script and site key. API submit without a generated token returns `Verification failed`, confirming fail-closed protection.
+
+## Student Info IA Review Outcome
+
+The student Events tab label is shortened to `Eventit` in Finnish, Events page no longer renders `Miksi OmaLeima` or announcement preview rail, Login hero carries the `Miksi OmaLeima` value slide with an image background, and Info now owns a horizontal `Tiedotteet` rail plus the existing horizontally scrollable student club rail. Turnstile envs are installed in Vercel production and production deploy passed.
+
+## Current Review (Announcement Realtime Crash + Turnstile Retry)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Fix the physical iPhone render crash in the announcement feed realtime hook and retry Cloudflare Turnstile access without exposing secrets.
+
+## Announcement Realtime Crash Findings
+
+- The iPhone error showed Supabase Realtime rejecting a `postgres_changes` callback because the channel was already subscribed for topic `announcement-feed:{userId}`.
+- The feed section can be mounted more than once and hot reload/native recovery can leave the same topic in a subscribed state. Reusing the plain user-scoped topic is therefore too fragile for mobile runtime.
+- Query invalidation does not depend on the channel topic value; it only needs a live `postgres_changes` callback that invalidates the existing user-scoped React Query keys.
+- Vercel production currently has `SUPABASE_SERVICE_ROLE_KEY` and `CONTACT_IP_HASH_SECRET`, but not the Turnstile pair. Local env/examples describe the pair, but no real `NEXT_PUBLIC_TURNSTILE_SITE_KEY` or `TURNSTILE_SECRET_KEY` value was found locally.
+- Cloudflare MCP and Wrangler-local checks still cannot authenticate to the target Cloudflare account; the API returns `10000 Authentication error`.
+
+## Announcement Realtime Crash Review Outcome
+
+The announcement realtime channel now uses a hook-instance-specific topic suffix while preserving the same query invalidation behavior. This prevents subscribed topic reuse from crashing the feed screen. Turnstile remains blocked on Cloudflare auth or user-provided real keys; fake production keys were intentionally not added.
+
+## Current Review (Business/Admin Workflow Parity Polish)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Business mobile devices/history density; admin/organizer web workflow clarity; event cover upload; reward-event assignment clarity; admin shell fixed sidebar.
+
+## Business/Admin Workflow Parity Affected Files
+
+- `apps/admin/src/app/api/dashboard-locale/route.ts`
+- `apps/admin/src/app/admin/business-applications/page.tsx`
+- `apps/admin/src/app/club/events/page.tsx`
+- `apps/admin/src/app/club/rewards/page.tsx`
+- `apps/mobile/src/app/business/profile.tsx`
+- `apps/mobile/src/app/business/history.tsx`
+- `apps/admin/src/app/globals.css`
+- `apps/admin/src/features/dashboard/components/dashboard-shell.tsx`
+- `apps/admin/src/features/dashboard/i18n.ts`
+- `apps/admin/src/features/business-applications/components/business-applications-panel.tsx`
+- `apps/admin/src/features/club-events/components/club-events-panel.tsx`
+- `apps/admin/src/features/club-events/media-upload.ts`
+- `apps/admin/src/features/club-rewards/components/club-rewards-panel.tsx`
+- `REVIEW.md`
+- `PLAN.md`
+- `TODOS.md`
+- `PROGRESS.md`
+
+## Business/Admin Workflow Parity Findings
+
+- Business profile already loads scanner devices with rename/PIN/revoke operations, but the list is always expanded and takes too much room for daily use. It can become a collapsible management block without changing scanner device APIs.
+- Business history accepted rows repeat explanatory success text for every valid scan. This makes `Hyväksytty` cards visually heavy although the accepted state is already clear from the chip and timestamp.
+- `/admin/business-applications` has a working backend review model: pending rows come from `business_applications`, approval calls atomic backend review and creates a business profile, rejection stores a reason. The page did not explain that source/lifecycle, so the feature looked undefined.
+- Club events create/update forms persisted `coverImageUrl`, while Supabase already has a public `event-media` bucket and organizer upload policies. The missing web UX was client upload-to-storage before saving the event.
+- Club rewards already require `eventId` in the create payload, but the event-to-reward relationship was not prominent enough in the UI.
+- Admin shell uses a 282px sidebar grid column, but adding explicit width, max-height, overflow, and `min-width: 0` on content makes the layout less sensitive to wide page content.
+- Full FI/EN admin + organizer i18n was not present as a shared web language system. A safe first layer is dashboard-shell level locale resolution via an HTTP-only cookie plus translated nav/title/subtitle maps. The highest-risk pages from the user request (`/admin/business-applications`, `/club/events`, `/club/rewards`) also need panel-level copy props so their core workflows switch language with the shell.
+
+## Business/Admin Workflow Parity Review Outcome
+
+Targeted UX and workflow gaps were fixed safely with minimal code changes. Dashboard FI/EN now has a persistent shell-level foundation and the three requested workflow panels have bilingual core copy. Other admin/organizer panels still contain hard-coded English detail copy and should be migrated incrementally through the same `DashboardLocale` prop/dictionary pattern.
+
+## Current Review (Announcement Delivery + Contact Hosted Follow-up)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/announcement-delivery-polish`
+- **Scope:** Hosted contact hardening rollout adimlarini tamamlamak; mobil duyuru popup/detail/realtime gorunurlugunu ve organizer completed-event gorunurlugunu duzeltmek.
+
+## Announcement Delivery + Contact Hosted Affected Files
+
+- `apps/mobile/src/features/announcements/announcements.ts`
+- `apps/mobile/src/features/announcements/announcement-feed-section.tsx`
+- `apps/mobile/src/features/announcements/announcement-popup-bridge.tsx`
+- `apps/mobile/src/features/announcements/announcement-detail-screen.tsx`
+- `apps/mobile/src/app/student/events/index.tsx`
+- `apps/mobile/src/app/club/upcoming.tsx`
+- `supabase/migrations/20260506001000_announcement_realtime_publication.sql`
+- `REVIEW.md`
+- `PLAN.md`
+- `TODOS.md`
+- `PROGRESS.md`
+
+## Announcement Delivery + Contact Hosted Findings
+
+- Hosted contact migration `20260506000000_public_contact_submissions.sql` localde vardi ama remote history'de uygulanmamis gorunuyordu. Migration SQL'i linked hosted DB'de calisti; RLS policy kontrolu service_role insert/read ve platform admin read/update policy'lerini dogruladi; `contact-attachments` bucket private, 5MB ve jpg/png/webp limitli.
+- Vercel production env'de sadece `NEXT_PUBLIC_SUPABASE_URL` ve `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` vardi. `SUPABASE_SERVICE_ROLE_KEY` ve `CONTACT_IP_HASH_SECRET` eklendi. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` ve `TURNSTILE_SECRET_KEY` eksik kaldi cunku Cloudflare API MCP `Authentication error` dondu ve lokal Cloudflare token yok.
+- `omaleima.fi/contact` 200 donuyor ama HTML'de gercek Turnstile sitekey/widget izi yok. Yeni hardening deploy'u Turnstile key'leri olmadan hosted build/check tarafinda fail-fast edecegi icin production redeploy ve gercek submit smoke bilincli olarak bekletildi.
+- Mobilde `AnnouncementPopupBridge` globalde mount ediliyor; fakat popup sadece close/CTA dis link sunuyordu, uygulama ici detay sayfasina giden "daha fazla gor" aksiyonu yoktu.
+- Duyuru detay ekraninda gorsel hero olarak gorunuyor ama image tap-to-zoom akisi yoktu.
+- Student `Tapahtumat`/Events ekraninda announcement feed render edilmiyordu. Kullanici event sayfasini refresh etse bile duyuruyu orada gormemesi beklenen davranisa donusuyordu.
+- Announcement query'leri Supabase Realtime invalidate etmiyordu. Var olan realtime mimarisi stamp/reward/leaderboard icin vardi; announcements icin tablo publication ve query invalidation eksikti.
+- Organizer `Tulossa` ekraninda `COMPLETED` eventler bilincli olarak filtre disinda birakilmisti; bu yuzden `Päättynyt` organizasyonlari gorulebilir degildi.
+
+## Announcement Delivery + Contact Hosted Review Outcome
+
+Contact migration ve iki server secret hosted ortamda tamamlandi; gercek Turnstile key'leri gelmeden deploy/smoke tamamlanamaz. Mobil tarafta popup preview -> detail, detail image zoom, events-page announcement feed, announcement realtime invalidation ve organizer completed filter minimal diff ile uygulanacak.
+
+## Current Review (Public Landing Image Sharpness)
+
+- **Date:** 2026-05-05
+- **Branch:** `feature/club-presentation-fi` working tree
+- **Scope:** `omaleima.fi` public landing ana sayfasindaki bulanik gorunen hero ve "Approkulttuuri elaa" galerisi gorsellerinin kok nedenini bulup duzeltmek.
+
+## Public Landing Image Sharpness Affected Files
+
+- `apps/admin/src/features/public-site/landing-page.tsx`
+- `REVIEW.md`
+- `PLAN.md`
+- `TODOS.md`
+- `PROGRESS.md`
+
+## Public Landing Image Sharpness Findings
+
+- Canli sitede browser inspection sonucunda hero image `697px` CSS genislige karsi `1920w` varyant aliyor; burada ana problem daha cok default `q=75` sikistirma. Hero source boyutu `1672x941`, yani retina desktop icin sinirda ama kabul edilebilir.
+- Asil sorun "Approkulttuuri elaa" galerisindeki genis kartlarda. Canli sitede `public-gallery-wide` kartlari yaklasik `887px` CSS genislikte render oluyor ama mevcut `sizes` tum galeri item'lari icin desktop'ta `33vw` diyor. Browser bu yuzden genis kartlar icin yalnizca `1080w` dosya indiriyor ve kartta buyuterek gosterdigi icin blur olusuyor.
+- Browser proof: ilk genis galeri item'i `clientWidth: 887` iken `currentSrc ...&w=1080&q=75` olarak geldi. Bu item retina desktop'ta efektif olarak yaklasik `1774px` kaynaga ihtiyac duyuyor.
+- Kaynak dosyalarin cogu `1672x941` veya `1774x887`. Yani source asset'ler mukemmel degil ama esas kalite kaybi hatali `sizes` + agresif compression kombinasyonundan geliyor.
+
+## Public Landing Image Sharpness Review Outcome
+
+Hero ve galeri `Image` component'lerinde daha yuksek `quality` kullan, galeri item'lari icin `span` bazli dogru `sizes` degeri ver, hero metadata/olculerini current asset ile hizala ve sonucu local/canli olarak tekrar dogrula.
+
 ## Current Review (Contact Form Security + Business Package Follow-up)
 
 - **Date:** 2026-05-05

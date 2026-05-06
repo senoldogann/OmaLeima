@@ -31,6 +31,11 @@ type BusinessStaffRow = {
   business_id: string;
 };
 
+type ScannerDeviceRow = {
+  scanner_user_id: string | null;
+  status: "ACTIVE" | "REVOKED";
+};
+
 type DeviceTokenRow = {
   expo_push_token: string;
 };
@@ -54,11 +59,12 @@ type UnlockedRewardTier = {
 };
 
 type ScanStampResult = {
+  existingStampedAt?: string;
   status: string;
-  stampId?: string;
   stampCount?: number;
   eventName?: string;
-  existingStampedAt?: string;
+  perBusinessLimit?: number;
+  stampId?: string;
   unlockedRewardTiers?: UnlockedRewardTier[];
 };
 
@@ -86,6 +92,18 @@ const responseMessages: Record<string, string> = {
   SCANNER_PIN_INVALID: "Scanner staff PIN is invalid.",
   QR_ALREADY_USED_OR_REPLAYED: "QR code was already used.",
   ALREADY_STAMPED: "Leima is already recorded for this student at this venue.",
+};
+
+const createResponseMessage = (result: ScanStampResult): string => {
+  if (result.status === "ALREADY_STAMPED" && typeof result.perBusinessLimit === "number") {
+    if (result.perBusinessLimit <= 1) {
+      return "Leima is already recorded for this student at this venue.";
+    }
+
+    return `Same venue stamp limit (${result.perBusinessLimit}) has already been reached for this student in this event.`;
+  }
+
+  return responseMessages[result.status] ?? "QR scan completed.";
 };
 
 const serializeTokenResults = (results: ExpoPushSendResult[]): Record<string, unknown>[] =>
@@ -471,6 +489,36 @@ Deno.serve(async (request: Request): Promise<Response> => {
       }, 200);
     }
 
+    if (body.scannerDeviceId !== null) {
+      const { data: scannerDevice, error: scannerDeviceError } = await supabase
+        .from("business_scanner_devices")
+        .select("scanner_user_id,status")
+        .eq("id", body.scannerDeviceId)
+        .eq("business_id", businessId)
+        .maybeSingle<ScannerDeviceRow>();
+
+      if (scannerDeviceError !== null) {
+        return errorResponse(500, "INTERNAL_ERROR", "Failed to validate scanner device ownership.", {
+          scannerDeviceError: scannerDeviceError.message,
+          scannerDeviceErrorCode: scannerDeviceError.code,
+          scannerUserId: user.id,
+          scannerDeviceId: body.scannerDeviceId,
+          businessId,
+        });
+      }
+
+      if (
+        scannerDevice === null ||
+        scannerDevice.status !== "ACTIVE" ||
+        (scannerDevice.scanner_user_id !== null && scannerDevice.scanner_user_id !== user.id)
+      ) {
+        return jsonResponse({
+          status: "SCANNER_DEVICE_NOT_ALLOWED",
+          message: responseMessages.SCANNER_DEVICE_NOT_ALLOWED,
+        }, 200);
+      }
+    }
+
     const { data: rpcResult, error: rpcError } = await supabase.rpc("scan_stamp_atomic", {
       p_event_id: verifiedQrToken.payload.eventId,
       p_student_id: verifiedQrToken.payload.sub,
@@ -543,7 +591,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return jsonResponse({
       ...responseResult,
       rewardUnlockPush,
-      message: responseMessages[responseResult.status] ?? "QR scan completed.",
+      message: createResponseMessage(responseResult),
     }, 200);
   } catch (error) {
     return errorResponse(400, "VALIDATION_ERROR", "Failed to scan QR token.", {

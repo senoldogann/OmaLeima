@@ -20,21 +20,19 @@ export default function StudentUpdatesScreen() {
         <View style={styles.topBarCopy}>
           <Text style={styles.screenEyebrow}>{language === "fi" ? "Leima" : "OmaLeima"}</Text>
           <Text style={styles.screenTitle}>{language === "fi" ? "Yhteisö" : "Community"}</Text>
-          <Text style={styles.metaText}>
-            {language === "fi"
-              ? "Tiedotteet ja opiskelijaklubit yhdessä paikassa."
-              : "Updates and student clubs in one place."}
-          </Text>
         </View>
         <StudentProfileHeaderAction />
       </View>
 
       <AnnouncementFeedSection
-        compact={false}
+        compact
         detailPathname="/student/announcement-detail"
-        maxItems={15}
-        title={language === "fi" ? "Ajankohtaista" : "Latest updates"}
+        maxItems={999}
+        presentation="rail"
+        returnToPathname="/student/updates"
+        title={language === "fi" ? "Tiedotteet" : "Updates"}
         userId={userId}
+        viewAllLabel={language === "fi" ? "Avaa tiedote" : "Open update"}
       />
 
       <PublicClubDirectorySection isEnabled={userId !== null} />
@@ -44,12 +42,6 @@ export default function StudentUpdatesScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    metaText: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-    },
     screenEyebrow: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.bold,
@@ -72,6 +64,6 @@ const createStyles = (theme: MobileTheme) =>
     },
     topBarCopy: {
       flex: 1,
-      gap: 6,
+      gap: 4,
     },
   });

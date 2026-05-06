@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     images: [
       {
         alt: "OmaLeima student event hero",
-        height: 941,
-        url: "/images/public/scene-haalarit-hero.png",
-        width: 1672,
+        height: 1024,
+        url: "/images/public/scene-hero-appro-night-v2.png",
+        width: 1536,
       },
     ],
     locale: content.ogLocale,
@@ -56,11 +56,10 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     description: content.metaDescription,
-    images: ["/images/public/scene-haalarit-hero.png"],
+    images: ["/images/public/scene-hero-appro-night-v2.png"],
     title: content.heroTitle,
   },
 };
-
 export default function Home() {
   return (
     <>

@@ -653,6 +653,7 @@ export default function StudentActiveEventScreen() {
                     {qrTokenQuery.error ? (
                       <View style={styles.qrPlaceholder}>
                         <Text style={styles.qrErrorText}>{language === "fi" ? "QR päivitys epäonnistui" : "Token refresh failed"}</Text>
+                        <Text selectable style={styles.qrErrorDetailText}>{qrTokenQuery.error.message}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -976,6 +977,14 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    qrErrorDetailText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      marginTop: 6,
+      textAlign: "center",
     },
     qrFooter: {
       alignItems: "center",

@@ -55,14 +55,17 @@ type RenameScannerDeviceRpcResponse =
       status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
     };
 
-type RevokeScannerDeviceRpcResponse =
+type RevokeBusinessScannerAccessResponse =
   | {
       status: "SUCCESS";
       scannerDeviceId: string;
       statusValue: "REVOKED";
+      scannerUserDeleted: boolean;
     }
   | {
-      status: "ACTOR_NOT_ALLOWED" | "DEVICE_NOT_FOUND";
+      status: string;
+      message?: string;
+      details?: Record<string, unknown>;
     };
 
 type SetScannerDevicePinRpcResponse =
@@ -168,7 +171,7 @@ const writeStoredInstallationIdAsync = async (installationId: string): Promise<v
   await SecureStore.setItemAsync(scannerInstallationKey, installationId);
 };
 
-const getScannerInstallationIdAsync = async (): Promise<string> => {
+export const getScannerInstallationIdAsync = async (): Promise<string> => {
   const storedInstallationId = await readStoredInstallationIdAsync();
 
   if (storedInstallationId !== null && storedInstallationId.length > 0) {
@@ -181,7 +184,7 @@ const getScannerInstallationIdAsync = async (): Promise<string> => {
   return installationId;
 };
 
-const getScannerDevicePlatform = (): ScannerDevicePlatform => {
+export const getScannerDevicePlatform = (): ScannerDevicePlatform => {
   if (expoRuntimeOs === "ios") {
     return "IOS";
   }
@@ -197,7 +200,7 @@ const getScannerDevicePlatform = (): ScannerDevicePlatform => {
   return "UNKNOWN";
 };
 
-const createScannerDeviceLabel = (businessName: string, platform: ScannerDevicePlatform): string => {
+export const createScannerDeviceLabel = (businessName: string, platform: ScannerDevicePlatform): string => {
   const platformLabel: Record<ScannerDevicePlatform, string> = {
     IOS: "iPhone",
     ANDROID: "Android",
@@ -249,22 +252,22 @@ const isRenameScannerDeviceRpcResponse = (value: unknown): value is RenameScanne
   );
 };
 
-const isRevokeScannerDeviceRpcResponse = (value: unknown): value is RevokeScannerDeviceRpcResponse => {
+const isRevokeBusinessScannerAccessResponse = (value: unknown): value is RevokeBusinessScannerAccessResponse => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
   const candidate = value as Record<string, unknown>;
 
-  if (candidate.status === "ACTOR_NOT_ALLOWED" || candidate.status === "DEVICE_NOT_FOUND") {
-    return true;
+  if (candidate.status === "SUCCESS") {
+    return (
+      typeof candidate.scannerDeviceId === "string" &&
+      candidate.statusValue === "REVOKED" &&
+      typeof candidate.scannerUserDeleted === "boolean"
+    );
   }
 
-  return (
-    candidate.status === "SUCCESS" &&
-    typeof candidate.scannerDeviceId === "string" &&
-    candidate.statusValue === "REVOKED"
-  );
+  return typeof candidate.status === "string";
 };
 
 const isSetScannerDevicePinRpcResponse = (value: unknown): value is SetScannerDevicePinRpcResponse => {
@@ -355,22 +358,27 @@ const renameBusinessScannerDeviceAsync = async ({
 };
 
 const revokeBusinessScannerDeviceAsync = async ({
+  businessId,
   scannerDeviceId,
 }: RevokeBusinessScannerDeviceParams): Promise<void> => {
-  const { data, error } = await supabase.rpc("revoke_business_scanner_device", {
-    p_scanner_device_id: scannerDeviceId,
+  const { data, error } = await supabase.functions.invoke("revoke-business-scanner-access", {
+    body: {
+      businessId,
+      scannerDeviceId,
+    },
   });
 
   if (error !== null) {
     throw new Error(`Failed to revoke scanner device ${scannerDeviceId}: ${error.message}`);
   }
 
-  if (!isRevokeScannerDeviceRpcResponse(data)) {
+  if (!isRevokeBusinessScannerAccessResponse(data)) {
     throw new Error(`Revoke scanner device returned an invalid response for ${scannerDeviceId}.`);
   }
 
   if (data.status !== "SUCCESS") {
-    throw new Error(`Revoke scanner device ${scannerDeviceId} failed with status ${data.status}.`);
+    const failure = data as Exclude<RevokeBusinessScannerAccessResponse, { status: "SUCCESS" }>;
+    throw new Error(failure.message ?? `Revoke scanner device ${scannerDeviceId} failed with status ${failure.status}.`);
   }
 };
 

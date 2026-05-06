@@ -109,6 +109,8 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
     maxParticipants: "",
     minimumStampsRequired: "0",
     name: "",
+    perBusinessLimit: "1",
+    rules: {},
     startAt: toLocalDateTimeInput(startAt.toISOString()),
     status: "DRAFT",
     visibility: "PUBLIC",
@@ -126,6 +128,8 @@ const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDr
   maxParticipants: event.maxParticipants === null ? "" : String(event.maxParticipants),
   minimumStampsRequired: String(event.minimumStampsRequired),
   name: event.name,
+  perBusinessLimit: String(event.perBusinessLimit),
+  rules: event.rules,
   startAt: toLocalDateTimeInput(event.startAt),
   status: event.status === "ACTIVE" || event.status === "PUBLISHED" ? event.status : "DRAFT",
   visibility: event.visibility,
@@ -232,6 +236,16 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
           ? "Numeroiden täytyy olla kokonaislukuja. Jätä osallistujakatto tyhjäksi, jos rajaa ei ole."
           : "Numbers must be whole numbers. Leave max participants empty when there is no cap.",
       title: language === "fi" ? "Tarkista numerot" : "Check numbers",
+    };
+  }
+
+  if (message.includes("perBusinessLimit must be an integer between 1 and 5")) {
+    return {
+      body:
+        language === "fi"
+          ? "Valitse samasta pisteestä sallittu leimamäärä välillä 1-5."
+          : "Choose a same-venue stamp limit between 1 and 5.",
+      title: language === "fi" ? "Tarkista leimaraja" : "Check stamp limit",
     };
   }
 
@@ -715,6 +729,29 @@ export default function ClubEventsScreen() {
                           {language === "fi" ? "Valitse päivä ja aika" : "Pick date and time"}
                         </Text>
                       </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.optionBlock}>
+                <Text style={styles.fieldLabel}>
+                  {language === "fi" ? "Leimat samasta pisteestä" : "Same venue limit"}
+                </Text>
+                <Text style={styles.metaText}>
+                  {language === "fi"
+                    ? "Kuinka monta leimaa yksi opiskelija voi saada samasta pisteestä tämän tapahtuman aikana."
+                    : "How many stamps one student can collect from the same venue during this event."}
+                </Text>
+                <View style={styles.optionRow}>
+                  {(["1", "2", "3", "4", "5"] as const).map((limit) => (
+                    <Pressable
+                      disabled={isPending || (mode === "edit" && !canEditEvent(selectedEvent))}
+                      key={limit}
+                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, perBusinessLimit: limit }))}
+                      style={[styles.optionChip, draft.perBusinessLimit === limit ? styles.optionChipSelected : null]}
+                    >
+                      <Text style={styles.optionChipText}>{limit}</Text>
                     </Pressable>
                   ))}
                 </View>

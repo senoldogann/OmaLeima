@@ -143,13 +143,6 @@ export default function StudentRewardsScreen() {
             <View style={styles.railHeaderCopy}>
               <Text style={styles.railEyebrow}>{language === "fi" ? "Palkinnot" : "Rewards"}</Text>
               <Text style={styles.railTitle}>{language === "fi" ? "Tapahtumapalkinnot" : "Event rewards"}</Text>
-              <Text style={styles.railMeta}>
-                {language === "fi" ? "Liukuu automaattisesti, jos et selaa." : "Slides automatically when idle."}
-              </Text>
-            </View>
-            <View style={styles.railHint}>
-              <Text style={styles.railHintText}>Auto</Text>
-              <AppIcon color={theme.colors.lime} name="chevron-right" size={16} />
             </View>
           </View>
 
@@ -267,23 +260,6 @@ const createStyles = (theme: MobileTheme) =>
     railHeaderCopy: {
       flex: 1,
       gap: 2,
-    },
-    railHint: {
-      alignItems: "center",
-      flexDirection: "row",
-      gap: 4,
-    },
-    railHintText: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-    },
-    railMeta: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
     },
     railSection: {
       gap: 12,

@@ -35,6 +35,8 @@ export type ClubDashboardEventSummary = ClubDashboardEventMetrics & {
   maxParticipants: number | null;
   minimumStampsRequired: number;
   name: string;
+  perBusinessLimit: number;
+  rules: EventRules;
   startAt: string;
   status: "ACTIVE" | "CANCELLED" | "COMPLETED" | "DRAFT" | "PUBLISHED";
   timelineState: ClubDashboardTimelineState;
@@ -59,6 +61,10 @@ export type ClubDashboardSnapshot = {
   summary: ClubDashboardSummary;
 };
 
+type JsonPrimitive = boolean | number | string | null;
+export type EventRuleValue = JsonPrimitive | EventRuleValue[] | { [key: string]: EventRuleValue };
+export type EventRules = { [key: string]: EventRuleValue };
+
 export type ClubEventVisibility = "PRIVATE" | "PUBLIC" | "UNLISTED";
 
 export type ClubEventEditableStatus = "ACTIVE" | "DRAFT" | "PUBLISHED";
@@ -74,6 +80,8 @@ export type ClubEventFormDraft = {
   maxParticipants: string;
   minimumStampsRequired: string;
   name: string;
+  perBusinessLimit: string;
+  rules: EventRules;
   startAt: string;
   status: ClubEventEditableStatus;
   visibility: ClubEventVisibility;

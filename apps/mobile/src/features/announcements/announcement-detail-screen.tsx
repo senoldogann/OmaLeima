@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter, type Href } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -20,6 +21,7 @@ import { useSession } from "@/providers/session-provider";
 type AnnouncementDetailScreenProps = {
     announcementId: string | null;
     backHref: AnnouncementBackHref;
+    returnTo: string | null;
 };
 
 type AnnouncementBackHref = "/business/updates" | "/club/announcements" | "/student/updates";
@@ -33,13 +35,34 @@ const formatDetailDate = (localeTag: string, value: string): string =>
         minute: "2-digit",
     }).format(new Date(value));
 
-export const AnnouncementDetailScreen = ({ announcementId, backHref }: AnnouncementDetailScreenProps) => {
+const readSafeReturnTo = (returnTo: string | null): Href | null => {
+    if (returnTo === null) {
+        return null;
+    }
+
+    if (!returnTo.startsWith("/")) {
+        return null;
+    }
+
+    if (
+        !returnTo.startsWith("/student") &&
+        !returnTo.startsWith("/business") &&
+        !returnTo.startsWith("/club")
+    ) {
+        return null;
+    }
+
+    return returnTo as Href;
+};
+
+export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }: AnnouncementDetailScreenProps) => {
     const router = useRouter();
     const styles = useThemeStyles(createStyles);
     const { language, localeTag, theme } = useUiPreferences();
     const { session } = useSession();
     const userId = session?.user.id ?? null;
     const [interactionError, setInteractionError] = useState<string | null>(null);
+    const [isImageZoomVisible, setIsImageZoomVisible] = useState(false);
     const detailQuery = useAnnouncementDetailQuery({
         announcementId: announcementId ?? "",
         isEnabled: userId !== null && announcementId !== null,
@@ -56,15 +79,17 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref }: Announcem
         detailTitle: language === "fi" ? "Tiedote" : "Update",
         loading: language === "fi" ? "Haetaan tiedotetta." : "Loading update.",
         markRead: language === "fi" ? "Merkitse luetuksi" : "Mark read",
-        platform: "OmaLeima",
+        platform: "OmaLeima Support",
         read: language === "fi" ? "Luettu" : "Read",
         retry: language === "fi" ? "Yritä uudelleen" : "Retry",
+        senderLabel: language === "fi" ? "Lahettaja" : "Sender",
         unavailableBody:
             language === "fi"
                 ? "Tiedote ei ole enää saatavilla tälle tilille tai se on poistunut näkyvistä."
                 : "This update is no longer available for this account or is no longer visible.",
         unavailableTitle: language === "fi" ? "Tiedotetta ei löytynyt" : "Update not found",
         unread: language === "fi" ? "Uusi" : "New",
+        zoomImage: language === "fi" ? "Avaa kuva" : "Open image",
     };
 
     useEffect(() => {
@@ -93,6 +118,13 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref }: Announcem
     }, [announcement, announcementId, impressionMutation, userId]);
 
     const handleBackPress = (): void => {
+        const safeReturnTo = readSafeReturnTo(returnTo);
+
+        if (safeReturnTo !== null) {
+            router.replace(safeReturnTo);
+            return;
+        }
+
         if (router.canGoBack()) {
             router.back();
             return;
@@ -193,10 +225,22 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref }: Announcem
                             <Text style={styles.sourceText}>{announcement.clubName ?? labels.platform}</Text>
                             <Text style={styles.title}>{announcement.title}</Text>
                         </View>
+                        {announcement.imageUrl !== null ? (
+                            <Pressable
+                                accessibilityLabel={labels.zoomImage}
+                                accessibilityRole="imagebutton"
+                                onPress={() => setIsImageZoomVisible(true)}
+                                style={styles.zoomHotspot}
+                            />
+                        ) : null}
                     </CoverImageSurface>
 
                     <View style={styles.copyStack}>
                         <Text style={styles.metaText}>{formatDetailDate(localeTag, announcement.startsAt)}</Text>
+                        <View style={styles.sourceRow}>
+                            <Text style={styles.sourceLabel}>{labels.senderLabel}</Text>
+                            <Text style={styles.sourceValue}>{announcement.clubName ?? labels.platform}</Text>
+                        </View>
                         <Text selectable style={styles.bodyText}>{announcement.body}</Text>
 
                         <View style={styles.actionRow}>
@@ -219,6 +263,28 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref }: Announcem
                     </View>
                 </View>
             ) : null}
+
+            <Modal
+                animationType="fade"
+                onRequestClose={() => setIsImageZoomVisible(false)}
+                transparent
+                visible={isImageZoomVisible && announcement?.imageUrl !== null}
+            >
+                <View style={styles.zoomBackdrop}>
+                    <Pressable onPress={() => setIsImageZoomVisible(false)} style={styles.zoomCloseButton}>
+                        <AppIcon color="#F8FAF5" name="x" size={20} />
+                    </Pressable>
+                    {announcement?.imageUrl !== null && typeof announcement?.imageUrl !== "undefined" ? (
+                        <ExpoImage
+                            cachePolicy="memory-disk"
+                            contentFit="contain"
+                            source={{ uri: announcement.imageUrl }}
+                            style={styles.zoomImage}
+                            transition={180}
+                        />
+                    ) : null}
+                </View>
+            </Modal>
         </AppScreen>
     );
 };
@@ -294,6 +360,34 @@ const createStyles = (theme: MobileTheme) =>
             backgroundColor: theme.mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(0,0,0,0.42)",
             zIndex: 1,
         },
+        zoomBackdrop: {
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.9)",
+            flex: 1,
+            justifyContent: "center",
+            padding: 18,
+        },
+        zoomCloseButton: {
+            alignItems: "center",
+            backgroundColor: "rgba(255,255,255,0.14)",
+            borderRadius: 999,
+            height: 46,
+            justifyContent: "center",
+            position: "absolute",
+            right: 18,
+            top: 58,
+            width: 46,
+            zIndex: 3,
+        },
+        zoomHotspot: {
+            ...StyleSheet.absoluteFillObject,
+            zIndex: 3,
+        },
+        zoomImage: {
+            borderRadius: 0,
+            height: "100%",
+            width: "100%",
+        },
         metaText: {
             color: theme.colors.textMuted,
             fontFamily: theme.typography.families.medium,
@@ -341,6 +435,25 @@ const createStyles = (theme: MobileTheme) =>
             fontFamily: theme.typography.families.semibold,
             fontSize: theme.typography.sizes.bodySmall,
             lineHeight: theme.typography.lineHeights.bodySmall,
+        },
+        sourceLabel: {
+            color: theme.colors.textMuted,
+            fontFamily: theme.typography.families.bold,
+            fontSize: theme.typography.sizes.bodySmall,
+            lineHeight: theme.typography.lineHeights.bodySmall,
+            textTransform: "uppercase",
+        },
+        sourceRow: {
+            alignItems: "center",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+        },
+        sourceValue: {
+            color: theme.colors.textPrimary,
+            fontFamily: theme.typography.families.semibold,
+            fontSize: theme.typography.sizes.body,
+            lineHeight: theme.typography.lineHeights.body,
         },
         title: {
             color: "#F8FAF5",

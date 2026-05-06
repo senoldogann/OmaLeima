@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { createClient } from "@/lib/supabase/client";
 import type {
   ContactSubmissionRecord,
@@ -12,41 +13,123 @@ import type {
 } from "@/features/contact-submissions/types";
 
 type ContactSubmissionsPanelProps = {
+  locale: DashboardLocale;
   snapshot: ContactSubmissionsSnapshot;
 };
 
 type StatusFilter = "all" | ContactSubmissionStatus;
 
-const subjectLabels: Record<ContactSubmissionSubject, string> = {
-  business_signup: "Business sign-up",
-  collaboration: "Collaboration",
-  pilot: "Pilot / test",
-  press: "Press",
-  other: "Other",
+const subjectLabelsByLocale: Record<DashboardLocale, Record<ContactSubmissionSubject, string>> = {
+  en: {
+    business_signup: "Business sign-up",
+    collaboration: "Collaboration",
+    pilot: "Pilot / test",
+    press: "Press",
+    other: "Other",
+  },
+  fi: {
+    business_signup: "Yrityshakemus",
+    collaboration: "Yhteistyo",
+    pilot: "Pilotti / testi",
+    press: "Media",
+    other: "Muu",
+  },
 };
 
-const statusLabels: Record<ContactSubmissionStatus, string> = {
-  new: "New",
-  in_review: "In review",
-  closed: "Closed",
-  spam: "Spam",
+const statusLabelsByLocale: Record<DashboardLocale, Record<ContactSubmissionStatus, string>> = {
+  en: {
+    new: "New",
+    in_review: "In review",
+    closed: "Closed",
+    spam: "Spam",
+  },
+  fi: {
+    new: "Uusi",
+    in_review: "Kasittelyssa",
+    closed: "Suljettu",
+    spam: "Roska",
+  },
 };
 
 const statusOrder: ContactSubmissionStatus[] = ["new", "in_review", "closed", "spam"];
 
-const formatDateTime = (iso: string): string => {
+type ContactSubmissionsCopy = {
+  attachment: string;
+  all: string;
+  detailEmpty: string;
+  email: string;
+  empty: string;
+  language: string;
+  message: string;
+  noOrganization: string;
+  openAttachment: string;
+  organization: string;
+  refresh: string;
+  refreshing: string;
+  searchPlaceholder: string;
+  status: string;
+  statusUpdateFailed: string;
+  submissionCounters: string;
+  subject: string;
+};
+
+const copyByLocale: Record<DashboardLocale, ContactSubmissionsCopy> = {
+  en: {
+    attachment: "Attachment",
+    all: "All",
+    detailEmpty: "Select a submission to review its details.",
+    email: "Email",
+    empty: "No submissions match this filter.",
+    language: "Language",
+    message: "Message",
+    noOrganization: "No organization",
+    openAttachment: "Open file in a new tab",
+    organization: "Organization",
+    refresh: "Refresh",
+    refreshing: "Refreshing...",
+    searchPlaceholder: "Search: name, email, organization, message",
+    status: "Status",
+    statusUpdateFailed: "Could not update status",
+    submissionCounters: "Submission counters",
+    subject: "Subject",
+  },
+  fi: {
+    attachment: "Liite",
+    all: "Kaikki",
+    detailEmpty: "Valitse hakemus nähdäksesi tarkemmat tiedot.",
+    email: "Sahkoposti",
+    empty: "Talla suodattimella ei loydy hakemuksia.",
+    language: "Kieli",
+    message: "Viesti",
+    noOrganization: "Ei organisaatiota",
+    openAttachment: "Avaa tiedosto uudessa valilehdessa",
+    organization: "Organisaatio",
+    refresh: "Paivita",
+    refreshing: "Paivitetaan...",
+    searchPlaceholder: "Hae: nimi, sahkoposti, organisaatio, viesti",
+    status: "Tila",
+    statusUpdateFailed: "Tilan paivitys epaonnistui",
+    submissionCounters: "Hakemuslaskurit",
+    subject: "Aihe",
+  },
+};
+
+const formatDateTime = (locale: DashboardLocale, iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return new Intl.DateTimeFormat("fi-FI", {
+  return new Intl.DateTimeFormat(locale === "fi" ? "fi-FI" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
 };
 
-export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelProps) => {
+export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissionsPanelProps) => {
   const router = useRouter();
+  const copy = copyByLocale[locale];
+  const subjectLabels = subjectLabelsByLocale[locale];
+  const statusLabels = statusLabelsByLocale[locale];
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState<string>("");
   const [activeId, setActiveId] = useState<string | null>(snapshot.records[0]?.id ?? null);
@@ -95,7 +178,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
     setUpdatingId(null);
 
     if (error !== null) {
-      setErrorMessage(`Status güncellenemedi: ${error.message}`);
+      setErrorMessage(`${copy.statusUpdateFailed}: ${error.message}`);
       return;
     }
 
@@ -106,14 +189,14 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
 
   return (
     <div className="contact-submissions">
-      <header className="contact-submissions__summary" role="group" aria-label="Submission counters">
+      <header className="contact-submissions__summary" role="group" aria-label={copy.submissionCounters}>
         <button
           className={`contact-submissions__counter${filter === "all" ? " is-active" : ""}`}
           onClick={() => setFilter("all")}
           type="button"
         >
           <span className="contact-submissions__counter-value">{snapshot.counts.total}</span>
-          <span className="contact-submissions__counter-label">All</span>
+          <span className="contact-submissions__counter-label">{copy.all}</span>
         </button>
         {statusOrder.map((status) => {
           const value =
@@ -143,7 +226,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
         <input
           className="contact-submissions__search"
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Ara: isim, e-posta, kuruluş, mesaj"
+          placeholder={copy.searchPlaceholder}
           type="search"
           value={search}
         />
@@ -157,7 +240,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
           }
           type="button"
         >
-          {isRefreshing ? "Yenileniyor…" : "Yenile"}
+          {isRefreshing ? copy.refreshing : copy.refresh}
         </button>
       </div>
 
@@ -170,7 +253,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
       <div className="contact-submissions__layout">
         <ol className="contact-submissions__list" aria-label="Contact submissions">
           {filteredRecords.length === 0 ? (
-            <li className="contact-submissions__empty">Bu filtreye uygun başvuru yok.</li>
+            <li className="contact-submissions__empty">{copy.empty}</li>
           ) : (
             filteredRecords.map((record) => {
               const isActive = activeRecord?.id === record.id;
@@ -185,7 +268,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
                     <div className="contact-submissions__row-head">
                       <span className="contact-submissions__row-name">{record.name}</span>
                       <span className="contact-submissions__row-date">
-                        {formatDateTime(record.createdAt)}
+                        {formatDateTime(locale, record.createdAt)}
                       </span>
                     </div>
                     <div className="contact-submissions__row-meta">
@@ -207,7 +290,7 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
 
         <aside className="contact-submissions__detail" aria-live="polite">
           {activeRecord === null ? (
-            <p className="contact-submissions__detail-empty">Görüntülemek için bir başvuru seçin.</p>
+            <p className="contact-submissions__detail-empty">{copy.detailEmpty}</p>
           ) : (
             <article>
               <header className="contact-submissions__detail-head">
@@ -217,11 +300,11 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
                   </p>
                   <h2 className="contact-submissions__detail-title">{activeRecord.name}</h2>
                   <p className="contact-submissions__detail-sub">
-                    {formatDateTime(activeRecord.createdAt)}
+                    {formatDateTime(locale, activeRecord.createdAt)}
                   </p>
                 </div>
                 <label className="contact-submissions__status-control">
-                  <span>Status</span>
+                  <span>{copy.status}</span>
                   <select
                     disabled={updatingId === activeRecord.id}
                     onChange={(event) =>
@@ -243,42 +326,40 @@ export const ContactSubmissionsPanel = ({ snapshot }: ContactSubmissionsPanelPro
 
               <dl className="contact-submissions__detail-meta">
                 <div>
-                  <dt>E-posta</dt>
+                  <dt>{copy.email}</dt>
                   <dd>
                     <a href={`mailto:${activeRecord.email}`}>{activeRecord.email}</a>
                   </dd>
                 </div>
-                {activeRecord.organization !== null ? (
-                  <div>
-                    <dt>Kuruluş</dt>
-                    <dd>{activeRecord.organization}</dd>
-                  </div>
-                ) : null}
                 <div>
-                  <dt>Konu</dt>
+                  <dt>{copy.organization}</dt>
+                  <dd>{activeRecord.organization ?? copy.noOrganization}</dd>
+                </div>
+                <div>
+                  <dt>{copy.subject}</dt>
                   <dd>{subjectLabels[activeRecord.subject]}</dd>
                 </div>
                 <div>
-                  <dt>Dil</dt>
+                  <dt>{copy.language}</dt>
                   <dd>{activeRecord.locale.toUpperCase()}</dd>
                 </div>
               </dl>
 
               <section className="contact-submissions__detail-message">
-                <h3>Mesaj</h3>
+                <h3>{copy.message}</h3>
                 <p>{activeRecord.message}</p>
               </section>
 
               {activeRecord.attachmentSignedUrl !== null ? (
                 <section className="contact-submissions__detail-attachment">
-                  <h3>Ek</h3>
+                  <h3>{copy.attachment}</h3>
                   <a
                     className="contact-submissions__attachment-link"
                     href={activeRecord.attachmentSignedUrl}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
-                    Dosyayı yeni sekmede aç
+                    {copy.openAttachment}
                   </a>
                 </section>
               ) : null}

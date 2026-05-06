@@ -534,7 +534,9 @@ export default function BusinessHistoryScreen() {
                             </Text>
                           </View>
 
-                          <Text style={styles.bodyText}>{statusMeta.detail}</Text>
+                          {entry.validationStatus === "VALID" ? null : (
+                            <Text style={styles.statusDetail}>{statusMeta.detail}</Text>
+                          )}
                         </View>
                       );
                     })}
@@ -680,8 +682,9 @@ const createStyles = (theme: MobileTheme) =>
     rowCard: {
       borderRadius: theme.radius.card,
       borderWidth: 1,
-      gap: 10,
-      padding: 16,
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
     },
     rowCopy: {
       gap: 4,
@@ -750,7 +753,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 10,
     },
     sectionList: {
-      gap: 10,
+      gap: 8,
     },
     sectionMeta: {
       color: theme.colors.textMuted,
@@ -782,8 +785,8 @@ const createStyles = (theme: MobileTheme) =>
     statusChip: {
       borderRadius: 999,
       borderWidth: 1,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
     },
     statusChipText: {
       fontFamily: theme.typography.families.bold,
@@ -791,6 +794,12 @@ const createStyles = (theme: MobileTheme) =>
       letterSpacing: 0.8,
       lineHeight: theme.typography.lineHeights.eyebrow,
       textTransform: "uppercase",
+    },
+    statusDetail: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     topBar: {
       alignItems: "flex-start",

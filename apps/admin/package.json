@@ -53,10 +53,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@playwright/test": "^1.55.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tsx": "^4.21.0",
