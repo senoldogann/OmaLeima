@@ -48,10 +48,10 @@ const copyByLocale: Record<DashboardLocale, FraudReviewCopy> = {
   fi: {
     confirmIssue: "Vahvista ongelma",
     created: "Luotu",
-    dismiss: "Hylkaa",
-    noLinkedContext: "Ei liitettya tapahtumaa, yritysta tai scanneria",
+    dismiss: "Hylkää",
+    noLinkedContext: "Ei liitettyä tapahtumaa, yritystä tai scanneria",
     noteLabel: "Ratkaisumuistio",
-    notePlaceholder: "Valinnainen sisainen huomio audit trailia varten",
+    notePlaceholder: "Valinnainen sisäinen huomio audit trailia varten",
     requestError: "Tuntematon fraud-tarkistuksen virhe.",
     reviewed: "Merkitse tarkistetuksi",
     saving: "Tallennetaan...",

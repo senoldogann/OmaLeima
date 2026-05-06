@@ -36,17 +36,17 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
           <div className="stack-sm">
             <span className="field-label">{locale === "fi" ? "Operatiiviset tapahtumat" : "Operational events"}</span>
             <strong className="metric-value">{snapshot.summary.operationalEventCount}</strong>
-            <p className="muted-text">{locale === "fi" ? "Aktiiviset tai paattyneet tapahtumat, joissa klubi voi vahvistaa palkinnon luovutuksen." : "Active or completed events where club staff can confirm reward handoff."}</p>
+            <p className="muted-text">{locale === "fi" ? "Aktiiviset tai päättyneet tapahtumat, joissa klubi voi vahvistaa palkinnon luovutuksen." : "Active or completed events where club staff can confirm reward handoff."}</p>
           </div>
         </article>
 
         <article className="panel">
           <div className="stack-sm">
-            <span className="field-label">{locale === "fi" ? "Lunastettavat opiskelijat" : "Claimable candidates"}</span>
+            <span className="field-label">{locale === "fi" ? "Palkintoa odottavat" : "Claimable candidates"}</span>
             <strong className="metric-value">{snapshot.summary.claimableCandidateCount}</strong>
             <p className="muted-text">
               {locale === "fi"
-                ? `Naytetaan viimeisimmat ${snapshot.summary.visibleCandidateCount} lunastettavaa opiskelijaa nakyvista tapahtumista.`
+                ? `Näytetään ${snapshot.summary.visibleCandidateCount} opiskelijaa, jotka odottavat palkintoa.`
                 : `Showing the latest ${snapshot.summary.visibleCandidateCount} candidate${snapshot.summary.visibleCandidateCount === 1 ? "" : "s"} across visible events.`}
             </p>
           </div>
@@ -54,11 +54,11 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
 
         <article className="panel panel-warning">
           <div className="stack-sm">
-            <span className="field-label">{locale === "fi" ? "Viimeisimmat lunastukset" : "Recent claims"}</span>
+            <span className="field-label">{locale === "fi" ? "Vastikään jaetut" : "Recent claims"}</span>
             <strong className="metric-value">{snapshot.summary.recentClaimCount}</strong>
             <p className="muted-text">
               {locale === "fi"
-                ? `Naytetaan viimeisimmat ${snapshot.summary.visibleClaimCount} kirjattua palkintolunastusta.`
+                ? `Näytetään ${snapshot.summary.visibleClaimCount} viimeisintä jaettua palkintoa.`
                 : `Showing the latest ${snapshot.summary.visibleClaimCount} recorded reward claim${snapshot.summary.visibleClaimCount === 1 ? "" : "s"}.`}
             </p>
           </div>
@@ -67,7 +67,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
 
       <div className="tab-nav">
         <button className={activeTab === "event-queue" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-queue")} type="button">{locale === "fi" ? "Tapahtumajono" : "Event Queue"}</button>
-        <button className={activeTab === "recent-claims" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("recent-claims")} type="button">{locale === "fi" ? "Viimeisimmat lunastukset" : "Recent Claims"}</button>
+        <button className={activeTab === "recent-claims" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("recent-claims")} type="button">{locale === "fi" ? "Vastikään jaetut" : "Recent Claims"}</button>
       </div>
 
       <section className="content-grid" style={{ display: activeTab !== "event-queue" ? "none" : undefined }}>
@@ -77,14 +77,14 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
             <h3 className="section-title">{locale === "fi" ? "Operatiiviset tapahtumat" : "Operational events"}</h3>
             <p className="muted-text">
               {locale === "fi"
-                ? "Valitse tapahtuma tarkistaaksesi lunastettavat opiskelijat ja viimeksi vahvistetut palkinnot. Opiskelijoiden tunnisteet pysyvat peitettyina tassa nakymassa."
+                ? "Valitse tapahtuma tarkistaaksesi palkintoa odottavat opiskelijat ja viimeksi vahvistetut luovutukset. Opiskelijoiden tunnisteet pysyvät peitettyinä."
                 : "Pick an event to review claimable students and recently confirmed rewards. Student labels stay masked in this panel."}
             </p>
           </div>
 
           {snapshot.events.length === 0 ? (
             <article className="panel">
-              <p className="muted-text">{locale === "fi" ? "Aktiivisia tai paattyneita klubitapahtumia ei ole nyt nakyvissa palkintoluovutusta varten." : "No active or completed club events are visible for reward handoff right now."}</p>
+              <p className="muted-text">{locale === "fi" ? "Aktiivisia tai päättyneitä klubitapahtumia ei ole nyt näkyvissä palkintoluovutusta varten." : "No active or completed club events are visible for reward handoff right now."}</p>
             </article>
           ) : (
             <div className="content-grid">
@@ -95,7 +95,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
                     <p className="muted-text">{formatClubClaimEventMeta(locale, event)}</p>
                     <p className="review-note">
                       {locale === "fi"
-                        ? `${event.claimableCandidateCount} lunastettavaa · ${event.recentClaimCount} lunastettu · ${event.activeRewardTierCount} aktiivista palkintotasoa`
+                        ? `${event.claimableCandidateCount} odottaa · ${event.recentClaimCount} jaettu · ${event.activeRewardTierCount} tasoa`
                         : `${event.claimableCandidateCount} claimable · ${event.recentClaimCount} claimed · ${event.activeRewardTierCount} active reward tier${event.activeRewardTierCount === 1 ? "" : "s"}`}
                     </p>
                     <div className="pagination-row">
@@ -109,7 +109,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
                       >
                         {effectiveSelectedEventId === event.eventId
                           ? locale === "fi" ? "Valittu" : "Selected"
-                          : locale === "fi" ? "Avaa jono" : "Open queue"}
+                          : locale === "fi" ? "Avaa" : "Open queue"}
                       </button>
                     </div>
                   </div>
@@ -136,7 +136,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
             </article>
           ) : filteredCandidates.length === 0 ? (
             <article className="panel">
-              <p className="muted-text">{locale === "fi" ? "Talle tapahtumalle ei ole nyt nakyvissa lunastettavia opiskelijoita." : "No claimable students are visible for this event right now."}</p>
+              <p className="muted-text">{locale === "fi" ? "Tälle tapahtumalle ei ole nyt näkyvissä lunastettavia opiskelijoita." : "No claimable students are visible for this event right now."}</p>
             </article>
           ) : (
             <div className="review-grid">
@@ -154,14 +154,14 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
 
       <section className="stack-md" style={{ display: activeTab !== "recent-claims" ? "none" : undefined }}>
         <div className="stack-sm">
-          <div className="eyebrow">{locale === "fi" ? "Viimeisin historia" : "Recent history"}</div>
-          <h3 className="section-title">{locale === "fi" ? "Palkintolunastukset" : "Reward claims"}</h3>
-          <p className="muted-text">{locale === "fi" ? "Tarkista valitulle tapahtumalle kirjatut viimeisimmat palkintoluovutukset." : "Review the latest reward handoffs recorded for the selected event."}</p>
+          <div className="eyebrow">{locale === "fi" ? "Historia" : "Recent history"}</div>
+          <h3 className="section-title">{locale === "fi" ? "Jaetut palkinnot" : "Reward claims"}</h3>
+          <p className="muted-text">{locale === "fi" ? "Tarkista valitulle tapahtumalle kirjatut viimeisimmät palkintoluovutukset." : "Review the latest reward handoffs recorded for the selected event."}</p>
         </div>
 
         {selectedEvent === null || filteredRecentClaims.length === 0 ? (
           <article className="panel">
-            <p className="muted-text">{locale === "fi" ? "Talle tapahtumalle ei ole viela nakyvissa viimeisimpia lunastuksia." : "No recent reward claims are visible for this event yet."}</p>
+            <p className="muted-text">{locale === "fi" ? "Tälle tapahtumalle ei ole vielä näkyvissä viimeisimpiä lunastuksia." : "No recent reward claims are visible for this event yet."}</p>
           </article>
         ) : (
           <div className="review-grid">

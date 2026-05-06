@@ -2,6 +2,30 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Admin/Mobile Copy Tone Review)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/admin-mobile-copy-review`
+- **Scope:** Review and normalize the remaining dirty Finnish copy/localization changes in admin/organizer web panels, public site content, and mobile translations.
+
+## Admin/Mobile Copy Existing Logic Checked
+
+- The dirty diff touches component-local copy maps, public content constants, dashboard route labels, fraud/oversight labels, club claim formatting labels, and the shared mobile translation object.
+- The diff does not add new imports, routes, API calls, Supabase queries, Edge Function invocations, RLS policies, payment code, or auth/session logic.
+- Several changed labels use slang or unclear action language in sensitive contexts: push sending, fraud review, business application decisions, sign-out, and scanner/business access.
+- Some changed public/mobile strings are directionally useful because they are shorter and more student-culture aware, but need a calmer production tone.
+
+## Admin/Mobile Copy Risks
+
+- Overly casual admin copy can make destructive or security-sensitive actions feel less serious.
+- Changing translation keys or object shapes would break strict TypeScript checks across admin/mobile.
+- Mobile labels must stay compact enough for narrow devices after becoming more professional.
+- Public copy should remain distinctive and Finnish-student-culture aware without undermining business trust.
+
+## Admin/Mobile Copy Review Outcome
+
+Keep the diff presentation-only and rewrite copy in place: retain concise event/leima/appro language where it helps the product identity, but replace slang-heavy verbs and dismissive phrasing with clear production UI language. Validate both apps and run a diff-scoped security review to confirm no behavioral surface changed.
+
 ## Current Review (Release Smoke Harness Stabilization)
 
 - **Date:** 2026-05-06

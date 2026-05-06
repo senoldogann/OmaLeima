@@ -2,6 +2,16 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Admin/Mobile Copy Tone Review)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review after compact before continuing.
+- [x] Move the remaining dirty admin/mobile copy-localization diff onto an isolated feature branch.
+- [x] Inspect changed admin, public site, and mobile translation surfaces for behavior/security impact.
+- [x] Rewrite overly casual Finnish copy into a warm but production-ready tone without changing data flow.
+- [x] Update working docs and run admin/mobile validation.
+- [x] Run a diff-scoped Codex Security review and record the result.
+- [ ] Commit, merge to main, push, and deploy Vercel production if validation stays clean.
+
 ## Current Todos (Release Smoke Harness Stabilization)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review after compact before continuing.

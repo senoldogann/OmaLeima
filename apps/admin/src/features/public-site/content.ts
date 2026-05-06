@@ -154,24 +154,24 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     contactHref: "/contact",
     contactLabel: "Ota yhteyttä",
     description:
-      "OmaLeima muuttaa opiskelijatapahtumien leimakortit yhdeksi rauhalliseksi digitaaliseksi virraksi: QR-tarkistukset, palkintojen eteneminen ja selkeä tapahtumapäivän operointi.",
+      "OmaLeima muuttaa paperiset leimakortit digitaaliseksi leimapassiksi: QR-rastit, palkintojen eteneminen ja selkeä tapahtumapäivän operointi yhdessä sovelluksessa.",
     eyebrow: "Digitaalinen leimapassi",
     footerAddressLabel: "Toimipaikan osoite",
     footerBusinessIdLabel: "Y-tunnus",
-    footerCompanyLabel: "Yritystiedot",
+    footerCompanyLabel: "Yrityksen tiedot",
     footerLegalItems: getPublicLegalLinks("fi"),
     footerLegalLabel: "Yleiset sivut",
     footerNote: "Rakennettu suomalaiseen opiskelijakulttuuriin. Pilottikeskustelut ovat avoinna.",
     footerPhoneLabel: "Puhelin",
     footerPostalLabel: "Postiosoite",
-    heroTitle: "Leimat ja palkinnot yhdessä selkeässä virrassa.",
+    heroTitle: "Leimat ja palkinnot yhdessä digitaalisessa passissa.",
     interestHref,
     interestLabel: "Seuraa @omaleima",
     localeLabel: "FI",
     localeSwitchHref: "/en",
     localeSwitchLabel: "In English",
     metaDescription:
-      "OmaLeima on digitaalinen leimapassi suomalaisiin opiskelijatapahtumiin, approihin, QR-tarkistuksiin, palkintoihin ja järjestäjien operointiin.",
+      "OmaLeima on digitaalinen leimapassi opiskelijatapahtumiin, approihin, QR-rastituksiin, palkintoihin ja järjestäjien operointiin.",
     navItems: [
       { href: "#flow", label: "Toiminta" },
       { href: "#culture", label: "Kulttuuri" },
@@ -180,35 +180,35 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
       { href: "/apply", label: "Hae mukaan" },
     ],
     ogLocale: "fi_FI",
-    productTitle: "Rakennettu approihin, yrityspisteisiin ja palkintohetkiin, joiden pitäisi tuntua puhelimessa kevyiltä.",
-    sectionLabel: "Rakennettu suomalaiseen opiskelijakulttuuriin",
+    productTitle: "Rakennettu approihin, rastipisteisiin ja palkintohetkiin, joiden pitää tuntua puhelimessa kevyiltä.",
+    sectionLabel: "Tehty opiskelijakulttuuria varten",
     statItems: [
-      { label: "QR-varmistetut checkpointit", value: "Live" },
+      { label: "QR-varmistetut rastit", value: "Live" },
       { label: "Paperiton tapahtumavirta", value: "Ilman kortteja" },
       { label: "Opiskelijalähtöiset palkinnot", value: "Palkinnot" },
     ],
     storyItems: [
       {
-        body: "Opiskelijat kiertävät tapahtumaa aikarajatulla QR-koodilla ilman helposti rikkoutuvaa paperikorttia.",
-        title: "Tapahtumailta tuntuu kevyemmältä",
+        body: "Opiskelijat kiertävät rasteja aikarajatulla QR-koodilla ilman helposti katoavaa tai kastuvaa paperikorttia.",
+        title: "Ilta sujuu kevyemmin",
       },
       {
-        body: "Yritykset skannaavat nopeasti, välttävät tuplaleimat ja pitävät jonon liikkeessä ilman sekavia manuaalitarkistuksia.",
+        body: "Yritykset skannaavat nopeasti, välttävät tuplaleimat ja pitävät jonon liikkeessä ilman manuaalisia tarkistuksia.",
         title: "Skannaus pysyy sujuvana",
       },
       {
-        body: "Järjestäjät näkevät palkintojen etenemisen, tiedotteet ja checkpointit yhdestä selkeästä hallintapinnasta.",
+        body: "Järjestäjät näkevät palkintojen etenemisen, tiedotteet ja rastit yhdestä selkeästä hallintapinnasta.",
         title: "Klubi pysyy ohjaksissa",
       },
     ],
     supportItems: [
       {
         body: "Tuo klubit, opiskelijajärjestöt ja yrityskumppanit samaan tapahtumapäivän järjestelmään ilman irrallisia ad hoc -prosesseja.",
-        title: "Järjestäjän käyttöönotto",
+        title: "Helppo käyttöönotto",
       },
       {
         body: "Palkintorajojen eteneminen, yritysten osallistuminen ja tiedotteet pysyvät näkyvillä koko tapahtuman ajan.",
-        title: "Palkintojen näkyvyys",
+        title: "Palkinnot näkyvillä",
       },
       {
         body: "Dynaamiset QR-koodit päivittyvät jatkuvasti, mikä estää kuvakaappausten ja jaettujen passien käytön.",

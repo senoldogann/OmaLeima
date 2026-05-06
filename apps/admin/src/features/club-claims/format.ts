@@ -16,10 +16,10 @@ const rewardTypeLabelsByLocale: Record<DashboardLocale, Record<ClubClaimCandidat
   },
   fi: {
     COUPON: "Kuponki",
-    ENTRY: "Sisaanpaasy",
+    ENTRY: "Sisäänpääsy",
     HAALARIMERKKI: "Haalarimerkki",
     OTHER: "Muu",
-    PATCH: "Patch",
+    PATCH: "Merkki",
     PRODUCT: "Tuote",
   },
 };
@@ -48,12 +48,12 @@ export const formatClubClaimInventory = (locale: DashboardLocale, candidate: Clu
 
   if (candidate.inventoryRemaining === null) {
     return locale === "fi"
-      ? `${candidate.inventoryTotal} yhteensa varastossa`
+      ? `Yhteensä ${candidate.inventoryTotal} kpl`
       : `${candidate.inventoryTotal} total stock`;
   }
 
   return locale === "fi"
-    ? `${candidate.inventoryRemaining}/${candidate.inventoryTotal} jaljella`
+    ? `${candidate.inventoryRemaining}/${candidate.inventoryTotal} jäljellä`
     : `${candidate.inventoryRemaining}/${candidate.inventoryTotal} left`;
 };
 

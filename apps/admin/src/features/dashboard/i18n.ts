@@ -84,7 +84,7 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
     admin: {
       "/admin": {
         subtitle: "Valvo koko alustan tarjontaa, tarkista yrityshakemukset ja pidä tapahtumien eheys yhdessä näkymässä.",
-        title: "Operointinäkymä",
+        title: "Kojelauta",
       },
       "/admin/announcements": {
         subtitle: "Julkaise koko alustan sisäisiä viestejä ennen push-jakelun ja lukukuittausten laajennusta.",
@@ -92,7 +92,7 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
       },
       "/admin/business-applications": {
         subtitle: "Käsittele avoimet yrityshakemukset samalla admin-hyväksyntävirralla, jota backend käyttää.",
-        title: "Yrityshakemukset",
+        title: "Uudet hakemukset",
       },
       "/admin/contact-submissions": {
         subtitle: "Tarkista julkisen yhteydenottolomakkeen viestit, päivitä tila ja avaa yksityiset liitteet.",
@@ -100,7 +100,7 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
       },
       "/admin/department-tags": {
         subtitle: "Yhdistä päällekkäisiä opiskelualojen tageja tai estä heikkolaatuiset tagit admin-näkymästä.",
-        title: "Opiskelualojen tagit",
+        title: "Ainejärjestötagit",
       },
       "/admin/oversight": {
         subtitle: "Seuraa klubeja, tapahtumia, auditointia ja fraud-signaaleja yhdestä operointinäkymästä.",
@@ -157,13 +157,13 @@ const navLabelByLocale: Record<DashboardLocale, Record<string, string>> = {
     "/club/rewards": "Reward tiers",
   },
   fi: {
-    "/admin": "Etusivu",
+    "/admin": "Kojelauta",
     "/admin/announcements": "Tiedotteet",
-    "/admin/business-applications": "Yrityshakemukset",
+    "/admin/business-applications": "Hakemukset",
     "/admin/contact-submissions": "Yhteydenotot",
     "/admin/department-tags": "Opiskelualojen tagit",
     "/admin/oversight": "Alustan valvonta",
-    "/club": "Etusivu",
+    "/club": "Kojelauta",
     "/club/announcements": "Tiedotteet",
     "/club/claims": "Palkintojen luovutus",
     "/club/department-tags": "Opiskelualojen tagit",

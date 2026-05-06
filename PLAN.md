@@ -2,6 +2,47 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Admin/Mobile Copy Tone Review)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/admin-mobile-copy-review`
+- **Goal:** Clean up the remaining uncommitted admin/mobile/public Finnish copy changes so the product feels approachable without sounding unprofessional, while keeping behavior, auth, RLS, Edge Functions, and data contracts unchanged.
+
+## Admin/Mobile Copy Architectural Decisions
+
+- Treat this as a presentation-only copy/localization slice: no route, mutation, query, RPC, schema, or auth guard changes.
+- Preserve the existing `DashboardLocale`, `PublicLocale`, and mobile `AppLanguage` structures instead of introducing new translation plumbing.
+- Keep Finnish copy concise and friendly, but avoid slang that weakens trust in admin, organizer, scanner, security, fraud, or sign-out contexts.
+- Keep public-site Finnish more energetic than the admin panel, but avoid words that make the business/customer flow feel unserious.
+- Validate both touched apps because changed translation objects still participate in strict TypeScript shape checks.
+
+## Admin/Mobile Copy Edge Cases
+
+- CTA labels like announcement push, fraud confirmation, revoke/sign-out, and business application approval must remain clear and action-safe.
+- Mobile short labels must still fit narrow bottom tabs and headers after copy cleanup.
+- Public landing copy can be lively, but should still work for Finnish student organizations and business partners.
+- Because the diff is mostly text, the security scan should be diff-scoped and verify no auth/RLS/payment/secret surfaces changed.
+
+## Admin/Mobile Copy Prompt
+
+Sen bir OmaLeima tuotteen FI/EN localization ja security-conscious UX copy reviewer olet.
+Hedef: admin, organizer, public site ve mobile Finnish copy degisikliklerini samimi ama guvenilir production tonuna cek; argo, belirsiz veya riskli action copy'leri netlestir; davranis koduna dokunma.
+Mimari: mevcut translation objectleri ve component-local copy map'leri korunacak. Yeni i18n sistemi, schema, RPC, Edge Function veya route degisikligi yok.
+Kapsam: yalnizca mevcut dirty copy/localization dosyalari, calisma dokumanlari ve validation. Supabase migration, auth, scanner provisioning ve pricing yok.
+Cikti: strict typed TS/TSX text updates, admin/mobile build validation, diff-scoped security note, handoff.
+Yasaklar: unrelated degisiklikleri revert etmek yok, yeni fallback davranisi yok, action semantics'i belirsizlestirmek yok, `any` yok, gizli secret/log iceren copy yok.
+Standartlar: AGENTS.md, minimal diff, clear actionable errors/actions, trusted Finnish tone, strict type validation.
+
+## Admin/Mobile Copy Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+- Diff-scoped Codex Security review for touched files.
+
 ## Current Plan (Release Smoke Harness Stabilization)
 
 - **Date:** 2026-05-06

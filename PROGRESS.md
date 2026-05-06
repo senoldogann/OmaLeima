@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-06
+- **Branch:** `feature/admin-mobile-copy-review`
+- **Yapılan iş:** Kalan uncommitted admin/mobile/public Finnish copy-localization diff'i main'den izole edilip ayrı branch'e taşındı. Admin/organizer panellerindeki fazla argo ve belirsiz aksiyon copy'leri production'a uygun, güvenilir ve net bir tona çekildi; public site ve mobildeki kısa leima/appro dili korunurken sign-out, fraud, push, business application ve scanner gibi hassas yüzeylerde profesyonel aksiyon metni kullanıldı. Davranış kodu, auth, RLS, Supabase sorguları, Edge Functions, payment ve route akışlarına dokunulmadı.
+- **Neden yapıldı:** Çalışma ağacında kalan copy/localization değişiklikleri deploy edilmeden önce ürün tonu ve güvenlik/davranış etkisi açısından belirsizdi; kullanıcı sıradaki doğru adımlarla devam edilmesini ve plugin/security kontrollerinin uygulanmasını istedi.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/admin run build` ve `git --no-pager diff --check` temiz. Codex Security diff scan no-finding raporu: `/tmp/codex-security-scans/OmaLeima/f9cc7ff_20260506T101626Z_copy_review/report.md`.
+- **Sıradaki önerilen adım:** Branch main'e merge edilip Vercel production deploy alındıktan sonra hosted `omaleima.fi` üzerinde public landing/apply/contact ve admin/club copy görsel smoke'u yapılmalı. Mobil translation değişikliği için fiziksel cihaz/dev client refresh sonrası öğrenci/business login ve events tab label kısalığı kontrol edilmeli.
+- **Açık risk/blokaj:** Bu slice presentation-only olduğu için Supabase migration/function adımı yok. Fiziksel iPhone/Android görsel smoke bu turda henüz alınmadı; Android tarafında önceki oturumda `adb` PATH'te bulunmamıştı.
+
+- **Tarih:** 2026-05-06
 - **Branch:** `bug/scanner-reprovision-after-revoke`
 - **Yapılan iş:** Revoked scanner device sonrası aynı telefonda kalan stale scanner installation id döngüsü düzeltildi. Mobile scanner registration `DEVICE_REVOKED` alınca local installation id'yi siliyor ve aktif business actor için bir kez temiz cihaz kaydı deniyor; realtime revoke sırasında da installation id temizleniyor. Owner QR provisioning ve direct scanner registration payload'larına optional `deviceModel` eklendi. `business_scanner_devices.device_model` hosted Supabase'e eklendi, ilgili RPC'ler yeni metadata parametresiyle yeniden kuruldu ve `provision-business-scanner-session` hosted Edge Function deploy edildi. Business profile `Skannerilaitteet` listesi aktif cihazlarda model bilgisini platformla birlikte gösteriyor. Codex Security diff scan no-finding kapandı; scan sırasında eski mobil bundle'ların 4 parametreli direct registration RPC çağrısı kırılmasın diye `p_device_model default null` migration'ı eklendi ve hosted Supabase'e uygulandı.
 - **Neden yapıldı:** Kullanıcı revoked scanner hesabı/cihazı sonrası işletme hesabıyla scan sayfasına gidince login ekranına düşen döngüyü ve scanner devices listesinde cihaz modelinin görünmemesini bildirdi.
@@ -1868,6 +1876,7 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ### Tamamlanan Görevler (Changelog)
 
+- *2026-05-06*: Admin/mobile/public Finnish copy tone review tamamlandı; kalan dirty localization diff'i production'a uygun tona çekildi, admin/mobile validation ve Codex Security diff scan temiz geçti.
 - *2026-05-06*: Scanner revoke sonrası reprovision flow düzeltildi; stale scanner installation id temizlenip aktif business kullanıcı için tek retry ile yeni cihaz kaydı açılıyor, hosted Supabase `device_model` + backwards-compatible RPC default migration'ları ve `provision-business-scanner-session` deploy tamamlandı.
 - *2026-05-06*: Release smoke harness stabilization tamamlandi; auth trigger sonrasi profile fixture duplicate hatalari, route smoke stale cookie `AUTH_REQUIRED` hatalari ve department-tags stale copy assertion'i duzeltildi.
 - *2026-05-06*: Admin business owner onboarding handoff eklendi; approved application sonrasi panelden owner auth/profile/membership access olusturma, scanner QR onboarding notu ve production route/function deploy tamamlandi.
