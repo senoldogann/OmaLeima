@@ -52,10 +52,12 @@ const main = async () => {
     studentActiveEventSource.includes("Show at the venue desk") &&
     studentActiveEventSource.includes("Active leima pass") &&
     studentActiveEventSource.includes("Preview leima");
-  const scannerFallbackGuidancePresent =
-    businessScannerSource.includes("Manual token scan") &&
-    businessScannerSource.includes("Paste LEIMA_STAMP_QR token") &&
-    businessScannerSource.includes("scanPastedToken");
+  const scannerCameraGuidancePresent =
+    businessScannerSource.includes("Aim the camera at the student QR.") &&
+    businessScannerSource.includes("Camera permission is not granted.") &&
+    businessScannerSource.includes("handleBarcodeScanned") &&
+    !businessScannerSource.includes("Manual token scan") &&
+    !businessScannerSource.includes("scanPastedToken");
   const businessSignInFlowPresent =
     businessPasswordSignInSource.includes("businessCheckingAccess") &&
     businessPasswordSignInSource.includes("returnKeyType=\"done\"");
@@ -64,21 +66,21 @@ const main = async () => {
   const normalizedTestingDoc = testingDocSource.toLowerCase();
   const docsAligned =
     normalizedReadme.includes("hosted scanner smoke") &&
-    normalizedReadme.includes("manual token scan") &&
+    normalizedReadme.includes("camera-based scanner smoke") &&
     normalizedTestingDoc.includes("mobile hosted business scan readiness") &&
-    normalizedTestingDoc.includes("manual token scan");
+    normalizedTestingDoc.includes("camera-based scanner smoke");
 
   if (
     !packageWired ||
     !studentQrScenePresent ||
-    !scannerFallbackGuidancePresent ||
+    !scannerCameraGuidancePresent ||
     !businessSignInFlowPresent ||
     !docsAligned
   ) {
     fail("mobile-hosted-business-scan-readiness:failed", [
       `packageWired=${packageWired}`,
       `studentQrScenePresent=${studentQrScenePresent}`,
-      `scannerFallbackGuidancePresent=${scannerFallbackGuidancePresent}`,
+      `scannerCameraGuidancePresent=${scannerCameraGuidancePresent}`,
       `businessSignInFlowPresent=${businessSignInFlowPresent}`,
       `docsAligned=${docsAligned}`,
     ]);
@@ -88,7 +90,7 @@ const main = async () => {
     [
       "mobile-hosted-business-scan:repo-wired",
       "student-qr-scene:present",
-      "scanner-manual-fallback:aligned",
+      "scanner-camera-qr:aligned",
       "business-sign-in-flow:aligned",
       "docs:aligned",
     ].join("|")

@@ -55,7 +55,7 @@ The first dedicated mobile Realtime slice is now shipped:
 - local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
 - native push diagnostics remain provider-owned diagnostics capture so the student profile stays clean for pilots
 - local foreground notifications can still appear in captured diagnostics, but only entries marked from a remote source prove APNs or FCM-backed delivery
-- the active student event screen still exposes the live QR scene used in hosted scanner smoke, while the business scanner keeps a manual token-scan fallback for operator or repo-owned smoke
+- the active student event screen still exposes the live QR scene used in hosted scanner smoke, while the business scanner stays camera-based and QR-only for production staff use
 
 Use this command to confirm that state before extending or widening the Realtime layer:
 
@@ -126,11 +126,11 @@ npm run audit:store-release-readiness
 ## Hosted scanner smoke
 
 - The hosted smoke fixture still depends on the current hosted scanner credential from the local operator file, plus an active event, a joined venue, and a student registration.
-- The preferred physical-device path is the real QR journey:
+- The camera-based scanner smoke path is the real QR journey:
   1. sign in as the student and open `My QR`
   2. show the rotating QR to the business scanner flow
   3. scan it from `Business > Scanner`
-- The business scanner also keeps a `Manual token scan` fallback surface for operator or repo-owned smoke when camera-based scanning is not practical.
+- The business scanner no longer exposes a manual token input in the operational UI. If a repo-owned fallback is needed, use a dedicated smoke script instead of adding testing controls back to the staff screen.
 
 ## Codex action note
 

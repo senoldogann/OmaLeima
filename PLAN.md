@@ -212,6 +212,43 @@ Standartlar: AGENTS.md, explicit errors, minimal diff, zero-trust backend, physi
 - `git --no-pager diff --check`
 - Vercel production deploy after merge
 
+## Current Plan (Release Smoke Readiness)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/release-smoke-readiness`
+- **Goal:** Re-establish a trustworthy release smoke baseline after production deploy without reintroducing removed testing UI, and close the highest-confidence Supabase advisor issue that can be fixed safely in this slice.
+
+## Release Smoke Readiness Design
+
+- Use Supabase MCP for hosted project/migration state and local npm audits for mobile readiness.
+- Treat the business scanner as camera-based and QR-only; do not add manual token controls back to production UI.
+- Align `audit:hosted-business-scan-readiness` and docs to the real physical-device scanner path.
+- Add a Supabase migration that revokes `PUBLIC`/`anon` execute from privileged SECURITY DEFINER mutation/trigger functions while preserving `authenticated`/`service_role` execute.
+- Run mobile typecheck/lint plus the relevant readiness audits after the audit harness change.
+
+## Prompt
+
+Sen Expo React Native ve release-smoke guvenilirligi konusunda deneyimli bir mobil QA muhendisisin.
+Hedef: Son deploy sonrasi mobile release smoke auditlerini dogru urun karariyla hizala; business scanner operasyon UI'i QR-only kalsin; Supabase anon RPC execute yuzeyini daralt.
+Mimari: Mevcut scanner ekranina dokunmadan audit script ve test dokumanlarini camera-based scanner smoke path'e guncelle; DB tarafinda privilege-only migration kullan.
+Kapsam: `apps/mobile/scripts/audit-hosted-business-scan-readiness.mjs`, mobile README, testing docs, Supabase privilege migration ve working docs. Yeni scanner ozelligi veya manual token UI yok.
+Cikti: Strict JS/doc/SQL degisikligi, hosted Supabase migration, npm audit/typecheck/lint validasyonu ve cihaz/simulator hazirlik raporu.
+Yasaklar: Manual token scan UI geri eklemek yok, Supabase state'i tahmin etmek yok, helper/RLS public read behavior'ini genis refactor ile bozmak yok, unrelated code revert yok, fallback davranisi uydurmak yok.
+Standartlar: AGENTS.md, minimal diff, mevcut test stratejisi, acik blocker raporu.
+
+## Release Smoke Readiness Validation Plan
+
+- `npm --prefix apps/mobile run audit:hosted-business-scan-readiness`
+- `npm --prefix apps/mobile run audit:realtime-readiness`
+- `npm --prefix apps/mobile run audit:native-push-device-readiness`
+- `npm --prefix apps/mobile run audit:native-simulator-smoke`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `supabase db lint --local`
+- Hosted ACL query for representative mutation RPCs
+- `npm --prefix apps/admin run smoke:rls-core`
+- `git --no-pager diff --check`
+
 ## Current Plan (Scanner QR Login Redirect Regression)
 
 - **Date:** 2026-05-06

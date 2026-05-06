@@ -242,7 +242,7 @@ What the emulator can still validate:
 - event list and event join flow
 - active-event and QR screen rendering
 - business login and scanner screen UI
-- manual token scan flow against the hosted backend
+- camera-based scanner smoke against the hosted backend
 
 What the emulator does **not** prove:
 
@@ -493,20 +493,20 @@ This focused audit currently does four things in order:
 The audit is intentionally read-only. It verifies the current repository state still supports the hosted scanner smoke path:
 
 - the active student event screen still ships the live QR scene
-- the business scanner still ships the manual token fallback surface
+- the business scanner still ships the camera-based QR scan surface
 - the business password sign-in flow still exposes the operator login path needed to reach that scanner
 - the docs still describe the current hosted smoke flow honestly
 
-The preferred manual smoke sequence is:
+The preferred camera-based scanner smoke sequence is:
 
 1. sign in as the student on the physical iPhone
 2. open `My QR`
 3. show the live QR to the scanner flow
 4. sign in as the scanner account
 5. open `Business > Scanner`
-6. scan the QR or, if needed, use the manual token surface
+6. scan the QR with the scanner camera
 
-That path still exercises the real hosted `scan-qr` backend. The manual token area remains a fallback for operator or repo-owned smoke when camera scanning is not practical.
+That path still exercises the real hosted `scan-qr` backend. If camera scanning is not practical in CI or repo-owned smoke, use a dedicated script instead of exposing a token paste control in the staff UI.
 
 ## Mobile native simulator and emulator wiring
 

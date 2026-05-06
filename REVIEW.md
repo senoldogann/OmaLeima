@@ -2,6 +2,25 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Release Smoke Readiness)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/release-smoke-readiness`
+- **Scope:** Re-run release readiness gates after the latest production deploy, align mobile scanner smoke checks with the current QR-only business scanner product decision, and address high-confidence Supabase advisor security findings.
+
+## Release Smoke Readiness Findings
+
+- Hosted Supabase migrations are present through owner QR scanner provisioning, scanner device realtime/model updates, and the department tag merge fix.
+- Mobile realtime and native push readiness audits pass in repository wiring mode.
+- Android SDK and the `Pixel_9` AVD exist locally, but no Android device or emulator is currently attached.
+- The hosted business scanner readiness audit was stale: it still expected the removed manual token scan UI even though the production scanner screen is now camera-based and QR-only.
+- Supabase security advisors report many warnings because anonymous auth is enabled. The highest-impact fixable item in this slice is unauthenticated `anon` execute access on SECURITY DEFINER mutation/trigger RPCs.
+- Hosted ACL inspection confirmed mutation RPCs had both `=X` and `anon=X` grants. The migration removes `PUBLIC`/`anon` execute for mutation and trigger functions while preserving `authenticated` and `service_role` execute to avoid breaking signed-in app flows.
+
+## Release Smoke Readiness Review Outcome
+
+Keep the production scanner UI QR-only and update only the audit/docs expectations. Manual token entry should stay out of the staff screen; if non-camera smoke is needed later, it should live in a dedicated script rather than operational UI. For security, keep anonymous sign-in enabled for owner QR provisioning but remove unauthenticated RPC execution from privileged mutation functions.
+
 ## Current Review (Admin/Mobile Copy Tone Review)
 
 - **Date:** 2026-05-06

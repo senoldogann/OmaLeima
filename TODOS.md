@@ -2,6 +2,18 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Release Smoke Readiness)
+
+- [x] Re-read AGENTS, master plan, progress, todos, plan, and review before continuing.
+- [x] Use Supabase MCP to verify hosted project and migration state instead of unrelated connectors.
+- [x] Run mobile realtime, native push, and hosted business scanner readiness audits.
+- [x] Identify that the hosted business scanner audit still expected removed manual token UI.
+- [x] Update the audit/docs to the current camera-based QR-only scanner smoke path.
+- [x] Run Supabase advisors and identify unauthenticated SECURITY DEFINER mutation RPC execute as the highest-impact fixable security item.
+- [x] Add and apply the hosted Supabase privilege migration that removes `PUBLIC`/`anon` execute from privileged mutation functions.
+- [x] Re-run mobile/admin readiness audits, typecheck, lint, hosted ACL checks, and diff checks.
+- [x] Record the outcome and remaining physical-device Android/iPhone smoke gap.
+
 ## Current Todos (Admin/Mobile Copy Tone Review)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review after compact before continuing.
