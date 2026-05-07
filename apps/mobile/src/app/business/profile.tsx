@@ -8,6 +8,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { BusinessOnboardingModal } from "@/features/business/components/business-onboarding-modal";
 import {
   type BusinessMediaKind,
   pickBusinessMediaAsync,
@@ -24,7 +25,8 @@ import type { BusinessMembershipSummary } from "@/features/business/types";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
-import { LegalLinksCard } from "@/features/legal/legal-links-card";
+import { LegalLinksModal } from "@/features/legal/legal-links-card";
+import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import {
   useBusinessScannerLoginQrQuery,
@@ -42,7 +44,7 @@ import { SupportRequestSheet } from "@/features/support/components/support-reque
 import type { BusinessSupportOption } from "@/features/support/types";
 import { useSession } from "@/providers/session-provider";
 
-type PreferenceSheet = "language" | "theme" | null;
+type PreferenceSheet = "language" | null;
 type BusinessProfileDraftField = keyof Pick<
   BusinessProfileDraft,
   | "name"
@@ -171,12 +173,14 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
 
 export default function BusinessProfileScreen() {
   const { session } = useSession();
-  const { copy, language, setLanguage, setThemeMode, theme, themeMode } = useUiPreferences();
+  const { copy, language, setLanguage, theme } = useUiPreferences();
   const router = useRouter();
   const styles = useThemeStyles(createStyles);
   const userId = session?.user.id ?? null;
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [isLegalLinksVisible, setIsLegalLinksVisible] = useState<boolean>(false);
+  const [isOnboardingVisible, setIsOnboardingVisible] = useState<boolean>(false);
   const [isBusinessProfileExpanded, setIsBusinessProfileExpanded] = useState<boolean>(false);
   const [isScannerDevicesExpanded, setIsScannerDevicesExpanded] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
@@ -213,8 +217,6 @@ export default function BusinessProfileScreen() {
     () => memberships.find((membership) => membership.businessId === selectedBusinessId) ?? memberships[0] ?? null,
     [memberships, selectedBusinessId]
   );
-  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
-  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
   const selectedBusinessIdForEvents = selectedMembership?.businessId ?? null;
@@ -1020,29 +1022,39 @@ export default function BusinessProfileScreen() {
             </InfoCard>
           ) : null}
 
+          <InfoCard eyebrow={language === "fi" ? "Skannaushistoria" : "Scan history"} title={language === "fi" ? "Historia" : "History"}>
+            <Text style={styles.bodyText}>
+              {language === "fi"
+                ? "Tarkastele kaikkia skannauksia, suodata tapahtuman tai päivän mukaan ja seuraa leimakertoja."
+                : "Review all scan records, filter by event or date, and track stamp activity."}
+            </Text>
+            <Pressable
+              onPress={() => router.push("/business/history")}
+              style={styles.primaryButton}
+            >
+              <AppIcon color={theme.colors.actionPrimaryText} name="history" size={16} />
+              <Text style={styles.primaryButtonText}>
+                {language === "fi" ? "Avaa historia" : "Open history"}
+              </Text>
+            </Pressable>
+          </InfoCard>
+
           <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={copy.common.profile}>
             <View style={styles.preferenceSection}>
-              <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceRow}>
-                <View style={styles.preferenceIconWrap}>
-                  <AppIcon color={theme.colors.lime} name="palette" size={16} />
-                </View>
-                <Text style={styles.preferenceTitle}>{copy.common.theme}</Text>
-                <View style={styles.preferenceValue}>
-                  <Text style={styles.preferenceValueText}>{selectedThemeLabel}</Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-                </View>
-              </Pressable>
+              <LanguageDropdown language={language} onLanguageChange={setLanguage} />
 
               <View style={styles.preferenceDivider} />
 
-              <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceRow}>
+              <Pressable onPress={() => setIsOnboardingVisible(true)} style={styles.preferenceRow}>
                 <View style={styles.preferenceIconWrap}>
-                  <AppIcon color={theme.colors.lime} name="globe" size={16} />
+                  <AppIcon color={theme.colors.lime} name="info" size={16} />
                 </View>
-                <Text style={styles.preferenceTitle}>{copy.common.language}</Text>
+                <Text style={styles.preferenceTitle}>
+                  {language === "fi" ? "Näytä aloitusopastus" : "Show onboarding guide"}
+                </Text>
                 <View style={styles.preferenceValue}>
-                  <Text style={styles.preferenceValueText}>{selectedLanguageLabel}</Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+                  <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
                 </View>
               </Pressable>
 
@@ -1061,11 +1073,30 @@ export default function BusinessProfileScreen() {
 
               <View style={styles.preferenceDivider} />
 
+              <Pressable onPress={() => setIsLegalLinksVisible(true)} style={styles.preferenceRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="info" size={16} />
+                </View>
+                <Text style={styles.preferenceTitle}>
+                  {language === "fi" ? "Tietosuoja ja käyttöehdot" : "Privacy and terms"}
+                </Text>
+                <View style={styles.preferenceValue}>
+                  <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+
+              <View style={styles.preferenceDivider} />
+
               <SignOutButton />
             </View>
           </InfoCard>
 
-          <LegalLinksCard language={language} />
+          <LegalLinksModal
+            isVisible={isLegalLinksVisible}
+            language={language}
+            onClose={() => setIsLegalLinksVisible(false)}
+          />
         </>
       ) : null}
 
@@ -1080,9 +1111,7 @@ export default function BusinessProfileScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
-                <Text style={styles.modalTitle}>
-                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
-                </Text>
+                <Text style={styles.modalTitle}>{copy.common.language}</Text>
               </View>
               <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
@@ -1090,49 +1119,26 @@ export default function BusinessProfileScreen() {
             </View>
 
             <View style={styles.preferenceOptionList}>
-              {preferenceSheet === "theme" ? (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("dark");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("light");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("fi");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("en");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
-                  </Pressable>
-                </>
-              )}
+              <>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("fi");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("en");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                </Pressable>
+              </>
             </View>
           </Pressable>
         </Pressable>
@@ -1144,6 +1150,11 @@ export default function BusinessProfileScreen() {
         isVisible={isSupportVisible}
         onClose={() => setIsSupportVisible(false)}
         userId={userId}
+      />
+
+      <BusinessOnboardingModal
+        isVisible={isOnboardingVisible}
+        onDismiss={() => setIsOnboardingVisible(false)}
       />
     </AppScreen>
   );
@@ -1514,6 +1525,8 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
+      flexDirection: "row",
+      gap: 8,
       justifyContent: "center",
       minHeight: 46,
       paddingHorizontal: 14,

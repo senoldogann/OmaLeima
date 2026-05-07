@@ -367,23 +367,25 @@ export default function BusinessHistoryScreen() {
         />
       }
     >
+      {/* Page header */}
       <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
+        <View style={styles.topBarLeft}>
           <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
           <Text style={styles.screenTitle}>{labels.screenTitle}</Text>
-          <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
         </View>
-        <View style={styles.topBarShortcuts}>
-          <Pressable onPress={() => router.push("/business/scanner")} style={styles.topBarShortcut}>
-            <Text style={styles.topBarShortcutText}>→ {labels.openScanner}</Text>
+        <View style={styles.topBarActions}>
+          <Pressable onPress={() => router.push("/business/scanner")} style={styles.topBarIconBtn}>
+            <AppIcon color={theme.colors.textPrimary} name="scan" size={18} />
           </Pressable>
           {isScannerOnlyBusinessUser ? null : (
-            <Pressable onPress={() => router.push("/business/events")} style={styles.topBarShortcut}>
-              <Text style={styles.topBarShortcutText}>→ {labels.openEvents}</Text>
+            <Pressable onPress={() => router.push("/business/events")} style={styles.topBarIconBtn}>
+              <AppIcon color={theme.colors.textPrimary} name="calendar" size={18} />
             </Pressable>
           )}
         </View>
       </View>
+
+      <Text style={styles.metaText}>{copy.business.historyMeta}</Text>
 
       {historyQuery.isLoading ? (
         <InfoCard eyebrow={copy.common.loading} title={labels.loadingTitle}>
@@ -402,46 +404,36 @@ export default function BusinessHistoryScreen() {
 
       {!historyQuery.isLoading && !historyQuery.error ? (
         <>
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEyebrow}>{copy.business.history}</Text>
-              <Text style={styles.sectionTitle}>{labels.currentView}</Text>
-            </View>
-            <Text style={styles.bodyText}>{labels.currentViewBody}</Text>
-            {isRecentWindowCapped ? <Text style={styles.windowNotice}>{labels.recentWindowNotice}</Text> : null}
-            <View style={styles.metricGrid}>
-              {metricCards.map((metricCard) => {
-                const iconName = metricCard.key === "valid" ? "check" as const
-                  : metricCard.key === "students" ? "user" as const
-                  : metricCard.key === "review" ? "info" as const
-                  : "history" as const;
-                const iconColor = metricCard.tone === "accent"
-                  ? theme.colors.lime
-                  : metricCard.tone === "warning"
-                    ? theme.colors.warning
-                    : theme.colors.textMuted;
-                return (
-                  <View
-                    key={metricCard.key}
-                    style={[
-                      styles.metricCard,
-                      metricCard.tone === "accent"
-                        ? styles.metricCardAccent
-                        : metricCard.tone === "warning"
-                          ? styles.metricCardWarning
-                          : null,
-                    ]}
-                  >
-                    <AppIcon color={iconColor} name={iconName} size={18} />
-                    <Text style={styles.metricValue}>{metricCard.value}</Text>
-                    <Text style={styles.metricLabel}>{metricCard.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
+          {/* Metric summary strip */}
+          <View style={styles.metricStrip}>
+            {metricCards.map((metricCard) => {
+              const accentColor = metricCard.tone === "accent"
+                ? theme.colors.lime
+                : metricCard.tone === "warning"
+                  ? theme.colors.warning
+                  : theme.colors.textMuted;
+              return (
+                <View
+                  key={metricCard.key}
+                  style={[
+                    styles.metricCard,
+                    metricCard.tone === "accent" ? styles.metricCardAccent : null,
+                    metricCard.tone === "warning" ? styles.metricCardWarning : null,
+                  ]}
+                >
+                  <Text style={[styles.metricValue, { color: accentColor }]}>{metricCard.value}</Text>
+                  <Text style={styles.metricLabel}>{metricCard.label}</Text>
+                </View>
+              );
+            })}
           </View>
 
-          <View style={styles.filtersCard}>
+          {isRecentWindowCapped ? (
+            <Text style={styles.windowNotice}>{labels.recentWindowNotice}</Text>
+          ) : null}
+
+          {/* Filter bar */}
+          <View style={styles.filterBar}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
               {historyDateFilters.map((filter) => (
                 <Pressable
@@ -449,7 +441,9 @@ export default function BusinessHistoryScreen() {
                   onPress={() => setDateFilter(filter)}
                   style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
                 >
-                  <Text style={styles.filterChipText}>{labels.dateFilters[filter]}</Text>
+                  <Text style={[styles.filterChipText, dateFilter === filter ? styles.filterChipTextActive : null]}>
+                    {labels.dateFilters[filter]}
+                  </Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -460,7 +454,9 @@ export default function BusinessHistoryScreen() {
                   onPress={() => setSelectedEventId(allEventsFilterValue)}
                   style={[styles.filterChip, selectedEventId === allEventsFilterValue ? styles.filterChipActive : null]}
                 >
-                  <Text style={styles.filterChipText}>{labels.allEvents}</Text>
+                  <Text style={[styles.filterChipText, selectedEventId === allEventsFilterValue ? styles.filterChipTextActive : null]}>
+                    {labels.allEvents}
+                  </Text>
                 </Pressable>
                 {eventOptions.map((eventOption) => (
                   <Pressable
@@ -468,7 +464,9 @@ export default function BusinessHistoryScreen() {
                     onPress={() => setSelectedEventId(eventOption.eventId)}
                     style={[styles.filterChip, selectedEventId === eventOption.eventId ? styles.filterChipActive : null]}
                   >
-                    <Text style={styles.filterChipText}>{eventOption.eventName}</Text>
+                    <Text style={[styles.filterChipText, selectedEventId === eventOption.eventId ? styles.filterChipTextActive : null]}>
+                      {eventOption.eventName}
+                    </Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -476,7 +474,9 @@ export default function BusinessHistoryScreen() {
           </View>
 
           {historyEntries.length === 0 ? (
-            <Text style={styles.bodyText}>{labels.emptyBody}</Text>
+            <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
+              <Text style={styles.bodyText}>{labels.emptyBody}</Text>
+            </InfoCard>
           ) : filteredEntries.length === 0 ? (
             <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
               <Text style={styles.bodyText}>{labels.emptyFiltered}</Text>
@@ -485,6 +485,7 @@ export default function BusinessHistoryScreen() {
             <View style={styles.stack}>
               {groupedSections.map((section) => (
                 <View key={section.dayKey} style={styles.section}>
+                  {/* Day section header */}
                   <View style={styles.daySectionHeader}>
                     <Text style={styles.daySectionTitle}>{section.dayLabel}</Text>
                     <View style={styles.countBadge}>
@@ -506,51 +507,50 @@ export default function BusinessHistoryScreen() {
                             {
                               backgroundColor: statusMeta.backgroundColor,
                               borderColor: statusMeta.borderColor,
-                              borderLeftWidth: 3,
-                              borderLeftColor: statusMeta.chipBorderColor,
                             },
                           ]}
                         >
-                          <View style={styles.rowTop}>
-                            <View
-                              style={[
-                                styles.statusChip,
-                                {
-                                  backgroundColor: statusMeta.chipBackgroundColor,
-                                  borderColor: statusMeta.chipBorderColor,
-                                },
-                              ]}
-                            >
-                              <Text style={[styles.statusChipText, { color: statusMeta.chipTextColor }]}>
-                                {statusMeta.eyebrow}
+                          <View style={[styles.rowAccent, { backgroundColor: statusMeta.chipBorderColor }]} />
+                          <View style={styles.rowBody}>
+                            <View style={styles.rowTop}>
+                              <View
+                                style={[
+                                  styles.statusChip,
+                                  {
+                                    backgroundColor: statusMeta.chipBackgroundColor,
+                                    borderColor: statusMeta.chipBorderColor,
+                                  },
+                                ]}
+                              >
+                                <Text style={[styles.statusChipText, { color: statusMeta.chipTextColor }]}>
+                                  {statusMeta.eyebrow}
+                                </Text>
+                              </View>
+                              <Text style={styles.rowTime}>
+                                {formatDateTime(formatter, entry.scannedAt)}
                               </Text>
                             </View>
-                            <Text style={styles.rowTime}>
-                              {labels.scannedAt} {formatDateTime(formatter, entry.scannedAt)}
-                            </Text>
-                          </View>
 
-                          <View style={styles.rowCopy}>
                             <Text style={styles.cardTitle}>{formatStudentLabel(entry.studentId, language)}</Text>
                             <Text style={styles.eventTitle}>
                               {entry.eventName.length > 0 ? entry.eventName : labels.unknownEvent}
                             </Text>
-                          </View>
 
-                          <View style={styles.metaWrap}>
-                            {showBusinessName ? (
+                            <View style={styles.metaWrap}>
+                              {showBusinessName ? (
+                                <Text style={styles.metaPill}>
+                                  {entry.businessName.length > 0 ? entry.businessName : labels.unknownBusiness}
+                                </Text>
+                              ) : null}
                               <Text style={styles.metaPill}>
-                                {entry.businessName.length > 0 ? entry.businessName : labels.unknownBusiness}
+                                {labels.studentIdShort} {entry.studentId.slice(-6)}
                               </Text>
-                            ) : null}
-                            <Text style={styles.metaPill}>
-                              {labels.studentIdShort} {entry.studentId.slice(-6)}
-                            </Text>
-                          </View>
+                            </View>
 
-                          {entry.validationStatus === "VALID" ? null : (
-                            <Text style={styles.statusDetail}>{statusMeta.detail}</Text>
-                          )}
+                            {entry.validationStatus !== "VALID" ? (
+                              <Text style={styles.statusDetail}>{statusMeta.detail}</Text>
+                            ) : null}
+                          </View>
                         </View>
                       );
                     })}
@@ -570,10 +570,6 @@ export default function BusinessHistoryScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    actionRow: {
-      flexDirection: "row",
-      gap: 10,
-    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.medium,
@@ -586,11 +582,38 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    countBadge: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+    },
+    countBadgeText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    daySectionHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    daySectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      letterSpacing: -0.3,
+      lineHeight: 24,
+    },
     eventTitle: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterBar: {
+      gap: 10,
     },
     filterChip: {
       alignItems: "center",
@@ -601,21 +624,32 @@ const createStyles = (theme: MobileTheme) =>
       justifyContent: "center",
       minHeight: 38,
       paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingVertical: 8,
     },
     filterChipActive: {
-      backgroundColor: theme.colors.limeSurface,
+      backgroundColor: theme.colors.lime,
       borderColor: theme.colors.limeBorder,
     },
     filterChipText: {
-      color: theme.colors.textPrimary,
+      color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
+    filterChipTextActive: {
+      color: theme.colors.actionPrimaryText,
+    },
     filterRail: {
-      gap: 10,
+      gap: 8,
       paddingRight: 4,
+    },
+    listEndNotice: {
+      color: theme.colors.textDim,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingVertical: 12,
+      textAlign: "center",
     },
     metaText: {
       color: theme.colors.textMuted,
@@ -634,21 +668,20 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
       overflow: "hidden",
       paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingVertical: 5,
     },
     metaWrap: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 6,
     },
     metricCard: {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
+      borderRadius: theme.radius.inner,
       borderWidth: 1,
-      flexGrow: 1,
-      gap: 4,
-      minWidth: 132,
+      flex: 1,
+      gap: 3,
       paddingHorizontal: 14,
       paddingVertical: 14,
     },
@@ -660,19 +693,17 @@ const createStyles = (theme: MobileTheme) =>
       backgroundColor: theme.colors.warningSurface,
       borderColor: theme.colors.warningBorder,
     },
-    metricGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
-    },
     metricLabel: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
     },
+    metricStrip: {
+      flexDirection: "row",
+      gap: 8,
+    },
     metricValue: {
-      color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.subtitle,
       fontVariant: ["tabular-nums"],
@@ -682,7 +713,6 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
-      flex: 1,
       flexDirection: "row",
       gap: 8,
       justifyContent: "center",
@@ -696,27 +726,32 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    rowAccent: {
+      borderRadius: 3,
+      width: 4,
+    },
+    rowBody: {
+      flex: 1,
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
     rowCard: {
       borderRadius: theme.radius.card,
       borderWidth: 1,
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 11,
-    },
-    rowCopy: {
-      gap: 4,
+      flexDirection: "row",
+      overflow: "hidden",
     },
     rowTime: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
-      textAlign: "right",
     },
     rowTop: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 10,
+      gap: 8,
       justifyContent: "space-between",
     },
     screenTitle: {
@@ -726,75 +761,11 @@ const createStyles = (theme: MobileTheme) =>
       letterSpacing: -0.8,
       lineHeight: theme.typography.lineHeights.titleLarge,
     },
-    topBarEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    sectionCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
-      gap: 14,
-      padding: 18,
-    },
-    filtersCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
-      gap: 12,
-      padding: 14,
-    },
-    sectionHeader: {
-      gap: 4,
-    },
-    sectionEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    sectionTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.subtitle,
-      letterSpacing: -0.3,
-      lineHeight: 24,
-    },
     section: {
       gap: 10,
     },
     sectionList: {
       gap: 8,
-    },
-    sectionMeta: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-    },
-    secondaryButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderRadius: theme.radius.button,
-      flex: 1,
-      flexDirection: "row",
-      gap: 8,
-      justifyContent: "center",
-      minHeight: 44,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
-    secondaryButtonText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
     },
     stack: {
       gap: 18,
@@ -803,7 +774,7 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: 999,
       borderWidth: 1,
       paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingVertical: 3,
     },
     statusChipText: {
       fontFamily: theme.typography.families.bold,
@@ -819,64 +790,38 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
     },
     topBar: {
-      alignItems: "flex-start",
-      flexDirection: "row",
-      gap: 12,
-      marginBottom: 4,
-    },
-    topBarCopy: {
-      flex: 1,
-      gap: 6,
-    },
-    topBarShortcuts: {
-      gap: 6,
-      alignItems: "flex-end",
-    },
-    topBarShortcut: {
-      paddingVertical: 4,
-    },
-    topBarShortcutText: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-    },
-    daySectionHeader: {
       alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    topBarActions: {
       flexDirection: "row",
       gap: 8,
     },
-    daySectionTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.subtitle,
-      letterSpacing: -0.3,
-      lineHeight: 24,
+    topBarEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
-    countBadge: {
+    topBarIconBtn: {
+      alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
       borderRadius: 999,
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
     },
-    countBadgeText: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
+    topBarLeft: {
+      gap: 4,
     },
     windowNotice: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
-    },
-    listEndNotice: {
-      color: theme.colors.textDim,
-      fontFamily: theme.typography.families.regular,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-      textAlign: "center",
-      paddingVertical: 12,
     },
   });
