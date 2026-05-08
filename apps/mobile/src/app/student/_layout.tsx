@@ -138,7 +138,6 @@ export default function StudentTabsLayout() {
       })}
     >
       <Tabs.Screen name="events" options={{ title: copy.common.events }} />
-      <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
       <Tabs.Screen
         name="active-event"
         options={{
@@ -146,7 +145,7 @@ export default function StudentTabsLayout() {
           tabBarIcon: ({ focused }) => (
             <View style={styles.qrTabButton}>
               <TabIcon
-                color={focused ? theme.colors.actionPrimaryText : theme.colors.actionPrimaryText}
+                color={theme.colors.actionPrimaryText}
                 focused={focused}
                 name={getTabIconName("active-event")}
                 size={26}
@@ -161,6 +160,7 @@ export default function StudentTabsLayout() {
           },
         }}
       />
+      <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
       <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
       <Tabs.Screen name="updates" options={{ title: copy.common.community }} />
       <Tabs.Screen name="profile" options={{ href: null }} />
