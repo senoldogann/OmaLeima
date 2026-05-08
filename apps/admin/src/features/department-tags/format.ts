@@ -22,7 +22,7 @@ const departmentTagSourceLabels: Record<DashboardLocale, Record<DepartmentTagSou
   fi: {
     ADMIN: "Admin",
     CLUB: "Virallinen klubi",
-    USER: "Kayttajan oma",
+    USER: "Käyttäjän oma",
   },
 };
 
@@ -68,7 +68,7 @@ export const formatDepartmentTagMeta = (
   return parts.length > 0
     ? parts.join(" · ")
     : locale === "fi"
-      ? "Ei lahde- tai kampusmetatietoja"
+      ? "Ei lähde- tai kampustietoja"
       : "No source or campus metadata";
 };
 
@@ -81,7 +81,7 @@ export const formatDepartmentTagCreator = (
     locale === "fi"
       ? tag.profileLinkCount === 1
         ? "1 profiililinkki"
-        : `${tag.profileLinkCount} profiililinkkia`
+        : `${tag.profileLinkCount} profiililinkkiä`
       : tag.profileLinkCount === 1
         ? "1 profile link"
         : `${tag.profileLinkCount} profile links`;

@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import type { ReactElement } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { createClient } from "@/lib/supabase/client";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { getLoginSlideLocalizedCopy, type LoginSlideRecord } from "@/features/login-slides/types";
 
 type PasswordSessionResponseBody =
   | {
@@ -32,24 +34,6 @@ declare global {
   }
 }
 
-const GoogleIcon = (): ReactElement => (
-  <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24">
-    <path
-      d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.37a4.58 4.58 0 0 1-1.99 3.01v2.5h3.22c1.88-1.73 3-4.28 3-7.5Z"
-      fill="#4285F4"
-    />
-    <path
-      d="M12 22c2.7 0 4.96-.9 6.6-2.43l-3.22-2.5c-.9.6-2.05.95-3.38.95-2.6 0-4.8-1.76-5.6-4.12H3.08v2.58A9.98 9.98 0 0 0 12 22Z"
-      fill="#34A853"
-    />
-    <path d="M6.4 13.9a6.01 6.01 0 0 1 0-3.8V7.52H3.08a10 10 0 0 0 0 8.96L6.4 13.9Z" fill="#FBBC05" />
-    <path
-      d="M12 5.98c1.47 0 2.8.5 3.84 1.5l2.86-2.86A9.6 9.6 0 0 0 12 2a9.98 9.98 0 0 0-8.92 5.52L6.4 10.1C7.2 7.74 9.4 5.98 12 5.98Z"
-      fill="#EA4335"
-    />
-  </svg>
-);
-
 const KeyIcon = (): ReactElement => (
   <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24">
     <path
@@ -61,22 +45,63 @@ const KeyIcon = (): ReactElement => (
 
 type AdminLoginPanelProps = {
   isProtectionRequired: boolean;
+  locale: DashboardLocale;
+  slides: LoginSlideRecord[];
   turnstileSiteKey: string | null;
 };
 
 const turnstileAction = "admin_login";
+const instagramHref = "https://www.instagram.com/omaleima/";
 
-export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: AdminLoginPanelProps) => {
+const loginFooterCopyByLocale = {
+  en: {
+    contact: "Support",
+    instagram: "Instagram",
+    privacy: "Privacy",
+    terms: "Terms",
+  },
+  fi: {
+    contact: "Tuki",
+    instagram: "Instagram",
+    privacy: "Tietosuoja",
+    terms: "Käyttöehdot",
+  },
+} as const satisfies Record<DashboardLocale, Record<string, string>>;
+
+export const AdminLoginPanel = ({ isProtectionRequired, locale, slides, turnstileSiteKey }: AdminLoginPanelProps) => {
   const searchParams = useSearchParams();
-  const supabase = useMemo(() => createClient(), []);
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const searchErrorMessage = searchParams.get("error");
+  const sessionParam = searchParams.get("session");
+  const sessionMessage =
+    sessionParam === "expired"
+      ? "Your session expired. Sign in again to continue."
+      : sessionParam === "suspended"
+        ? "This account was set to passive. Ask a platform admin to activate it before signing in again."
+        : null;
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [isPasswordPending, setIsPasswordPending] = useState<boolean>(false);
-  const [isGooglePending, setIsGooglePending] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(searchParams.get("error"));
+  const [errorMessage, setErrorMessage] = useState<string | null>(searchErrorMessage ?? sessionMessage);
   const hasTurnstileSiteKey = typeof turnstileSiteKey === "string" && turnstileSiteKey.length > 0;
   const isProtectionUnavailable = isProtectionRequired && !hasTurnstileSiteKey;
+  const activeSlide = slides[activeSlideIndex] ?? slides[0] ?? null;
+  const activeSlideCopy =
+    activeSlide === null ? null : getLoginSlideLocalizedCopy(activeSlide, locale);
+  const footerCopy = loginFooterCopyByLocale[locale];
+
+  useEffect(() => {
+    if (slides.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveSlideIndex((currentIndex) => (currentIndex + 1) % slides.length);
+    }, 6500);
+
+    return () => window.clearInterval(intervalId);
+  }, [slides.length]);
 
   const readTurnstileToken = (): string => {
     const hiddenInput = turnstileContainerRef.current?.querySelector<HTMLInputElement>(
@@ -90,45 +115,20 @@ export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: Admi
     window.turnstile?.reset();
   };
 
-  const verifyLoginProtectionAsync = async (): Promise<boolean> => {
+  const readLoginProtectionToken = (): string | null => {
     if (isProtectionUnavailable) {
       setErrorMessage("Login protection is not configured.");
-      return false;
+      return null;
     }
 
     const turnstileToken = readTurnstileToken();
 
     if (hasTurnstileSiteKey && turnstileToken.length === 0) {
       setErrorMessage("Complete the Cloudflare verification first.");
-      return false;
+      return null;
     }
 
-    const response = await fetch("/api/auth/turnstile", {
-      body: JSON.stringify({
-        turnstileToken,
-      }),
-      headers: {
-        "content-type": "application/json",
-      },
-      method: "POST",
-    });
-    const responseBody = (await response.json()) as unknown;
-
-    if (!response.ok) {
-      const message =
-        typeof responseBody === "object" &&
-        responseBody !== null &&
-        "error" in responseBody &&
-        typeof responseBody.error === "string"
-          ? responseBody.error
-          : "Login verification failed.";
-
-      setErrorMessage(message);
-      resetTurnstile();
-      return false;
-    }
-
-    return true;
+    return turnstileToken;
   };
 
   const handlePasswordSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -136,38 +136,18 @@ export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: Admi
     setIsPasswordPending(true);
     setErrorMessage(null);
 
-    const isVerified = await verifyLoginProtectionAsync();
+    const turnstileToken = readLoginProtectionToken();
 
-    if (!isVerified) {
-      setIsPasswordPending(false);
-      return;
-    }
-
-    const signInResult = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (signInResult.error !== null) {
-      setErrorMessage(signInResult.error.message);
-      resetTurnstile();
-      setIsPasswordPending(false);
-      return;
-    }
-
-    const session = signInResult.data.session;
-
-    if (session === null) {
-      setErrorMessage("Password sign-in returned without a session.");
-      resetTurnstile();
+    if (turnstileToken === null) {
       setIsPasswordPending(false);
       return;
     }
 
     const sessionResponse = await fetch("/auth/password-session", {
       body: JSON.stringify({
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token,
+        email,
+        password,
+        turnstileToken,
       }),
       headers: {
         "content-type": "application/json",
@@ -193,46 +173,42 @@ export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: Admi
     window.location.assign(responseBody.homeHref);
   };
 
-  const handleGoogleSignIn = async (): Promise<void> => {
-    setIsGooglePending(true);
-    setErrorMessage(null);
-
-    const isVerified = await verifyLoginProtectionAsync();
-
-    if (!isVerified) {
-      setIsGooglePending(false);
-      return;
-    }
-
-    const redirectTo = `${window.location.origin}/auth/callback`;
-    const signInResult = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-      },
-    });
-
-    if (signInResult.error !== null) {
-      setErrorMessage(signInResult.error.message);
-      resetTurnstile();
-      setIsGooglePending(false);
-    }
-  };
-
   return (
     <div className="auth-grid">
-      <section className="auth-visual" aria-label="OmaLeima operations">
+      <section
+        className="auth-visual"
+        aria-label="OmaLeima operations"
+        style={activeSlide === null ? undefined : { backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.82) 78%), url("${activeSlide.imageUrl}")` }}
+      >
         <div className="auth-visual-copy">
           <div className="brand-lockup">
             <span className="brand-mark" aria-hidden="true">
               <Image alt="" className="brand-logo" height={44} priority src="/images/omaleima-logo.png" width={44} />
             </span>
             <div>
-              <div className="eyebrow">OmaLeima</div>
-              <h1 className="auth-title">Operations</h1>
+              <div className="eyebrow">{activeSlideCopy?.eyebrow ?? "OmaLeima"}</div>
+              <h1 className="auth-title">{activeSlideCopy?.title ?? "Operations"}</h1>
             </div>
           </div>
-          <p>Events, leimat and reward handoffs in one clean operator panel.</p>
+          <p>{activeSlideCopy?.body ?? "Events, leimat and reward handoffs in one clean operator panel."}</p>
+          {slides.length > 1 ? (
+            <div className="auth-slide-dots" aria-label="Login slide selector">
+              {slides.map((slide, index) => {
+                const slideCopy = getLoginSlideLocalizedCopy(slide, locale);
+
+                return (
+                  <button
+                    aria-label={`Show slide ${index + 1}: ${slideCopy.title}`}
+                    aria-pressed={index === activeSlideIndex}
+                    className={index === activeSlideIndex ? "auth-slide-dot auth-slide-dot-active" : "auth-slide-dot"}
+                    key={slide.id}
+                    onClick={() => setActiveSlideIndex(index)}
+                    type="button"
+                  />
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -242,18 +218,6 @@ export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: Admi
             <div className="eyebrow">Login</div>
             <h2 className="section-title">Open dashboard</h2>
           </div>
-
-          <button
-            className="button button-secondary"
-            disabled={isGooglePending || isPasswordPending}
-            onClick={() => void handleGoogleSignIn()}
-            type="button"
-          >
-            <GoogleIcon />
-            {isGooglePending ? "Redirecting..." : "Continue with Google"}
-          </button>
-
-          <div className="divider" />
 
           <form className="stack-md" onSubmit={(event) => void handlePasswordSignIn(event)}>
             <label className="field">
@@ -301,13 +265,22 @@ export const AdminLoginPanel = ({ isProtectionRequired, turnstileSiteKey }: Admi
               <p className="inline-error">Login protection is not configured.</p>
             ) : null}
 
-            <button className="button button-primary" disabled={isPasswordPending || isGooglePending || isProtectionUnavailable} type="submit">
+            <button className="button button-primary" disabled={isPasswordPending || isProtectionUnavailable} type="submit">
               <KeyIcon />
               {isPasswordPending ? "Signing in..." : "Sign in with password"}
             </button>
           </form>
 
           {errorMessage !== null ? <p className="inline-error">{errorMessage}</p> : null}
+
+          <nav className="auth-legal-links" aria-label={locale === "fi" ? "Kirjautumissivun linkit" : "Login page links"}>
+            <Link href={locale === "fi" ? "/terms" : "/en/terms"}>{footerCopy.terms}</Link>
+            <Link href={locale === "fi" ? "/privacy" : "/en/privacy"}>{footerCopy.privacy}</Link>
+            <Link href={locale === "fi" ? "/contact" : "/en/contact"}>{footerCopy.contact}</Link>
+            <a href={instagramHref} rel="noreferrer" target="_blank">
+              {footerCopy.instagram}
+            </a>
+          </nav>
         </div>
       </section>
     </div>

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   submitAnnouncementArchiveRequestAsync,
   submitAnnouncementCreateRequestAsync,
+  submitAnnouncementDeleteRequestAsync,
   submitAnnouncementPushRequestAsync,
   submitAnnouncementUpdateRequestAsync,
 } from "@/features/announcements/client";
@@ -17,6 +18,7 @@ import type {
   AnnouncementSnapshot,
 } from "@/features/announcements/types";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 import { createClient } from "@/lib/supabase/client";
 
 type AnnouncementsPanelProps = {
@@ -43,6 +45,9 @@ type AnnouncementCopy = {
   composeTab: string;
   ctaLabel: string;
   ctaUrl: string;
+  delete: string;
+  deleteConfirm: string;
+  deleting: string;
   draftStatus: string;
   edit: string;
   emptyAnnouncements: string;
@@ -86,6 +91,10 @@ type AnnouncementCopy = {
   sourceAnnouncementTitleEdit: string;
   startsAt: string;
   status: string;
+  tableActions: string;
+  tableAudience: string;
+  tablePush: string;
+  tableTitle: string;
   title: string;
   updateAnnouncement: string;
   updating: string;
@@ -118,6 +127,9 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     composeTab: "Compose",
     ctaLabel: "CTA label",
     ctaUrl: "CTA URL",
+    delete: "Delete",
+    deleteConfirm: "Delete this announcement permanently? If it has an OmaLeima uploaded image, the image will be deleted too.",
+    deleting: "Deleting...",
     draftStatus: "Draft",
     edit: "Edit",
     emptyAnnouncements: "No announcements are visible for this scope yet.",
@@ -161,6 +173,10 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     sourceAnnouncementTitleEdit: "Update announcement",
     startsAt: "Starts at",
     status: "Status",
+    tableActions: "Actions",
+    tableAudience: "Audience",
+    tablePush: "Push",
+    tableTitle: "Title",
     title: "Title",
     updateAnnouncement: "Update announcement",
     updating: "Updating...",
@@ -186,6 +202,9 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     composeTab: "Kirjoita uusi",
     ctaLabel: "Painikkeen teksti",
     ctaUrl: "Painikkeen osoite",
+    delete: "Poista",
+    deleteConfirm: "Poistetaanko tiedote pysyvästi? Jos siinä on OmaLeimaan ladattu kuva, myös kuva poistetaan.",
+    deleting: "Poistetaan...",
     draftStatus: "Luonnos",
     edit: "Muokkaa",
     emptyAnnouncements: "Tässä näkymässä ei ole vielä tiedotteita.",
@@ -224,11 +243,15 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     scopeTitleClub: "Klubin tiedote",
     scopeTitlePlatform: "Alustan tiedote",
     sendPush: "Lähetä push",
-    sendingPush: "Lähetetään pushia...",
+    sendingPush: "Lähetetään push-ilmoitusta...",
     sourceAnnouncementTitleCreate: "Luo uusi popup",
     sourceAnnouncementTitleEdit: "Päivitä popup",
     startsAt: "Alkaa",
     status: "Tila",
+    tableActions: "Toiminnot",
+    tableAudience: "Kohderyhmä",
+    tablePush: "Push",
+    tableTitle: "Otsikko",
     title: "Otsikko",
     updateAnnouncement: "Päivitä",
     updating: "Päivitetään...",
@@ -257,6 +280,8 @@ const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreat
     ctaLabel: "",
     ctaUrl: "",
     endsAt: "",
+    eventId: "",
+    imageStagingPath: "",
     imageUrl: "",
     priority: "0",
     startsAt,
@@ -274,6 +299,8 @@ const createPayloadFromAnnouncement = (
   ctaLabel: announcement.ctaLabel ?? "",
   ctaUrl: announcement.ctaUrl ?? "",
   endsAt: announcement.endsAt === null ? "" : toLocalDateTimeInput(new Date(announcement.endsAt)),
+  eventId: announcement.eventId ?? "",
+  imageStagingPath: announcement.imageStagingPath,
   imageUrl: announcement.imageUrl ?? "",
   priority: String(announcement.priority),
   startsAt: toLocalDateTimeInput(new Date(announcement.startsAt)),
@@ -295,24 +322,6 @@ const renderState = (state: AnnouncementActionState) => {
   }
 
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
-};
-
-const isAnnouncementActiveNow = (announcement: AnnouncementRecord, now: number): boolean => {
-  if (announcement.status !== "PUBLISHED") {
-    return false;
-  }
-
-  const startsAtMs = new Date(announcement.startsAt).getTime();
-
-  if (now < startsAtMs) {
-    return false;
-  }
-
-  if (announcement.endsAt === null) {
-    return true;
-  }
-
-  return now < new Date(announcement.endsAt).getTime();
 };
 
 const readPushAvailability = (
@@ -374,12 +383,19 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [pendingArchiveAnnouncementId, setPendingArchiveAnnouncementId] = useState<string | null>(null);
+  const [pendingDeleteAnnouncementId, setPendingDeleteAnnouncementId] = useState<string | null>(null);
   const [pendingPushAnnouncementId, setPendingPushAnnouncementId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<AnnouncementActionState>({
     code: null,
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [renderedNow, setRenderedNow] = useState<number>(() => Date.now());
   const canCreate = snapshot.scope === "ADMIN" || snapshot.clubOptions.length > 0;
   const scopeTitle = snapshot.scope === "ADMIN" ? copy.scopeTitlePlatform : copy.scopeTitleClub;
@@ -396,6 +412,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     isPending ||
     isImageUploading ||
     pendingArchiveAnnouncementId !== null ||
+    pendingDeleteAnnouncementId !== null ||
     pendingPushAnnouncementId !== null;
   const [activeTab, setActiveTab] = useState<"compose" | "announcements">("compose");
 
@@ -456,10 +473,11 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
 
       setPayload((current) => ({
         ...current,
-        imageUrl: uploadedImage.publicUrl,
+        imageStagingPath: uploadedImage.stagingPath,
+        imageUrl: uploadedImage.previewUrl,
       }));
       setActionState({
-        code: "IMAGE_UPLOADED",
+        code: "IMAGE_STAGED",
         message: copy.imageUploaded,
         tone: "success",
       });
@@ -546,6 +564,47 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     }
   };
 
+  const handleDeletePress = async (announcement: AnnouncementRecord): Promise<void> => {
+    if (!window.confirm(copy.deleteConfirm)) {
+      return;
+    }
+
+    setPendingDeleteAnnouncementId(announcement.announcementId);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitAnnouncementDeleteRequestAsync(
+        announcement.announcementId,
+        announcement.clubId
+      );
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status === "SUCCESS") {
+        if (editingAnnouncementId === announcement.announcementId) {
+          resetForm();
+        }
+
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown announcement delete request error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingDeleteAnnouncementId(null);
+    }
+  };
+
   const handleSendPushPress = async (announcement: AnnouncementRecord): Promise<void> => {
     const pushAvailability = readPushAvailability(announcement, copy, Date.now());
 
@@ -592,57 +651,39 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     }
   };
 
-  const renderAnnouncementCard = (announcement: AnnouncementRecord) => {
+  const renderAnnouncementRow = (announcement: AnnouncementRecord) => {
     const pushAvailability = readPushAvailability(announcement, copy, renderedNow);
     const canArchive = announcement.status !== "ARCHIVED";
     const canSendPush = pushAvailability.canSendPush;
-    const isAnnouncementActive = isAnnouncementActiveNow(announcement, renderedNow);
 
     return (
-      <article className="panel" key={announcement.announcementId}>
-        <div className="stack-sm">
-          <div className="split-row">
-            <span className="field-label">{getAnnouncementSenderLabel(announcement, copy)}</span>
-            <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
-          </div>
-          <p className="card-title">{announcement.title}</p>
-          {announcement.imageUrl !== null ? (
-            <div
-              aria-hidden="true"
-              className="announcement-card-image"
-              style={{ backgroundImage: `url(${announcement.imageUrl})` }}
-            />
-          ) : null}
-          <p className="muted-text">{announcement.body}</p>
-          <div className="meta-grid">
-            <span>{copy.audienceLabels[announcement.audience]}</span>
-            <span>{`${copy.startsAt} ${formatDate(locale, announcement.startsAt)}`}</span>
-            <span>
-              {announcement.endsAt === null
-                ? copy.endsAtEmpty
-                : `${copy.endsAt} ${formatDate(locale, announcement.endsAt)}`}
-            </span>
-            <span>{`${copy.priority} ${announcement.priority}`}</span>
-          </div>
-          <p className="muted-text">
-            {announcement.pushDeliveryStatus === "SENT"
-              ? copy.pushAlreadySent
-              : announcement.pushDeliveryStatus === "PARTIAL"
-                ? copy.pushPartiallySent
+      <tr key={announcement.announcementId}>
+        <td>
+          <span>{announcement.title}</span>
+          <span className="record-meta">{getAnnouncementSenderLabel(announcement, copy)}</span>
+        </td>
+        <td><span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span></td>
+        <td className="record-meta">{copy.audienceLabels[announcement.audience]}</td>
+        <td className="record-meta">{formatDate(locale, announcement.startsAt)}</td>
+        <td className="record-meta">
+          {announcement.endsAt === null ? copy.endsAtEmpty : formatDate(locale, announcement.endsAt)}
+        </td>
+        <td className="record-meta">{announcement.priority}</td>
+        <td className="record-meta">
+          {announcement.pushDeliveryStatus === "SENT"
+            ? copy.pushAlreadySent
+            : announcement.pushDeliveryStatus === "PARTIAL"
+              ? copy.pushPartiallySent
               : announcement.pushDeliveryStatus === "FAILED"
                 ? copy.pushWithFailures
-                : isAnnouncementActive
+                : pushAvailability.canSendPush
                   ? copy.pushReady
                   : pushAvailability.reason}
-          </p>
-          {announcement.ctaLabel !== null && announcement.ctaUrl !== null ? (
-            <a className="text-link" href={announcement.ctaUrl} rel="noreferrer" target="_blank">
-              {announcement.ctaLabel}
-            </a>
-          ) : null}
-          <div className="button-row">
+        </td>
+        <td>
+          <div className="admin-users-actions">
             <button
-              className="secondary-action"
+              className="button button-secondary"
               disabled={isFormDisabled}
               onClick={() => handleEditPress(announcement)}
               type="button"
@@ -651,7 +692,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             </button>
             {canArchive ? (
               <button
-                className="secondary-action"
+                className="button button-secondary"
                 disabled={isFormDisabled}
                 onClick={() => void handleArchivePress(announcement)}
                 type="button"
@@ -660,16 +701,24 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
               </button>
             ) : null}
             <button
-              className="secondary-action"
-              disabled={!canSendPush || pendingPushAnnouncementId !== null || pendingArchiveAnnouncementId !== null}
+              className="button button-danger"
+              disabled={isFormDisabled}
+              onClick={() => void handleDeletePress(announcement)}
+              type="button"
+            >
+              {pendingDeleteAnnouncementId === announcement.announcementId ? copy.deleting : copy.delete}
+            </button>
+            <button
+              className="button button-secondary"
+              disabled={!canSendPush || pendingPushAnnouncementId !== null || pendingArchiveAnnouncementId !== null || pendingDeleteAnnouncementId !== null}
               onClick={() => void handleSendPushPress(announcement)}
               type="button"
             >
               {pendingPushAnnouncementId === announcement.announcementId ? copy.sendingPush : copy.sendPush}
             </button>
           </div>
-        </div>
-      </article>
+        </td>
+      </tr>
     );
   };
 
@@ -891,7 +940,25 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             <p className="muted-text">{copy.emptyAnnouncements}</p>
           </article>
         ) : (
-          <div className="card-list">{snapshot.announcements.map(renderAnnouncementCard)}</div>
+          <div className="panel-table-wrap">
+            <table className="panel-table">
+              <thead>
+                <tr>
+                  <th>{copy.tableTitle}</th>
+                  <th>{copy.status}</th>
+                  <th>{copy.tableAudience}</th>
+                  <th>{copy.startsAt}</th>
+                  <th>{copy.endsAt}</th>
+                  <th>{copy.priority}</th>
+                  <th>{copy.tablePush}</th>
+                  <th>{copy.tableActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.announcements.map(renderAnnouncementRow)}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

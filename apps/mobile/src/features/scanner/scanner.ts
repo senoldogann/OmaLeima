@@ -37,6 +37,7 @@ export const invokeScanQrAsync = async ({
 
   return requestScanQrAsync({
     supabaseUrl: publicEnv.EXPO_PUBLIC_SUPABASE_URL,
+    publishableKey: publicEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     accessToken,
     qrToken,
     businessId,

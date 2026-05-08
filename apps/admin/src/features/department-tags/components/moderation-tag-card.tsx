@@ -19,6 +19,7 @@ import type {
   DepartmentTagRecord,
 } from "@/features/department-tags/types";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type ModerationTagCardProps = {
   locale: DashboardLocale;
@@ -51,6 +52,17 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    mergeState.tone === "success" ? mergeState.message : null,
+    () => setMergeState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
+  useTransientSuccessKey(
+    blockState.tone === "success" ? blockState.message : null,
+    () => setBlockState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [isMergePending, setIsMergePending] = useState<boolean>(false);
   const [isBlockPending, setIsBlockPending] = useState<boolean>(false);
   const availableTargets = useMemo(
@@ -67,7 +79,7 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
         code: "TARGET_REQUIRED",
         message:
           locale === "fi"
-            ? "Valitse kanoninen kohdetagi ennen yhdistamista."
+            ? "Valitse kohdatunniste ennen yhdistämistä."
             : "Select a canonical target before merging.",
         tone: "error",
       });
@@ -153,7 +165,7 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
       <div className="stack-md">
         <div className="review-card-header">
         <div className="stack-sm">
-            <div className="eyebrow">{locale === "fi" ? "Vaatii moderointia" : "Needs moderation"}</div>
+            <div className="eyebrow">{locale === "fi" ? "Odottaa käsittelyä" : "Needs moderation"}</div>
             <p className="card-title">{tag.title}</p>
             <p className="muted-text">{formatDepartmentTagMeta(tag, locale)}</p>
           </div>
@@ -175,7 +187,7 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
             <dd>{formatDepartmentTagDateTime(tag.createdAt)}</dd>
           </div>
           <div className="detail-item">
-            <dt className="field-label">{locale === "fi" ? "Paivitetty" : "Updated"}</dt>
+            <dt className="field-label">{locale === "fi" ? "Päivitetty" : "Updated"}</dt>
             <dd>{formatDepartmentTagDateTime(tag.updatedAt)}</dd>
           </div>
           <div className="detail-item">
@@ -187,7 +199,7 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
         <form className="stack-sm" onSubmit={(event) => void handleMergeSubmit(event)}>
           <label className="field">
             <span className="field-label">
-              {locale === "fi" ? "Yhdista aktiiviseen paatagiin" : "Merge into active canonical tag"}
+            {locale === "fi" ? "Yhdistä aktiiviseen päätunnisteeseen" : "Merge into active canonical tag"}
             </span>
             <select
               className="field-input"
@@ -208,10 +220,10 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
             <button className="button button-primary" disabled={isPending || availableTargets.length === 0} type="submit">
               {isMergePending
                 ? locale === "fi"
-                  ? "Yhdistetaan..."
+                  ? "Yhdistetään..."
                   : "Merging..."
                 : locale === "fi"
-                  ? "Yhdista tagi"
+                  ? "Yhdistä tunniste"
                   : "Merge tag"}
             </button>
             <button
@@ -222,10 +234,10 @@ export const ModerationTagCard = ({ locale, mergeTargets, tag }: ModerationTagCa
             >
               {isBlockPending
                 ? locale === "fi"
-                  ? "Estetaan..."
+                  ? "Estetään..."
                   : "Blocking..."
                 : locale === "fi"
-                  ? "Esta tagi"
+                  ? "Estä tunniste"
                   : "Block tag"}
             </button>
           </div>

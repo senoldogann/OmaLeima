@@ -34,6 +34,7 @@ export const GoogleSignInButton = () => {
   return (
     <View style={styles.container}>
       <Pressable
+        accessibilityState={{ disabled: state === "loading" || state === "redirecting" }}
         disabled={state === "loading" || state === "redirecting"}
         onPress={handlePress}
         style={({ pressed }) => [

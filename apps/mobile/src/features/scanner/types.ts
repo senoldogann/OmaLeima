@@ -4,6 +4,7 @@ export type BusinessScanStatus =
   | "EVENT_CONTEXT_MISMATCH"
   | "QR_ALREADY_USED_OR_REPLAYED"
   | "ALREADY_STAMPED"
+  | "STAMP_CARD_FULL"
   | "EVENT_NOT_FOUND"
   | "INVALID_QR"
   | "INVALID_QR_TYPE"
@@ -14,10 +15,13 @@ export type BusinessScanStatus =
   | "VENUE_JOINED_TOO_LATE"
   | "BUSINESS_STAFF_NOT_ALLOWED"
   | "SCANNER_DEVICE_NOT_ALLOWED"
+  | "SCANNER_DEVICE_REQUIRED"
   | "SCANNER_PIN_REQUIRED"
   | "SCANNER_PIN_INVALID"
+  | "SCANNER_PIN_LOCKED"
   | "NOT_BUSINESS_STAFF"
-  | "BUSINESS_CONTEXT_REQUIRED";
+  | "BUSINESS_CONTEXT_REQUIRED"
+  | "RATE_LIMITED";
 
 export type ScannerResultTone = "success" | "warning" | "danger" | "neutral";
 

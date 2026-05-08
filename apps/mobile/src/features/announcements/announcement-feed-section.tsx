@@ -384,7 +384,7 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: 16,
       borderWidth: theme.mode === "light" ? 1 : 0,
       justifyContent: "center",
-      minHeight: 42,
+      minHeight: 44,
       paddingHorizontal: 14,
     },
     ackButtonText: {
@@ -412,7 +412,7 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 6,
       justifyContent: "center",
-      minHeight: 42,
+      minHeight: 44,
       paddingHorizontal: 14,
     },
     ctaButtonText: {
@@ -517,9 +517,9 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.limeSurface,
       borderRadius: 999,
-      height: 34,
+      height: 44,
       justifyContent: "center",
-      width: 34,
+      width: 44,
     },
     preferenceIconButton: {
       alignItems: "center",
@@ -527,9 +527,9 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.limeBorder,
       borderRadius: 999,
       borderWidth: 1,
-      height: 34,
+      height: 44,
       justifyContent: "center",
-      width: 34,
+      width: 44,
     },
     preferenceIconButtonMuted: {
       backgroundColor: theme.colors.surfaceL1,
@@ -542,7 +542,7 @@ const createStyles = (theme: MobileTheme) =>
       flexDirection: "row",
       gap: 6,
       justifyContent: "center",
-      minHeight: 42,
+      minHeight: 44,
       paddingHorizontal: 12,
     },
     preferenceButtonMuted: {

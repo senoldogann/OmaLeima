@@ -38,6 +38,11 @@ const commands = [
     label: "Smoke routes",
   },
   {
+    args: ["--prefix", "apps/admin", "run", "smoke:dashboard-browser"],
+    command: npmBinary,
+    label: "Smoke dashboard browser",
+  },
+  {
     args: ["--prefix", "apps/admin", "run", "smoke:oversight"],
     command: npmBinary,
     label: "Smoke oversight",

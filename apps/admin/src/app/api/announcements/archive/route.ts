@@ -9,6 +9,8 @@ import {
     parseAnnouncementIdOrThrow,
     parseOptionalAnnouncementClubIdOrThrow,
 } from "@/features/announcements/validation";
+import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -20,6 +22,18 @@ export async function POST(request: Request) {
             return NextResponse.json(accessError.response, {
                 status: accessError.status,
             });
+        }
+
+        const userId = await resolveAuthenticatedRouteUserIdAsync(supabase);
+
+        if (userId === null) {
+            return NextResponse.json({ message: "Sign in again before archiving announcements.", status: "AUTH_REQUIRED" }, { status: 401 });
+        }
+
+        const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "announcement-archive");
+
+        if (rateLimitResponse !== null) {
+            return rateLimitResponse;
         }
 
         const requestBody = (await request.json()) as Record<string, string>;

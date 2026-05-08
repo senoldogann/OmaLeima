@@ -10,6 +10,7 @@ import {
 import { reviewRefreshableStatuses, submitReviewRequestAsync } from "@/features/business-applications/review-client";
 import type { BusinessApplicationRecord, ReviewActionState } from "@/features/business-applications/types";
 import { normalizeExternalReviewUrl } from "@/features/business-applications/validation";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type PendingApplicationReviewCardProps = {
   application: BusinessApplicationRecord;
@@ -51,6 +52,17 @@ export const PendingApplicationReviewCard = ({ application }: PendingApplication
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    approveState.tone === "success" ? approveState.message : null,
+    () => setApproveState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
+  useTransientSuccessKey(
+    rejectState.tone === "success" ? rejectState.message : null,
+    () => setRejectState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [isApprovePending, setIsApprovePending] = useState<boolean>(false);
   const [isRejectOpen, setIsRejectOpen] = useState<boolean>(false);
   const [isRejectPending, setIsRejectPending] = useState<boolean>(false);

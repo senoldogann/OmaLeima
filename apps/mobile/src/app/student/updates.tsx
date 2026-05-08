@@ -20,6 +20,9 @@ export default function StudentUpdatesScreen() {
         <View style={styles.topBarCopy}>
           <Text style={styles.screenEyebrow}>{language === "fi" ? "Leima" : "OmaLeima"}</Text>
           <Text style={styles.screenTitle}>{language === "fi" ? "Yhteisö" : "Community"}</Text>
+          <Text style={styles.screenSubtitle}>
+            {language === "fi" ? "Tiedotteet ja kerhot yhteisöltäsi." : "News & clubs from your community."}
+          </Text>
         </View>
         <StudentProfileHeaderAction />
       </View>
@@ -60,10 +63,17 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "flex-start",
       flexDirection: "row",
       gap: 12,
-      marginBottom: 4,
+      marginBottom: 8,
     },
     topBarCopy: {
       flex: 1,
       gap: 4,
+    },
+    screenSubtitle: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 300,
     },
   });

@@ -1,3 +1,195 @@
+do $$
+declare
+  v_has_confirmed_at boolean;
+  v_has_email_confirmed_at boolean;
+  v_seed_user record;
+begin
+  if exists (
+    select 1
+    from auth.users
+    where email is not null
+      and email !~* '@omaleima\.test$'
+  ) and coalesce(current_setting('omaleima.allow_seed_with_real_users', true), '') <> 'true' then
+    raise exception
+      'Refusing to run local seed because auth.users contains non-test accounts. Set omaleima.allow_seed_with_real_users=true only for an explicitly approved non-production reset.';
+  end if;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name = 'users'
+      and column_name = 'confirmed_at'
+  )
+  into v_has_confirmed_at;
+
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name = 'users'
+      and column_name = 'email_confirmed_at'
+  )
+  into v_has_email_confirmed_at;
+
+  for v_seed_user in
+    select *
+    from (
+      values
+        ('00000000-0000-0000-0000-000000000001'::uuid, '01000000-0000-0000-0000-000000000001'::uuid, 'admin@omaleima.test', 'Platform Admin'),
+        ('00000000-0000-0000-0000-000000000002'::uuid, '01000000-0000-0000-0000-000000000002'::uuid, 'organizer@omaleima.test', 'Guild Organizer'),
+        ('00000000-0000-0000-0000-000000000003'::uuid, '01000000-0000-0000-0000-000000000003'::uuid, 'scanner@omaleima.test', 'Venue Scanner'),
+        ('00000000-0000-0000-0000-000000000004'::uuid, '01000000-0000-0000-0000-000000000004'::uuid, 'student@omaleima.test', 'Student Tester')
+    ) as seed_users(id, identity_id, email, display_name)
+  loop
+    if v_has_email_confirmed_at then
+      insert into auth.users (
+        instance_id,
+        id,
+        aud,
+        role,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        confirmation_token,
+        recovery_token,
+        email_change_token_new,
+        email_change,
+        phone_change,
+        phone_change_token,
+        email_change_token_current,
+        reauthentication_token,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at
+      )
+      values (
+        '00000000-0000-0000-0000-000000000000',
+        v_seed_user.id,
+        'authenticated',
+        'authenticated',
+        v_seed_user.email,
+        crypt('password123', gen_salt('bf')),
+        now(),
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '{"provider":"email","providers":["email"]}'::jsonb,
+        jsonb_build_object('display_name', v_seed_user.display_name),
+        now(),
+        now()
+      )
+      on conflict (id) do update
+      set
+        instance_id = excluded.instance_id,
+        aud = excluded.aud,
+        role = excluded.role,
+        email = excluded.email,
+        encrypted_password = excluded.encrypted_password,
+        email_confirmed_at = excluded.email_confirmed_at,
+        confirmation_token = excluded.confirmation_token,
+        recovery_token = excluded.recovery_token,
+        email_change_token_new = excluded.email_change_token_new,
+        email_change = excluded.email_change,
+        phone_change = excluded.phone_change,
+        phone_change_token = excluded.phone_change_token,
+        email_change_token_current = excluded.email_change_token_current,
+        reauthentication_token = excluded.reauthentication_token,
+        raw_app_meta_data = excluded.raw_app_meta_data,
+        raw_user_meta_data = excluded.raw_user_meta_data,
+        updated_at = excluded.updated_at;
+    elsif v_has_confirmed_at then
+      insert into auth.users (
+        instance_id,
+        id,
+        aud,
+        role,
+        email,
+        encrypted_password,
+        confirmed_at,
+        confirmation_token,
+        recovery_token,
+        email_change_token,
+        email_change,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at
+      )
+      values (
+        '00000000-0000-0000-0000-000000000000',
+        v_seed_user.id,
+        'authenticated',
+        'authenticated',
+        v_seed_user.email,
+        crypt('password123', gen_salt('bf')),
+        now(),
+        '',
+        '',
+        '',
+        '',
+        '{"provider":"email","providers":["email"]}'::jsonb,
+        jsonb_build_object('display_name', v_seed_user.display_name),
+        now(),
+        now()
+      )
+      on conflict (id) do update
+      set
+        instance_id = excluded.instance_id,
+        aud = excluded.aud,
+        role = excluded.role,
+        email = excluded.email,
+        encrypted_password = excluded.encrypted_password,
+        confirmed_at = excluded.confirmed_at,
+        confirmation_token = excluded.confirmation_token,
+        recovery_token = excluded.recovery_token,
+        email_change_token = excluded.email_change_token,
+        email_change = excluded.email_change,
+        raw_app_meta_data = excluded.raw_app_meta_data,
+        raw_user_meta_data = excluded.raw_user_meta_data,
+        updated_at = excluded.updated_at;
+    else
+      raise exception 'Unsupported local auth.users schema for seed smoke users';
+    end if;
+
+    if to_regclass('auth.identities') is not null then
+      insert into auth.identities (
+        id,
+        provider_id,
+        user_id,
+        identity_data,
+        provider,
+        last_sign_in_at,
+        created_at,
+        updated_at
+      )
+      values (
+        v_seed_user.identity_id,
+        v_seed_user.id::text,
+        v_seed_user.id,
+        jsonb_build_object('sub', v_seed_user.id::text, 'email', v_seed_user.email),
+        'email',
+        now(),
+        now(),
+        now()
+      )
+      on conflict (provider, provider_id) do update
+      set
+        user_id = excluded.user_id,
+        identity_data = excluded.identity_data,
+        last_sign_in_at = excluded.last_sign_in_at,
+        updated_at = excluded.updated_at;
+    end if;
+  end loop;
+end $$;
+
+/*
 insert into auth.users (
   instance_id,
   id,
@@ -181,6 +373,7 @@ set
   identity_data = excluded.identity_data,
   last_sign_in_at = excluded.last_sign_in_at,
   updated_at = excluded.updated_at;
+*/
 
 insert into public.profiles (id, email, display_name, primary_role)
 values

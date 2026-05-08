@@ -20,13 +20,16 @@ type AppIconName =
   | "globe"
   | "support"
   | "send"
+  | "gift"
   | "star"
   | "tools"
   | "x"
   | "chevron-left"
   | "chevron-right"
   | "chevron-down"
-  | "id-card";
+  | "id-card"
+  | "search"
+  | "zap";
 
 type AppIconProps = {
   name: AppIconName;
@@ -471,6 +474,28 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
           />
         </Svg>
       );
+    case "gift":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Rect
+            fill={color}
+            height="11"
+            opacity={0.14}
+            rx="2"
+            width="16"
+            x="4"
+            y="9"
+          />
+          <Path
+            d="M4.5 9.5h15v3h-15v-3ZM6 12.5V19a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5M12 9.5V20M12 8.8c-.85-2.65-2.18-4.05-3.67-4.05-.96 0-1.83.68-1.83 1.62 0 1.48 1.93 2.43 5.5 2.43ZM12 8.8c.85-2.65 2.18-4.05 3.67-4.05.96 0 1.83.68 1.83 1.62 0 1.48-1.93 2.43-5.5 2.43Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
     case "star":
       return (
         <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -514,6 +539,19 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
             strokeLinejoin="round"
             strokeWidth="1.6"
           />
+        </Svg>
+      );
+    case "search":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="11" cy="11" fill="none" r="7" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+          <Path d="M16.5 16.5L21 21" fill="none" stroke={color} strokeLinecap="round" strokeWidth="1.8" />
+        </Svg>
+      );
+    case "zap":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path d="M13 2L4.09 12.5H11L10 22l9-11.5H13L13 2Z" fill={color} opacity={0.9} />
         </Svg>
       );
   }

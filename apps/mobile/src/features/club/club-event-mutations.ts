@@ -1,7 +1,13 @@
 import { useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 
 import { clubDashboardQueryKey } from "@/features/club/club-dashboard";
+import { clubReportQueryKey } from "@/features/club/club-reports";
 import type { ClubEventFormDraft, EventRuleValue, EventRules } from "@/features/club/types";
+import {
+  removePublicStorageObjectByUrlAsync,
+  removeReplacedPublicStorageObjectAsync,
+} from "@/features/media/storage-cleanup";
+import { isMediaStagingSignedUrl, mediaStagingBucketName, publishStagedMediaAsync } from "@/features/media/staged-media";
 import { supabase } from "@/lib/supabase";
 
 type ClubEventMutationResult = {
@@ -21,6 +27,14 @@ type UpdatedEventRow = {
   status: string;
 };
 
+type EventMediaLookupRow = {
+  club_id: string;
+  cover_image_staging_path: string | null;
+  cover_image_url: string | null;
+  id: string;
+  status: string;
+};
+
 type ClubEventMutationVariables = {
   draft: ClubEventFormDraft;
   userId: string;
@@ -31,10 +45,17 @@ type ClubEventCancelVariables = {
   userId: string;
 };
 
+type ClubEventDeleteVariables = {
+  eventId: string;
+  userId: string;
+};
+
 const localDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const eventMediaBucketId = "event-media";
 
 type ParsedClubEventDraft = {
   city: string;
+  coverImageStagingPath: string | null;
   coverImageUrl: string;
   description: string;
   endAtIso: string;
@@ -47,6 +68,7 @@ type ParsedClubEventDraft = {
   perBusinessLimit: number;
   startAtIso: string;
   startAtTime: number;
+  ticketUrl: string | null;
 };
 
 const parseLocalDateTimeOrThrow = (
@@ -114,6 +136,76 @@ const parsePerBusinessLimitOrThrow = (value: string): number => {
   return parsedValue;
 };
 
+const parseOptionalHttpUrlOrThrow = (value: string, fieldName: string): string | null => {
+  const normalizedValue = value.trim();
+
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(normalizedValue);
+  } catch {
+    throw new Error(`${fieldName} must be a valid absolute URL.`);
+  }
+
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw new Error(`${fieldName} must use http or https.`);
+  }
+
+  if (normalizedValue.length > 500) {
+    throw new Error(`${fieldName} must be 500 characters or shorter.`);
+  }
+
+  return normalizedValue;
+};
+
+const parseOptionalText = (value: string): string | null => {
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length === 0 ? null : normalizedValue;
+};
+
+const readStorageExtension = (path: string): string => {
+  const extension = path.split(".").pop()?.toLowerCase();
+
+  if (extension === "jpeg" || extension === "jpg" || extension === "png" || extension === "webp") {
+    return extension;
+  }
+
+  throw new Error(`Unsupported event cover staging path extension: ${path}`);
+};
+
+const createPublishedEventCoverPath = ({
+  clubId,
+  eventId,
+  stagingPath,
+}: {
+  clubId: string;
+  eventId: string;
+  stagingPath: string;
+}): string => `clubs/${clubId}/events/${eventId}/cover-${Date.now()}.${readStorageExtension(stagingPath)}`;
+
+const deleteStagedEventCoverAsync = async ({
+  context,
+  stagingPath,
+}: {
+  context: string;
+  stagingPath: string | null;
+}): Promise<void> => {
+  if (stagingPath === null) {
+    return;
+  }
+
+  const { error } = await supabase.storage.from(mediaStagingBucketName).remove([stagingPath]);
+
+  if (error !== null) {
+    throw new Error(`Failed to remove ${context} staged cover ${stagingPath}: ${error.message}`);
+  }
+};
+
 const isEventRulesObject = (value: EventRuleValue | undefined): value is EventRules =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -159,6 +251,7 @@ const parseDraft = (draft: ClubEventFormDraft): ParsedClubEventDraft => {
 
   return {
     city: draft.city.trim(),
+    coverImageStagingPath: parseOptionalText(draft.coverImageStagingPath),
     coverImageUrl: draft.coverImageUrl.trim(),
     description: draft.description.trim(),
     endAtIso: endAt.isoValue,
@@ -171,6 +264,7 @@ const parseDraft = (draft: ClubEventFormDraft): ParsedClubEventDraft => {
     perBusinessLimit: parsePerBusinessLimitOrThrow(draft.perBusinessLimit),
     startAtIso: startAt.isoValue,
     startAtTime: startAt.timeValue,
+    ticketUrl: parseOptionalHttpUrlOrThrow(draft.ticketUrl, "ticketUrl"),
   };
 };
 
@@ -220,19 +314,28 @@ const createClubEventDatabaseErrorMessage = ({
   return `Failed to ${action} club event ${eventId} for ${userId}: ${message}`;
 };
 
-const updateCreatedEventStatusAsync = async ({
+const updateCreatedEventAfterCreateAsync = async ({
+  coverImageUrl,
+  coverImageStagingPath,
   eventId,
   status,
+  ticketUrl,
   userId,
 }: {
+  coverImageUrl: string | null;
+  coverImageStagingPath: string | null;
   eventId: string;
   status: ClubEventFormDraft["status"];
+  ticketUrl: string | null;
   userId: string;
 }): Promise<void> => {
   const { data, error } = await supabase
     .from("events")
     .update({
+      cover_image_staging_path: coverImageStagingPath,
+      cover_image_url: coverImageUrl,
       status,
+      ticket_url: ticketUrl,
     })
     .eq("id", eventId)
     .eq("status", "DRAFT")
@@ -264,7 +367,7 @@ const createClubEventAsync = async ({
     p_city: parsedDraft.city,
     p_club_id: draft.clubId,
     p_country: "Finland",
-    p_cover_image_url: parsedDraft.coverImageUrl,
+    p_cover_image_url: "",
     p_created_by: userId,
     p_description: parsedDraft.description,
     p_end_at: parsedDraft.endAtIso,
@@ -285,12 +388,50 @@ const createClubEventAsync = async ({
   const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
   const eventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
 
-  if (status === "SUCCESS" && eventId !== null && draft.status !== "DRAFT") {
-    await updateCreatedEventStatusAsync({
-      eventId,
-      status: draft.status,
-      userId,
-    });
+  if (status === "SUCCESS" && eventId !== null) {
+    const publishedCoverImageUrl =
+      draft.status === "DRAFT"
+        ? null
+        : await publishStagedMediaAsync({
+          context: `event ${eventId} cover`,
+          destinationBucketId: eventMediaBucketId,
+          destinationPath:
+            parsedDraft.coverImageStagingPath === null
+              ? ""
+              : createPublishedEventCoverPath({
+                clubId: draft.clubId,
+                eventId,
+                stagingPath: parsedDraft.coverImageStagingPath,
+              }),
+          stagingPath: parsedDraft.coverImageStagingPath,
+        });
+    const existingPublicCoverImageUrl =
+      parsedDraft.coverImageUrl.length === 0 || isMediaStagingSignedUrl(parsedDraft.coverImageUrl)
+        ? null
+        : parsedDraft.coverImageUrl;
+    const nextCoverImageUrl =
+      draft.status === "DRAFT"
+        ? null
+        : publishedCoverImageUrl ?? existingPublicCoverImageUrl;
+    const nextCoverImageStagingPath = draft.status === "DRAFT" ? parsedDraft.coverImageStagingPath : null;
+
+    try {
+      await updateCreatedEventAfterCreateAsync({
+        coverImageStagingPath: nextCoverImageStagingPath,
+        coverImageUrl: nextCoverImageUrl,
+        eventId,
+        status: draft.status,
+        ticketUrl: parsedDraft.ticketUrl,
+        userId,
+      });
+    } catch (error) {
+      await removePublicStorageObjectByUrlAsync({
+        bucketId: eventMediaBucketId,
+        context: `failed event ${eventId} cover publish rollback`,
+        publicUrl: publishedCoverImageUrl,
+      });
+      throw error;
+    }
   }
 
   return {
@@ -312,11 +453,64 @@ const updateClubEventAsync = async ({
   }
 
   const parsedDraft = parseDraft(draft);
+  const { data: existingEvent, error: existingError } = await supabase
+    .from("events")
+    .select("id,club_id,cover_image_url,cover_image_staging_path,status")
+    .eq("id", draft.eventId)
+    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
+    .maybeSingle<EventMediaLookupRow>();
+
+  if (existingError !== null) {
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "load current cover for",
+        eventId: draft.eventId,
+        message: existingError.message,
+        userId,
+      })
+    );
+  }
+
+  if (existingEvent === null) {
+    return {
+      eventId: null,
+      message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
+      status: "EVENT_UPDATE_NOT_ALLOWED",
+    };
+  }
+
+  const publishedCoverImageUrl =
+    draft.status === "DRAFT"
+      ? null
+      : await publishStagedMediaAsync({
+        context: `event ${draft.eventId} cover`,
+        destinationBucketId: eventMediaBucketId,
+        destinationPath:
+          parsedDraft.coverImageStagingPath === null
+            ? ""
+            : createPublishedEventCoverPath({
+              clubId: existingEvent.club_id,
+              eventId: draft.eventId,
+              stagingPath: parsedDraft.coverImageStagingPath,
+            }),
+        stagingPath: parsedDraft.coverImageStagingPath,
+      });
+  const existingPublicCoverImageUrl =
+    parsedDraft.coverImageUrl.length === 0 || isMediaStagingSignedUrl(parsedDraft.coverImageUrl)
+      ? null
+      : parsedDraft.coverImageUrl;
+  const nextCoverImageUrl =
+    draft.status === "DRAFT"
+      ? null
+      : publishedCoverImageUrl ?? existingPublicCoverImageUrl;
+  const nextCoverImageStagingPath = draft.status === "DRAFT" ? parsedDraft.coverImageStagingPath : null;
+
   const { data, error } = await supabase
     .from("events")
     .update({
       city: parsedDraft.city,
-      cover_image_url: parsedDraft.coverImageUrl.length === 0 ? null : parsedDraft.coverImageUrl,
+      cover_image_staging_path: nextCoverImageStagingPath,
+      cover_image_url: nextCoverImageUrl,
       description: parsedDraft.description.length === 0 ? null : parsedDraft.description,
       end_at: parsedDraft.endAtIso,
       join_deadline_at: parsedDraft.joinDeadlineAtIso,
@@ -326,6 +520,7 @@ const updateClubEventAsync = async ({
       rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
       start_at: parsedDraft.startAtIso,
       status: draft.status,
+      ticket_url: parsedDraft.ticketUrl,
       visibility: draft.visibility,
     })
     .eq("id", draft.eventId)
@@ -334,6 +529,12 @@ const updateClubEventAsync = async ({
     .maybeSingle<UpdatedEventRow>();
 
   if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: eventMediaBucketId,
+      context: `failed event ${draft.eventId} cover publish rollback`,
+      publicUrl: publishedCoverImageUrl,
+    });
+
     throw new Error(
       createClubEventDatabaseErrorMessage({
         action: "update",
@@ -345,6 +546,12 @@ const updateClubEventAsync = async ({
   }
 
   if (data === null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: eventMediaBucketId,
+      context: `not-updated event ${draft.eventId} cover publish rollback`,
+      publicUrl: publishedCoverImageUrl,
+    });
+
     return {
       eventId: null,
       message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
@@ -352,9 +559,104 @@ const updateClubEventAsync = async ({
     };
   }
 
+  await removeReplacedPublicStorageObjectAsync({
+    bucketId: eventMediaBucketId,
+    context: `event ${draft.eventId} cover`,
+    newPublicUrl: nextCoverImageUrl,
+    oldPublicUrl: existingEvent.cover_image_url,
+  });
+
+  if (existingEvent.cover_image_staging_path !== null && existingEvent.cover_image_staging_path !== nextCoverImageStagingPath) {
+    await deleteStagedEventCoverAsync({
+      context: `event ${draft.eventId}`,
+      stagingPath: existingEvent.cover_image_staging_path,
+    });
+  }
+
   return {
     eventId: data.id,
     message: "Event updated successfully.",
+    status: "SUCCESS",
+  };
+};
+
+const deleteDraftClubEventAsync = async ({
+  eventId,
+  userId,
+}: ClubEventDeleteVariables): Promise<ClubEventMutationResult> => {
+  const { data: existingEvent, error: selectError } = await supabase
+    .from("events")
+    .select("id,club_id,cover_image_url,cover_image_staging_path,status")
+    .eq("id", eventId)
+    .maybeSingle<EventMediaLookupRow>();
+
+  if (selectError !== null) {
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "load before deleting",
+        eventId,
+        message: selectError.message,
+        userId,
+      })
+    );
+  }
+
+  if (existingEvent === null) {
+    return {
+      eventId: null,
+      message: "Event was not deleted. It may already be gone or outside this organizer account.",
+      status: "EVENT_DELETE_NOT_ALLOWED",
+    };
+  }
+
+  if (existingEvent.status !== "DRAFT") {
+    return {
+      eventId: null,
+      message: "Only draft events can be permanently deleted. Cancel published or active events to preserve history.",
+      status: "EVENT_DELETE_NOT_ALLOWED",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .eq("status", "DRAFT")
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (error !== null) {
+    throw new Error(
+      createClubEventDatabaseErrorMessage({
+        action: "delete draft",
+        eventId,
+        message: error.message,
+        userId,
+      })
+    );
+  }
+
+  if (data === null) {
+    return {
+      eventId: null,
+      message: "Event was not deleted. It may already be gone or outside this organizer account.",
+      status: "EVENT_DELETE_NOT_ALLOWED",
+    };
+  }
+
+  await removePublicStorageObjectByUrlAsync({
+    bucketId: eventMediaBucketId,
+    context: `event ${eventId} cover`,
+    publicUrl: existingEvent.cover_image_url,
+  });
+  await deleteStagedEventCoverAsync({
+    context: `event ${eventId}`,
+    stagingPath: existingEvent.cover_image_staging_path,
+  });
+
+  return {
+    eventId: data.id,
+    message: "Draft event deleted successfully.",
     status: "SUCCESS",
   };
 };
@@ -412,6 +714,9 @@ export const useCreateClubEventMutation = (): UseMutationResult<
       await queryClient.invalidateQueries({
         queryKey: clubDashboardQueryKey(variables.userId),
       });
+      await queryClient.invalidateQueries({
+        queryKey: clubReportQueryKey(variables.userId),
+      });
     },
   });
 };
@@ -429,6 +734,9 @@ export const useUpdateClubEventMutation = (): UseMutationResult<
       await queryClient.invalidateQueries({
         queryKey: clubDashboardQueryKey(variables.userId),
       });
+      await queryClient.invalidateQueries({
+        queryKey: clubReportQueryKey(variables.userId),
+      });
     },
   });
 };
@@ -445,6 +753,29 @@ export const useCancelClubEventMutation = (): UseMutationResult<
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({
         queryKey: clubDashboardQueryKey(variables.userId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: clubReportQueryKey(variables.userId),
+      });
+    },
+  });
+};
+
+export const useDeleteDraftClubEventMutation = (): UseMutationResult<
+  ClubEventMutationResult,
+  Error,
+  ClubEventDeleteVariables
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteDraftClubEventAsync,
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: clubDashboardQueryKey(variables.userId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: clubReportQueryKey(variables.userId),
       });
     },
   });

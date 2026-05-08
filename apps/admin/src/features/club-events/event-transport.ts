@@ -2,6 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import type { ClubEventMutationResponse, EventRules } from "@/features/club-events/types";
+import {
+  removePublicStorageObjectByUrlAsync,
+  removeReplacedPublicStorageObjectAsync,
+} from "@/features/media/storage-cleanup";
+import { mediaStagingBucketName, publishStagedMediaAsync } from "@/features/media/staged-media";
 
 type ClubEventTransportResult = {
   response: ClubEventMutationResponse;
@@ -17,6 +22,55 @@ type CreateClubEventRpcPayload = {
 type UpdatedEventRow = {
   id: string;
   status: string;
+};
+
+type EventMediaLookupRow = {
+  club_id: string;
+  cover_image_staging_path: string | null;
+  cover_image_url: string | null;
+  id: string;
+};
+
+const eventMediaBucketId = "event-media";
+
+const readStorageExtension = (path: string): string => {
+  const extension = path.split(".").pop()?.toLowerCase();
+
+  if (extension === "jpeg" || extension === "jpg" || extension === "png" || extension === "webp") {
+    return extension;
+  }
+
+  throw new Error(`Unsupported event cover staging path extension: ${path}`);
+};
+
+const createPublishedEventCoverPath = ({
+  clubId,
+  eventId,
+  stagingPath,
+}: {
+  clubId: string;
+  eventId: string;
+  stagingPath: string;
+}): string => `clubs/${clubId}/events/${eventId}/cover-${Date.now()}.${readStorageExtension(stagingPath)}`;
+
+const deleteStagedEventCoverAsync = async ({
+  context,
+  stagingPath,
+  supabase,
+}: {
+  context: string;
+  stagingPath: string | null;
+  supabase: SupabaseClient;
+}): Promise<void> => {
+  if (stagingPath === null) {
+    return;
+  }
+
+  const { error } = await supabase.storage.from(mediaStagingBucketName).remove([stagingPath]);
+
+  if (error !== null) {
+    throw new Error(`Failed to remove ${context} staged cover ${stagingPath}: ${error.message}`);
+  }
 };
 
 const buildClubEventMessage = (status: string | null): string => {
@@ -77,6 +131,7 @@ export const invokeCreateClubEventRpcAsync = async (
     city: string;
     clubId: string;
     country: string;
+    coverImageStagingPath: string;
     coverImageUrl: string;
     createdBy: string;
     description: string;
@@ -87,6 +142,7 @@ export const invokeCreateClubEventRpcAsync = async (
     name: string;
     rules: EventRules;
     startAtIso: string;
+    ticketUrl: string;
     visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
   }
 ): Promise<ClubEventTransportResult> => {
@@ -94,7 +150,7 @@ export const invokeCreateClubEventRpcAsync = async (
     p_city: payload.city,
     p_club_id: payload.clubId,
     p_country: payload.country,
-    p_cover_image_url: payload.coverImageUrl,
+    p_cover_image_url: "",
     p_created_by: payload.createdBy,
     p_description: payload.description,
     p_end_at: payload.endAtIso,
@@ -119,6 +175,34 @@ export const invokeCreateClubEventRpcAsync = async (
 
   const responsePayload = data as CreateClubEventRpcPayload | null;
   const status = typeof responsePayload?.status === "string" ? responsePayload.status : null;
+  const eventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status === "SUCCESS" && eventId !== null) {
+    const normalizedTicketUrl = payload.ticketUrl.trim();
+    const normalizedStagingPath = payload.coverImageStagingPath.trim();
+
+    if (normalizedTicketUrl.length > 0 || normalizedStagingPath.length > 0) {
+      const { error: ticketUrlError } = await supabase
+        .from("events")
+        .update({
+          cover_image_staging_path: normalizedStagingPath.length === 0 ? null : normalizedStagingPath,
+          ticket_url: normalizedTicketUrl,
+        })
+        .eq("id", eventId)
+        .select("id")
+        .single();
+
+      if (ticketUrlError !== null) {
+        return {
+          response: {
+            message: ticketUrlError.message,
+            status: "TICKET_URL_UPDATE_ERROR",
+          },
+          status: 502,
+        };
+      }
+    }
+  }
 
   return {
     response: {
@@ -133,6 +217,7 @@ export const updateClubEventAsync = async (
   supabase: SupabaseClient,
   payload: {
     city: string;
+    coverImageStagingPath: string;
     coverImageUrl: string;
     description: string;
     endAtIso: string;
@@ -144,14 +229,68 @@ export const updateClubEventAsync = async (
     rules: EventRules;
     startAtIso: string;
     status: "ACTIVE" | "DRAFT" | "PUBLISHED";
+    ticketUrl: string;
     visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
   }
 ): Promise<ClubEventTransportResult> => {
+  const { data: existingEvent, error: existingError } = await supabase
+    .from("events")
+    .select("id,club_id,cover_image_url,cover_image_staging_path")
+    .eq("id", payload.eventId)
+    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
+    .maybeSingle<EventMediaLookupRow>();
+
+  if (existingError !== null) {
+    return {
+      response: {
+        message: existingError.message,
+        status: "UPDATE_LOOKUP_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (existingEvent === null) {
+    return {
+      response: {
+        message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
+        status: "EVENT_UPDATE_NOT_ALLOWED",
+      },
+      status: 403,
+    };
+  }
+
+  const normalizedStagingPath =
+    payload.coverImageStagingPath.trim().length === 0 ? null : payload.coverImageStagingPath.trim();
+  const publishedCoverImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : await publishStagedMediaAsync({
+        context: `event ${payload.eventId} cover`,
+        destinationBucketId: eventMediaBucketId,
+        destinationPath:
+          normalizedStagingPath === null
+            ? ""
+            : createPublishedEventCoverPath({
+              clubId: existingEvent.club_id,
+              eventId: payload.eventId,
+              stagingPath: normalizedStagingPath,
+            }),
+        stagingPath: normalizedStagingPath,
+        supabase,
+      });
+  const nextCoverImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : publishedCoverImageUrl ?? (payload.coverImageUrl.trim().length === 0 ? null : payload.coverImageUrl);
+  const nextCoverImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
+
   const { data, error } = await supabase
     .from("events")
     .update({
       city: payload.city,
-      cover_image_url: payload.coverImageUrl.trim().length === 0 ? null : payload.coverImageUrl,
+      cover_image_staging_path: nextCoverImageStagingPath,
+      cover_image_url: nextCoverImageUrl,
       description: payload.description.trim().length === 0 ? null : payload.description,
       end_at: payload.endAtIso,
       join_deadline_at: payload.joinDeadlineAtIso,
@@ -161,6 +300,7 @@ export const updateClubEventAsync = async (
       rules: payload.rules,
       start_at: payload.startAtIso,
       status: payload.status,
+      ticket_url: payload.ticketUrl.trim().length === 0 ? null : payload.ticketUrl,
       visibility: payload.visibility,
     })
     .eq("id", payload.eventId)
@@ -179,12 +319,44 @@ export const updateClubEventAsync = async (
   }
 
   if (data === null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: eventMediaBucketId,
+      context: `not-updated event ${payload.eventId} cover publish rollback`,
+      publicUrl: publishedCoverImageUrl,
+      supabase,
+    });
+
     return {
       response: {
         message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
         status: "EVENT_UPDATE_NOT_ALLOWED",
       },
       status: 403,
+    };
+  }
+
+  try {
+    await removeReplacedPublicStorageObjectAsync({
+      bucketId: eventMediaBucketId,
+      context: `event ${payload.eventId} cover`,
+      newPublicUrl: nextCoverImageUrl,
+      oldPublicUrl: existingEvent.cover_image_url,
+      supabase,
+    });
+    if (existingEvent.cover_image_staging_path !== null && existingEvent.cover_image_staging_path !== nextCoverImageStagingPath) {
+      await deleteStagedEventCoverAsync({
+        context: `event ${payload.eventId}`,
+        stagingPath: existingEvent.cover_image_staging_path,
+        supabase,
+      });
+    }
+  } catch (error) {
+    return {
+      response: {
+        message: error instanceof Error ? error.message : "Event cover replacement cleanup failed.",
+        status: "IMAGE_REPLACEMENT_DELETE_ERROR",
+      },
+      status: 502,
     };
   }
 

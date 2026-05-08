@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { createSignedStagedMediaUrlAsync, mediaStagingBucketName } from "@/features/media/staged-media";
+
 export type AnnouncementImageUploadScope =
   | {
       scope: "ADMIN";
@@ -16,11 +18,10 @@ type UploadAnnouncementImageParams = {
 };
 
 type UploadedAnnouncementImage = {
-  publicUrl: string;
-  storagePath: string;
+  previewUrl: string;
+  stagingPath: string;
 };
 
-const announcementMediaBucketId = "announcement-media";
 const maxAnnouncementImageBytes = 5 * 1024 * 1024;
 const supportedImageTypes = ["image/jpeg", "image/png", "image/webp"] as const;
 const extensionByType = {
@@ -52,24 +53,26 @@ const createStoragePath = ({
   file,
   imageType,
   scope,
+  userId,
 }: {
   file: File;
   imageType: SupportedImageType;
   scope: AnnouncementImageUploadScope;
+  userId: string;
 }): string => {
   const extension = extensionByType[imageType];
   const safeName = sanitizeFileName(file.name.replace(/\.[^.]+$/, ""));
   const fileName = `${Date.now()}-${safeName}.${extension}`;
 
   if (scope.scope === "ADMIN") {
-    return `platform/${fileName}`;
+    return `users/${userId}/announcements/platform/${fileName}`;
   }
 
   if (scope.clubId.trim().length === 0) {
     throw new Error("Select a club before uploading a club announcement image.");
   }
 
-  return `clubs/${scope.clubId}/${fileName}`;
+  return `users/${userId}/announcements/clubs/${scope.clubId}/${fileName}`;
 };
 
 export const uploadAnnouncementImageAsync = async ({
@@ -89,46 +92,35 @@ export const uploadAnnouncementImageAsync = async ({
     throw new Error("Announcement image must be a JPEG, PNG, or WebP file.");
   }
 
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError !== null || userData.user === null) {
+    throw new Error(userError?.message ?? "Sign in again before uploading an announcement image.");
+  }
+
   const storagePath = createStoragePath({
     file,
     imageType: file.type,
     scope,
+    userId: userData.user.id,
   });
-  const { error } = await supabase.storage.from(announcementMediaBucketId).upload(storagePath, file, {
+  const { error } = await supabase.storage.from(mediaStagingBucketName).upload(storagePath, file, {
     cacheControl: "3600",
     contentType: file.type,
     upsert: false,
   });
 
   if (error !== null) {
-    throw new Error(`Failed to upload announcement image: ${error.message}`);
+    throw new Error(`Failed to upload private announcement image: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(announcementMediaBucketId).getPublicUrl(storagePath);
-  const response = await fetch(data.publicUrl, {
-    method: "HEAD",
+  const previewUrl = await createSignedStagedMediaUrlAsync({
+    stagingPath: storagePath,
+    supabase,
   });
 
-  if (!response.ok) {
-    throw new Error(`Uploaded announcement image is not publicly readable. Status: ${response.status}. URL: ${data.publicUrl}`);
-  }
-
-  const rawContentLength = response.headers.get("content-length");
-
-  if (rawContentLength !== null) {
-    const contentLength = Number.parseInt(rawContentLength, 10);
-
-    if (Number.isNaN(contentLength)) {
-      throw new Error(`Uploaded announcement image returned invalid content-length: ${rawContentLength}.`);
-    }
-
-    if (contentLength <= 0) {
-      throw new Error(`Uploaded announcement image is empty in storage. URL: ${data.publicUrl}`);
-    }
-  }
-
   return {
-    publicUrl: data.publicUrl,
-    storagePath,
+    previewUrl,
+    stagingPath: storagePath,
   };
 };

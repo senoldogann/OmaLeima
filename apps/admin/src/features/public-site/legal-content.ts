@@ -18,16 +18,16 @@ export type LegalDocumentContent = {
 };
 
 const updatedAtByLocale: Record<PublicLocale, string> = {
-  en: "May 5, 2026",
-  fi: "5.5.2026",
+  en: "May 6, 2026",
+  fi: "6.5.2026",
 };
 
 const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
   en: {
     intro:
-      "This privacy notice explains how OmaLeima and T:mi Aslan Dogan Marketing process personal data on the public website, during pilot enquiries, and in early business communications.",
+      "This privacy notice explains how OmaLeima and T:mi Aslan Dogan Marketing process personal data on the public website, in the OmaLeima mobile app, during pilot enquiries, and in early business communications.",
     metaDescription:
-      "Privacy notice for OmaLeima public website and pilot enquiries.",
+      "Privacy notice for the OmaLeima public website, mobile app, and pilot enquiries.",
     sections: [
       {
         bullets: [
@@ -46,17 +46,22 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Basic technical request data such as IP address, browser request metadata, and server log timestamps when you visit the public website.",
+          "Mobile account data such as name, email address, role access, student profile tags, business or club memberships, and support requests.",
+          "Event operation data such as registrations, QR token metadata, leima scans, scanner account/device identifiers, reward claim status, leaderboard progress, and fraud-review signals.",
+          "Device and permission-related data when you use mobile features, including push notification tokens, camera/photo usage for QR scanning or media uploads, and scanner location proof for event-day fraud review.",
           "Contact details and message content when you contact us by email or through social media.",
           "Business and event context details that you share voluntarily when asking about pilots, club rollouts, or partnerships.",
         ],
         paragraphs: [
-          "We only describe processing that is visible from the current public website and our direct communication channels.",
+          "This notice covers the current public website, mobile app, pilot operations, and direct communication channels.",
         ],
         title: "2. What data we process",
       },
       {
         bullets: [
           "Legitimate interest: to keep the public website available, secure, and abuse-resistant.",
+          "Contract or pre-contractual steps: to provide the OmaLeima mobile app, account access, event participation, QR scanning, leima tracking, rewards, support, and organizer operations.",
+          "Legitimate interest: to prevent QR replay, duplicate leimas, scanner misuse, reward abuse, and event-day fraud.",
           "Pre-contractual steps or legitimate interest: to answer pilot, partnership, and product enquiries.",
           "Legal obligation: to retain records when accounting, tax, or other Finnish legal duties require it.",
         ],
@@ -68,6 +73,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Directly from you when you email us or contact us through linked channels.",
+          "Directly from you when you sign in, manage your profile, register for events, show or scan QR codes, claim rewards, upload approved images, or send support requests in the mobile app.",
+          "From event organizers, approved businesses, scanner staff, and system-generated audit events when they operate OmaLeima during an event.",
           "Automatically from your browser and hosting infrastructure when you load the website.",
         ],
         paragraphs: [
@@ -78,6 +85,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Website hosting and infrastructure providers acting on our behalf.",
+          "Backend, authentication, database, storage, and push-notification service providers acting on our behalf.",
+          "Apple, Google, Expo, Supabase, and similar platform providers where their services are used for sign-in, app distribution, push delivery, hosting, or event operations.",
           "Email and communications providers where needed to receive and reply to your messages.",
           "Professional advisers or authorities if required by law or to protect legal rights.",
         ],
@@ -96,6 +105,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
         bullets: [
           "Technical logs are kept only for as long as needed for security, troubleshooting, and service continuity.",
           "Enquiry and pilot communication records are kept only for as long as the conversation, onboarding, or related business follow-up requires.",
+          "Mobile account, event, leima, reward, support, and audit records are kept for as long as needed to provide the service, resolve event-day disputes, prevent fraud, and meet legal obligations.",
+          "You can request account deletion or data deletion from the mobile app support flow or by contacting us by email. We may need to verify your identity before acting on the request.",
           "Data may be retained longer where Finnish law, tax rules, or defence of legal claims requires it.",
         ],
         paragraphs: [
@@ -114,16 +125,35 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
           "Right to lodge a complaint with the Finnish Data Protection Ombudsman",
         ],
         paragraphs: [
-          `You can use your rights by contacting ${publicCompanyInfo.email}. We may need to verify your identity before acting on a request.`,
+          `You can use your rights, request account deletion, or request data deletion through the in-app support form or by contacting ${publicCompanyInfo.email}. We may need to verify your identity before acting on a request.`,
         ],
         title: "8. Your rights",
       },
       {
+        bullets: [
+          "In the mobile app, open Profile or Settings, choose Support, then select the account and data deletion request template.",
+          `On the web, send an account deletion or data deletion request to ${publicCompanyInfo.email} and include the email address used for OmaLeima.`,
+          "We may need to verify your identity before deleting an account or associated personal data.",
+          "Some records may be retained where required for legal obligations, fraud prevention, security, accounting, or defence of legal claims.",
+        ],
+        paragraphs: [
+          "This section is the public web resource for OmaLeima account deletion and associated data deletion requests.",
+        ],
+        title: "9. Account and data deletion requests",
+      },
+      {
+        paragraphs: [
+          "The public website uses strictly necessary first-party cookies and similar local storage for secure sessions, dashboard authentication, language preference, form protection, and remembering cookie choices.",
+          "OmaLeima does not currently load optional analytics or marketing cookies on the public website. If optional tracking is introduced later, it should remain disabled until you give consent in the cookie settings.",
+          "The mobile app uses necessary device storage for signed-in sessions, privacy acknowledgement, language/theme preferences, QR scanning, push notification delivery, support requests, and fraud-prevention controls.",
+        ],
+        title: "10. Cookies, local storage, and mobile app data",
+      },
+      {
         paragraphs: [
           "We use proportionate technical and organisational safeguards such as access controls, limited access, and service-level security controls from our infrastructure providers.",
-          "The public website currently does not advertise a separate analytics or marketing-cookie layer. If that changes materially, this notice should be updated.",
         ],
-        title: "9. Security and changes",
+        title: "11. Security and changes",
       },
     ],
     title: "Privacy notice",
@@ -131,9 +161,9 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
   },
   fi: {
     intro:
-      "Tämä tietosuojaseloste kertoo, miten OmaLeima ja T:mi Aslan Dogan Marketing käsittelevät henkilötietoja julkisella verkkosivulla, pilottiyhteydenotoissa ja alkuvaiheen yritysviestinnässä.",
+      "Tämä tietosuojaseloste kertoo, miten OmaLeima ja T:mi Aslan Dogan Marketing käsittelevät henkilötietoja julkisella verkkosivulla, OmaLeima-mobiilisovelluksessa, pilottiyhteydenotoissa ja alkuvaiheen yritysviestinnässä.",
     metaDescription:
-      "OmaLeiman julkisen sivuston ja pilottiyhteydenottojen tietosuojaseloste.",
+      "OmaLeiman julkisen sivuston, mobiilisovelluksen ja pilottiyhteydenottojen tietosuojaseloste.",
     sections: [
       {
         bullets: [
@@ -152,17 +182,22 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Perustason tekniset pyyntötiedot, kuten IP-osoite, selaimen pyyntömetadata ja palvelinlokien aikaleimat, kun vierailet julkisella sivulla.",
+          "Mobiilitilin tiedot, kuten nimi, sähköpostiosoite, käyttöroolit, opiskelijaprofiilin tagit, yritys- tai klubijäsenyydet ja tukipyynnöt.",
+          "Tapahtumakäytön tiedot, kuten ilmoittautumiset, QR-tokenien metadata, leimaskannaukset, skanneritilin ja laitteen tunnisteet, palkintojen luovutustila, leaderboard-eteneminen ja väärinkäytösarvioinnin signaalit.",
+          "Laitteeseen ja lupiin liittyvät tiedot, kun käytät mobiilitoimintoja, kuten push-ilmoitusten tokenit, kameran/kuvien käyttö QR-skannaukseen tai kuvien lataamiseen sekä skannerin sijaintitodiste tapahtumapäivän väärinkäytösarviointia varten.",
           "Yhteystiedot ja viestin sisältö, kun otat meihin yhteyttä sähköpostilla tai sosiaalisen median kautta.",
           "Liiketoiminta- ja tapahtumakonteksti, jonka jaat vapaaehtoisesti kysyessäsi piloteista, klubikäytöstä tai kumppanuuksista.",
         ],
         paragraphs: [
-          "Seloste kuvaa vain tämänhetkisen julkisen sivuston ja suorien yhteydenottokanavien kautta näkyvän käsittelyn.",
+          "Seloste kattaa tämänhetkisen julkisen sivuston, mobiilisovelluksen, pilottikäytön ja suorat yhteydenottokanavat.",
         ],
         title: "2. Käsiteltävät tiedot",
       },
       {
         bullets: [
           "Oikeutettu etu: julkisen sivuston toimivuus, turvallisuus ja väärinkäytösten torjunta.",
+          "Sopimus tai sopimusta edeltävät toimet: OmaLeima-mobiilisovelluksen, tilikäytön, tapahtumiin osallistumisen, QR-skannauksen, leimojen, palkintojen, tuen ja järjestäjätoimintojen tarjoaminen.",
+          "Oikeutettu etu: QR-uudelleenkäytön, tuplaleimojen, skannerin väärinkäytön, palkintojen väärinkäytön ja tapahtumapäivän vilpin estäminen.",
           "Sopimusta edeltävät toimet tai oikeutettu etu: pilotteihin, kumppanuuksiin ja tuotekyselyihin vastaaminen.",
           "Lakivelvoite: tietojen säilyttäminen silloin, kun kirjanpito, verotus tai muu Suomen laki sitä edellyttää.",
         ],
@@ -174,6 +209,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Suoraan sinulta, kun lähetät meille sähköpostia tai otat yhteyttä linkitetyissä kanavissa.",
+          "Suoraan sinulta, kun kirjaudut sisään, hallitset profiilia, ilmoittaudut tapahtumiin, näytät tai skannaat QR-koodeja, lunastat palkintoja, lataat hyväksyttyjä kuvia tai lähetät tukipyyntöjä mobiilisovelluksessa.",
+          "Tapahtumajärjestäjiltä, hyväksytyiltä yrityksiltä, skannerihenkilöstöltä ja järjestelmän tuottamista audit-tapahtumista, kun OmaLeimaa käytetään tapahtumassa.",
           "Automaattisesti selaimeltasi ja hosting-infrastruktuurista, kun lataat verkkosivun.",
         ],
         paragraphs: [
@@ -184,6 +221,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
       {
         bullets: [
           "Verkkosivun hosting- ja infrastruktuuritoimittajat henkilötietojen käsittelijöinä.",
+          "Backend-, tunnistautumis-, tietokanta-, tallennus- ja push-ilmoituspalveluntarjoajat, jotka toimivat puolestamme.",
+          "Apple, Google, Expo, Supabase ja vastaavat alustapalveluntarjoajat silloin, kun niiden palveluita käytetään kirjautumiseen, sovellusjakeluun, push-toimituksiin, hostingiin tai tapahtumaoperointiin.",
           "Sähköposti- ja viestintäpalvelut silloin, kun niitä tarvitaan viestien vastaanottamiseen ja niihin vastaamiseen.",
           "Asiantuntijat tai viranomaiset, jos laki sitä vaatii tai oikeuksien puolustaminen sitä edellyttää.",
         ],
@@ -202,6 +241,8 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
         bullets: [
           "Teknisiä lokeja säilytetään vain niin kauan kuin turvallisuus, vianmääritys ja palvelun jatkuvuus sitä edellyttävät.",
           "Yhteydenotto- ja pilottiviestintää säilytetään vain niin kauan kuin keskustelu, käyttöönoton arviointi tai siihen liittyvä liiketoiminnallinen jatko sitä vaatii.",
+          "Mobiilitilin, tapahtumien, leimojen, palkintojen, tukipyyntöjen ja audit-lokien tietoja säilytetään niin kauan kuin palvelun tarjoaminen, tapahtumapäivän selvitykset, väärinkäytösten torjunta ja lakivelvoitteet sitä edellyttävät.",
+          "Voit pyytää tilin poistoa tai tietojen poistoa mobiilisovelluksen tukitoiminnon kautta tai ottamalla yhteyttä sähköpostitse. Voimme joutua varmistamaan henkilöllisyytesi ennen pyynnön käsittelyä.",
           "Tietoja voidaan säilyttää pidempään, jos Suomen laki, verosäännöt tai oikeusvaateiden puolustaminen sitä edellyttävät.",
         ],
         paragraphs: [
@@ -220,16 +261,35 @@ const privacyByLocale: Record<PublicLocale, LegalDocumentContent> = {
           "Oikeus tehdä valitus tietosuojavaltuutetulle",
         ],
         paragraphs: [
-          `Voit käyttää oikeuksiasi ottamalla yhteyttä osoitteeseen ${publicCompanyInfo.email}. Pyynnön käsittelyssä voidaan joutua varmistamaan henkilöllisyytesi.`,
+          `Voit käyttää oikeuksiasi, pyytää tilin poistoa tai pyytää tietojen poistoa sovelluksen tukilomakkeella tai ottamalla yhteyttä osoitteeseen ${publicCompanyInfo.email}. Pyynnön käsittelyssä voidaan joutua varmistamaan henkilöllisyytesi.`,
         ],
         title: "8. Rekisteröidyn oikeudet",
       },
       {
+        bullets: [
+          "Avaa mobiilisovelluksessa Profiili tai Asetukset, valitse Tuki ja käytä tilin ja tietojen poistopyynnön mallia.",
+          `Verkossa voit lähettää tilin poistopyynnön tai tietojen poistopyynnön osoitteeseen ${publicCompanyInfo.email}. Liitä mukaan OmaLeimassa käyttämäsi sähköpostiosoite.`,
+          "Voimme joutua varmistamaan henkilöllisyytesi ennen tilin tai siihen liittyvien henkilötietojen poistamista.",
+          "Osa tiedoista voidaan säilyttää, jos lakivelvoite, väärinkäytösten torjunta, turvallisuus, kirjanpito tai oikeusvaateiden puolustaminen sitä edellyttää.",
+        ],
+        paragraphs: [
+          "Tämä osio toimii OmaLeiman julkisena verkkolähteenä tilin poistopyynnöille ja siihen liittyville henkilötietojen poistopyynnöille.",
+        ],
+        title: "9. Tilin ja tietojen poistopyynnöt",
+      },
+      {
+        paragraphs: [
+          "Julkinen verkkosivu käyttää välttämättömiä ensimmäisen osapuolen evästeitä ja vastaavaa paikallista tallennusta turvallisiin istuntoihin, hallintapaneelin kirjautumiseen, kielivalintaan, lomakesuojaukseen ja evästevalintojen muistamiseen.",
+          "OmaLeima ei tällä hetkellä lataa julkisella sivustolla vapaaehtoisia analytiikka- tai markkinointievästeitä. Jos vapaaehtoinen seuranta lisätään myöhemmin, sen pitää pysyä pois päältä, kunnes annat suostumuksen evästeasetuksissa.",
+          "Mobiilisovellus käyttää välttämätöntä laitetallennusta kirjautuneisiin istuntoihin, tietosuojahyväksyntään, kieli- ja teemavalintoihin, QR-skannaukseen, push-ilmoitusten toimitukseen, tukipyyntöihin ja väärinkäytösten ehkäisyyn.",
+        ],
+        title: "10. Evästeet, paikallinen tallennus ja mobiilisovelluksen tiedot",
+      },
+      {
         paragraphs: [
           "Käytämme suhteellisia teknisiä ja organisatorisia suojatoimia, kuten käyttöoikeuksien rajausta, vähimmän tarpeen mukaista pääsyä ja infrastruktuuritoimittajien suojausratkaisuja.",
-          "Julkisella sivustolla ei tällä hetkellä kuvata erillistä analytiikka- tai markkinointievästekerrosta. Jos tämä muuttuu olennaisesti, seloste pitää päivittää.",
         ],
-        title: "9. Tietoturva ja muutokset",
+        title: "11. Tietoturva ja muutokset",
       },
     ],
     title: "Tietosuojaseloste",

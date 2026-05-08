@@ -2,6 +2,922 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Private Media Staging + Mobile Edge Protection)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Replace the draft public-media guard with a full private staging + publish-time public copy model for event and announcement media, and assess mobile Cloudflare-style protection boundaries.
+
+## Private Media Staging + Mobile Edge Protection Findings
+
+- Event and announcement media uploads currently use a single URL field for both preview and persistence. That makes it easy to create public orphan objects when a user uploads but never saves.
+- The correct lifecycle needs two separate values: a private staging object path for draft/edit preview and a public object URL only after publish/active save.
+- Supabase public bucket URLs cannot be protected by RLS once known. Private staging must use a non-public bucket and short-lived signed URLs for preview.
+- Existing public bucket policies already allow authorized organizers/admins to upload final public event/announcement media; staging should add user-owned private paths to avoid cross-tenant reads.
+- Web Cloudflare WAF protects `omaleima.fi` traffic, but the mobile app calls Supabase/Auth/Edge endpoints directly. A native app cannot keep a Cloudflare secret. Full Cloudflare parity requires routing mobile API calls through a Cloudflare Worker/API Gateway custom domain; otherwise protection must be enforced in Supabase/Edge Function code with auth, rate limits, stale-build gates, scanner device controls, and RLS.
+
+## Private Media Staging + Mobile Edge Protection Outcome
+
+- Added hosted/private `media-staging` bucket with owner-scoped storage RLS, staging path columns, and DB triggers that reject draft public URLs and non-draft retained staging paths.
+- Admin web and organizer mobile event/announcement uploads now stage privately first, show signed preview URLs, and publish by copying to the public bucket only when the record is saved as non-draft.
+- Publish/update/delete flows clean replaced public objects and old staging objects.
+- Store readiness audit and launch docs now explicitly state that Cloudflare web WAF does not protect direct mobile-to-Supabase traffic; mobile protection remains Auth/RLS/Edge/RPC/rate-limit/stale-build based unless a Worker/API gateway is introduced later.
+
+## Current Review (Public Draft Media Guard)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the highest-value remaining media security gap by preventing draft/unapproved event and announcement records from retaining public Supabase Storage URLs.
+
+## Public Draft Media Guard Findings
+
+- `event-media` and `announcement-media` are public buckets. Bucket listing policies are restricted, but a stored public object URL is still directly readable by anyone with the URL.
+- Admin and mobile event/announcement forms can upload public media before the final record is published, which lets draft content be exposed if the URL is persisted.
+- RLS alone cannot solve this because public bucket object URLs bypass row visibility once generated. The source of truth must refuse public storage URLs on draft rows.
+- Existing delete/replacement cleanup helpers already know how to remove public storage objects by URL, so mobile draft saves can clean newly uploaded public objects while web blocks draft uploads before they happen.
+- A future complete private-staging design can improve draft preview persistence, but the immediate release guard should be DB-enforced so accidental client regressions still fail safely.
+
+## Current Review (Executable Native Simulator Smoke)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Turn the existing native simulator/emulator audit from wiring-only evidence into an executable Android/iOS launch-smoke path and run it locally where possible.
+
+## Executable Native Simulator Smoke Findings
+
+- `apps/mobile/scripts/audit-native-simulator-smoke.mjs` proved only entrypoint/docs wiring. It explicitly did not prove that Android or iOS could build, install, launch, or avoid startup crashes.
+- Local Android SDK tooling is available at `~/Library/Android/sdk`, with `Pixel_9` AVD configured and `adb` available.
+- Local iOS simulator inventory is available through Xcode/CoreSimulator; the generated iOS workspace has the `OmaLeima` scheme and the native dependency graph includes recent modules such as `ExpoMediaLibrary`, `ExpoSharing`, `ExpoAudio`, and `react-native-view-shot`.
+- Simulators can reduce launch/crash/regression risk, but they still cannot prove camera behavior on real devices, Google OAuth callback behavior on physical iOS/Android, APNs/FCM remote push delivery, Photos permission UX, or real share-sheet behavior.
+
+## Current Review (Native Simulator QA Gate Consolidation)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Make the root mobile native simulator QA command run the executable Android/iOS launch smoke, not only static wiring checks.
+
+## Native Simulator QA Gate Consolidation Findings
+
+- `npm run qa:mobile-native-simulator-smoke` is the command most likely to be used from the repo root before release, but it previously stopped after lint/typecheck/export and `audit:native-simulator-smoke`.
+- The executable launch proof lived only in `npm --prefix apps/mobile run smoke:native-simulators`, so a final release pass could accidentally run the root QA command and miss real install/launch/crash validation.
+- Local Android and iOS simulator tooling already passed the executable smoke in the previous slice, so promoting that command into the root QA wrapper is practical in this workstation context.
+- The direct `smoke:native-simulators` command remains useful for repeating just the heavy native launch portion after a small native-config change.
+
+## Current Review (Mobile Stale Build Enforcement)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the stale build half of `REVIEW_RESULT.md` P1-8 and rely on the existing manual fallback runbook instead of implementing an unsafe offline scan queue.
+
+## Mobile Stale Build Enforcement Findings
+
+- `REVIEW_RESULT.md` P1-8 listed two concerns: scanner offline queue/manual fallback and stale build/force-update enforcement.
+- `docs/LAUNCH_RUNBOOK.md` already has a named manual fallback process for event-day scanning outages, including allowed cases, required fallback record fields, communication channel, and reconciliation ownership. An offline queue that later writes stamps would weaken QR freshness and duplicate/race guarantees unless backed by a separate reconciliation product.
+- The mobile app did not have a runtime minimum version/build gate. EAS remote app version source exists, but installed stale binaries could keep running unless the server can block them.
+- Expo Constants exposes source-of-truth app version and native build numbers for standalone builds. A Supabase public read table is enough for runtime enforcement without adding a new backend service.
+
+## Current Review (Production Test Checklist + Performance Gates)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Collect final production test cases in one durable checklist and close the next high-value `REVIEW_RESULT.md` performance finding.
+
+## Production Test Checklist + Performance Gate Findings
+
+- Production-before-release tests are currently spread across `PROGRESS.md`, `docs/TESTING.md`, `docs/LAUNCH_RUNBOOK.md`, and review handoffs. A single checklist file is needed so the final pass can be executed item by item without losing coverage.
+- `apps/mobile/src/features/events/student-events.ts` still loads every public `PUBLISHED`/`ACTIVE` event without a DB limit. Client-side timeline filtering removes ended rows after download, but the query itself can grow unbounded.
+- `send-announcement-push` already batches Expo Push API sends, but DB lookups for active profiles, preferences, device tokens, and club-wide registrations still use single `.in(...)` calls over potentially large recipient/event id arrays.
+- Mobile web export has no budget gate. A future dependency or top-level native import can inflate web output without CI noticing.
+- Public media buckets are intentionally public today. Supabase documents public bucket assets as directly accessible through public URLs, so the draft/unapproved media risk needs a separate private staging/publish-copy design rather than a cosmetic RLS-only patch.
+
+## Current Review (Mutation Rate Limit + Scanner PIN Lockout)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the next `REVIEW_RESULT.md` security blockers: authenticated admin/organizer mutation rate limiting and scanner PIN brute-force lockout.
+
+## Mutation Rate Limit + Scanner PIN Lockout Findings
+
+- Admin and organizer API mutation routes already resolve the authenticated user before performing writes, but each route makes its own mutation call and there is no shared per-user throttling after auth.
+- Public contact form rate limiting is DB-backed, but it is tied to contact submissions/IP hash and cannot be reused for authenticated dashboard mutation scopes.
+- A distributed rate limit should live in Postgres because serverless route instances cannot share in-memory counters reliably.
+- The scanner PIN check runs inside `scan_stamp_atomic`, which is the right atomic boundary. Wrong PIN currently returns `SCANNER_PIN_INVALID` without recording attempts or locking the device.
+- The mobile scanner transport and Edge Function already support structured scan statuses, so adding `SCANNER_PIN_LOCKED` can be done without changing the QR/token contract.
+
+## Current Review (Production Review Result Closure)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Work through `REVIEW_RESULT.md` findings sequentially, close the low/medium-risk release gates that can be fixed safely in this slice, and keep the report checklist updated.
+
+## Production Review Result Closure Findings
+
+- `audit:store-release-readiness` failed only because the audit still expected the old `import("expo-audio")` marker. The current source intentionally uses `requireOptionalNativeModule("ExpoAudio")` before requiring `expo-audio` so stale native builds do not red-screen.
+- `audit:realtime-readiness` failed because it expected `supabase.auth.signOut()` exactly. The current session provider uses `supabase.auth.signOut({ scope: "local" })`, which is the safer path for suspended profiles and invalid refresh-token cleanup.
+- The touch target findings were literal style values below 44pt/dp. These are safe style-only fixes.
+- Web focus indicators were mostly replaced by box-shadow, but `outline: none` still creates a WCAG review risk. Adding visible `:focus`/`:focus-visible` outlines preserves keyboard discoverability.
+- `bootstrap-showcase-events` could reset hosted data and inherited a default production Supabase project ref through shared auth-config helpers. Destructive hosted scripts must require explicit target refs and confirmations.
+- `supabase/seed.sql` creates predictable local test users. It should refuse to run in a database that already contains real/non-test auth users unless an explicit override is set.
+
+## Current Review (Student Event Detail Debug Rules + Announcement Push Tap)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Remove the leaked `screenshotMode true` technical rule from student event detail, align that screen with dark-only UI, and verify announcement push delivery/tap routing for admin and organizer announcements.
+
+## Student Event Detail Debug Rules + Announcement Push Tap Findings
+
+- Student event detail rendered every `event.rules` key/value pair directly. If an event contains technical keys such as `screenshotMode`, the UI shows raw implementation state like `screenshotMode true`.
+- The event detail stylesheet still had light/dark branches even though the app has been simplified to dark-only.
+- Announcement push is implemented through the shared `send-announcement-push` Edge Function. Admins can send platform announcements; organizers can send club announcements after active membership verification.
+- Push recipient filtering checks announcement audience/event scope, active profile status, announcement notification preferences, and enabled device tokens before sending Expo push.
+- Mobile notification tap routing is wired by `AnnouncementPushRouterBridge`, which reads cold-start notification responses and foreground/background response listeners, then opens the role-specific announcement detail screen.
+
+## Current Review (Stamp Card Cap + Empty Leima Reset)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the reported custom department tag duplicate redbox, prevent scans after an event stamp card is full, and clear hosted Supabase leima/test progress data for a fresh manual test pass.
+
+## Stamp Card Cap + Empty Leima Reset Findings
+
+- Student custom department tag creation still throws when `department_tags_slug_key` collides with a row the mobile client cannot load through the active-tag read path. This can happen when the slug exists but is hidden by status/RLS or when a previous duplicate is not in the active suggestions payload. The app should first attach a visible active/merged tag when possible, then retry with a suffixed slug instead of redboxing.
+- `scan_stamp_atomic` checks the per-business stamp limit before inserting, but it does not check the event card total before inserting. It only sets `event_registrations.completed_at` after the new stamp count reaches `events.minimum_stamps_required`. That means a card can show `3/3` and still accept a 4th valid stamp from another venue.
+- The hard cap must live inside the Postgres RPC before `qr_token_uses` and `stamps` inserts, not just in mobile UI. Otherwise replay/race/scanner-device paths can still write excess leimas.
+- Scanner UI and Edge Function response maps do not currently know a `STAMP_CARD_FULL` status, so the new DB status needs a localized business scanner message and transport tone.
+- The user confirmed current hosted data is disposable and local Docker is not a blocker. Hosted Supabase can be mutated directly, but only after the cap fix is applied so the next manual test starts clean.
+
+## Current Review (Mobile Runtime Recovery + Expanded Demo Accounts)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix reported mobile runtime errors for duplicate custom department tags, stale refresh tokens, and missing `ExpoAudio`; expand hosted demo event assignments; enforce OmaLeima as the default business logo.
+
+## Mobile Runtime Recovery + Expanded Demo Accounts Findings
+
+- Student custom department tag creation first reads active tags, then inserts. If another row with the same slug already exists outside that read window, Supabase returns `23505 department_tags_slug_key` and the app throws a redbox instead of attaching the existing tag.
+- `ExpoAudio` still redboxes on stale native builds because requiring `expo-audio` evaluates `AudioModule` and calls `requireNativeModule('ExpoAudio')`. A catch around `require` is not enough on React Native; the package must not be loaded until `ExpoAudio` is known to exist.
+- `SessionProvider` assumes `supabase.auth.getSession()` resolves to `{ data, error }`. Stale local refresh tokens can reject with `AuthApiError: Invalid Refresh Token: Refresh Token Not Found`, so the provider needs a catch path that clears local auth state without surfacing a crash.
+- The hosted demo dataset had 3 events. The user wants more student/business/organizer test coverage, so the seed should create additional active/upcoming events and join the current scanner business to all of them.
+- Business logos are optional in schema/UI, but the product now wants every business to default to the OmaLeima logo unless the business explicitly changes it.
+
+## Current Review (Store Screenshot Demo Reset + Stale Native Audio Guard)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the reported business scanner `ExpoAudio` runtime crash, align the mobile language icon treatment, and prepare a destructive-but-repeatable hosted Supabase demo reset/seed for App Store and Google Play screenshot capture.
+
+## Store Screenshot Demo Reset + Stale Native Audio Guard Findings
+
+- `safe-scan-feedback.ts` still dynamically imports `expo-audio`. In stale dev/native builds, the Expo module can throw `Cannot find native module 'ExpoAudio'` while the JS module is evaluated, before the action can recover cleanly.
+- Audio feedback must remain optional at runtime. QR scan success/error UX should never block stamp creation or scanner result rendering when the installed binary lacks the latest native module graph.
+- The shared mobile `LanguageDropdown` still wraps the globe icon in a lime circular background/border. Business profile preference rows use plain aligned icons, so the language row looks inconsistent.
+- Hosted Supabase contains only demo/non-real data per the user. Destructive cleanup of events, stamps/leimat, announcements, rewards, and leaderboard data is approved for this screenshot-prep task.
+- Screenshot data should preserve existing Auth users/profiles/business staff, assign the existing business and registered students into polished Finnish-culture demo events, and avoid creating unrecoverable account state.
+
+## Current Review (Full Release Readiness Review)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Purpose:** Deep release gate review for web production, Android Play Store, and Apple App Store/TestFlight readiness.
+
+## Full Release Readiness Review Surfaces
+
+- `apps/admin`: public website, admin dashboard, organizer dashboard, API routes, account creation, support replies, user lifecycle, locale/cookie/session behavior, image uploads, deletion flows, browser smoke scripts.
+- `apps/mobile`: student QR/rewards/community, business scanner/events/ROI/profile, organizer events/announcements/reports/profile/claims, native modules, consent/legal, push, camera, media/share/audio/haptics, store config and generated native resources.
+- `supabase`: migrations, RLS policies, RPC atomicity, Edge Functions, storage buckets, push/support functions, scan/reward/account lifecycle invariants.
+- `docs` and scripts: store-readiness audits, native smoke gates, launch runbook, physical-device test checklist, hosted/local smoke harnesses.
+
+## Full Release Readiness Review Risks
+
+- A route can typecheck/build while still failing click-path behavior, locale persistence, form post-state, or authenticated data visibility.
+- QR/stamp/reward flows need database-level race-condition proof; UI-level button hiding is not sufficient.
+- Native modules require fresh builds; source-level declarations do not prove installed binary behavior.
+- Apple/Google store readiness includes legal links, privacy manifests, icon/notification assets, permissions, OAuth behavior, and real-device camera/push/share/audio checks.
+- Hosted production readiness may diverge from local migration state; hosted schema checks must be read-only and explicit.
+
+## Full Release Readiness Review Existing Evidence
+
+- Latest `PROGRESS.md` says mobile QR feedback/icon audit validations passed, but physical device audio/haptic smoke remains open.
+- Previous handoffs record local seeded admin/club browser smoke passing, but hosted authenticated smoke remains credential-blocked.
+- Store readiness audit exists and has been strengthened over several slices; this review must verify that it still matches the current dependency/native config state.
+
+## Full Release Readiness Review Findings And Fixes
+
+- **Fixed admin password login trust boundary:** `/auth/password-session` no longer accepts browser-provided Supabase session tokens. It now validates Turnstile server-side, performs `signInWithPassword` on the server route, resolves admin access, and sets cookies only after those checks pass.
+- **Fixed scanner device bypass:** `scan-qr` now rejects business scanner requests with `SCANNER_DEVICE_REQUIRED` when no scanner device id is provided, so scanner PIN/device controls cannot be bypassed by sending `null`.
+- **Hardened suspended/deleted account access:** new release-gate migration tightens staff/helper functions and own-row RLS policies around `is_active_profile(auth.uid())`, and narrows public leaderboard visibility to public operational events.
+- **Hardened SECURITY DEFINER read functions:** `get_event_leaderboard` now ignores spoofed `p_current_user_id`, checks event visibility, and is not granted to anonymous callers; `get_latest_valid_stamp_by_events` is service-role only.
+- **Fixed admin user deletion lifecycle:** admin status updates to `DELETED` now also soft-delete the matching Supabase Auth user with `shouldSoftDelete = true`, revoking future Auth sessions while preserving relational history.
+- **Fixed stale student QR after successful scan:** student active QR refetches the QR token after stamp celebration, reducing the chance that a just-used QR stays visible until expiry.
+- **Closed dependency hygiene gap:** `expo-asset` was added and wired so Expo Doctor passes with the current Expo/native dependency graph.
+- **Fixed iOS native release compile blockers:** the Expo config plugin now patches generated Podfile RNScreens header search paths for ReactCodegen and aligns generated Xcode `ASSETCATALOG_COMPILER_APPICON_NAME` from stale `expo` to `AppIcon`. The store readiness audit now catches the stale icon compiler setting.
+
+## Remaining Release Gates
+
+- **Apple App Store public submission is not a clean yes yet:** the app uses Google-only student sign-in. Apple may require Sign in with Apple for public App Store review unless the flow qualifies for an exemption or Apple provider support is added.
+- **Physical-device smoke is still mandatory:** camera scanner, QR rotation, audio/haptic feedback, push delivery, Google OAuth, Photos/Gallery save, share sheet, screenshot protection, notification icons, and Android/iOS permission prompts cannot be fully proven from this terminal.
+- **Hosted production is not fully proven:** new Supabase migration and `scan-qr` Edge Function changes are local until deployed; hosted authenticated admin/organizer smoke still needs real staging/production credentials.
+- **Android device smoke is environment-blocked in this run:** `adb` has no connected devices. Previous Android release/audit gates pass from earlier slices, but this review did not complete a fresh physical-device scanner/OAuth/push smoke.
+- **Edge Function Deno typecheck is environment-blocked:** `deno` is not installed, so `scan-qr` was validated through TypeScript consumers and Supabase migration/lint gates, not Deno compile.
+
+## Current Review (Mobile QR Scan Feedback + Icon Completeness)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add polished success/error feedback when a QR scan results in a stamp, and complete missing mobile icon size assets/gates.
+
+## Mobile QR Scan Feedback + Icon Completeness Findings
+
+- Business scanner already maps `scan-qr` responses to `success`, `warning`, `danger`, and `neutral` tones in `scan-transport.ts`. `BusinessScannerScreen` displays these tones but does not play a sound or trigger result-level haptics after the Edge Function returns.
+- Student active QR screen already detects new valid stamps through Supabase Realtime plus stamp-count polling and opens the reward/stamp celebration overlay. This is the correct student-side moment to play the same success feedback after a venue scans the QR.
+- `expo-haptics` is already wrapped in `safe-haptics.ts`, but there is no equivalent safe audio wrapper. Adding top-level native audio imports would risk the same stale-dev-client red-screen class seen earlier with media/share modules, so audio must be dynamically loaded and best-effort.
+- `expo-audio` is the current Expo SDK 55 audio package. `expo install expo-audio` added the dependency, but the dynamic Expo config requires the plugin to be added manually.
+- Store icon assets currently cover iPhone and Android launcher sizes, but iPad store-size derivatives are missing from `assets/store-icons/apple`. Even though `supportsTablet` is false, keeping the complete App Store icon set helps asset handoff and audit confidence.
+- The store readiness audit validates core icon paths exist but does not verify the dimensions of the store handoff icon set. Missing or wrongly sized store icons could slip through.
+
+## Current Review (Mobile Community Club Detail Modal Scroll)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the student Community/Yhteisö club detail popup so long club details scroll inside the modal and audit related overflow risks in that surface.
+
+## Mobile Community Club Detail Modal Scroll Findings
+
+- `PublicClubDirectorySection` uses a transparent `Modal` with a centered custom sheet and an inner `ScrollView`, but the sheet is only given `maxHeight` and the `ScrollView` is not flex-constrained. With long contact fields, the sheet can grow visually toward the bottom tab area instead of forcing the content to scroll inside.
+- The modal sizing currently uses `windowHeight - 48` and does not account for safe-area top/bottom insets or the student tab bar region. On iPhones with a home indicator/tab bar, the sheet can sit under app chrome.
+- The close button is part of the scroll content. In a long modal it can move away after scrolling, making dismissal less reliable.
+- Website/email/Instagram/phone values can be very long. They currently render without `numberOfLines`/wrapping control in contact rows and can widen/heighten rows unexpectedly.
+- Contact press handlers use `selectedClub.contactEmail ?? ""` and normalized URLs from nullable values. They are guarded by render conditions, but the code can be clearer with non-null local constants.
+- Related mobile modal scan found other event/support modals already use `ScrollView` with bounded sheets or explicitly capped descriptions. The concrete overflow risk in this slice is the community club detail modal, plus false "no contact details" copy when website or Instagram exists but email/phone are empty.
+
+## Current Review (Mobile App Icon + Notification Branding)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Replace default Expo branding in iOS/Android app icons and Android notification icons with OmaLeima logo assets.
+
+## Mobile App Icon + Notification Branding Findings
+
+- The top-level Expo app icon already points to `./assets/images/icon.png`, which is the OmaLeima stamp logo.
+- iOS overrides the top-level icon with `ios.icon: "./assets/expo.icon"`. That folder contains `expo-symbol 2.svg`, so iPhone builds can still receive the default Expo icon.
+- Android adaptive icon foreground/background assets are OmaLeima-branded, but `android.adaptiveIcon.monochromeImage` points to `android-icon-monochrome.png`, which is currently an Expo-style caret symbol.
+- `expo-notifications` is configured with color and default channel only. Expo's notification config requires a 96x96 all-white PNG with transparency for a custom Android notification tray icon; otherwise Android may fall back to the app/default icon behavior.
+- Changing app icons and notification icons is native configuration. The fix must be followed by prebuild/EAS/native rebuild before it appears on installed devices.
+
+## Current Review (Admin Manual Organization Account Creation)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add an admin web manual organization/club account creation flow equivalent to the existing manual business owner account creation flow.
+
+## Admin Manual Organization Account Creation Findings
+
+- Manual business creation already has a good pattern: client form -> admin-only route handler -> service-role auth user creation -> atomic database RPC -> auth rollback on database failure.
+- Admin currently has no equivalent flow for creating a club/organization owner login and club membership from a full manual form.
+- The target database objects are `profiles`, `clubs`, `club_members`, and `audit_logs`. Creating these with separate client-side calls would risk partial state; the club/profile/member transition should be one RPC.
+- Existing profile eligibility rules from business creation should be mirrored: do not reuse an existing email; a freshly created profile must still be a plain `STUDENT` profile and must not already belong to business staff or club membership.
+- Organization profile fields already exist in the current schema: `clubs.name`, `slug`, `university_name`, `city`, `country`, `contact_email`, `phone`, `address`, `website_url`, `instagram_url`, and `announcement`.
+
+## Current Review (Native Share Guard + Organizer Profile Polish)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix reported leima-card save/share runtime crashes, make business active event details reliably scrollable, upgrade mobile organizer reports to the business ROI visual standard, and add organizer profile phone/address editing on web plus verify mobile wiring.
+
+## Native Share Guard + Organizer Profile Polish Findings
+
+- `student/active-event.tsx` dynamically imports `expo-sharing`, but old installed dev clients still throw `Cannot find native module 'ExpoSharing'` before the share action can recover. Sharing should use React Native's built-in `Share` path for this screen so old clients do not red-screen.
+- `react-native-view-shot` can expose capture through a named `captureRef` export or the default `ViewShot.captureRef`. The current destructuring assumes only the named export and can produce `captureRef is not a function`.
+- `expo-media-library` remains required for saving to Photos/Gallery. If the installed binary predates that native module, the UI must show an explicit "install latest build" error rather than crashing the route.
+- Business event detail modal already has a `ScrollView`, but the inner content has no safe bottom padding/min-height behavior for long descriptions under modal/tab overlays. The sheet needs a more conservative viewport height and scroll content padding.
+- Mobile organizer reports are still much plainer than business ROI: no icon hero, no explanatory metric cards, hard-coded `fi-FI` number formatting, and compact event rows rather than polished metric pills.
+- Mobile organizer profile already includes `phone` and `address` fields backed by `clubs.phone` and `clubs.address`.
+- Web organizer dashboard has no `/club/profile` page or profile edit form, so organizers cannot manage club phone/address from the web panel even though the database and mobile app support those fields.
+
+## Current Review (Hosted Club Contact + Native Share Build Gate)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Apply/verify the hosted club public contact migration, fix the reported `ExpoMediaLibrary` native-module crash path, refresh native build gates, and define the physical-device QR/share smoke checklist.
+
+## Hosted Club Contact + Native Share Build Gate Findings
+
+- Hosted Supabase project `jwhdlcnfhrwdxptmoret` now has `public.clubs.phone`, `address`, `website_url`, and `instagram_url` as nullable `text` columns. Runtime production reads are unblocked, but hosted migration history uses an earlier applied `club_public_contact_fields` version, so future migration reconciliation should not assume the exact local timestamp is the only remote marker.
+- The reported `Cannot find native module 'ExpoMediaLibrary'` crash is caused by a JS bundle importing new native modules while the installed iOS dev client/native binary predates those modules. A fresh native dev/preview/store build is required; Metro reload alone cannot add native modules.
+- `active-event.tsx` previously imported `expo-media-library`, `expo-sharing`, and `react-native-view-shot` at module top level. On older native binaries, that could red-screen the whole QR route before user-facing error handling ran.
+- The QR-to-LEIMA flip briefly made the QR side still visible while protection was already disabled. Screenshot prevention must stay active until the live QR face is gone.
+- QR generation and SVG query keys contained bearer/QR tokens. Even in memory-only query cache, secrets should not be part of query keys or long-lived cache identifiers.
+- Store readiness audit previously verified broad privacy/native policy but did not catch missing generated `ExpoMediaLibrary`, `ExpoSharing`, `react-native-view-shot`, or `NSPhotoLibraryAddUsageDescription` output, creating a false-green risk.
+- Physical share/save behavior still requires real devices. This machine currently shows no Android devices and two iPhones offline, so final Photos/Gallery/share-sheet/QR screenshot behavior must be completed by manual smoke after installing the new builds.
+
+## Current Review (Dashboard Locale + Claims Smoke + Student Reward Detail)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Run credentialed admin/organizer smoke where the environment allows it, verify `/club/claims`, fix dashboard locale switching, and move student event reward details into an obvious top-level gift action/modal.
+
+## Dashboard Locale + Claims Smoke + Student Reward Detail Findings
+
+- Dashboard locale switch currently writes a non-httpOnly cookie with `document.cookie` and then calls `router.refresh()`. The app also has `/api/dashboard-locale`, which writes the same cookie as httpOnly via a redirect. In practice the client-only cookie path can fail to affect the next server render in authenticated dashboard pages, matching the reported "loading but language does not change" behavior.
+- The existing `smoke:dashboard-browser` already signs in seeded admin and organizer users, clicks `/admin` and `/club` routes, and explicitly toggles locale on `/admin/users` and `/club/claims`. It is the right local click-smoke to run after the locale fix, provided local Supabase seed and the admin dev server are running.
+- `/club/claims` read-model includes operational events, claimable candidates, and recent claims. The browser smoke clicks the route but does not currently create a brand-new event; a data-level sanity check against the seeded/local DB is needed to confirm event visibility rules.
+- Physical-device/dev-client student/business smoke cannot be truthfully marked complete from the terminal alone. The repo can still be validated with Expo/web/type/lint and we should report the device requirement as a remaining manual gate if no device session is available.
+- Student event detail currently renders reward tiers inside the venue section and again inside the venue detail modal. This makes reward information feel buried at the bottom rather than discoverable near the event join/register intent.
+
+## Current Review (Mobile Student/Business UX Fix Pack)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the concrete mobile UX defects reported by the user across business event details, business ROI, student QR/pass behavior, profile language controls, community club details, and shareable leima card output.
+
+## Mobile Student/Business UX Fix Pack Findings
+
+- Business event preview is a `Modal` with a non-scrollable `modalContent`. Long event descriptions can extend below the viewport and cannot be scrolled, matching the screenshot.
+- Business ROI exists but reads like a raw metric dump: event rows mix English text (`stamps`, `unique students`, `repeat`) into Finnish sessions, raw status values are shown, and the cards do not explain what each metric means.
+- Student QR event hero has an effect that calls `scrollTo({ animated: true })` whenever the selected event index changes. That makes the rail slide automatically after selecting/swiping, while the user wants the selected event to stay stable without an automatic slider-like movement.
+- The shared `LanguageDropdown` has a plain row layout and lime standalone globe icon; it does not match the rounded icon-bubble treatment used by other profile preference rows.
+- The public club directory relies on a small icon-only info button over the image. The user reports it is not discoverable. The detail modal also shows only limited text and no large cover/logo presentation.
+- Sharing the QR itself would violate the product security model. Sharing the leima-card side is safe because it is a progress/social artifact, not an active QR token. Current dependencies do not include capture/share/media-library support, so implementing save/share requires adding project dependencies and store permission copy.
+
+## Current Review (Student/Business Mobile + Public Web Surface Sweep)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the student/business mobile and public-web review by fixing concrete user-facing presentation defects found in student event detail/reward surfaces, business event participation surfaces, and the public application/contact forms.
+
+## Student/Business Mobile Surface Sweep Findings
+
+- Student event detail handles the most common registration statuses, but several known RPC statuses (`AUTH_REQUIRED`, `ROLE_NOT_ALLOWED`, `EVENT_NOT_FOUND`, `EVENT_NOT_AVAILABLE`, `NOT_REGISTERED`, etc.) fall into a generic raw status-code message instead of a clear localized explanation.
+- Student event detail map failures can expose implementation details such as venue ids and generated Apple Maps URLs to the user.
+- Business event cards render `ACTIVE` joined events as `Live` even in Finnish sessions, while the rest of the app uses `Käynnissä`.
+- Business join/leave transport errors render raw technical messages in the error card. Status payloads are localized, but network/RPC transport failures are not.
+- Student reward progress shows `tier.rewardType.toLowerCase()`, which exposes enum values like `haalarimerkki`, `coupon`, or `entry` instead of polished FI/EN reward type labels.
+- Public `/apply` uses localized page content, but the client currently trusts server `responseBody.message` for failed business application submissions. That can show raw English operational messages such as `Validation failed.`, `Invalid request origin.`, `Submission rejected.`, `Verification failed.`, or `Could not create business application.` on the Finnish page.
+- Public `/apply` also forwards raw Zod field messages into field hints. These are technical English validation strings and should be replaced with existing localized field hints/error copy.
+- Public `/contact` already localizes top-level validation state, but 400 responses still copy server `fieldErrors` into field hints. Attachment validation and Zod messages can therefore show raw English text on Finnish contact pages.
+
+## Current Review (Mobile Organizer Announcement Notice Sweep)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix remaining organizer mobile announcement form notices that can display raw English transport/validation messages in Finnish sessions.
+
+## Mobile Organizer Announcement Notice Sweep Findings
+
+- `club-announcements` mutation functions intentionally return explicit English transport messages for create/update/archive/delete. The UI localizes success responses, but `NOOP` responses still render `result.message` directly.
+- `createActionNotice` in `club/announcements.tsx` currently displays raw `Error.message`, so common validation errors like invalid CTA URL, too-short title/body, invalid priority, or invalid date order are not localized.
+- The empty/loading club picker info card uses a fixed `Club` eyebrow even in Finnish sessions.
+
+## Current Review (Mobile Organizer Copy Consistency Sweep)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the admin/organizer review on mobile organizer event surfaces by fixing visible FI/EN copy inconsistencies and success/error notices without changing backend contracts.
+
+## Mobile Organizer Copy Consistency Sweep Findings
+
+- Mobile organizer home and event preview modal localize most timeline statuses, but `LIVE` still renders as `Live` in Finnish while nearby organizer screens already use `Käynnissä`.
+- Mobile organizer event create/update/cancel/delete mutations return English transport messages. The events screen currently renders `mutation.data.message` directly as a success notice, so Finnish sessions can show English success copy after organizer actions.
+- Non-success mutation payloads can also populate `mutation.data.message`; the current `latestMessage` calculation does not check `status === "SUCCESS"`, so an error payload can appear in the green success text area while the action notice shows an error.
+- Validation errors for common organizer form cases are localized, but ticket URL and not-allowed lifecycle errors can still fall through as raw English messages.
+
+## Current Review (Admin/Organizer Cross-Surface QA Sweep)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the broad admin/organizer review by fixing concrete issues found in web organizer smoke coverage and mobile organizer reports localization.
+
+## Admin/Organizer Cross-Surface QA Sweep Findings
+
+- Web dashboard browser smoke covers admin routes and most organizer routes but does not click the newly added `/club/reports` route, leaving the organizer report page outside the credentialed navigation regression path.
+- Mobile organizer `club/reports` shows localized page title/body, but event rows still render English metric nouns (`registered`, `stamped`, `venues`) in Finnish sessions.
+- Mobile organizer reports render raw event status values (`DRAFT`, `PUBLISHED`, `ACTIVE`, `CANCELLED`, `COMPLETED`) instead of user-facing localized status labels.
+- The broader QA gap that remains after code-level validation is credentialed physical/browser click-smoke: admin/organizer web forms and mobile organizer flows need real accounts/devices for final confidence.
+
+## Current Review (Web Login Legal Links + Dashboard Locale Polish)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add legal/social/support links to the admin login page, stop dashboard shortcut badges from covering card copy, fix visible Finnish/English mixups in admin and organizer web panels, and deploy the pending hosted Supabase report/re-engagement changes.
+
+## Web Login Legal Links + Dashboard Locale Polish Findings
+
+- Admin login already has public legal pages at `/privacy`, `/terms`, `/contact` and the public site uses `https://www.instagram.com/omaleima/`, so the login page can reuse existing public routes instead of introducing new destinations.
+- Dashboard shortcut cards use a three-column grid with icon/body/badge. On narrow cards and longer Finnish copy, the badge column can visually cover or squeeze the copy, as seen on the organizer fraud review card.
+- Organizer event rules builder contains hardcoded English labels and help text even when the panel locale is Finnish.
+- Dashboard shortcut badge suffixes are hardcoded in English (`open`, `ready`, `listed`, `live`, `official`, `clubs`, `tiers`) while card titles/descriptions are already localized, producing mixed-language cards.
+- Admin and organizer sidebar item labels are defined as static English navigation arrays/functions; route content may be localized while the shell navigation remains English in Finnish sessions.
+- The previous ticket URL/report/re-engagement slice was locally validated but still needs hosted Supabase migration/function deployment if credentials and remote migration state allow it.
+
+## Current Review (Ticket URL + Organizer/Business Reports)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add a generic event ticket URL, professional organizer reporting on web/mobile, business ROI reporting, and stronger post-event re-engagement without hard-coding Kide or inventing revenue facts.
+
+## Ticket URL + Organizer/Business Reports Findings
+
+- `events` has no ticket URL field today; event create/update flows exist in admin web and organizer mobile, while student event detail is the right consumer surface for a generic external ticket link.
+- Organizer dashboards already aggregate registrations, venues, stamps, reward tiers, and claims, but those queries are operational/recent views rather than durable report read models.
+- Business mobile history is scanner-user scoped. ROI reporting should be business scoped for managers and should remain hidden from scanner-only staff unless the product explicitly expands scanner permissions.
+- Existing fact tables can support honest ROI indicators: valid scans, unique scanned students, joined events, repeat visits, scanner activity, reward claims, and post-event engagement. There is no payment/revenue/cost source, so monetary ROI must not be fabricated.
+- Announcements already provide localized title/body, CTA, popup/feed/push delivery, device preferences, and delivery audit. The missing piece for stronger post-event recall is event-scoped targeting, so only registered students for a specific event receive the follow-up.
+- Event-scoped announcement visibility and push targeting must be enforced server-side/RLS-side, not only by UI filters, otherwise private event participation can leak.
+- Report queries should avoid client-side N+1 fan-out as data grows. Scoped SECURITY DEFINER RPCs with explicit authorization checks are the cleanest source-of-truth for web and mobile.
+
+## Current Review (Business Onboarding + Organizer Profile Exit)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Remove the business home profile shortcut, add organizer mobile profile sign-out, and introduce a first-run business onboarding slider that can be reopened from the business profile.
+
+## Business Onboarding + Organizer Profile Exit Findings
+
+- Business home currently has a top-right `Avaa profiili / Open profile` button beside sign-out. The user wants this removed; profile remains accessible from the business bottom tab.
+- Organizer/club profile imports settings, support, legal links, and language/theme controls but does not expose the shared `SignOutButton`.
+- Business profile already imports `SignOutButton`, `LegalLinksModal`, `LanguageDropdown`, and has a preferences card, making it the right place for a "show onboarding again" action.
+- Existing mobile assets already include project-bound raster onboarding visuals (`omaleima-qr-checkpoint`, `omaleima-leima-pass`, `bar-friends`). Per the named `imagegen` skill guidance, using these existing workspace assets is safer than generating new temporary images unless a new visual is strictly needed.
+- SecureStore is already used for mobile consent and preferences. A per-user business onboarding key can make the popup one-time without touching Supabase schema or server state.
+
+## Current Review (Mobile/Admin Runtime Fix Slice)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix repeated mobile `onAnimatedValueUpdate` warnings, remove redundant push-ready profile copy, complete admin-created business profile fields, and make organizer event deletion visible from mobile.
+
+## Mobile/Admin Runtime Fix Findings
+
+- Mobile still has app-owned React Native `Animated` surfaces using the native driver. The previous navigation route fix reduced one source, but custom native-driver animations can still emit the warning; hiding it with `LogBox` would only mask the runtime signal.
+- Student profile shows both a registered-push sentence and the right-side `Ready` pill. The sentence is redundant once registration is complete.
+- Admin manual business creation accepts `ownerName`, but the RPC only writes it to `profiles.display_name` and `business_applications.contact_name`; mobile business profile reads `businesses.contact_person_name`, so the responsible person appears empty.
+- `businesses.y_tunnus` already exists and mobile reads it, but the admin manual account form/API/RPC do not expose or populate it.
+- Organizer mobile event deletion exists only for draft events in the list action sheet. The edit modal can show Edit/Cancel without an explicit Delete action, so organizers do not see how to remove a just-created draft. Published/active events still must be cancelled instead of hard-deleted to preserve registrations, stamps, claims, and audit history.
+
+## Current Review (Android Release Smoke + Hosted Login Content Gate)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue App Store/Google Play preflight with Android release runtime smoke and hosted mobile login slide content hygiene.
+
+## Android Release Smoke + Hosted Login Content Gate Findings
+
+- Android SDK tools exist under `~/Library/Android/sdk`, but `adb` is not on shell `PATH`. Using the SDK-local binary unblocks emulator QA without changing global machine configuration.
+- `Pixel_9` AVD boots successfully and the locally assembled release APK installs on `emulator-5554`.
+- The release APK launches without crash-buffer entries. The first screen shows the one-time privacy modal, and tapping `Accept and continue` reaches the mobile login screen.
+- The hosted active mobile login slide currently renders placeholder copy (`Test` / `Life is good when you mute`) in the release app. This is not a code crash, but it is a real public-launch/store-review content risk because screenshots/reviewers see hosted data.
+- `audit:store-release-readiness` currently validates static repo legal/build/native gates but does not query hosted active mobile login slide content. It can pass while production login hero content is still placeholder.
+
+## Current Review (iOS Native Release Sync Gate)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the App Store/Google Play preflight by proving the generated iOS native project stays aligned with Expo source-of-truth privacy declarations and can compile in Release for simulator.
+
+## iOS Native Release Sync Gate Findings
+
+- XcodeBuildMCP discovers `/apps/mobile/ios/OmaLeima.xcworkspace`, the `OmaLeima` scheme, and enabled iOS simulators, so a local iOS compile gate is now feasible.
+- `apps/mobile/app.config.ts` now declares app-level `ios.privacyManifests`, but the current generated `apps/mobile/ios/OmaLeima/PrivacyInfo.xcprivacy` still has an empty `NSPrivacyCollectedDataTypes` array. A local Xcode archive/build from this stale generated project would not reflect the App Store privacy disclosure source-of-truth until prebuild runs.
+- `apps/mobile/ios` is ignored, so the tracked fix must be a regression gate plus docs, not relying on committed generated iOS files.
+- The existing `audit:store-release-readiness` only checks Expo config for iOS privacy coverage. It should also check the generated native privacy manifest when the generated iOS project exists locally.
+- The generated iOS Pods lockfile can keep stale nested module paths after Expo package changes. This caused the first Release simulator build to fail on an old nested `expo-auth-session/node_modules/expo-crypto` path until `pod install` regenerated the Pods graph, so the audit should catch that stale path when local generated Pods exist.
+- Expo Dev Client local-network Info.plist keys can remain in the final Release simulator app because Expo's generated stripping phase runs before `ProcessInfoPlistFile` in this workspace. Store/profile builds need an explicit source-of-truth config plugin that removes `NSBonjourServices` and `NSLocalNetworkUsageDescription` while preserving development builds.
+- iOS Always/background location permissions are not part of the current scanner product requirement. The app should request only When In Use location for event-day fraud review, and the store-readiness audit should fail if Always/background location keys reappear.
+- App Store Connect privacy labels and Sign in with Apple remain store-console/provider decisions outside this repo-owned native sync gate.
+
+## Current Review (Store Permission Hygiene Sweep)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the pre-store release review with Codex Security, Expo, iOS, Android, and ECC guidance; patch repo-owned native policy issues that can be fixed without store-console credentials or physical devices.
+
+## Store Permission Hygiene Sweep Findings
+
+- Android `app/src/main/AndroidManifest.xml` currently includes `android.permission.SYSTEM_ALERT_WINDOW`. The app does not need overlay windows for student QR, scanner, organizer, support, or push flows, and Google Play treats this permission as sensitive/high-friction unless it is core functionality.
+- Expo config does not block `SYSTEM_ALERT_WINDOW`, so prebuild/native regeneration can reintroduce the permission even if the checked-in manifest is edited manually.
+- Android `allowBackup` is currently `true`. The app stores session/role/scanner identifiers in device storage; Play submission is cleaner and safer when Android cloud/device backup is disabled for this app surface.
+- The existing `audit:store-release-readiness` gate checks identity, assets, legal links, and EAS setup, but it does not yet enforce Android sensitive-permission hygiene or backup posture.
+- Expo public config can still surface `android.permission.RECORD_AUDIO` through image/camera package defaults even though the checked-in native manifest removes it. OmaLeima does not use microphone capture, so microphone permission should also be blocked at Expo config source-of-truth level.
+- iOS Info.plist includes Expo Dev Launcher local-network keys in the checked-in development native project, but Expo Dev Launcher has a release build phase that strips its own `_expo._tcp` Bonjour service and default local-network description from non-Debug builds. That remains a release-build verification item, not a source-code patch target for this slice.
+- Expo Doctor passes 17/18 checks, but fails dependency validation because 19 Expo SDK 55 packages are behind the patch versions expected by the installed SDK. These should be aligned with Expo's resolver before store builds.
+- Physical Android/iOS camera, OAuth, and push proof still require a running emulator/device or store credentials. This slice must report those as environment blockers rather than marking them complete.
+
+## Current Review (iOS Privacy Manifest Source-Of-Truth)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue store readiness by moving iOS app-level collected-data disclosure into Expo config and making the repo audit catch regressions.
+
+## iOS Privacy Manifest Source-Of-Truth Findings
+
+- Apple's official privacy manifest documentation says apps should record collected data types in the bundled privacy manifest. The current generated `ios/OmaLeima/PrivacyInfo.xcprivacy` has `NSPrivacyCollectedDataTypes` as an empty array.
+- OmaLeima collects app-functional account/contact data, support content, scanner location proof, uploaded business/club images, push-device identifiers, and event/leima/reward interaction records. The empty collected-data array is therefore not a good App Store readiness posture.
+- The generated `ios/` folder is ignored in this repo, so directly editing `ios/OmaLeima/PrivacyInfo.xcprivacy` would not be a reliable source-of-truth for EAS builds.
+- Expo SDK 55 supports `ios.privacyManifests` in `app.config.ts`; that is the correct source-of-truth for prebuild/EAS generation.
+- The existing `audit:store-release-readiness` gate checks privacy policy text and in-app links, but it does not yet verify the native iOS privacy manifest collected-data coverage.
+
+## Current Review (Mobile Login Slider Target Fix)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Move admin-managed login slider rendering from the web admin login page to the mobile login hero, and restore the web admin login visual to its static fallback.
+
+## Mobile Login Slider Target Fix Findings
+
+- `/admin/login-slides` correctly manages `public.login_slides` records and `login-slider-media` images, but `/login` in the admin web app calls `fetchActiveLoginSlidesAsync`, so the managed slider currently appears on the web admin login page.
+- The mobile login hero still renders only `copy.auth.onboardingSlides` with local fallback cover images, so admin-created mobile login slides never appear in the app.
+- `login_slides` RLS already allows public reads for active slides, so mobile can safely query active records with the publishable Supabase client without adding a new API route.
+- The web admin login can restore the previous default visual by passing `loginSlideFallbackRecords` directly instead of querying active DB records.
+- Mobile should keep local onboarding slides visible when no active DB slides exist, but a query failure must be explicit in UI rather than silently hiding the problem.
+
+## Current Review (Dashboard Browser Smoke Coverage)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add a credentialed local browser smoke for admin/organizer dashboard navigation and locale switching, using the existing seeded accounts and Playwright smoke helpers.
+
+## Dashboard Browser Smoke Coverage Findings
+
+- Existing route smokes prove protected routes return expected HTTP statuses, but they do not click sidebar links, sign-out, or the new client-side dashboard locale switch in a real browser.
+- The existing browser smoke helper still waits for the old login hero heading text. Admin-managed login slides intentionally change this copy, so the stable assertion should target the password panel heading instead.
+- Dashboard browser smokes expect English route titles, while dashboard locale defaults to Finnish when the locale cookie is absent. The helper should set the non-sensitive dashboard locale cookie to English before password sign-in so existing browser smokes are deterministic.
+- ECC `browser-qa` and `e2e-testing` guidance both point to a small, repeatable credentialed click-path smoke rather than another static/code-only audit.
+
+## Current Review (Supabase Lint + Local QA Hygiene)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Remove the remaining local Supabase lint warning and align local QA guidance with the CLI/version path that successfully applies the current migration chain.
+
+## Supabase Lint + Local QA Hygiene Findings
+
+- `npx --yes supabase@2.98.2 db lint --local` reports one warning: `public.create_business_owner_access_atomic` declares `v_owner_profile` and only uses it as a `SELECT INTO` existence lock target.
+- The legacy owner-access route and Edge Function are already fail-closed/deprecated, but the RPC still exists in the schema for compatibility. The safest cleanup is a behavior-preserving corrective migration that replaces the unused row variable with `PERFORM ... FOR UPDATE`.
+- Older Supabase CLI `2.90.0` cannot reliably parse parts of the current migration chain. The working local path is Supabase CLI `2.98.2` with `migration up --local`, Auth container restart when needed, and direct `seed.sql` replay.
+- `docs/TESTING.md` still presents `supabase db reset --yes` as the only baseline path. In this workstation, that path can hang during service bootstrap, so the docs should include the pinned incremental setup as the recommended local smoke path while leaving clean reset as a stronger isolated option.
+
+## Current Review (Local Migration Parser Unblock)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Unblock local Supabase migration application so admin route smoke can run against the current schema.
+
+## Local Migration Parser Unblock Findings
+
+- Local Supabase DB is behind the current migration files: direct DB inspection shows no `public.login_slides`, no `login-slider-media` bucket, and no migration records after `20260506001000`.
+- `supabase migration up --local` stops at `20260506072253_business_scanner_qr_provisioning.sql` with `cannot insert multiple commands into a prepared statement`.
+- The failing statement starts at `provision_business_scanner_device_atomic` and includes the following `grant` plus the next function definition, which indicates the CLI did not split the custom dollar-quoted function body correctly.
+- Converting custom function quote tags to plain `$$` was not enough. This Supabase CLI version still grouped the `CREATE FUNCTION` with the following `GRANT` and next function definition.
+- The safest reproducible fix is to leave each parser-fragile `CREATE FUNCTION` as the final command of its migration file and move the related grants/next function into immediately following timestamped migrations.
+- The same parser pattern appears in `20260506082728_create_business_owner_access_atomic.sql`, where the function and following grant are grouped into one prepared statement. It needs the same split without changing the owner-access function logic.
+- Running migrations with Supabase CLI 2.98.2 fixes the prepared-statement parser issue, but `20260506142000_restrict_anon_security_definer_mutations.sql` assumes optional helper `public.rls_auto_enable()` exists. Fresh local DBs do not define that function, so its revoke/grant must be guarded by `to_regprocedure`.
+- `supabase/seed.sql` assumes a newer Auth schema with `email_confirmed_at`, `email_change_token_new`, phone-change columns, and `auth.identities`. The current local self-hosted Auth schema uses `confirmed_at` / `email_change_token` and has no `auth.identities`, so seed users are not created after a fresh local rebuild.
+
+## Current Review (Smoke Auth Env Bootstrap)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Make local admin auth smoke load app-local environment before importing modules that validate `NEXT_PUBLIC_SUPABASE_*`.
+
+## Smoke Auth Env Bootstrap Findings
+
+- `smoke:auth` imports `resolveAdminAccessByUserIdAsync` before calling `process.loadEnvFile?.(".env.local")`.
+- The imported access module reaches `src/lib/env.ts`, which immediately parses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- When the script is run from repo root with `npm --prefix apps/admin run smoke:auth`, the env parse happens before the script loads `apps/admin/.env.local`, causing a Zod error instead of the intended auth smoke.
+- Static imports execute before top-level code, so moving `process.loadEnvFile` above the static import in the same file is not sufficient. The access import must be delayed until after env loading.
+
+## Current Review (PostCSS Advisory Hardening)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Address dependency audit findings that can be fixed without risky framework downgrades or broad package churn.
+
+## PostCSS Advisory Hardening Findings
+
+- `npm --prefix apps/admin audit --audit-level=high` exits successfully for high severity, but reports a moderate PostCSS advisory through `next -> postcss <8.5.10`.
+- `npm --prefix apps/mobile audit --audit-level=high` also exits successfully for high severity, but reports the same moderate PostCSS advisory through Expo Metro tooling.
+- `npm audit fix --force` suggests breaking framework changes (`next@9.3.3` or `expo@49.0.23`), which is not acceptable for a production Next 16 / Expo 55 app.
+- The safer fix is to use npm `overrides` in each workspace package to force the transitive `postcss` package to a patched compatible version, then regenerate the relevant package locks and re-run audit/type/lint gates.
+
+## Current Review (Route Smoke Harness Guard)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Make the local admin route smoke fail clearly when prerequisites are missing instead of reporting misleading app route failures.
+
+## Route Smoke Harness Guard Findings
+
+- `smoke:routes` signs in local seeded accounts (`admin@omaleima.test`, `organizer@omaleima.test`, `student@omaleima.test`) and is documented as a local Supabase + local Next.js smoke.
+- When the local Next.js app is not running on `ADMIN_APP_BASE_URL`, the script proceeds into authenticated route assertions and fails with `Expected ... /admin to return 200, got 404`. That reads like an application route regression even though the real issue is missing/wrong local app target.
+- The script also does not guard against accidentally pointing this local seeded-account smoke at a hosted app or hosted Supabase URL. Hosted smoke already has a separate script with explicit `STAGING_ADMIN_EMAIL` credentials.
+- The smallest safe improvement is a preflight that verifies `/login` returns `200`, plus local-host guards for both `ADMIN_APP_BASE_URL` and `NEXT_PUBLIC_SUPABASE_URL`.
+
+## Current Review (Release Gate Security Hardening)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue the next practical release gate by running repo-owned mobile/web/security checks and patching confirmed high-risk gaps without broad refactors.
+
+## Release Gate Security Hardening Findings
+
+- Mobile repo-owned release/readiness audits are green for store legal links, realtime wiring, hosted business scanner wiring, native push device wiring, reward notification bridge, and native simulator wiring.
+- Admin hosted smoke that requires private credentials is environment-blocked (`STAGING_ADMIN_EMAIL` is missing). Admin route smoke also cannot prove authenticated pages without a running seeded target, so code-level review remains the reliable path for this slice.
+- The old web `create-owner-access` API now returns `410 OWNER_ACCESS_FLOW_DEPRECATED`, but `review-transport.ts` still contains a helper that can invoke the legacy `admin-create-business-owner-access` Edge Function.
+- The legacy Edge Function still creates or reuses an owner account and can generate a Supabase recovery link. That conflicts with the chosen manual account creation flow and should be made fail-closed if it is still deployed anywhere.
+- Login slide image URLs are admin-managed and rendered inside CSS background images. Announcement validation already restricts URLs to `http`/`https`, but login slide validation currently accepts any Zod-valid URL scheme.
+
+## Current Review (Dashboard Navigation Latency)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Find and reduce the 2-3 second perceived delay when switching admin/organizer dashboard pages or changing dashboard language.
+
+## Dashboard Navigation Latency Findings
+
+- `/admin` and `/club` layouts already call `resolveAdminAccessAsync` to protect the route, and most child pages call the same access resolver again to populate `DashboardShell`. This duplicates Supabase Auth/profile/membership work in the same navigation request.
+- Organizer pages usually call `fetchClubEventContextAsync`, which calls `resolveAdminAccessAsync` again even though the route layout already verified the same session.
+- Dashboard language switching currently goes through a server `GET /api/dashboard-locale` route, writes a cookie, redirects back to the current page, and then performs the normal page render. That adds an avoidable network request and redirect before the actual localized render starts.
+- The dashboard locale cookie is not sensitive data. It can be updated from a small client control and followed by `router.refresh()`, preserving the server-rendered localized dashboard while avoiding the redirect hop.
+
+## Current Review (Organizer Mobile Actions + Localized Login Slides)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix organizer mobile event delete visibility, align small mobile controls, and make admin-login slider content truly admin-managed and locale-aware.
+
+## Organizer Mobile Actions + Localized Login Slides Findings
+
+- Organizer mobile event action-sheet delete is gated only by `event.status === "DRAFT"`, while the screen's visible operational state is also represented by `timelineState`. Draft-like events can therefore show edit while hiding the safe draft delete action.
+- The circular `+` buttons in organizer events and announcements use a text glyph with a short line-height, so the font baseline makes the plus appear visually off-center inside the circle.
+- The reusable mobile language dropdown renders its own bordered card inside profile preference cards. This creates a nested-border misalignment compared with the neighboring preference rows.
+- Admin login slides are stored as a single copy set (`eyebrow`, `title`, `body`, `image_alt`). The login page cannot choose Finnish vs English text, and the admin form cannot enter translations.
+- Existing login-slide rows and fallback copy must remain readable while the new localized columns roll out, so the read-model needs backward-compatible mapping from legacy columns to localized fields.
+
+## Current Review (Release Smoke + Cookie Consent Persistence)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Run the repo-owned release checks that do not require real app-store consoles, physical devices, or private credentials, and fix the public website cookie consent accept-all persistence issue.
+
+## Release Smoke + Cookie Consent Persistence Findings
+
+- Production browser smoke confirms the `Hyväksy kaikki` button click hides the cookie banner for the current render, but reloading `https://omaleima.fi/` shows the banner again.
+- The cookie banner initializes visibility from `readInitialCookieConsent()`, which returns `null` during server render because `document` is unavailable. The component does not re-read `document.cookie` after client mount, so the hydrated state can keep showing the banner even after a valid cookie was written.
+- The fix should not move consent logic to a server component because the footer settings event and cookie preference UI are client-only. A mount-time client cookie read is the smallest reliable correction.
+- Credentialed admin/organizer web actions and real iOS/Android camera, push, OAuth, and store-console checks remain outside what can be fully completed without credentials/devices, but static/build/audit and unauthenticated browser smoke can be completed here.
+
+## Current Review (Mobile Privacy Modal + Language Dropdown + Organizer Edit Route)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Move mobile privacy/terms acknowledgement out of bottom inline cards into modal-style access, convert mobile language switching to dropdown controls, and make organizer upcoming-event edit navigation open the event edit form reliably.
+
+## Mobile Privacy Modal + Language Dropdown + Organizer Edit Route Findings
+
+- Login currently renders the legal acknowledgement as an inline `InfoCard`, and login/profile surfaces render legal links at the bottom. This satisfies visibility, but it creates persistent bottom legal UI instead of the requested one-time/needed popup behavior.
+- The mobile login screen uses two language chips. Role profile screens also open language selection through the preferences modal. The requested UX is a direct dropdown, so language switching should be centralized in a reusable mobile preference control.
+- Organizer upcoming preview routes to `/club/events` with an `eventId`, and the events screen tries to open edit mode from route params. The route-param handling is too narrow and only accepts a plain string, so tab reuse/array params can leave the form closed even though navigation succeeded.
+- The event preview shows edit whenever `canManageEvent` is true. Completed or cancelled events should remain read-only on the preview surface to avoid routing into a non-editable state.
+
+## Current Review (Organizer Delete + Media Cleanup + Login Slides)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add organizer-mobile delete actions for events and announcements, ensure replaced uploaded images remove their previous owned bucket object, and let platform admins manage the admin-login visual slider content without a deploy.
+
+## Organizer Delete + Media Cleanup + Login Slides Findings
+
+- Organizer mobile announcements currently expose edit/archive only. The web side already supports hard announcement deletion with owned `announcement-media` cleanup, so the mobile organizer surface is missing the same destructive action.
+- Organizer mobile events expose edit/cancel only. Event rows can have registrations, stamps, claims, and fraud/audit history, so physical deletion must be limited to safe draft/no-history cases; operational published/live events should keep cancel semantics instead of breaking historical references.
+- Mobile image upload helpers upload new event, announcement, club, and business images but do not remove the previous owned object after a successful replacement save. This can leave orphaned files in Supabase Storage.
+- Admin-side announcement and event update flows also replace public image URLs without deleting the previous owned storage object. Delete flows remove some images, but replacement cleanup is not consistently centralized.
+- The admin login page visual panel is static copy/image styling in code. There is no database-backed slider model, admin CRUD page, or upload bucket dedicated to login slider media.
+
+## Current Review (Mobile Haptics Crash Fix)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Finding:** Organizer event creation used direct `Haptics.impactAsync` and `Haptics.notificationAsync`; the current iOS build reports these native methods as unavailable, so the promise rejection surfaced as a redbox after event creation.
+- **Scope checked:** Direct `expo-haptics` usage across `apps/mobile/src`. The only remaining direct native import is now `features/foundation/safe-haptics.ts`, which catches unavailable native module failures.
+- **Validation:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, and `rg "expo-haptics|Haptics\\." apps/mobile/src` passed with only the safe wrapper matching.
+
+## Current Review (Full Surface QA Sweep)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Full control/logic audit for admin web, organizer web, student mobile, organizer mobile, and business/scanner mobile.
+
+## Full Surface QA Sweep Findings To Verify
+
+- Web has many route-level smoke scripts, but most authenticated production controls still need either credentialed browser smoke or code-level verification because unauth route guards only prove access protection.
+- Mobile audit scripts are mostly wiring/static checks. They are useful release gates, but they do not prove physical camera scan, real push delivery, OAuth, or device-specific navigation behavior.
+- The current worktree contains many prior slice changes. This sweep must avoid reverting unrelated changes and should use scoped diff checks for touched files.
+- Five subagents are running read-only surface audits so implementation decisions should wait for concrete findings, unless local validation exposes a failure first.
+
+## Full Surface QA Sweep Outcome
+
+Completed. Five read-only subagents audited admin web, organizer web, student mobile, organizer mobile, and business/scanner mobile. Critical confirmed findings were fixed and validated: unsafe announcement CTA schemes, selected-event claim queue slicing, deleted reward-tier restore, student QR retry and focus-scoped capture protection, push registration `apikey`, unreachable event map action, organizer mobile non-success mutation handling, staff read-only event previews, announcement success reset, revoked claim suppression, scanner route-param selection loop, scanner location proof, PIN camera gating, and inactive business scan gating. Web production, `scan-qr`, and the hosted reward-tier restore trigger were deployed. Remaining larger follow-up work is tracked as scale/localization/device-smoke debt rather than a blocker for this sweep.
+
+## Current Review (Claims/Fraud/Announcement/Reward Delete Lifecycle)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Verify organizer reward claim surfaces, explain fraud review behavior, fix announcement push feedback, and add real delete actions for announcements and reward tiers.
+
+## Claims/Fraud/Announcement/Reward Delete Lifecycle Findings
+
+- Club reward claims selection currently changes `selectedEventId`, but the selected event card is not visually distinct and the selected button still looks clickable. Clicking the already selected event therefore appears to do nothing even though the right-side queue/history is already scoped to that event.
+- Recent claims and event queue are both filtered by `effectiveSelectedEventId`, so the data model is correct; the UX needs clearer selected-state behavior and selected-event copy.
+- Fraud review is real but narrow: the current automatic fraud signal generator only creates `SCANNER_DISTANCE_ANOMALY` after a successful stamp insert when scanner latitude/longitude is more than 300m away from the business coordinates. Review actions call `review_fraud_signal_atomic`, which locks the signal, checks platform admin or event manager access, writes `REVIEWED`, `CONFIRMED`, or `DISMISSED`, and records audit metadata.
+- Announcement push preference filtering can produce "All announcement recipients have disabled this push source." This is technically possible when every resolved active recipient has an explicit disabled preference, but the UI message does not tell the operator what to do next or distinguish disabled preferences from missing device tokens.
+- Announcements support archive only. The table and related impressions/acknowledgements are safe to hard-delete because dependent announcement tables use `on delete cascade`; the owned bucket image should be deleted first or the route should fail before removing the DB row.
+- Reward tiers cannot be hard-deleted once claim history exists because `reward_claims.reward_tier_id` references `reward_tiers(id)` without cascade. A real product delete action should be a dedicated `DELETED` status that hides the tier from catalogs and claim calculations while preserving reward claim history.
+
+## Claims/Fraud/Announcement/Reward Delete Lifecycle Outcome
+
+Made the selected reward-claims event visually and behaviorally obvious, with the selected card highlighted and the already-selected button disabled. Added fraud-review explanatory copy for admin and organizer views so operators know the current detector is scanner-distance anomaly review, not broader ML/fingerprint detection. Improved announcement push failure copy for disabled preferences and no-token states. Added an announcement delete route/client/UI action that verifies access, removes an owned `announcement-media` object when present, then deletes the announcement. Added a reward-tier `DELETED` status plus trusted RPC/route/UI action, and exposed the reward management page under `/admin/rewards`, so delete is explicit for admin and organizer users while claim history remains intact.
+
+## Current Review (Admin List Scale + Support Reply Push)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add admin-side internal pagination/search, make support replies notify mobile users, and choose the safest admin account deletion behavior.
+
+## Admin List Scale + Support Reply Push Findings
+
+- `/admin/users` renders the full user snapshot and has no search/status/role controls. The read-model also has a hidden `.limit(500)`, so large datasets can silently disappear from admin management.
+- Mobile support and contact submission panels already have filtering/search, but both render every filtered record in the left column. With many rows the page grows too long and detail review becomes hard to use.
+- Admin support replies are saved to `support_requests.admin_reply` and mobile support history can show them, but no push notification is sent to the sender's registered devices.
+- Hard-deleting a Supabase Auth/profile user would cascade through profile-owned operational rows such as device tokens, support requests, department tags, registrations, stamps, or reward-related history depending on table relationships. That is too risky for leima auditability and fraud/accounting retention.
+- `profiles.status = 'DELETED'` already exists as a blocked status. The safest admin-side delete action is therefore a soft delete/anonymization that revokes access and removes personal profile fields while preserving operational event/leima history.
+
+## Admin List Scale + Support Reply Push Outcome
+
+Add reusable internal pagination controls, use them in users/support/contact panels, and add search plus role/status filters to `/admin/users`. Remove the hidden 500-profile cap by paging the read-model. Extend the trusted admin status RPC so `DELETED` performs an atomic soft delete/anonymization, disables memberships/device tokens, removes profile department tags, and writes audit metadata without storing deleted personal email. Add a support-reply push Edge Function and invoke it after admin replies so enabled mobile devices receive an Expo push even when the app is closed.
+
+## Current Review (Admin Operations Reliability + User Management)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix reported admin/public-form bugs, stabilize dashboard locale persistence, and add admin-owned account creation/status management.
+
+## Admin Operations Reliability + User Management Findings
+
+- Public `apply` form captures `event.currentTarget` only after the async request when resetting the form. The API can insert the application successfully, then the client-side reset can throw and show the generic error even though the application row exists.
+- Department tag merge can fail with `PROFILE_DEPARTMENT_TAG_TAG_MERGED` because the merge sync trigger updates source-tag profile links after the source tag has already been marked `MERGED`. The validation trigger then sees the old source tag as merged and aborts the merge.
+- Dashboard locale switching uses a side-effecting `GET /api/dashboard-locale` behind a Next `<Link>`. Next prefetch can call the route without an intentional click, which explains language flipping between Finnish and English while navigating.
+- `/club/department-tags` does not pass the resolved dashboard locale to its shell/panel and the panel has hardcoded English copy, so the organizer surface is especially inconsistent.
+- The current owner access flow creates/reuses a user and returns a Supabase recovery link. That link is not a good admin-facing account handoff because the admin cannot choose the password or confirm the full business/account payload.
+- `profiles.status` already gates admin/mobile access, but mobile does not currently subscribe to profile status changes. A suspended active session therefore needs a realtime profile subscription to sign out immediately.
+- `protect_profile_sensitive_fields` correctly blocks normal clients from changing `profiles.status`; admin status changes must use a trusted service-role route after verifying the platform admin session.
+
+## Admin Operations Reliability + User Management Outcome
+
+Fix the false apply-form error by retaining the form element before async work. Replace the department tag sync trigger with a merge-safe order that removes duplicate source links before promoting the target tag. Disable prefetch on the locale switch and pass locale through the missing organizer page/panel. Add a manual business account form that lets platform admins create the business profile, owner auth user, owner profile role/status, and membership with an explicit password. Add an admin users page with role/status/business/club membership visibility and active/suspended actions backed by a service-role route. Add a mobile realtime profile-status watcher that signs out immediately when the current profile is no longer `ACTIVE`.
+
+## Current Review (Store Legal Links + Transient Form Success)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the next repo-owned App Store / Google Play compliance gaps and make public form success feedback return to the form automatically.
+
+## Store Legal Links + Transient Form Success Findings
+
+- Apple App Review Guideline 5.1.1 requires an easily accessible in-app privacy policy link. The public website already has `/privacy` and `/terms`, but the mobile app does not expose those legal links directly on the login/profile surfaces.
+- Apple account deletion guidance requires apps with account creation to let users initiate account deletion in-app. The support sheet already includes an account/data deletion request template, but the store readiness audit does not verify that privacy/terms links are visible in-app.
+- Google Play account deletion requirements require both an in-app deletion path and a functional web resource for account/data deletion requests. The privacy notice has deletion wording, but the store audit should also verify a prominent web deletion request path.
+- Public `contact` and `apply` forms currently replace the entire form with a success panel after submission. That prevents immediately sending another message/application and does not match the requested transient success behavior.
+- Several admin/club action panels use persistent inline success messages. The most visible action notices can share a small three-second success-only auto-clear hook without changing error persistence.
+
+## Store Legal Links + Transient Form Success Outcome
+
+Add a reusable mobile legal-links card that opens the existing privacy and terms URLs from login and signed-in profile surfaces. Keep account deletion initiation in the existing support flow, and make the store-readiness audit verify both in-app legal links and the web deletion-request resource. Change public contact/apply form success from a replacement screen to inline feedback that clears after three seconds while the reset form stays visible. Add a shared transient success hook for high-visibility admin/mobile action notices; keep error states persistent.
+
+## Current Review (Admin Login Crash Recovery)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the production admin panel crash after password login and recover browsers stuck behind stale Supabase auth cookies.
+
+## Admin Login Crash Recovery Findings
+
+- Vercel production logs for the screenshot digest `3902826288` show `/admin` crashing while loading reviewed business applications.
+- The failing query embeds `profiles(email)` from `business_staff`, but `business_staff` has multiple foreign keys to `profiles` (`user_id` and `invited_by`), so PostgREST cannot infer which relationship to use.
+- The login lockout is caused by Supabase returning `Invalid Refresh Token: Refresh Token Not Found` in the Next proxy. The proxy currently throws for that stale-cookie state instead of clearing the invalid session cookies.
+- A stale browser session should be treated as an expired local session, not as a server crash. Real unexpected Supabase errors should still throw with context.
+- Student auth should stay Google-only for now. Sign in with Apple is not mandatory for development or private testing, but it remains a likely public iOS App Store review blocker when Google is offered as the only third-party account login.
+
+## Admin Login Crash Recovery Outcome
+
+Use an explicit `business_staff.user_id -> profiles.id` relationship in the admin business application read-model, and make the Supabase proxy expire stale auth cookies before redirecting to `/login?session=expired`. Do not add Apple login in this slice; keep it as a documented launch risk until the user explicitly chooses to implement it.
+
+## Current Review (Store Compliance + Leima Limit Semantics)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Clarify same-venue multi-leima behavior and close the smallest repo-owned App Store / Google Play readiness gaps.
+
+## Store Compliance + Leima Limit Findings
+
+- Current scan backend already treats `stampPolicy.perBusinessLimit` as a total same-business/same-venue allowance, not a per-scan multiplier. One successful QR scan creates one `stamps` row, and the next valid leima requires a fresh, unused QR token.
+- This product rule is safer than bulk-granting several leimat from one QR because each leima remains separately auditable by timestamp, scanner account/device, event venue, and fraud location metadata.
+- Organizer/student/scanner copy says "same venue limit" but does not consistently explain that staff must scan once per leima until the configured limit is reached.
+- The mobile store readiness audit is green for Expo/EAS repo wiring, but it does not prove policy readiness. The current mobile app uses Google login for primary student accounts; Apple App Review Guideline 4.8 means iOS public submission needs Sign in with Apple or an equivalent privacy-preserving login option unless a narrow exception applies.
+- The mobile app has account-based features and in-app account creation/sign-in. Google Play account deletion policy and Apple privacy policy requirements make an in-app or linked account deletion initiation path necessary.
+- The public privacy notice currently focuses on website/pilot enquiries and does not fully describe mobile app account data, QR/stamp/reward data, device tokens, camera/photo/location permissions, or account deletion request handling.
+
+## Store Compliance + Leima Limit Review Outcome
+
+Keep the scan invariant unchanged: one accepted scan records one leima; configured limits require repeated fresh QR scans. Add visible copy to organizer/student/scanner surfaces so the behavior is not ambiguous. Add a discoverable in-app support template for account/data deletion requests and expand public legal copy/docs/audit checks so store readiness no longer hides the account-deletion/privacy-policy requirements. Track Sign in with Apple as a separate required iOS public-launch auth slice, not as a rushed patch inside this copy/compliance slice.
+
+## Current Review (Mobile Runtime Warning Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Remove frequent mobile runtime warnings for WebCrypto PKCE downgrade and native animated value updates.
+
+## Mobile Runtime Warning Findings
+
+- The mobile Supabase client is configured with `flowType: "pkce"`, but React Native does not expose a browser-compatible `crypto.subtle.digest` by default.
+- Supabase Auth warns that WebCrypto is not supported and falls back from SHA-256 PKCE challenge generation to `plain`. That is noisy and weaker than the intended auth flow.
+- `expo-crypto` is already compatible with Expo SDK 55 and exposes native digest/random helpers, but the app does not install it as a direct mobile dependency or bridge it to `globalThis.crypto`.
+- The `onAnimatedValueUpdate` warning is emitted by React Native native animated updates when navigation/tab animated values update without a registered JS listener. The app has multiple Expo Router `Tabs`/`Stack` layouts without explicit `initialRouteName`, which is a known trigger pattern for React Navigation animated navigation state warnings.
+
+## Mobile Runtime Warning Review Outcome
+
+Add a small native-only crypto bridge before Supabase client creation so PKCE can use SHA-256 through Expo Crypto instead of falling back to `plain`. Also make root, student, business, club, and nested event navigators declare explicit initial routes to avoid native animated value updates for ambiguous first navigation state. Do not suppress warnings globally.
+
+## Current Review (Announcement Partial Push Retry)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix announcement push retry semantics when previous delivery was `FAILED` or `PARTIAL`.
+
+## Announcement Partial Push Findings
+
+- `send-announcement-push` currently checks all `SENT`/`READ` announcement notifications and blocks the entire request if any successful row exists for the announcement.
+- The admin/club panel already advertises that `PARTIAL` push delivery can be retried, but the Edge Function returns `ANNOUNCEMENT_ALREADY_SENT` before failed recipients can be retried.
+- Notifications are stored one row per user delivery attempt, not one row per device token. A successful retry for a previously failed user creates a new `SENT` row while the older `FAILED` row remains.
+- The admin read-model currently treats any mix of success and failure rows for an announcement as `PARTIAL`, so old failed rows keep the UI partial even after the same user later succeeds.
+- Legacy or manually inserted announcement notification rows may have `user_id = null` because the schema allows it. Those rows cannot be retried user-by-user and must not be ignored as `NOT_SENT`.
+
+## Announcement Partial Push Review Outcome
+
+Make retry user-scoped: initial send still targets the full resolved audience, but subsequent sends target only users with previous `FAILED` rows and no later `SENT`/`READ` row for the same announcement. Update the admin delivery-status rollup so success wins over older failures for the same user, while failures for users that never succeeded still keep the announcement `PARTIAL` or `FAILED`. Treat null-user legacy rows as visible delivery attempts in the read-model and block safe retry in the Edge Function rather than risking a duplicate full-audience resend.
+
+## Current Review (Auth Role Entry Cleanup)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Continue with the next logical auth/role UX slice and remove the admin-panel Google login affordance.
+
+## Auth Role Entry Findings
+
+- Admin login renders both Google OAuth and password login, but the admin/club web panel is not a student entry point. Showing Google there invites students into a route where access guards will reject them.
+- Mobile `session-access` currently resolves a single area with fixed priority: business, then club, then student. A user with multiple active roles can only use the highest-priority mobile area and gets redirected away from the others.
+- Layout guards already trust `useSessionAccessQuery`, so the smallest safe fix is to make that query role-preference aware instead of adding bypasses to every layout.
+- Scanner-only business sessions must stay pinned to scanner/business mode; they should not show or honor a role switcher.
+
+## Auth Role Entry Review Outcome
+
+Remove Google OAuth from the web admin login panel and keep password + Turnstile. On mobile, add a persisted role-area preference, expose available areas from `session-access`, and add a compact switch card to the role home screens so multi-role users can deliberately move between student, business, and club areas.
+
+## Current Review (Mobile Reward Claim Flow)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the next high-impact mobile gap by adding organizer-side reward handoff confirmation and clearer student handoff guidance.
+
+## Mobile Reward Claim Findings
+
+- The backend already has a safe reward handoff path: `supabase/functions/claim-reward` calls `claim_reward_atomic`, and the latest migration binds non-service callers to the authenticated actor.
+- Web organizer/admin already uses the same atomic RPC through `/api/club/reward-claims/confirm`, but mobile organizer surfaces only aggregate claimed/reward counts and cannot confirm a ready student reward.
+- Student mobile rewards derive `CLAIMABLE` tiers correctly, but the UI stops at "ready for staff handoff" and does not give the student a clear "show this to staff" ticket tied to the masked student label used by organizer claim queues.
+- The existing database model records confirmed handoff only. There is no pending claim request table, so adding a fake request queue would be broader product/schema work and should not be part of this slice.
+
+## Mobile Reward Claim Review Outcome
+
+Reuse the existing claim model: add a mobile club claims screen that computes claimable candidates from registrations, reward tiers, valid stamps, and existing claims, then confirms via the existing `claim-reward` Edge Function. On the student rewards card, surface a simple handoff ticket for claimable tiers using the same masked student id convention. Do not add a new pending/request state.
+
+## Current Review (Critical Pre-Release Fixes)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Apply the first minimal fixes from the deep web/mobile/security audit.
+
+## Critical Pre-Release Findings
+
+- Several SECURITY DEFINER RPCs trust actor UUID parameters more than the current database actor. `claim_reward_atomic` must bind non-service callers to `auth.uid() = p_claimed_by`; business application review and scanner provisioning RPCs are already reached through service-role Edge Functions, so direct authenticated execution can be removed.
+- Public child-table RLS policies expose event venues, reward tiers, and leaderboard rows without re-checking parent event visibility. Registered students also need a safe way to read their own non-public event context after registration.
+- Mobile scanner calls `scan-qr` without the Supabase publishable `apikey` header, unlike `generate-qr-token`; hosted/local function gateways can reject that shape before the Edge Function logic runs.
+- Student QR and reward queries filter registered events to `visibility = PUBLIC`, which drops registered private/unlisted events from the flows that should continue after registration.
+- Business event opportunities are cross-joined by membership without checking city, so venues can see irrelevant joinable events outside their city.
+- Club staff can reach the organizer events page and see edit/cancel controls for events they cannot manage. Backend/RLS should block writes, but the UI should not invite impossible actions.
+
+## Critical Pre-Release Review Outcome
+
+Implement small, evidence-backed fixes only: one Supabase migration for actor binding/grants/RLS scope, targeted mobile query/header/status fixes, city-scoped business opportunities, and organizer edit-control gating. Larger feature gaps like mobile reward-claim UX and full multi-role switching remain separate product work.
+
 ## Current Review (Pre-Release Code Review Refactor Sweep)
 
 - **Date:** 2026-05-06
@@ -1894,3 +2810,78 @@ Apply a focused mobile UI polish. Replace invalid MaterialIcons names with glyph
 ## Student Density Review Outcome
 
 Use short tab copy (`News`) for the student updates tab while leaving the Community screen title intact. Remove the large pre-QR progress cards and surface stamp/tier counts as compact QR footer metadata. Simplify leaderboard to title, event selector, statuses, standings, and current-user position by dropping redundant descriptive text.
+## Current Review (Admin Mobile Support Inbox + Replies)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Show student, business, and organizer mobile support messages in the admin panel, let platform admins reply safely, and make replies visible back in the sender's mobile support history.
+
+## Admin Support Existing Logic Checked
+
+- Mobile support requests already write to `public.support_requests` with `area` values `STUDENT`, `BUSINESS`, and `CLUB`.
+- Mobile support history already reads `admin_reply` and displays it as the support answer, but there is no admin inbox UI for these rows.
+- `support_requests` RLS allows active platform admins to manage rows, while student/business/club users can only create and read their own permitted requests.
+- Current admin mutation routes verify the browser session with `resolveAdminAccessAsync`, then use service-role RPCs for privileged atomic writes.
+- `support_requests` is not yet in the realtime publication, so a sender would normally see a reply only after reopening/refetching support history.
+
+## Admin Support Risks
+
+- Reply writes must not be client-only admin updates; server-side admin access and active profile status must be verified before mutation.
+- The sender relationship can be student, business staff, or club staff; the admin inbox must display missing/deleted business or club targets without crashing.
+- Replies must update the same `support_requests` row because the mobile app already treats `admin_reply` as the answer source of truth.
+- Realtime publication must be idempotent and must not break local environments where `supabase_realtime` is absent.
+- API validation must reject empty replies and invalid statuses with actionable errors instead of silently succeeding.
+
+## Admin Support Review Outcome
+
+Implement a focused admin support inbox. Add a security-definer RPC that locks the support request, verifies the admin actor, writes `admin_reply`, updates status/resolution timestamps, and records an audit log. Add an admin page with filters/search/detail/reply form backed by a route-handler mutation. Add `support_requests` to Supabase realtime and subscribe the mobile support sheet to invalidate support history when a reply changes.
+
+## Current Review Outcome (Full Surface QA Sweep)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope checked:** Admin web, organizer web, student mobile, organizer mobile, and business/scanner mobile via five read-only subagents plus local validation.
+- **Fixed:** Announcement CTA URL validation now reuses the absolute URL parser and only stores `http`/`https`; organizer claims visible rows are capped per event instead of globally; deleted reward tiers are blocked from restore in code and hosted DB trigger; student QR retries after no-data/error and QR screen-capture protection is focus-scoped; push registration sends the Supabase `apikey`; student event cards expose the map action; organizer mobile event mutations treat non-`SUCCESS` domain statuses as errors; staff-only club members see read-only event previews instead of edit CTAs; organizer announcement reset preserves success notice; revoked reward claims no longer suppress mobile claim candidates; business scanner route params are consumed once, PIN-required devices disable camera reads until PIN is entered, scanner location is sent when permission is granted, inactive businesses are filtered client-side and rejected by the deployed `scan-qr` function.
+- **Validation:** Admin `typecheck`, `lint`, and `build` passed. Mobile `typecheck`, `lint`, `export:web`, `audit:realtime-readiness`, `audit:hosted-business-scan-readiness`, `audit:native-push-device-readiness`, `audit:reward-notification-bridge`, and `audit:store-release-readiness` passed. Production smoke: `/` `200`, `/login` `200`, unauth `/admin` and `/club/claims` `307 /login`.
+- **Deployment:** Vercel production deploy `dpl_5wxDeKEq5LNbuxeiFEk5YUzT9Rnh` is aliased to `https://omaleima.fi`. Supabase `scan-qr` Edge Function was deployed to `jwhdlcnfhrwdxptmoret`; hosted `prevent_deleted_reward_tier_restore` trigger exists.
+- **Residual risks:** Authenticated browser click-through and physical iOS/Android camera/push tests still require real admin/organizer/business/student accounts and devices. `supabase db push --linked` is blocked by remote migration ids missing locally, so the hosted reward-tier restore guard was applied with targeted SQL and should be reconciled with migration history later. Some scale/localization P2 items remain for the next slice: server-side pagination for admin users/support/contact, fraud queue pagination, older organizer list caps, and remaining hardcoded card labels.
+
+## Current Review (Cookie Consent + Public SEO)
+
+- **Date:** 2026-05-06
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Add professional cookie/app-data consent on web and mobile, update legal copy where needed, and strengthen public SEO/AI-search discoverability without touching unrelated admin or event logic.
+
+## Cookie/SEO Existing Logic Checked
+
+- Public web already has privacy and terms pages, contact/apply form consent checkboxes, root metadata, sitemap, robots, and landing page JSON-LD for organization/website.
+- The public privacy notice currently says there is no analytics or marketing-cookie layer, but there is no visible preference banner or settings entry point for users.
+- Web auth uses essential Supabase/session cookies; non-essential tracking must remain disabled unless explicitly accepted later.
+- Mobile already exposes legal links on login/profile surfaces and stores preferences in `expo-secure-store`, but first-run login is not gated by a privacy/app-data acknowledgement.
+- Public landing copy is relevant to OmaLeima's real product, but SEO can be improved with stronger canonical/alternate coverage, application/service structured data, FAQ-style extractable content, and a visible cookie settings control.
+
+## Cookie/SEO Risks
+
+- A cookie banner must not imply optional analytics exists if it is not actually loaded, and it must not set optional cookies before consent.
+- Users must be able to reopen and change cookie settings; accepting once cannot be a dead-end.
+- Mobile wording should not pretend native app storage is browser cookies, but it should clearly cover local storage, push/camera/device identifiers, privacy notice, and terms before login.
+- Login buttons should be disabled until the mobile acknowledgement is stored, while already authenticated redirect behavior should remain unchanged.
+- SEO metadata and structured data must describe the current pilot/product truthfully and avoid overclaiming consumer purchases, app-store availability, or unsupported features.
+
+## Current Review (Organizer + Business Finnish Sales Decks)
+
+- **Date:** 2026-05-07
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Create two separate Finnish puhekieli presentation decks: one for event organizers/student clubs and one for businesses/venues considering OmaLeima participation/subscription.
+
+## Organizer + Business Sales Deck Findings
+
+- OmaLeima must be positioned as digital infrastructure for Finnish student event culture, not as a generic QR app.
+- The organizer buyer cares about appropassi pain, live event control, duplicate prevention, reward handoff, and easy pilot rollout.
+- The business buyer cares about fast staff scanning, student footfall visibility, repeatable event participation, and less queue friction.
+- `omaleima-pictures` was not present as a separate directory; the matching project-provided/generated assets live under `apps/admin/public/images/public`, `apps/admin/public/images/website-generated`, `apps/mobile/assets/event-covers`, and `docs/presentations/assets/partner-fi`.
+- Existing generated/project images are sufficient for both decks; no new logo, pseudo-brand mark, fake UI, or invented metric is needed.
+
+## Organizer + Business Sales Deck Review Outcome
+
+Build two editable PPTX files with Presentations artifact-tool: `docs/presentations/omaleima-organizer-presentation-fi.pptx` and `docs/presentations/omaleima-business-presentation-fi.pptx`. Keep copy conversational Finnish, use dark OmaLeima/lime visual language, use project image assets only, and keep all essential copy as editable slide text.

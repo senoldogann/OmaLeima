@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 
 import { z } from "zod";
 
-export const defaultProjectRef = "jwhdlcnfhrwdxptmoret";
 export const previewSiteUrl = "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app";
 export const customDomainSiteUrl = "https://admin.omaleima.fi";
 
@@ -61,7 +60,9 @@ export const readProjectRef = (environmentVariableName: string): string => {
     return overrideProjectRef.trim();
   }
 
-  return defaultProjectRef;
+  throw new Error(
+    `Missing ${environmentVariableName}. Pass the target Supabase project ref explicitly so hosted/production scripts cannot run against the wrong project.`
+  );
 };
 
 export const readSupabaseAccessToken = (): string => {

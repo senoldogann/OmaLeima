@@ -18,6 +18,7 @@ import type {
   ClubRewardClaimActionState,
   ClubRewardClaimConfirmPayload,
 } from "@/features/club-claims/types";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type RewardClaimCandidateCardProps = {
   candidate: ClubClaimCandidateRecord;
@@ -47,6 +48,12 @@ export const RewardClaimCandidateCard = ({ candidate, locale }: RewardClaimCandi
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [isPending, setIsPending] = useState<boolean>(false);
 
   const handleConfirmAsync = async (): Promise<void> => {
@@ -72,7 +79,7 @@ export const RewardClaimCandidateCard = ({ candidate, locale }: RewardClaimCandi
     } catch (error) {
       setActionState({
         code: "REQUEST_ERROR",
-        message: error instanceof Error ? error.message : locale === "fi" ? "Tuntematon palkinnon luovutusvirhe." : "Unknown reward claim request error.",
+        message: error instanceof Error ? error.message : locale === "fi" ? "Palkinnon vahvistuksessa tapahtui tuntematon virhe." : "Unknown reward claim request error.",
         tone: "error",
       });
     } finally {
@@ -98,7 +105,7 @@ export const RewardClaimCandidateCard = ({ candidate, locale }: RewardClaimCandi
         </p>
 
         <label className="field">
-          <span className="field-label">{locale === "fi" ? "Luovutusmuistiinpanot" : "Handoff notes"}</span>
+          <span className="field-label">{locale === "fi" ? "Luovutushuomiot" : "Handoff notes"}</span>
           <textarea
             className="field-input field-textarea"
             disabled={isPending}
@@ -113,7 +120,7 @@ export const RewardClaimCandidateCard = ({ candidate, locale }: RewardClaimCandi
         </label>
 
         <button className="button button-primary" disabled={isPending} onClick={() => void handleConfirmAsync()} type="button">
-          {isPending ? (locale === "fi" ? "Vahvistetaan..." : "Confirming...") : locale === "fi" ? "Vahvista luovutus" : "Confirm handoff"}
+          {isPending ? (locale === "fi" ? "Vahvistetaan\u2026" : "Confirming...") : locale === "fi" ? "Vahvista luovutus" : "Confirm handoff"}
         </button>
         {renderActionState(actionState)}
       </div>

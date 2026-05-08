@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { resolveAdminAccessByUserIdAsync } from "@/features/auth/access";
-
 process.loadEnvFile?.(".env.local");
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,6 +76,7 @@ const createAuthedClient = async (email: string, password: string) => {
 };
 
 const run = async (): Promise<void> => {
+  const { resolveAdminAccessByUserIdAsync } = await import("@/features/auth/access");
   const output: string[] = [];
 
   for (const smokeCase of smokeCases) {

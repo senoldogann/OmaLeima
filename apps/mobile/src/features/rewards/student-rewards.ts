@@ -240,7 +240,6 @@ const fetchRewardEventsAsync = async (eventIds: string[]): Promise<EventRow[]> =
     .select("id,name,city,cover_image_url,start_at,end_at,status,minimum_stamps_required")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
-    .eq("visibility", "PUBLIC")
     .returns<EventRow[]>();
 
   if (error !== null) {

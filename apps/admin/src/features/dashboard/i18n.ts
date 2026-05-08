@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { dashboardLocaleCookieName } from "@/features/dashboard/locale-cookie";
 import type { DashboardNavItem } from "@/features/dashboard/types";
 
 export type DashboardLocale = "en" | "fi";
@@ -18,8 +19,6 @@ type DashboardPageCopy = {
   subtitle: string;
   title: string;
 };
-
-const dashboardLocaleCookieName = "omaleima-dashboard-locale";
 
 const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<string, DashboardPageCopy>>> = {
   en: {
@@ -40,13 +39,29 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
         subtitle: "Review public contact form messages, update their status, and open private attachments.",
         title: "Contact submissions",
       },
+      "/admin/support-requests": {
+        subtitle: "Review mobile support requests from students, businesses, and organizers, then answer in-app.",
+        title: "Mobile support",
+      },
+      "/admin/users": {
+        subtitle: "Review student, business, organizer, and admin profiles, then activate or passivate accounts safely.",
+        title: "Users",
+      },
       "/admin/department-tags": {
         subtitle: "Merge duplicate department tags into canonical labels or block low-quality tags without leaving the admin area.",
         title: "Department tags",
       },
+      "/admin/login-slides": {
+        subtitle: "Update the admin login page slider images and text without a code deploy.",
+        title: "Login slides",
+      },
       "/admin/oversight": {
         subtitle: "Track platform-wide clubs, events, audit activity, and fraud signals from one operational surface.",
         title: "Platform oversight",
+      },
+      "/admin/rewards": {
+        subtitle: "Manage reward tiers across platform events, including safe deletion that preserves claim history.",
+        title: "Reward tiers",
       },
     },
     club: {
@@ -74,6 +89,14 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
         subtitle: "Review event-scoped fraud warnings, confirm real issues, or dismiss false positives after checking the scan context.",
         title: "Fraud review",
       },
+      "/club/reports": {
+        subtitle: "Review event performance, reward flow, and post-event re-engagement results from one organizer reporting surface.",
+        title: "Reports",
+      },
+      "/club/profile": {
+        subtitle: "Update public club contact details and organizer profile information shown across OmaLeima.",
+        title: "Organizer profile",
+      },
       "/club/rewards": {
         subtitle: "Manage event reward thresholds, stock visibility, and claim handoff instructions from one organizer surface.",
         title: "Reward tiers",
@@ -83,57 +106,81 @@ const pageCopyByLocale: Record<DashboardLocale, Record<"admin" | "club", Record<
   fi: {
     admin: {
       "/admin": {
-        subtitle: "Valvo koko alustan tarjontaa, tarkista yrityshakemukset ja pidä tapahtumien eheys yhdessä näkymässä.",
+        subtitle: "Valvo koko alustan toimintaa, käsittele yrityshakemukset ja seuraa tapahtumien tilaa yhdessä näkymässä.",
         title: "Kojelauta",
       },
       "/admin/announcements": {
-        subtitle: "Julkaise koko alustan sisäisiä viestejä ennen push-jakelun ja lukukuittausten laajennusta.",
+        subtitle: "Julkaise sovelluksen sisäisiä tiedotteita kaikille käyttäjille.",
         title: "Tiedotteet",
       },
       "/admin/business-applications": {
-        subtitle: "Käsittele avoimet yrityshakemukset samalla admin-hyväksyntävirralla, jota backend käyttää.",
+        subtitle: "Tarkista ja hyväksy tai hylkää avoimet yrityshakemukset.",
         title: "Uudet hakemukset",
       },
       "/admin/contact-submissions": {
         subtitle: "Tarkista julkisen yhteydenottolomakkeen viestit, päivitä tila ja avaa yksityiset liitteet.",
         title: "Yhteydenotot",
       },
+      "/admin/support-requests": {
+        subtitle: "Tarkista opiskelijoiden, yritysten ja järjestäjien mobiilista lähettämät tukipyynnöt ja vastaa sovellukseen.",
+        title: "Mobiilituki",
+      },
+      "/admin/users": {
+        subtitle: "Tarkista opiskelija-, yritys-, järjestäjä- ja admin-profiilit sekä aktivoi tai passivoi käyttäjiä turvallisesti.",
+        title: "Käyttäjät",
+      },
       "/admin/department-tags": {
-        subtitle: "Yhdistä päällekkäisiä opiskelualojen tageja tai estä heikkolaatuiset tagit admin-näkymästä.",
-        title: "Ainejärjestötagit",
+        subtitle: "Yhdistä päällekkäisiä opiskelualojen tunnisteita tai estä heikkolaatuiset tunnisteet tästä näkymästä.",
+        title: "Opiskelualojen tunnisteet",
+      },
+      "/admin/login-slides": {
+        subtitle: "Päivitä admin-login-sivun sliderin kuvat ja tekstit ilman koodijulkaisua.",
+        title: "Login-slidet",
       },
       "/admin/oversight": {
-        subtitle: "Seuraa klubeja, tapahtumia, auditointia ja fraud-signaaleja yhdestä operointinäkymästä.",
+        subtitle: "Seuraa klubeja, tapahtumia, valvontahistoriaa ja väärinkäyttösignaaleja yhdestä näkymästä.",
         title: "Alustan valvonta",
+      },
+      "/admin/rewards": {
+        subtitle: "Hallinnoi tapahtumien palkintotasoja ja poista tasoja turvallisesti säilyttäen lunastushistoria.",
+        title: "Palkintotasot",
       },
     },
     club: {
       "/club": {
-        subtitle: "Hallinnoi klubin tapahtumia, palkintovirtaa ja järjestäjän moderointinäkymiä yhdessä paikassa.",
+        subtitle: "Hallinnoi klubin tapahtumia, palkintoja ja järjestäjän toimintoja yhdessä paikassa.",
         title: "Järjestäjän näkymä",
       },
       "/club/announcements": {
-        subtitle: "Julkaise lyhyitä sovelluksen sisäisiä päivityksiä opiskelijoille ja klubin henkilökunnalle.",
+        subtitle: "Julkaise lyhyitä tiedotteita opiskelijoille ja klubin henkilökunnalle.",
         title: "Tiedotteet",
       },
       "/club/claims": {
-        subtitle: "Vahvista fyysinen palkinnon luovutus kelpoisille opiskelijoille paljastamatta ylimääräisiä profiilitietoja.",
+        subtitle: "Vahvista palkinnon luovutus opiskelijoille, joiden leimaraja on täyttynyt.",
         title: "Palkintojen luovutus",
       },
       "/club/department-tags": {
-        subtitle: "Julkaise viralliset opiskelualojen tagit yhteisöllesi, jotta opiskelijat näkevät ensisijaiset nimet.",
-        title: "Opiskelualojen tagit",
+        subtitle: "Julkaise viralliset opiskelualojen tunnisteet yhteisöllesi niin, että opiskelijat näkevät ne ensimmäisenä.",
+        title: "Opiskelualojen tunnisteet",
       },
       "/club/events": {
         subtitle: "Luo tapahtumaluonnoksia aktiivisille klubeille ja jatka paikkoihin, palkintoihin ja tapahtumapäivän valmisteluun.",
         title: "Klubin tapahtumat",
       },
       "/club/fraud": {
-        subtitle: "Tarkista tapahtumakohtaiset fraud-varoitukset ja merkitse todelliset ongelmat tai virhehälytykset.",
-        title: "Fraud-tarkistus",
+        subtitle: "Tarkista tapahtumakohtaiset väärinkäyttöilmoitukset ja merkitse todelliset ongelmat tai virhehälytykset.",
+        title: "Väärinkäyttötarkistus",
+      },
+      "/club/reports": {
+        subtitle: "Seuraa tapahtumien tuloksia, palkintovirtaa ja tapahtuman jälkeisiä kutsuja yhdessä raporttinäkymässä.",
+        title: "Raportit",
+      },
+      "/club/profile": {
+        subtitle: "Päivitä OmaLeimassa näkyvät klubin julkiset yhteystiedot ja järjestäjäprofiili.",
+        title: "Järjestäjän profiili",
       },
       "/club/rewards": {
-        subtitle: "Hallinnoi tapahtumien palkintorajoja, varastosaatavuutta ja luovutusohjeita yhdestä järjestäjänäkymästä.",
+        subtitle: "Hallinnoi tapahtumien palkintorajoja, varastomääriä ja luovutusohjeita.",
         title: "Palkintotasot",
       },
     },
@@ -147,13 +194,19 @@ const navLabelByLocale: Record<DashboardLocale, Record<string, string>> = {
     "/admin/business-applications": "Business applications",
     "/admin/contact-submissions": "Contact submissions",
     "/admin/department-tags": "Department tags",
+    "/admin/login-slides": "Login slides",
     "/admin/oversight": "Platform oversight",
+    "/admin/rewards": "Reward tiers",
+    "/admin/support-requests": "Mobile support",
+    "/admin/users": "Users",
     "/club": "Dashboard",
     "/club/announcements": "Announcements",
     "/club/claims": "Reward claims",
     "/club/department-tags": "Department tags",
     "/club/events": "Club events",
     "/club/fraud": "Fraud review",
+    "/club/profile": "Profile",
+    "/club/reports": "Reports",
     "/club/rewards": "Reward tiers",
   },
   fi: {
@@ -161,14 +214,20 @@ const navLabelByLocale: Record<DashboardLocale, Record<string, string>> = {
     "/admin/announcements": "Tiedotteet",
     "/admin/business-applications": "Hakemukset",
     "/admin/contact-submissions": "Yhteydenotot",
-    "/admin/department-tags": "Opiskelualojen tagit",
+    "/admin/department-tags": "Opiskelualojen tunnisteet",
+    "/admin/login-slides": "Login-slidet",
     "/admin/oversight": "Alustan valvonta",
+    "/admin/rewards": "Palkintotasot",
+    "/admin/support-requests": "Mobiilituki",
+    "/admin/users": "Käyttäjät",
     "/club": "Kojelauta",
     "/club/announcements": "Tiedotteet",
     "/club/claims": "Palkintojen luovutus",
-    "/club/department-tags": "Opiskelualojen tagit",
+    "/club/department-tags": "Opiskelualojen tunnisteet",
     "/club/events": "Klubin tapahtumat",
-    "/club/fraud": "Fraud-tarkistus",
+    "/club/fraud": "Väärinkäyttötarkistus",
+    "/club/profile": "Profiili",
+    "/club/reports": "Raportit",
     "/club/rewards": "Palkintotasot",
   },
 };
@@ -227,7 +286,7 @@ export const getDashboardShellCopy = ({
     localeSwitchLabel: locale === "fi" ? "In English" : "Suomeksi",
     localeSwitchTitle: locale === "fi" ? "Kieli" : "Language",
     roleFallback: locale === "fi" ? "Tuntematon rooli" : "Unknown role",
-    sessionFallback: locale === "fi" ? "Kirjautunut sessio" : "Authenticated session",
+    sessionFallback: locale === "fi" ? "Kirjautunut käyttäjä" : "Authenticated session",
     subtitle: pageCopy?.subtitle ?? subtitle,
     title: pageCopy?.title ?? title,
   };

@@ -22,6 +22,7 @@ type EventRow = {
   end_at: string;
   join_deadline_at: string;
   status: "PUBLISHED" | "ACTIVE";
+  ticket_url: string | null;
   max_participants: number | null;
   minimum_stamps_required: number;
 };
@@ -35,6 +36,8 @@ type UseStudentEventsQueryParams = {
   studentId: string;
   isEnabled: boolean;
 };
+
+const visiblePublicEventsLimit = 80;
 
 export const studentEventsQueryKey = (studentId: string) => ["student-events", studentId] as const;
 
@@ -97,6 +100,7 @@ const mapEventSummary = (
     startAt: row.start_at,
     endAt: row.end_at,
     joinDeadlineAt: row.join_deadline_at,
+    ticketUrl: row.ticket_url,
     maxParticipants: row.max_participants,
     minimumStampsRequired: row.minimum_stamps_required,
     timelineState,
@@ -142,15 +146,17 @@ export const rehydrateStudentEventsBuckets = (
   now: number
 ): StudentEventsBuckets => createStudentEventsBuckets(rehydrateStudentEventSummaries(flattenStudentEventsBuckets(buckets), now));
 
-const fetchVisibleEventsAsync = async (): Promise<EventRow[]> => {
+const fetchVisibleEventsAsync = async (nowIso: string): Promise<EventRow[]> => {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required,ticket_url"
     )
     .in("status", ["PUBLISHED", "ACTIVE"])
     .eq("visibility", "PUBLIC")
+    .gte("end_at", nowIso)
     .order("start_at", { ascending: true })
+    .limit(visiblePublicEventsLimit)
     .returns<EventRow[]>();
 
   if (error !== null) {
@@ -168,7 +174,7 @@ const fetchRegisteredEventsAsync = async (eventIds: string[]): Promise<EventRow[
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required,ticket_url"
     )
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE"])
@@ -198,6 +204,8 @@ const fetchStudentRegistrationsAsync = async (studentId: string): Promise<EventR
 
 export const fetchStudentEventsAsync = async (studentId: string): Promise<StudentEventsBuckets> => {
   const registrations = await fetchStudentRegistrationsAsync(studentId);
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
   const registeredEventIds = Array.from(
     new Set(
       registrations
@@ -206,7 +214,7 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
     )
   );
   const [publicEvents, registeredEvents] = await Promise.all([
-    fetchVisibleEventsAsync(),
+    fetchVisibleEventsAsync(nowIso),
     fetchRegisteredEventsAsync(registeredEventIds),
   ]);
   const events = Array.from(
@@ -214,7 +222,6 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
   );
 
   const registrationsByEventId = createRegistrationMap(registrations);
-  const now = Date.now();
   const visibleEvents = events
     .map((row) => mapEventSummary(row, now, registrationsByEventId))
     .filter((event): event is StudentEventSummary => event !== null);

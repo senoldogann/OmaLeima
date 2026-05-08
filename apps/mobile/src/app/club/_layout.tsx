@@ -21,6 +21,10 @@ const getClubTabIconName = (routeName: string) => {
       return { ios: "megaphone.fill", android: "campaign", web: "campaign" } as const;
     case "upcoming":
       return { ios: "clock.badge.checkmark", android: "event-available", web: "event-available" } as const;
+    case "reports":
+      return { ios: "chart.bar.xaxis", android: "analytics", web: "analytics" } as const;
+    case "claims":
+      return { ios: "gift.fill", android: "redeem", web: "gift" } as const;
     default:
       return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
   }
@@ -104,6 +108,7 @@ export default function ClubLayout() {
 
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.textPrimary,
@@ -123,6 +128,7 @@ export default function ClubLayout() {
           bottom: 0,
           height: 78,
           left: 16,
+          overflow: "visible",
           paddingBottom: 8,
           paddingTop: 8,
           position: "absolute",
@@ -138,11 +144,13 @@ export default function ClubLayout() {
       })}
     >
       <Tabs.Screen name="home" options={{ title: language === "fi" ? "Koti" : "Home" }} />
-      <Tabs.Screen name="events" options={{ title: copy.common.events }} />
+      <Tabs.Screen name="events" options={{ title: language === "fi" ? "Approt" : "Events" }} />
       <Tabs.Screen name="announcements" options={{ title: language === "fi" ? "Tiedotteet" : "Announcements" }} />
       <Tabs.Screen name="upcoming" options={{ title: language === "fi" ? "Tulossa" : "Upcoming" }} />
+      <Tabs.Screen name="reports" options={{ title: language === "fi" ? "Raportit" : "Reports" }} />
       <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
       <Tabs.Screen name="announcement-detail" options={{ href: null }} />
+      <Tabs.Screen name="claims" options={{ href: null }} />
     </Tabs>
   );
 }

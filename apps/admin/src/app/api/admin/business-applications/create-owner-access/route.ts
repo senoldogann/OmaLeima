@@ -1,51 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { invokeOwnerAccessEdgeFunctionAsync, requireAdminReviewAccessAsync } from "@/features/business-applications/review-transport";
-import { isUuid } from "@/features/business-applications/validation";
-import { createRouteHandlerClient } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-type CreateOwnerAccessRequestBody = {
-  applicationId?: unknown;
+type DeprecatedOwnerAccessResponse = {
+  message: string;
+  status: string;
 };
 
-const parseCreateOwnerAccessRequestBody = async (request: Request): Promise<{ applicationId: string }> => {
-  const body = (await request.json()) as CreateOwnerAccessRequestBody;
-
-  if (typeof body.applicationId !== "string" || !isUuid(body.applicationId)) {
-    throw new Error("applicationId must be a valid UUID.");
-  }
-
-  return {
-    applicationId: body.applicationId,
-  };
-};
-
-export async function POST(request: Request) {
-  try {
-    const supabase = await createRouteHandlerClient();
-    const accessError = await requireAdminReviewAccessAsync(supabase);
-
-    if (accessError !== null) {
-      return NextResponse.json(accessError.response, {
-        status: accessError.status,
-      });
+export async function POST(): Promise<NextResponse<DeprecatedOwnerAccessResponse>> {
+  return NextResponse.json(
+    {
+      message: "Recovery-link owner access was removed. Use the manual business owner account form instead.",
+      status: "OWNER_ACCESS_FLOW_DEPRECATED",
+    },
+    {
+      status: 410,
     }
-
-    const body = await parseCreateOwnerAccessRequestBody(request);
-    const result = await invokeOwnerAccessEdgeFunctionAsync(supabase, body);
-
-    return NextResponse.json(result.response, {
-      status: result.status,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        message: error instanceof Error ? error.message : "Unknown owner access route error.",
-        status: "VALIDATION_ERROR",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
+  );
 }

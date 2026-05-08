@@ -9,6 +9,7 @@ import {
   parseRewardTierCreatePayloadOrThrow,
 } from "@/features/club-rewards/validation";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -34,6 +35,12 @@ export async function POST(request: Request) {
           status: 401,
         }
       );
+    }
+
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "club-reward-tier-create");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const body = parseRewardTierCreatePayloadOrThrow(

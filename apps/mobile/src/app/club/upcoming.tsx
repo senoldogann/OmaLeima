@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
@@ -105,6 +106,12 @@ export default function ClubUpcomingScreen() {
         participants: language === "fi" ? "osallistujaa" : "participants",
         venues: language === "fi" ? "rastia" : "venues",
       },
+      rewardHandoff: language === "fi" ? "Palkintojen luovutus" : "Reward handoff",
+      rewardHandoffBody:
+        language === "fi"
+          ? "Avaa luovutusjono, kun osallistuja näyttää valmiin palkinnon."
+          : "Open the handoff queue when a participant shows a ready reward.",
+      openRewardHandoff: language === "fi" ? "Avaa luovutusjono" : "Open handoff queue",
       status: {
         CANCELLED: language === "fi" ? "Peruttu" : "Cancelled",
         COMPLETED: language === "fi" ? "Päättynyt" : "Completed",
@@ -214,7 +221,10 @@ export default function ClubUpcomingScreen() {
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && events.length === 0 ? (
         <InfoCard eyebrow="Club" title={labels.title}>
-          <Text style={styles.bodyText}>{labels.empty}</Text>
+          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+            <AppIcon color={theme.colors.textMuted} name="clock" size={16} />
+            <Text style={[styles.bodyText, { flex: 1 }]}>{labels.empty}</Text>
+          </View>
         </InfoCard>
       ) : null}
 
@@ -229,6 +239,18 @@ export default function ClubUpcomingScreen() {
               ? "Useampi näkyvä tapahtuma osuu samaan aikaan. Tarkista viestit ja rastit, jotta osallistujat avaavat oikean QR:n."
               : "Multiple visible events overlap. Check messaging and venues so participants open the correct QR."}
           </Text>
+        </InfoCard>
+      ) : null}
+
+      {!dashboardQuery.isLoading &&
+      !dashboardQuery.error &&
+      dashboardQuery.data !== undefined &&
+      (dashboardQuery.data.summary.rewardTierCount > 0 || dashboardQuery.data.summary.claimedRewardCount > 0) ? (
+        <InfoCard eyebrow={labels.metrics.claims} title={labels.rewardHandoff} variant="subtle">
+          <Text style={styles.bodyText}>{labels.rewardHandoffBody}</Text>
+          <Pressable onPress={() => router.push("/club/claims")} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>{labels.openRewardHandoff}</Text>
+          </Pressable>
         </InfoCard>
       ) : null}
 
@@ -360,6 +382,22 @@ const createStyles = (theme: MobileTheme) =>
     metaText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    secondaryButton: {
+      alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    secondaryButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },

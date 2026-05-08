@@ -9,6 +9,7 @@ export type RewardTierType =
 export type RewardTierStatus = "ACTIVE" | "DISABLED";
 
 export type ManageableRewardEvent = {
+  canDeleteRewards: boolean;
   canManageRewards: boolean;
   city: string;
   clubId: string;
@@ -21,6 +22,7 @@ export type ManageableRewardEvent = {
 };
 
 export type ClubRewardTierRecord = {
+  canDelete: boolean;
   canEdit: boolean;
   claimInstructions: string | null;
   createdAt: string;

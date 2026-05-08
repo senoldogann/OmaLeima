@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
 import { getDashboardLocaleAsync, type DashboardLocale } from "@/features/dashboard/i18n";
 import { adminDashboardNavigationItems } from "@/features/dashboard/sections";
@@ -14,9 +14,8 @@ async function OversightPanelFetcher({ locale }: { locale: DashboardLocale }) {
 }
 
 export default async function AdminOversightPage() {
-  const supabase = await createServerComponentClient();
   const [access, locale] = await Promise.all([
-    resolveAdminAccessAsync(supabase),
+    resolveCurrentAdminAccessAsync(),
     getDashboardLocaleAsync(),
   ]);
 

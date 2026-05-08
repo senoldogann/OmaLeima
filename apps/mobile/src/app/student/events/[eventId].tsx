@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppIcon } from "@/components/app-icon";
@@ -9,6 +9,7 @@ import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import {
+  createVenueMapOpenErrorMessage,
   createVenueAddressLine,
   openExternalVenueMapAsync,
 } from "@/features/events/components/student-event-venue-map";
@@ -141,6 +142,17 @@ const createRuleLabel = (key: string, language: "fi" | "en"): string => {
 
   return key;
 };
+
+const hiddenEventRuleKeys = new Set([
+  "screenshotMode",
+  "themeMode",
+  "colorScheme",
+  "displayMode",
+  "previewMode",
+]);
+
+const createVisibleRuleEntries = (rules: StudentEventDetail["rules"]): [string, EventRuleValue][] =>
+  Object.entries(rules).filter(([key]) => !hiddenEventRuleKeys.has(key));
 
 const createRuleDescription = (
   key: string,
@@ -316,6 +328,61 @@ const getJoinResultPresentation = (
             : "This student profile is restricted for this event.",
         state: "error",
       };
+    case "AUTH_REQUIRED":
+      return {
+        title: language === "fi" ? "Kirjaudu uudelleen" : "Sign in again",
+        body:
+          language === "fi"
+            ? "Istunto vanheni. Kirjaudu sisään ja yritä uudelleen."
+            : "Your session expired. Sign in and try again.",
+        state: "error",
+      };
+    case "ACTOR_NOT_ALLOWED":
+    case "ROLE_NOT_ALLOWED":
+      return {
+        title: language === "fi" ? "Liittyminen estetty" : "Registration blocked",
+        body:
+          language === "fi"
+            ? "Tällä tunnuksella ei voi liittyä opiskelijatapahtumaan."
+            : "This account cannot register for student events.",
+        state: "error",
+      };
+    case "PROFILE_NOT_FOUND":
+      return {
+        title: language === "fi" ? "Profiili puuttuu" : "Profile missing",
+        body:
+          language === "fi"
+            ? "Opiskelijaprofiilia ei löytynyt. Kirjaudu uudelleen tai ota yhteyttä tukeen."
+            : "Student profile was not found. Sign in again or contact support.",
+        state: "error",
+      };
+    case "PROFILE_NOT_ACTIVE":
+      return {
+        title: language === "fi" ? "Profiili ei ole aktiivinen" : "Profile inactive",
+        body:
+          language === "fi"
+            ? "Tämä profiili ei ole aktiivinen juuri nyt."
+            : "This profile is not active right now.",
+        state: "error",
+      };
+    case "EVENT_NOT_FOUND":
+      return {
+        title: language === "fi" ? "Tapahtumaa ei löytynyt" : "Event not found",
+        body:
+          language === "fi"
+            ? "Tapahtumaa ei enää löytynyt. Päivitä tapahtumalista."
+            : "The event could not be found anymore. Refresh the event list.",
+        state: "warning",
+      };
+    case "EVENT_NOT_AVAILABLE":
+      return {
+        title: language === "fi" ? "Tapahtuma ei ole avoinna" : "Event unavailable",
+        body:
+          language === "fi"
+            ? "Tapahtumaan ei voi liittyä tässä tilassa."
+            : "This event cannot accept registrations in its current state.",
+        state: "warning",
+      };
     default:
       return {
         title: language === "fi" ? "Liittyminen epäonnistui" : "Join failed",
@@ -397,6 +464,51 @@ const getCancelResultPresentation = (
             : "The event has already started or ended.",
         state: "warning",
       };
+    case "AUTH_REQUIRED":
+      return {
+        title: language === "fi" ? "Kirjaudu uudelleen" : "Sign in again",
+        body:
+          language === "fi"
+            ? "Istunto vanheni. Kirjaudu sisään ja yritä uudelleen."
+            : "Your session expired. Sign in and try again.",
+        state: "error",
+      };
+    case "ACTOR_NOT_ALLOWED":
+      return {
+        title: language === "fi" ? "Peruminen estetty" : "Cancellation blocked",
+        body:
+          language === "fi"
+            ? "Tällä tunnuksella ei voi perua tätä osallistumista."
+            : "This account cannot cancel this registration.",
+        state: "error",
+      };
+    case "EVENT_NOT_FOUND":
+      return {
+        title: language === "fi" ? "Tapahtumaa ei löytynyt" : "Event not found",
+        body:
+          language === "fi"
+            ? "Tapahtumaa ei enää löytynyt. Päivitä tapahtumalista."
+            : "The event could not be found anymore. Refresh the event list.",
+        state: "warning",
+      };
+    case "NOT_REGISTERED":
+      return {
+        title: language === "fi" ? "Et ole ilmoittautunut" : "Not registered",
+        body:
+          language === "fi"
+            ? "Osallistumista ei voitu perua, koska et ole mukana tässä tapahtumassa."
+            : "Registration could not be cancelled because you are not registered for this event.",
+        state: "warning",
+      };
+    case "STUDENT_BANNED":
+      return {
+        title: language === "fi" ? "Peruminen estetty" : "Cancellation blocked",
+        body:
+          language === "fi"
+            ? "Tällä opiskelijaprofiililla ei voi muuttaa tätä osallistumista."
+            : "This student profile cannot change this registration.",
+        state: "error",
+      };
     default:
       return {
         title: language === "fi" ? "Peruminen epäonnistui" : "Cancellation failed",
@@ -406,10 +518,44 @@ const getCancelResultPresentation = (
   }
 };
 
-const createActionErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice => ({
-  body: error instanceof Error ? error.message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
-  title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
-});
+const createActionErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice => {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("Failed to join event")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtumaan liittyminen ei onnistunut juuri nyt. Päivitä näkymä ja yritä uudelleen."
+          : "Joining the event failed right now. Refresh the view and try again.",
+      title: language === "fi" ? "Liittyminen epäonnistui" : "Join failed",
+    };
+  }
+
+  if (message.includes("Failed to cancel event registration")) {
+    return {
+      body:
+        language === "fi"
+          ? "Osallistumisen peruminen ei onnistunut juuri nyt. Päivitä näkymä ja yritä uudelleen."
+          : "Cancelling the registration failed right now. Refresh the view and try again.",
+      title: language === "fi" ? "Peruminen epäonnistui" : "Cancellation failed",
+    };
+  }
+
+  if (message.includes("RPC returned no data")) {
+    return {
+      body:
+        language === "fi"
+          ? "Palvelu ei palauttanut odotettua vastausta. Yritä hetken päästä uudelleen."
+          : "The service did not return the expected response. Try again in a moment.",
+      title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
+    };
+  }
+
+  return {
+    body: message.length > 0 ? message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+    title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
+  };
+};
 
 const getRewardInventoryCopy = (rewardTier: RewardTierSummary, language: "fi" | "en"): string => {
   if (rewardTier.inventoryTotal === null) {
@@ -423,6 +569,35 @@ const getRewardInventoryCopy = (rewardTier: RewardTierSummary, language: "fi" | 
   }
 
   return language === "fi" ? `${remaining} palkintoa jäljellä` : `${remaining} reward(s) left`;
+};
+
+const getRewardTypeLabel = (rewardTier: RewardTierSummary, language: "fi" | "en"): string => {
+  switch (rewardTier.rewardType) {
+    case "HAALARIMERKKI":
+      return language === "fi" ? "Haalarimerkki" : "Overall patch";
+    case "PATCH":
+      return language === "fi" ? "Merkki" : "Patch";
+    case "COUPON":
+      return language === "fi" ? "Kuponki" : "Coupon";
+    case "PRODUCT":
+      return language === "fi" ? "Tuote" : "Product";
+    case "ENTRY":
+      return language === "fi" ? "Sisäänpääsy" : "Entry";
+    case "OTHER":
+      return language === "fi" ? "Palkinto" : "Reward";
+  }
+};
+
+const getRewardSummaryTitle = (rewardTiers: RewardTierSummary[], language: "fi" | "en"): string => {
+  if (rewardTiers.length === 0) {
+    return language === "fi" ? "Ei palkintoja" : "No rewards";
+  }
+
+  if (rewardTiers.length === 1) {
+    return language === "fi" ? "1 palkinto" : "1 reward";
+  }
+
+  return language === "fi" ? `${rewardTiers.length} palkintoa` : `${rewardTiers.length} rewards`;
 };
 
 const getRewardChipColor = (rewardTier: RewardTierSummary, theme: MobileTheme): string => {
@@ -502,6 +677,7 @@ export default function StudentEventDetailScreen() {
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
   const [selectedVenue, setSelectedVenue] = useState<EventVenueSummary | null>(null);
   const [venueNotice, setVenueNotice] = useState<string | null>(null);
+  const [isRewardModalVisible, setIsRewardModalVisible] = useState(false);
 
   useEffect(() => {
     void prefetchEventCoverUrls([detailQuery.data?.coverImageUrl ?? null]);
@@ -546,6 +722,8 @@ export default function StudentEventDetailScreen() {
   const selectedVenueStatus = selectedVenue === null ? null : getVenueStatusBadge(selectedVenue, language);
   const selectedVenueAddress = selectedVenue === null ? null : createVenueAddressLine(selectedVenue);
   const eventTimelineBadge = event === null ? null : getEventTimelineBadge(event, now, language);
+  const rewardSummaryTitle = event === null ? null : getRewardSummaryTitle(event.rewardTiers, language);
+  const visibleRuleEntries = event === null ? [] : createVisibleRuleEntries(event.rules);
 
   const handleJoinPress = async (): Promise<void> => {
     if (studentId === null || event === null) {
@@ -605,13 +783,31 @@ export default function StudentEventDetailScreen() {
     try {
       await openExternalVenueMapAsync(selectedVenue);
     } catch (error) {
-      setVenueNotice(
-        error instanceof Error
-          ? error.message
-          : language === "fi"
-            ? "Karttaa ei voitu avata."
-            : "Could not open the map."
-      );
+      setVenueNotice(createVenueMapOpenErrorMessage(error, language));
+    }
+  };
+
+  const handleTicketPress = async (): Promise<void> => {
+    if (event?.ticketUrl === null || typeof event?.ticketUrl === "undefined") {
+      return;
+    }
+
+    setActionNotice(null);
+
+    try {
+      const canOpenTicketUrl = await Linking.canOpenURL(event.ticketUrl);
+
+      if (!canOpenTicketUrl) {
+        throw new Error(
+          language === "fi"
+            ? "Lippulinkkiä ei voitu avata tällä laitteella."
+            : "The ticket link could not be opened on this device."
+        );
+      }
+
+      await Linking.openURL(event.ticketUrl);
+    } catch (error) {
+      setActionNotice(createActionErrorNotice(error, language));
     }
   };
 
@@ -692,9 +888,37 @@ export default function StudentEventDetailScreen() {
                 </Text>
               </View>
             </View>
+            <Pressable
+              disabled={event.rewardTiers.length === 0}
+              onPress={() => setIsRewardModalVisible(true)}
+              style={[
+                themeStyles.rewardTopButton,
+                event.rewardTiers.length === 0 ? themeStyles.disabledButton : null,
+              ]}
+            >
+              <View style={themeStyles.rewardTopIcon}>
+                <AppIcon name="gift" size={18} color={theme.colors.lime} />
+              </View>
+              <View style={themeStyles.rewardTopCopy}>
+                <Text style={themeStyles.sectionEyebrow}>
+                  {language === "fi" ? "Palkinto" : "Reward"}
+                </Text>
+                <Text style={themeStyles.rewardTopTitle}>
+                  {rewardSummaryTitle ?? (language === "fi" ? "Palkinnot" : "Rewards")}
+                </Text>
+              </View>
+              <AppIcon name="chevron-right" size={16} color={theme.colors.textMuted} />
+            </Pressable>
             <Text style={themeStyles.bodyText}>
               {event.description ?? copy.student.eventDescriptionFallback}
             </Text>
+            {event.ticketUrl !== null ? (
+              <Pressable onPress={() => void handleTicketPress()} style={themeStyles.secondaryButton}>
+                <Text style={themeStyles.secondaryButtonText}>
+                  {language === "fi" ? "Avaa lippulinkki" : "Open ticket link"}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
 
           {shouldShowRegistrationSection ? (
@@ -827,36 +1051,9 @@ export default function StudentEventDetailScreen() {
               </Text>
             )}
 
-            {event.rewardTiers.length > 0 ? (
-              <View style={themeStyles.rewardGroup}>
-                {event.rewardTiers.map((rewardTier) => (
-                  <View key={rewardTier.id} style={totalUserStamps >= rewardTier.requiredStampCount ? themeStyles.rewardUnlockedRow : themeStyles.rewardLockedRow}>
-                    <View style={themeStyles.rewardHeader}>
-                      <View
-                        style={[
-                          themeStyles.rewardRequirementBadge,
-                          { backgroundColor: getRewardChipColor(rewardTier, theme) },
-                        ]}
-                      >
-                        <View style={themeStyles.rewardBadgeIcon}>
-                          <AppIcon name="star" size={11} color={theme.colors.textPrimary} />
-                        </View>
-                        <Text style={themeStyles.rewardRequirementText}>
-                          {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
-                        </Text>
-                      </View>
-                      <Text style={themeStyles.listTitle}>{rewardTier.title}</Text>
-                    </View>
-                    <Text style={themeStyles.metaLine}>{getRewardInventoryCopy(rewardTier, language)}</Text>
-                    {rewardTier.description ? <Text style={themeStyles.metaLine}>{rewardTier.description}</Text> : null}
-                    {rewardTier.claimInstructions ? <Text style={themeStyles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
-                  </View>
-                ))}
-              </View>
-            ) : null}
           </View>
 
-          {Object.entries(event.rules).length > 0 ? (
+          {visibleRuleEntries.length > 0 ? (
             <>
               <View style={themeStyles.sectionDivider} />
               <View style={themeStyles.sectionBlock}>
@@ -865,7 +1062,7 @@ export default function StudentEventDetailScreen() {
                   <Text style={themeStyles.sectionTitle}>{language === "fi" ? "Muista nämä" : "Before you go"}</Text>
                 </View>
                 <View style={themeStyles.rulesGroup}>
-                  {Object.entries(event.rules).map(([key, value]) => (
+                  {visibleRuleEntries.map(([key, value]) => (
                     <View key={key} style={themeStyles.ruleRow}>
                       <View style={themeStyles.ruleBullet} />
                       <View style={themeStyles.ruleContent}>
@@ -945,17 +1142,51 @@ export default function StudentEventDetailScreen() {
 
                     {venueNotice !== null ? <Text style={themeStyles.metaText}>{venueNotice}</Text> : null}
 
-                    <View style={themeStyles.sectionHeader}>
-                      <Text style={themeStyles.sectionEyebrow}>{language === "fi" ? "Palkinnot" : "Rewards"}</Text>
+                  </ScrollView>
+                ) : null}
+              </View>
+            </View>
+          </Modal>
+
+          <Modal
+            animationType="fade"
+            onRequestClose={() => setIsRewardModalVisible(false)}
+            transparent
+            visible={isRewardModalVisible}
+          >
+            <View style={themeStyles.modalBackdrop}>
+              <View style={themeStyles.rewardModalSheet}>
+                <View style={themeStyles.venueModalAccentLine} />
+                <ScrollView contentContainerStyle={themeStyles.venueModalContent} showsVerticalScrollIndicator={false}>
+                  <View style={themeStyles.venueModalHeader}>
+                    <View style={themeStyles.venueModalHeaderCopy}>
+                      <Text style={themeStyles.sectionEyebrow}>
+                        {language === "fi" ? "Palkinto" : "Reward"}
+                      </Text>
                       <Text style={themeStyles.sectionTitle}>
-                        {language === "fi" ? "Saatavilla tässä tapahtumassa" : "Available in this event"}
+                        {language === "fi" ? "Mitä voit lunastaa" : "What you can claim"}
+                      </Text>
+                      <Text style={themeStyles.metaLine}>
+                        {language === "fi"
+                          ? `${totalUserStamps} leimaa kerätty tässä tapahtumassa.`
+                          : `${totalUserStamps} leimas collected in this event.`}
                       </Text>
                     </View>
+                    <Pressable onPress={() => setIsRewardModalVisible(false)} style={themeStyles.venueModalCloseButton}>
+                      <AppIcon color={theme.colors.textPrimary} name="x" size={18} />
+                    </Pressable>
+                  </View>
 
-                    {event.rewardTiers.length > 0 ? (
-                      <View style={themeStyles.rewardGroup}>
-                        {event.rewardTiers.map((rewardTier) => (
-                          <View key={`venue-modal:${rewardTier.id}`} style={totalUserStamps >= rewardTier.requiredStampCount ? themeStyles.rewardUnlockedRow : themeStyles.rewardLockedRow}>
+                  {event.rewardTiers.length > 0 ? (
+                    <View style={themeStyles.rewardGroup}>
+                      {event.rewardTiers.map((rewardTier) => {
+                        const isUnlocked = totalUserStamps >= rewardTier.requiredStampCount;
+
+                        return (
+                          <View
+                            key={`reward-modal:${rewardTier.id}`}
+                            style={isUnlocked ? themeStyles.rewardUnlockedRow : themeStyles.rewardLockedRow}
+                          >
                             <View style={themeStyles.rewardHeader}>
                               <View
                                 style={[
@@ -964,29 +1195,42 @@ export default function StudentEventDetailScreen() {
                                 ]}
                               >
                                 <View style={themeStyles.rewardBadgeIcon}>
-                                  <AppIcon name="star" size={11} color={theme.colors.textPrimary} />
+                                  <AppIcon name="gift" size={12} color={theme.colors.textPrimary} />
                                 </View>
                                 <Text style={themeStyles.rewardRequirementText}>
-                                  {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"}
+                                  {rewardTier.requiredStampCount} {language === "fi" ? "leimaa" : "leimas"}
                                 </Text>
                               </View>
-                              <Text style={themeStyles.listTitle}>{rewardTier.title}</Text>
+                              <StatusBadge
+                                label={isUnlocked ? (language === "fi" ? "Avattu" : "Unlocked") : (language === "fi" ? "Lukittu" : "Locked")}
+                                state={isUnlocked ? "ready" : "pending"}
+                              />
                             </View>
-                            <Text style={themeStyles.metaLine}>{getRewardInventoryCopy(rewardTier, language)}</Text>
+                            <Text style={themeStyles.listTitle}>{rewardTier.title}</Text>
+                            <Text style={themeStyles.metaLine}>
+                              {getRewardTypeLabel(rewardTier, language)} · {getRewardInventoryCopy(rewardTier, language)}
+                            </Text>
                             {rewardTier.description ? <Text style={themeStyles.metaLine}>{rewardTier.description}</Text> : null}
-                            {rewardTier.claimInstructions ? <Text style={themeStyles.metaLine}>{rewardTier.claimInstructions}</Text> : null}
+                            {rewardTier.claimInstructions ? (
+                              <View style={themeStyles.rewardInstructionBox}>
+                                <Text style={themeStyles.sectionEyebrow}>
+                                  {language === "fi" ? "Luovutusohje" : "Claim instructions"}
+                                </Text>
+                                <Text style={themeStyles.metaLine}>{rewardTier.claimInstructions}</Text>
+                              </View>
+                            ) : null}
                           </View>
-                        ))}
-                      </View>
-                    ) : (
-                      <Text style={themeStyles.bodyText}>
-                        {language === "fi"
-                          ? "Tähän tapahtumaan ei ole vielä julkaistu palkintoja."
-                          : "No rewards are published for this event yet."}
-                      </Text>
-                    )}
-                  </ScrollView>
-                ) : null}
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={themeStyles.bodyText}>
+                      {language === "fi"
+                        ? "Tähän tapahtumaan ei ole vielä julkaistu palkintoja."
+                        : "No rewards are published for this event yet."}
+                    </Text>
+                  )}
+                </ScrollView>
               </View>
             </View>
           </Modal>
@@ -1000,7 +1244,7 @@ const createStyles = (theme: MobileTheme) => {
   const styles = StyleSheet.create({
     backButton: {
       alignSelf: "flex-start",
-      backgroundColor: theme.mode === "dark" ? "rgba(8, 9, 14, 0.84)" : "rgba(255, 255, 255, 0.88)",
+      backgroundColor: "rgba(8, 9, 14, 0.84)",
       borderRadius: theme.radius.button,
       left: theme.spacing.screenHorizontal,
       paddingHorizontal: 14,
@@ -1176,7 +1420,28 @@ const createStyles = (theme: MobileTheme) => {
       marginTop: 10,
     },
     rewardHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
       gap: 10,
+      justifyContent: "space-between",
+    },
+    rewardInstructionBox: {
+      backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 6,
+      padding: 12,
+    },
+    rewardModalSheet: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.scene,
+      borderWidth: 0,
+      maxHeight: "82%",
+      overflow: "hidden",
+      padding: 18,
+      width: "100%",
     },
     rewardRequirementBadge: {
       alignItems: "center",
@@ -1192,6 +1457,38 @@ const createStyles = (theme: MobileTheme) => {
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.eyebrow,
       textTransform: "uppercase",
+    },
+    rewardTopButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 12,
+      padding: 14,
+      ...interactiveSurfaceShadowStyle,
+    },
+    rewardTopCopy: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    rewardTopIcon: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    rewardTopTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     sectionBlock: {
       gap: 14,
@@ -1304,7 +1601,7 @@ const createStyles = (theme: MobileTheme) => {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
+      borderWidth: 0,
       height: 40,
       justifyContent: "center",
       width: 40,
@@ -1346,7 +1643,7 @@ const createStyles = (theme: MobileTheme) => {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.scene,
-      borderWidth: theme.mode === "light" ? 1 : 0,
+      borderWidth: 0,
       maxHeight: "86%",
       overflow: "hidden",
       padding: 18,
@@ -1380,7 +1677,7 @@ const createStyles = (theme: MobileTheme) => {
     },
     venueCoverOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.28)" : "rgba(0, 0, 0, 0.14)",
+      backgroundColor: "rgba(0, 0, 0, 0.28)",
     },
     venueHeader: {
       alignItems: "center",
@@ -1403,7 +1700,7 @@ const createStyles = (theme: MobileTheme) => {
     },
     venueOrderBubble: {
       alignItems: "center",
-      backgroundColor: theme.mode === "dark" ? "rgba(8, 9, 14, 0.78)" : "rgba(255, 255, 255, 0.86)",
+      backgroundColor: "rgba(8, 9, 14, 0.78)",
       borderRadius: 999,
       height: 34,
       justifyContent: "center",

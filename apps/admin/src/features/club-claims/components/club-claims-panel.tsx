@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { RewardClaimCandidateCard } from "@/features/club-claims/components/reward-claim-candidate-card";
-import { RecentRewardClaimCard } from "@/features/club-claims/components/recent-reward-claim-card";
-import { formatClubClaimEventMeta } from "@/features/club-claims/format";
+import { formatClubClaimEventMeta, formatClubClaimHistoryMeta, getClubClaimStatusClassName } from "@/features/club-claims/format";
 import type { ClubClaimsSnapshot } from "@/features/club-claims/types";
 
 type ClubClaimsPanelProps = {
@@ -15,6 +14,7 @@ type ClubClaimsPanelProps = {
 
 export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
   const [selectedEventId, setSelectedEventId] = useState<string>(snapshot.events[0]?.eventId ?? "");
+  const [activeTab, setActiveTab] = useState<"event-queue" | "recent-claims">("event-queue");
   const effectiveSelectedEventId = snapshot.events.some((event) => event.eventId === selectedEventId)
     ? selectedEventId
     : (snapshot.events[0]?.eventId ?? "");
@@ -27,16 +27,19 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
     () => snapshot.recentClaims.filter((claim) => claim.eventId === effectiveSelectedEventId),
     [effectiveSelectedEventId, snapshot.recentClaims]
   );
-  const [activeTab, setActiveTab] = useState<"event-queue" | "recent-claims">("event-queue");
+  const handleEventSelect = (eventId: string): void => {
+    setSelectedEventId(eventId);
+    setActiveTab("event-queue");
+  };
 
   return (
     <div className="stack-lg">
       <section className="metrics-grid">
         <article className="panel panel-accent">
           <div className="stack-sm">
-            <span className="field-label">{locale === "fi" ? "Operatiiviset tapahtumat" : "Operational events"}</span>
+            <span className="field-label">{locale === "fi" ? "Käynnissä olevat tapahtumat" : "Operational events"}</span>
             <strong className="metric-value">{snapshot.summary.operationalEventCount}</strong>
-            <p className="muted-text">{locale === "fi" ? "Aktiiviset tai päättyneet tapahtumat, joissa klubi voi vahvistaa palkinnon luovutuksen." : "Active or completed events where club staff can confirm reward handoff."}</p>
+            <p className="muted-text">{locale === "fi" ? "Aktiiviset tai päättyneet tapahtumat, joissa palkinto voidaan luovuttaa." : "Active or completed events where club staff can confirm reward handoff."}</p>
           </div>
         </article>
 
@@ -54,7 +57,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
 
         <article className="panel panel-warning">
           <div className="stack-sm">
-            <span className="field-label">{locale === "fi" ? "Vastikään jaetut" : "Recent claims"}</span>
+            <span className="field-label">{locale === "fi" ? "Viimeksi jaetut" : "Recent claims"}</span>
             <strong className="metric-value">{snapshot.summary.recentClaimCount}</strong>
             <p className="muted-text">
               {locale === "fi"
@@ -66,15 +69,15 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
       </section>
 
       <div className="tab-nav">
-        <button className={activeTab === "event-queue" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-queue")} type="button">{locale === "fi" ? "Tapahtumajono" : "Event Queue"}</button>
-        <button className={activeTab === "recent-claims" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("recent-claims")} type="button">{locale === "fi" ? "Vastikään jaetut" : "Recent Claims"}</button>
+        <button className={activeTab === "event-queue" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("event-queue")} type="button">{locale === "fi" ? "Tapahtumat" : "Event Queue"}</button>
+        <button className={activeTab === "recent-claims" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("recent-claims")} type="button">{locale === "fi" ? "Viimeksi jaetut" : "Recent Claims"}</button>
       </div>
 
       <section className="content-grid" style={{ display: activeTab !== "event-queue" ? "none" : undefined }}>
         <div className="stack-md">
           <div className="stack-sm">
-            <div className="eyebrow">{locale === "fi" ? "Tapahtumajono" : "Event handoff queue"}</div>
-            <h3 className="section-title">{locale === "fi" ? "Operatiiviset tapahtumat" : "Operational events"}</h3>
+            <div className="eyebrow">{locale === "fi" ? "Tapahtumat" : "Event handoff queue"}</div>
+            <h3 className="section-title">{locale === "fi" ? "Käynnissä olevat tapahtumat" : "Operational events"}</h3>
             <p className="muted-text">
               {locale === "fi"
                 ? "Valitse tapahtuma tarkistaaksesi palkintoa odottavat opiskelijat ja viimeksi vahvistetut luovutukset. Opiskelijoiden tunnisteet pysyvät peitettyinä."
@@ -87,34 +90,52 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
               <p className="muted-text">{locale === "fi" ? "Aktiivisia tai päättyneitä klubitapahtumia ei ole nyt näkyvissä palkintoluovutusta varten." : "No active or completed club events are visible for reward handoff right now."}</p>
             </article>
           ) : (
-            <div className="content-grid">
-              {snapshot.events.map((event) => (
-                <article key={event.eventId} className="panel review-card-compact">
-                  <div className="stack-sm">
-                    <p className="card-title">{event.name}</p>
-                    <p className="muted-text">{formatClubClaimEventMeta(locale, event)}</p>
-                    <p className="review-note">
-                      {locale === "fi"
-                        ? `${event.claimableCandidateCount} odottaa · ${event.recentClaimCount} jaettu · ${event.activeRewardTierCount} tasoa`
-                        : `${event.claimableCandidateCount} claimable · ${event.recentClaimCount} claimed · ${event.activeRewardTierCount} active reward tier${event.activeRewardTierCount === 1 ? "" : "s"}`}
-                    </p>
-                    <div className="pagination-row">
-                      <span className={event.eventStatus === "ACTIVE" ? "status-pill status-pill-success" : "status-pill"}>
-                        {event.eventStatus}
-                      </span>
-                      <button
-                        className="button button-secondary"
-                        onClick={() => setSelectedEventId(event.eventId)}
-                        type="button"
-                      >
-                        {effectiveSelectedEventId === event.eventId
-                          ? locale === "fi" ? "Valittu" : "Selected"
-                          : locale === "fi" ? "Avaa" : "Open queue"}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
+            <div className="panel-table-wrap">
+              <table className="panel-table">
+                <thead>
+                  <tr>
+                    <th>{locale === "fi" ? "Tapahtuma" : "Event"}</th>
+                    <th>{locale === "fi" ? "Tila" : "Status"}</th>
+                    <th>{locale === "fi" ? "Odottaa" : "Claimable"}</th>
+                    <th>{locale === "fi" ? "Jaettu" : "Claimed"}</th>
+                    <th>{locale === "fi" ? "Tasot" : "Tiers"}</th>
+                    <th>{locale === "fi" ? "Valinta" : "Select"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.events.map((event) => {
+                    const isSelected = event.eventId === selectedEvent?.eventId;
+                    return (
+                      <tr key={event.eventId} className={isSelected ? "panel-table-row-active" : undefined}>
+                        <td>
+                          <span>{event.name}</span>
+                          <span className="record-meta">{formatClubClaimEventMeta(locale, event)}</span>
+                        </td>
+                        <td>
+                          <span className={event.eventStatus === "ACTIVE" ? "status-pill status-pill-success" : "status-pill"}>
+                            {event.eventStatus}
+                          </span>
+                        </td>
+                        <td className="record-meta">{event.claimableCandidateCount}</td>
+                        <td className="record-meta">{event.recentClaimCount}</td>
+                        <td className="record-meta">{event.activeRewardTierCount}</td>
+                        <td>
+                          <button
+                            className="button button-secondary"
+                            disabled={isSelected}
+                            onClick={() => handleEventSelect(event.eventId)}
+                            type="button"
+                          >
+                            {isSelected
+                              ? locale === "fi" ? "Valittu" : "Selected"
+                              : locale === "fi" ? "Avaa" : "Open queue"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -128,11 +149,18 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
                 ? "Vahvista palkinnon luovutus vasta, kun fyysinen tuote on oikeasti annettu opiskelijalle."
                 : "Confirm reward handoff only after the physical item is actually delivered to the student."}
             </p>
+            {selectedEvent !== null ? (
+              <p className="review-note">
+                {locale === "fi"
+                  ? "Alla oleva jono ja historia on rajattu tähän valittuun tapahtumaan."
+                  : "The queue and recent history below are filtered to this selected event."}
+              </p>
+            ) : null}
           </div>
 
           {selectedEvent === null ? (
             <article className="panel">
-              <p className="muted-text">{locale === "fi" ? "Valitse operatiivinen tapahtuma tarkistaaksesi palkintoluovutuksen ehdokkaat." : "Select an operational event to inspect reward handoff candidates."}</p>
+              <p className="muted-text">{locale === "fi" ? "Valitse tapahtuma nähdäksesi palkintoa odottavat opiskelijat." : "Select an operational event to inspect reward handoff candidates."}</p>
             </article>
           ) : filteredCandidates.length === 0 ? (
             <article className="panel">
@@ -156,7 +184,15 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
         <div className="stack-sm">
           <div className="eyebrow">{locale === "fi" ? "Historia" : "Recent history"}</div>
           <h3 className="section-title">{locale === "fi" ? "Jaetut palkinnot" : "Reward claims"}</h3>
-          <p className="muted-text">{locale === "fi" ? "Tarkista valitulle tapahtumalle kirjatut viimeisimmät palkintoluovutukset." : "Review the latest reward handoffs recorded for the selected event."}</p>
+          <p className="muted-text">
+            {selectedEvent === null
+              ? locale === "fi"
+                ? "Tarkista valitulle tapahtumalle kirjatut viimeisimmät palkintoluovutukset."
+                : "Review the latest reward handoffs recorded for the selected event."
+              : locale === "fi"
+                ? `Näytetään tapahtuman "${selectedEvent.name}" viimeisimmät palkintoluovutukset.`
+                : `Showing recent reward handoffs for "${selectedEvent.name}".`}
+          </p>
         </div>
 
         {selectedEvent === null || filteredRecentClaims.length === 0 ? (
@@ -164,10 +200,31 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
             <p className="muted-text">{locale === "fi" ? "Tälle tapahtumalle ei ole vielä näkyvissä viimeisimpiä lunastuksia." : "No recent reward claims are visible for this event yet."}</p>
           </article>
         ) : (
-          <div className="review-grid">
-            {filteredRecentClaims.map((claim) => (
-              <RecentRewardClaimCard key={claim.rewardClaimId} claim={claim} locale={locale} />
-            ))}
+          <div className="panel-table-wrap">
+            <table className="panel-table">
+              <thead>
+                <tr>
+                  <th>{locale === "fi" ? "Opiskelija" : "Student"}</th>
+                  <th>{locale === "fi" ? "Palkinto" : "Reward"}</th>
+                  <th>{locale === "fi" ? "Tila" : "Status"}</th>
+                  <th>{locale === "fi" ? "Tiedot" : "Details"}</th>
+                  <th>{locale === "fi" ? "Muistiinpanot" : "Notes"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRecentClaims.map((claim) => (
+                  <tr key={claim.rewardClaimId}>
+                    <td>{claim.studentLabel}</td>
+                    <td className="record-meta">{claim.rewardTitle}</td>
+                    <td>
+                      <span className={getClubClaimStatusClassName(claim.status)}>{claim.status}</span>
+                    </td>
+                    <td className="record-meta">{formatClubClaimHistoryMeta(locale, claim)}</td>
+                    <td className="record-meta">{claim.notes ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

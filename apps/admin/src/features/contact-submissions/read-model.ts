@@ -22,7 +22,7 @@ type ContactSubmissionRow = {
   subject: ContactSubmissionSubject;
 };
 
-const submissionsLimit = 100;
+const submissionsPageSize = 1000;
 const signedUrlExpiresInSeconds = 60 * 30;
 
 const buildEmptyCounts = (): ContactSubmissionsCounts => ({
@@ -87,26 +87,56 @@ const mapRowAsync = async (
   };
 };
 
-export const fetchContactSubmissionsSnapshotAsync = async (
-  supabase: SupabaseClient
-): Promise<ContactSubmissionsSnapshot> => {
+const fetchContactSubmissionRowsPageAsync = async (
+  supabase: SupabaseClient,
+  startInclusive: number,
+  endInclusive: number
+): Promise<ContactSubmissionRow[]> => {
   const { data, error } = await supabase
     .from("public_contact_submissions")
     .select(
       "id, created_at, subject, name, email, organization, message, attachment_path, source_locale, status"
     )
     .order("created_at", { ascending: false })
-    .limit(submissionsLimit)
+    .range(startInclusive, endInclusive)
     .returns<ContactSubmissionRow[]>();
 
   if (error !== null) {
-    throw new Error(`Failed to load contact submissions: ${error.message}`);
+    throw new Error(
+      `Failed to load contact submissions page ${startInclusive}-${endInclusive}: ${error.message}`
+    );
   }
 
+  return data;
+};
+
+const fetchContactSubmissionRowsAsync = async (
+  supabase: SupabaseClient
+): Promise<ContactSubmissionRow[]> => {
+  let rows: ContactSubmissionRow[] = [];
+  let startInclusive = 0;
+
+  while (true) {
+    const endInclusive = startInclusive + submissionsPageSize - 1;
+    const page = await fetchContactSubmissionRowsPageAsync(supabase, startInclusive, endInclusive);
+    rows = [...rows, ...page];
+
+    if (page.length < submissionsPageSize) {
+      return rows;
+    }
+
+    startInclusive += submissionsPageSize;
+  }
+};
+
+export const fetchContactSubmissionsSnapshotAsync = async (
+  supabase: SupabaseClient
+): Promise<ContactSubmissionsSnapshot> => {
+  const rows = await fetchContactSubmissionRowsAsync(supabase);
   const counts = buildEmptyCounts();
   const records: ContactSubmissionRecord[] = [];
 
-  for (const row of data) {
+  for (const row of rows) {
     incrementCount(counts, row.status);
     const record = await mapRowAsync(supabase, row);
     records.push(record);

@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
@@ -18,7 +18,7 @@ const getTabIconName = (routeName: string) => {
     case "active-event":
       return { ios: "qrcode.viewfinder", android: "qr-code-scanner", web: "qr-code-scanner" } as const;
     case "leaderboard":
-      return { ios: "chart.bar.fill", android: "leaderboard", web: "leaderboard" } as const;
+      return { ios: "medal.fill", android: "leaderboard", web: "leaderboard" } as const;
     case "rewards":
       return { ios: "gift.fill", android: "redeem", web: "redeem" } as const;
     case "updates":
@@ -30,7 +30,7 @@ const getTabIconName = (routeName: string) => {
 
 export default function StudentTabsLayout() {
   const theme = useAppTheme();
-  const { copy, language } = useUiPreferences();
+  const { copy } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
@@ -102,6 +102,7 @@ export default function StudentTabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="events"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.textPrimary,
@@ -121,6 +122,7 @@ export default function StudentTabsLayout() {
           bottom: 0,
           height: 78,
           left: 16,
+          overflow: "visible",
           paddingBottom: 8,
           paddingTop: 8,
           position: "absolute",
@@ -135,11 +137,32 @@ export default function StudentTabsLayout() {
         },
       })}
     >
-      <Tabs.Screen name="events" options={{ title: language === "fi" ? "Eventit" : copy.common.events }} />
-      <Tabs.Screen name="active-event" options={{ title: copy.common.myQr }} />
+      <Tabs.Screen name="events" options={{ title: copy.common.events }} />
       <Tabs.Screen name="leaderboard" options={{ title: copy.common.leaderboard }} />
+      <Tabs.Screen
+        name="active-event"
+        options={{
+          title: copy.common.myQr,
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.qrTabButton}>
+              <TabIcon
+                color={focused ? theme.colors.actionPrimaryText : theme.colors.actionPrimaryText}
+                focused={focused}
+                name={getTabIconName("active-event")}
+                size={26}
+              />
+            </View>
+          ),
+          tabBarItemStyle: {
+            paddingTop: 0,
+          },
+          tabBarLabelStyle: {
+            display: "none",
+          },
+        }}
+      />
       <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
-      <Tabs.Screen name="updates" options={{ title: language === "fi" ? "Info" : "News" }} />
+      <Tabs.Screen name="updates" options={{ title: copy.common.community }} />
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="announcement-detail" options={{ href: null }} />
     </Tabs>
@@ -152,5 +175,15 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textSecondary,
       fontSize: 14,
       lineHeight: 20,
+    },
+    qrTabButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      bottom: 8,
+      height: 56,
+      justifyContent: "center",
+      position: "relative",
+      width: 56,
     },
   });

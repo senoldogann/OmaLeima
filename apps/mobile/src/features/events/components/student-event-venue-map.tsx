@@ -124,10 +124,26 @@ export const openExternalVenueMapAsync = async (venue: EventVenueSummary): Promi
     const canOpenUrl = await Linking.canOpenURL(url);
 
     if (!canOpenUrl) {
-        throw new Error(`Could not open map URL for venue ${venue.businessId}: ${url}`);
+        throw new Error("VENUE_MAP_OPEN_FAILED");
     }
 
     await Linking.openURL(url);
+};
+
+export const createVenueMapOpenErrorMessage = (error: unknown, language: "fi" | "en"): string => {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message.includes("VENUE_MAP_OPEN_FAILED") || message.includes("Could not open map URL")) {
+        return language === "fi"
+            ? "Karttasovellusta ei voitu avata tällä laitteella."
+            : "The map app could not be opened on this device.";
+    }
+
+    return message.length > 0
+        ? message
+        : language === "fi"
+            ? "Karttaa ei voitu avata."
+            : "Could not open the map.";
 };
 
 export const StudentEventVenueMap = ({ venues }: StudentEventVenueMapProps) => {
@@ -139,7 +155,7 @@ export const StudentEventVenueMap = ({ venues }: StudentEventVenueMapProps) => {
     const handleVenuePress = (venue: EventVenueSummary): void => {
         setOpenMapError(null);
         openExternalVenueMapAsync(venue).catch((error: unknown) => {
-            setOpenMapError(error instanceof Error ? error.message : "Could not open external map.");
+            setOpenMapError(createVenueMapOpenErrorMessage(error, language));
         });
     };
 

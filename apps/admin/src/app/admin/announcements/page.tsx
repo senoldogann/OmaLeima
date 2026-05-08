@@ -1,4 +1,4 @@
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
 import { AnnouncementsPanel } from "@/features/announcements/components/announcements-panel";
 import { fetchAdminAnnouncementsSnapshotAsync } from "@/features/announcements/read-model";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
@@ -9,7 +9,7 @@ import { createServerComponentClient } from "@/lib/supabase/server";
 export default async function AdminAnnouncementsPage() {
   const supabase = await createServerComponentClient();
   const [access, snapshot, locale] = await Promise.all([
-    resolveAdminAccessAsync(supabase),
+    resolveCurrentAdminAccessAsync(),
     fetchAdminAnnouncementsSnapshotAsync(supabase),
     getDashboardLocaleAsync(),
   ]);

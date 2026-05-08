@@ -102,6 +102,7 @@ const fetchBusinessesAsync = async (businessIds: string[]): Promise<BusinessRow[
       "id,name,address,city,contact_email,phone,website_url,instagram_url,logo_url,cover_image_url,y_tunnus,contact_person_name,opening_hours,announcement"
     )
     .in("id", businessIds)
+    .eq("status", "ACTIVE")
     .returns<BusinessRow[]>();
 
   if (error !== null) {
@@ -167,6 +168,8 @@ const fetchJoinableOpportunitiesAsync = async (): Promise<EventRow[]> => {
 
   return data;
 };
+
+const normalizeCity = (city: string | null): string => city?.trim().toLocaleLowerCase("fi-FI") ?? "";
 
 const mapMemberships = (
   membershipRows: BusinessMembershipRow[],
@@ -263,6 +266,11 @@ const mapCityOpportunities = (
     }
 
     const staffRole = membership.role;
+    const membershipCity = normalizeCity(membership.city);
+
+    if (membershipCity.length === 0) {
+      return [];
+    }
 
     return events.flatMap((event) => {
       if (event.status !== "PUBLISHED" && event.status !== "ACTIVE") {
@@ -270,6 +278,10 @@ const mapCityOpportunities = (
       }
 
       if (joinedVenueKeys.has(`${membership.businessId}:${event.id}`)) {
+        return [];
+      }
+
+      if (normalizeCity(event.city) !== membershipCity) {
         return [];
       }
 

@@ -317,8 +317,27 @@ const createRecentClaims = (
         studentLabel: createMaskedStudentLabel(claim.student_id),
       };
     })
-    .sort((left, right) => new Date(right.claimedAt).getTime() - new Date(left.claimedAt).getTime())
-    .slice(0, visibleRecentClaimLimit);
+    .sort((left, right) => new Date(right.claimedAt).getTime() - new Date(left.claimedAt).getTime());
+
+const takeVisibleRowsByEvent = <TRecord>(
+  records: TRecord[],
+  limitPerEvent: number,
+  selectEventId: (record: TRecord) => string
+): TRecord[] => {
+  const visibleCountByEvent = new Map<string, number>();
+
+  return records.filter((record) => {
+    const eventId = selectEventId(record);
+    const currentCount = visibleCountByEvent.get(eventId) ?? 0;
+
+    if (currentCount >= limitPerEvent) {
+      return false;
+    }
+
+    visibleCountByEvent.set(eventId, currentCount + 1);
+    return true;
+  });
+};
 
 export const fetchClubClaimsSnapshotAsync = async (
   supabase: SupabaseClient
@@ -347,6 +366,16 @@ export const fetchClubClaimsSnapshotAsync = async (
   const eventById = new Map(eventRows.map((row) => [row.id, row] as const));
   const rewardTierById = buildRewardTierById(rewardTierRows);
   const recentClaims = createRecentClaims(rewardClaimRows, eventById, rewardTierById);
+  const visibleCandidates = takeVisibleRowsByEvent(
+    candidates,
+    visibleCandidateLimit,
+    (candidate) => candidate.eventId
+  );
+  const visibleRecentClaims = takeVisibleRowsByEvent(
+    recentClaims,
+    visibleRecentClaimLimit,
+    (claim) => claim.eventId
+  );
   const claimableCandidateCountByEvent = new Map<string, number>();
   const recentClaimCountByEvent = new Map<string, number>();
 
@@ -365,7 +394,7 @@ export const fetchClubClaimsSnapshotAsync = async (
   });
 
   return {
-    candidates: candidates.slice(0, visibleCandidateLimit),
+    candidates: visibleCandidates,
     events: eventRows.map((event) => ({
       activeRewardTierCount: (rewardTiersByEvent.get(event.id) ?? []).length,
       city: event.city,
@@ -379,13 +408,13 @@ export const fetchClubClaimsSnapshotAsync = async (
       recentClaimCount: recentClaimCountByEvent.get(event.id) ?? 0,
       startAt: event.start_at,
     })),
-    recentClaims,
+    recentClaims: visibleRecentClaims,
     summary: {
       claimableCandidateCount: candidates.length,
       operationalEventCount: eventRows.length,
       recentClaimCount: rewardClaimRows.length,
-      visibleCandidateCount: Math.min(candidates.length, visibleCandidateLimit),
-      visibleClaimCount: recentClaims.length,
+      visibleCandidateCount: visibleCandidates.length,
+      visibleClaimCount: visibleRecentClaims.length,
     },
   };
 };

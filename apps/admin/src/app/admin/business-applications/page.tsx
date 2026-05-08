@@ -1,4 +1,4 @@
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
 import { BusinessApplicationsPanel } from "@/features/business-applications/components/business-applications-panel";
 import { fetchBusinessApplicationsReviewQueueAsync } from "@/features/business-applications/read-model";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
@@ -33,7 +33,7 @@ export default async function AdminBusinessApplicationsPage({
   const resolvedSearchParams = await searchParams;
   const pageNumber = parsePageNumber(resolvedSearchParams.page);
   const [access, reviewQueue, locale] = await Promise.all([
-    resolveAdminAccessAsync(supabase),
+    resolveCurrentAdminAccessAsync(),
     fetchBusinessApplicationsReviewQueueAsync(supabase, pageNumber),
     getDashboardLocaleAsync(),
   ]);

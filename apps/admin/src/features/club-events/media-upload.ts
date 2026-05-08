@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { createSignedStagedMediaUrlAsync, mediaStagingBucketName } from "@/features/media/staged-media";
+
 type UploadClubEventCoverImageParams = {
   clubId: string;
   file: File;
@@ -7,11 +9,10 @@ type UploadClubEventCoverImageParams = {
 };
 
 type UploadedClubEventCoverImage = {
-  publicUrl: string;
-  storagePath: string;
+  previewUrl: string;
+  stagingPath: string;
 };
 
-const eventMediaBucketId = "event-media";
 const maxClubEventImageBytes = 6 * 1024 * 1024;
 const supportedImageTypes = ["image/jpeg", "image/png", "image/webp"] as const;
 const extensionByType = {
@@ -43,10 +44,12 @@ const createStoragePath = ({
   clubId,
   file,
   imageType,
+  userId,
 }: {
   clubId: string;
   file: File;
   imageType: SupportedImageType;
+  userId: string;
 }): string => {
   if (clubId.trim().length === 0) {
     throw new Error("Select a club before uploading an event cover image.");
@@ -55,7 +58,7 @@ const createStoragePath = ({
   const extension = extensionByType[imageType];
   const safeName = sanitizeFileName(file.name.replace(/\.[^.]+$/, ""));
 
-  return `clubs/${clubId}/events/${Date.now()}-${safeName}.${extension}`;
+  return `users/${userId}/event-covers/clubs/${clubId}/${Date.now()}-${safeName}.${extension}`;
 };
 
 export const uploadClubEventCoverImageAsync = async ({
@@ -75,32 +78,35 @@ export const uploadClubEventCoverImageAsync = async ({
     throw new Error("Event cover image must be a JPEG, PNG, or WebP file.");
   }
 
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError !== null || userData.user === null) {
+    throw new Error(userError?.message ?? "Sign in again before uploading an event cover image.");
+  }
+
   const storagePath = createStoragePath({
     clubId,
     file,
     imageType: file.type,
+    userId: userData.user.id,
   });
-  const { error } = await supabase.storage.from(eventMediaBucketId).upload(storagePath, file, {
+  const { error } = await supabase.storage.from(mediaStagingBucketName).upload(storagePath, file, {
     cacheControl: "3600",
     contentType: file.type,
     upsert: false,
   });
 
   if (error !== null) {
-    throw new Error(`Failed to upload event cover image: ${error.message}`);
+    throw new Error(`Failed to upload private event cover image: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(eventMediaBucketId).getPublicUrl(storagePath);
-  const response = await fetch(data.publicUrl, {
-    method: "HEAD",
+  const previewUrl = await createSignedStagedMediaUrlAsync({
+    stagingPath: storagePath,
+    supabase,
   });
 
-  if (!response.ok) {
-    throw new Error(`Uploaded event cover image is not publicly readable. Status: ${response.status}. URL: ${data.publicUrl}`);
-  }
-
   return {
-    publicUrl: data.publicUrl,
-    storagePath,
+    previewUrl,
+    stagingPath: storagePath,
   };
 };

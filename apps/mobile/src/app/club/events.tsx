@@ -19,7 +19,7 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
+
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { pickClubEventCoverAsync, uploadClubEventCoverAsync } from "@/features/club/club-event-media";
 import {
@@ -52,6 +52,7 @@ type TextEditableField = keyof Pick<
   | "maxParticipants"
   | "minimumStampsRequired"
   | "name"
+  | "ticketUrl"
 >;
 
 type DateTimeField = keyof Pick<ClubEventFormDraft, "endAt" | "joinDeadlineAt" | "startAt">;
@@ -81,11 +82,38 @@ type ActionNotice = {
   title: string;
 };
 
+type ClubEventMutationNoticeResult = {
+  message: string;
+  status: string;
+};
+
 type CalendarDay = {
   date: string;
   dayLabel: string;
   isCurrentMonth: boolean;
   isSelected: boolean;
+};
+
+const readRouteEventId = (value: string | string[] | undefined): string | null => {
+  if (typeof value === "string") {
+    const normalizedValue = value.trim();
+
+    return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  if (Array.isArray(value)) {
+    const firstValue = value[0];
+
+    if (typeof firstValue !== "string") {
+      return null;
+    }
+
+    const normalizedValue = firstValue.trim();
+
+    return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  return null;
 };
 
 const toLocalDateTimeInput = (value: string): string => {
@@ -108,6 +136,7 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
   return {
     city: city ?? "",
     clubId,
+    coverImageStagingPath: "",
     coverImageUrl: "",
     description: "",
     endAt: toLocalDateTimeInput(endAt.toISOString()),
@@ -120,6 +149,7 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
     rules: {},
     startAt: toLocalDateTimeInput(startAt.toISOString()),
     status: "DRAFT",
+    ticketUrl: "",
     visibility: "PUBLIC",
   };
 };
@@ -127,6 +157,7 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
 const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDraft => ({
   city: event.city,
   clubId: event.clubId,
+  coverImageStagingPath: event.coverImageStagingPath ?? "",
   coverImageUrl: event.coverImageUrl ?? "",
   description: event.description ?? "",
   endAt: toLocalDateTimeInput(event.endAt),
@@ -139,6 +170,7 @@ const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDr
   rules: event.rules,
   startAt: toLocalDateTimeInput(event.startAt),
   status: event.status === "ACTIVE" || event.status === "PUBLISHED" ? event.status : "DRAFT",
+  ticketUrl: event.ticketUrl ?? "",
   visibility: event.visibility,
 });
 
@@ -163,6 +195,12 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
       language === "fi"
         ? "Kirjoita opiskelijoille näkyvä tapahtumakuvaus."
         : "Write the public event description for students.",
+  },
+  {
+    field: "ticketUrl",
+    label: language === "fi" ? "Lippulinkki" : "Ticket URL",
+    multiline: false,
+    placeholder: "https://",
   },
   {
     field: "minimumStampsRequired",
@@ -195,6 +233,26 @@ const createDateTimeFieldConfigs = (language: "fi" | "en"): DateTimeFieldConfig[
 
 const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice => {
   const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("ticketUrl must be a valid absolute URL")) {
+    return {
+      body:
+        language === "fi"
+          ? "Lisää lipulle täydellinen URL, esimerkiksi https://kide.app/..."
+          : "Add a complete ticket URL, for example https://kide.app/...",
+      title: language === "fi" ? "Tarkista lippulinkki" : "Check ticket link",
+    };
+  }
+
+  if (message.includes("ticketUrl must use http or https")) {
+    return {
+      body:
+        language === "fi"
+          ? "Lippulinkin täytyy alkaa muodossa http:// tai https://."
+          : "The ticket link must start with http:// or https://.",
+      title: language === "fi" ? "Tarkista lippulinkki" : "Check ticket link",
+    };
+  }
 
   if (message.includes("endAt must be after startAt") || message.includes("EVENT_END_BEFORE_START")) {
     return {
@@ -256,13 +314,91 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
     };
   }
 
+  if (message.includes("EVENT_UPDATE_NOT_ALLOWED") || message.includes("Event was not updated")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtumaa ei voitu päivittää. Se voi olla päättynyt, peruttu tai toisen järjestäjätilin alla."
+          : "The event could not be updated. It may be completed, cancelled, or outside this organizer account.",
+      title: language === "fi" ? "Päivitys epäonnistui" : "Update failed",
+    };
+  }
+
+  if (
+    message.includes("EVENT_DELETE_NOT_ALLOWED") ||
+    message.includes("Event was not deleted") ||
+    message.includes("Only draft events can be permanently deleted")
+  ) {
+    return {
+      body:
+        language === "fi"
+          ? "Vain luonnostapahtumat voidaan poistaa pysyvästi. Julkaistut tai aktiiviset tapahtumat perutaan, jotta historia säilyy."
+          : "Only draft events can be permanently deleted. Published or active events are cancelled so history stays intact.",
+      title: language === "fi" ? "Poisto ei onnistunut" : "Delete failed",
+    };
+  }
+
+  if (message.includes("EVENT_CANCEL_NOT_ALLOWED") || message.includes("Event was not cancelled")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtumaa ei voitu perua. Se voi olla jo päättynyt, peruttu tai toisen järjestäjätilin alla."
+          : "The event could not be cancelled. It may already be completed, cancelled, or outside this organizer account.",
+      title: language === "fi" ? "Peruminen epäonnistui" : "Cancel failed",
+    };
+  }
+
   return {
     body: message.length > 0 ? message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
     title: language === "fi" ? "Tallennus epäonnistui" : "Save failed",
   };
 };
 
+const localizeClubEventSuccessMessage = (
+  result: ClubEventMutationNoticeResult | undefined,
+  language: "fi" | "en"
+): string | null => {
+  if (result === undefined || result.status !== "SUCCESS") {
+    return null;
+  }
+
+  const messages: Record<string, { en: string; fi: string }> = {
+    "Draft event deleted successfully.": {
+      en: "Draft event deleted.",
+      fi: "Tapahtumaluonnos poistettu.",
+    },
+    "Event cancelled without deleting operational history.": {
+      en: "Event cancelled. Operational history stays intact.",
+      fi: "Tapahtuma peruttu. Toimintahistoria säilyy.",
+    },
+    "Event created and published successfully.": {
+      en: "Event created and published.",
+      fi: "Tapahtuma luotu ja julkaistu.",
+    },
+    "Event draft created successfully.": {
+      en: "Event draft created.",
+      fi: "Tapahtumaluonnos luotu.",
+    },
+    "Event updated successfully.": {
+      en: "Event updated.",
+      fi: "Tapahtuma päivitetty.",
+    },
+  };
+
+  return messages[result.message]?.[language] ?? result.message;
+};
+
 const canEditEvent = (event: ClubDashboardEventSummary | null): boolean =>
+  event !== null &&
+  event.canManageEvent &&
+  event.timelineState !== "COMPLETED" &&
+  event.timelineState !== "CANCELLED" &&
+  (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
+
+const isDraftEvent = (event: ClubDashboardEventSummary): boolean =>
+  event.status === "DRAFT" || event.timelineState === "DRAFT";
+
+const canDeleteEvent = (event: ClubDashboardEventSummary | null): boolean =>
   event !== null &&
   event.canManageEvent &&
   event.timelineState !== "COMPLETED" &&
@@ -348,7 +484,7 @@ const createCalendarDays = (visibleMonth: string, selectedDate: string): Calenda
 
 export default function ClubEventsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ eventId?: string }>();
+  const params = useLocalSearchParams<{ eventId?: string | string[] }>();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -375,6 +511,14 @@ export default function ClubEventsScreen() {
     [dashboardQuery.data?.events]
   );
   const sortedEvents = useMemo(() => sortClubEventsForOrganizer(events), [events]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const filteredEvents = useMemo(
+    () =>
+      searchQuery.trim().length === 0
+        ? sortedEvents
+        : sortedEvents.filter((e) => e.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [sortedEvents, searchQuery]
+  );
   const manageableEvents = useMemo(
     () => events.filter((event) => event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED"),
     [events]
@@ -394,7 +538,7 @@ export default function ClubEventsScreen() {
   const contextMenuEvent = events.find((event) => event.eventId === contextMenuEventId) ?? null;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
-  const requestedEventId = typeof params.eventId === "string" ? params.eventId : null;
+  const requestedEventId = readRouteEventId(params.eventId);
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(localeTag, {
@@ -427,11 +571,11 @@ export default function ClubEventsScreen() {
   }, [mode, selectedEvent]);
 
   useEffect(() => {
-    if (typeof params.eventId !== "string") {
+    if (requestedEventId === null) {
       return;
     }
 
-    const routedEvent = manageableEvents.find((event) => event.eventId === params.eventId);
+    const routedEvent = manageableEvents.find((event) => event.eventId === requestedEventId);
 
     if (typeof routedEvent === "undefined") {
       return;
@@ -441,7 +585,7 @@ export default function ClubEventsScreen() {
     setMode("edit");
     setDraft(createDraftFromEvent(routedEvent));
     setIsFormModalOpen(true);
-  }, [manageableEvents, params.eventId]);
+  }, [manageableEvents, requestedEventId]);
 
   useEffect(() => {
     if (requestedEventId !== null || mode !== "edit") {
@@ -513,7 +657,8 @@ export default function ClubEventsScreen() {
 
       setDraft((currentDraft) => ({
         ...currentDraft,
-        coverImageUrl: uploadedCover.publicUrl,
+        coverImageStagingPath: uploadedCover.stagingPath,
+        coverImageUrl: uploadedCover.previewUrl,
       }));
     } catch (error) {
       setCoverUploadError(error instanceof Error ? error.message : "Unknown event cover upload error.");
@@ -580,7 +725,7 @@ export default function ClubEventsScreen() {
     }
   };
 
-  const handleDeleteDraftEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
+  const handleDeleteEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
     if (userId === null || isPending) {
       return;
     }
@@ -590,34 +735,50 @@ export default function ClubEventsScreen() {
     setContextMenuEventId(null);
 
     try {
-      const result = await deleteMutation.mutateAsync({
-        eventId: event.eventId,
-        userId,
-      });
+      const result = isDraftEvent(event)
+        ? await deleteMutation.mutateAsync({
+            eventId: event.eventId,
+            userId,
+          })
+        : await cancelMutation.mutateAsync({
+            eventId: event.eventId,
+            userId,
+          });
 
       assertClubEventMutationSucceeded(result);
       hapticNotification(NotificationType.Success);
-      setSelectedEventId(null);
-      handleSelectCreateMode();
+      if (isDraftEvent(event)) {
+        setSelectedEventId(null);
+        handleSelectCreateMode();
+      } else {
+        setIsFormModalOpen(false);
+        router.push("/club/upcoming");
+      }
     } catch (error) {
       hapticNotification(NotificationType.Error);
       setActionNotice(createClubEventActionNotice(error, language));
     }
   };
 
-  const handleDeleteDraftEventPress = (event: ClubDashboardEventSummary): void => {
+  const handleDeleteEventPress = (event: ClubDashboardEventSummary): void => {
+    const isDraft = isDraftEvent(event);
+
     Alert.alert(
-      language === "fi" ? "Poista luonnos?" : "Delete draft?",
-      language === "fi"
-        ? "Tapahtumaluonnos poistetaan pysyvästi. Julkaistut ja aktiiviset tapahtumat perutaan, jotta historia säilyy."
-        : "This permanently removes the draft event. Published and active events should be cancelled so history stays intact.",
+      language === "fi" ? "Poista tapahtuma?" : "Delete event?",
+      isDraft
+        ? language === "fi"
+          ? "Tapahtumaluonnos poistetaan pysyvästi."
+          : "This permanently removes the draft event."
+        : language === "fi"
+          ? "Julkaistu tai aktiivinen tapahtuma perutaan ja piilotetaan aktiivisista näkymistä. Leimat, ilmoittautumiset ja audit-historia säilyvät."
+          : "A published or active event will be cancelled and hidden from active views. Stamps, registrations, and audit history stay intact.",
       [
         {
           style: "cancel",
           text: language === "fi" ? "Peruuta" : "Cancel",
         },
         {
-          onPress: () => void handleDeleteDraftEventAsync(event),
+          onPress: () => void handleDeleteEventAsync(event),
           style: "destructive",
           text: language === "fi" ? "Poista" : "Delete",
         },
@@ -626,10 +787,10 @@ export default function ClubEventsScreen() {
   };
 
   const latestMessage =
-    createMutation.data?.message ??
-    updateMutation.data?.message ??
-    cancelMutation.data?.message ??
-    deleteMutation.data?.message ??
+    localizeClubEventSuccessMessage(createMutation.data, language) ??
+    localizeClubEventSuccessMessage(updateMutation.data, language) ??
+    localizeClubEventSuccessMessage(cancelMutation.data, language) ??
+    localizeClubEventSuccessMessage(deleteMutation.data, language) ??
     null;
   const latestError = actionNotice;
 
@@ -691,11 +852,13 @@ export default function ClubEventsScreen() {
       }
     >
       <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
-          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
-          <Text style={styles.screenTitle}>{copy.common.events}</Text>
-          <Text style={styles.metaText}>
-            {language === "fi" ? "Luo, päivitä ja sulje klubin tapahtumia." : "Create, update, and close club events."}
+        <View style={styles.clubHeader}>
+          <View style={styles.clubBrand}>
+            <AppIcon color={theme.colors.lime} name="star" size={18} />
+            <Text style={styles.clubBrandTitle}>OmaLeima</Text>
+          </View>
+          <Text style={styles.clubBrandSub}>
+            {language === "fi" ? "Tapahtumat" : "Events"}
           </Text>
         </View>
         {hasCreateAccess ? (
@@ -750,63 +913,85 @@ export default function ClubEventsScreen() {
 
           {sortedEvents.length === 0 && hasCreateAccess ? (
             <InfoCard eyebrow={language === "fi" ? "Tapahtumat" : "Events"} title={language === "fi" ? "Ei tapahtumia vielä" : "No events yet"}>
-              <Text style={styles.bodyText}>
-                {language === "fi"
-                  ? "Luo ensimmäinen tapahtuma + -painikkeella."
-                  : "Create your first event with the + button."}
-              </Text>
+              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+                <AppIcon color={theme.colors.textMuted} name="calendar" size={16} />
+                <Text style={[styles.bodyText, { flex: 1 }]}>
+                  {language === "fi"
+                    ? "Luo ensimmäinen tapahtuma + -painikkeella."
+                    : "Create your first event with the + button."}
+                </Text>
+              </View>
             </InfoCard>
           ) : null}
 
           {sortedEvents.length > 0 ? (
-            <View style={styles.listStack}>
-              {sortedEvents.map((event) => (
-                <Pressable
-                  key={event.eventId}
-                  onPress={() => setContextMenuEventId(event.eventId)}
-                  style={styles.eventListCard}
-                >
-                  <CoverImageSurface
-                    fallbackSource={getEventCoverSourceWithFallback(null, "clubControl")}
-                    imageStyle={styles.eventListCardImage}
-                    source={event.coverImageUrl === null ? null : { uri: event.coverImageUrl }}
-                    style={styles.eventListCardCover}
+            <View style={styles.listSection}>
+              <View style={styles.sectionIconHeader}>
+                <AppIcon color={theme.colors.lime} name="calendar" size={16} />
+                <Text style={styles.sectionTitle}>{copy.common.events}</Text>
+                <Text style={styles.sectionCount}>{sortedEvents.length}</Text>
+              </View>
+              <TextInput
+                onChangeText={setSearchQuery}
+                placeholder={language === "fi" ? "Hae tapahtumia..." : "Search events..."}
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.searchInput}
+                value={searchQuery}
+              />
+              <View style={styles.listStack}>
+                {filteredEvents.length === 0 ? (
+                  <Text style={styles.bodyText}>
+                    {language === "fi" ? "Ei hakutuloksia." : "No results found."}
+                  </Text>
+                ) : null}
+                {filteredEvents.map((event) => (
+                  <Pressable
+                    key={event.eventId}
+                    onPress={() => setContextMenuEventId(event.eventId)}
+                    style={styles.eventListCard}
                   >
-                    <View style={styles.eventListCardOverlay} />
-                    <View style={styles.eventListCardBadgeRow}>
-                      <StatusBadge
-                        label={timelineStateLabel(event.timelineState, language)}
-                        state={timelineStateBadgeState(event.timelineState)}
-                      />
-                    </View>
-                  </CoverImageSurface>
-                  <View style={styles.eventListCardCopy}>
-                    <View style={styles.eventListCardTopRow}>
-                      <Text style={styles.eventListCardTitle}>{event.name}</Text>
-                    </View>
-                    <View style={styles.eventListCardMeta}>
-                      {event.city ? (
-                        <View style={styles.eventListCardMetaItem}>
-                          <AppIcon color={theme.colors.textMuted} name="map-pin" size={12} />
-                          <Text style={styles.metaText}>{event.city}</Text>
+                    <CoverImageSurface
+                      fallbackSource={getEventCoverSourceWithFallback(null, "clubControl")}
+                      imageStyle={styles.eventListCardImage}
+                      source={event.coverImageUrl === null ? null : { uri: event.coverImageUrl }}
+                      style={styles.eventListCardCover}
+                    >
+                      <View style={styles.eventListCardOverlay} />
+                      <View style={styles.eventListCardBadgeRow}>
+                        <View style={styles.eventStatusChip}>
+                          <View style={[styles.statusDot, timelineStateBadgeState(event.timelineState) === "ready" ? styles.statusDotReady : timelineStateBadgeState(event.timelineState) === "warning" ? styles.statusDotWarning : styles.statusDotPending]} />
+                          <Text style={styles.statusChipLabel}>{timelineStateLabel(event.timelineState, language)}</Text>
                         </View>
-                      ) : null}
-                      <View style={styles.eventListCardMetaItem}>
-                        <AppIcon color={theme.colors.textMuted} name="calendar" size={12} />
-                        <Text style={styles.metaText}>{formatter.format(new Date(event.startAt))}</Text>
                       </View>
-                      <View style={styles.eventListCardMetaItem}>
-                        <AppIcon color={theme.colors.textMuted} name="user" size={12} />
-                        <Text style={styles.metaText}>
-                          {event.registeredParticipantCount}{" "}
-                          {language === "fi" ? "os." : "part."}
-                          {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
-                        </Text>
+                    </CoverImageSurface>
+                    <View style={styles.eventListCardCopy}>
+                      <View style={styles.eventListCardTopRow}>
+                        <Text style={styles.eventListCardTitle}>{event.name}</Text>
+                      </View>
+                      <View style={styles.eventListCardMeta}>
+                        {event.city ? (
+                          <View style={styles.eventListCardMetaItem}>
+                            <AppIcon color={theme.colors.textMuted} name="map-pin" size={12} />
+                            <Text style={styles.metaText}>{event.city}</Text>
+                          </View>
+                        ) : null}
+                        <View style={styles.eventListCardMetaItem}>
+                          <AppIcon color={theme.colors.textMuted} name="calendar" size={12} />
+                          <Text style={styles.metaText}>{formatter.format(new Date(event.startAt))}</Text>
+                        </View>
+                        <View style={styles.eventListCardMetaItem}>
+                          <AppIcon color={theme.colors.textMuted} name="user" size={12} />
+                          <Text style={styles.metaText}>
+                            {event.registeredParticipantCount}{" "}
+                            {language === "fi" ? "os." : "part."}
+                            {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                </Pressable>
-              ))}
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ) : null}
         </>
@@ -840,14 +1025,13 @@ export default function ClubEventsScreen() {
               </Pressable>
             ) : null}
             {contextMenuEvent !== null &&
-            contextMenuEvent.canManageEvent &&
-            contextMenuEvent.status === "DRAFT" ? (
+            canDeleteEvent(contextMenuEvent) ? (
               <Pressable
-                onPress={() => handleDeleteDraftEventPress(contextMenuEvent)}
+                onPress={() => handleDeleteEventPress(contextMenuEvent)}
                 style={styles.actionSheetItem}
               >
                 <Text style={styles.actionSheetItemDangerText}>
-                  {language === "fi" ? "Poista luonnos" : "Delete draft"}
+                  {language === "fi" ? "Poista tapahtuma" : "Delete event"}
                 </Text>
               </Pressable>
             ) : null}
@@ -948,9 +1132,15 @@ export default function ClubEventsScreen() {
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
-                      autoCapitalize="sentences"
+                      autoCapitalize={config.field === "ticketUrl" ? "none" : "sentences"}
                       editable={!isPending && (mode === "create" || canEditEvent(selectedEvent))}
-                      keyboardType={config.field === "minimumStampsRequired" || config.field === "maxParticipants" ? "number-pad" : "default"}
+                      keyboardType={
+                        config.field === "minimumStampsRequired" || config.field === "maxParticipants"
+                          ? "number-pad"
+                          : config.field === "ticketUrl"
+                            ? "url"
+                            : "default"
+                      }
                       multiline={config.multiline}
                       onChangeText={(value) => updateDraftField(config.field, value)}
                       placeholder={config.placeholder}
@@ -1067,6 +1257,18 @@ export default function ClubEventsScreen() {
                 >
                   <Text style={styles.secondaryButtonText}>
                     {language === "fi" ? "Peru tapahtuma" : "Cancel event"}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {mode === "edit" && selectedEvent !== null && canDeleteEvent(selectedEvent) ? (
+                <Pressable
+                  disabled={isPending}
+                  onPress={() => handleDeleteEventPress(selectedEvent)}
+                  style={[styles.dangerButton, isPending ? styles.disabledButton : null]}
+                >
+                  <Text style={styles.dangerButtonText}>
+                    {language === "fi" ? "Poista tapahtuma" : "Delete event"}
                   </Text>
                 </Pressable>
               ) : null}
@@ -1626,6 +1828,23 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    dangerButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.dangerSurface,
+      borderColor: theme.colors.danger,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      minHeight: 46,
+      justifyContent: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    dangerButtonText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
     successText: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.semibold,
@@ -1682,15 +1901,20 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: 999,
-      height: 42,
+      height: 32,
       justifyContent: "center",
-      width: 42,
+      width: 32,
     },
     addButtonText: {
       color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: 24,
-      lineHeight: 28,
+      fontSize: 20,
+      height: 32,
+      includeFontPadding: false,
+      lineHeight: 32,
+      textAlign: "center",
+      textAlignVertical: "center",
+      width: 32,
     },
     actionSheetBackdrop: {
       backgroundColor: "rgba(0, 0, 0, 0.54)",
@@ -1829,5 +2053,93 @@ const createStyles = (theme: MobileTheme) =>
     },
     listStack: {
       gap: 10,
+    },
+    listSection: {
+      gap: 12,
+    },
+    sectionIconHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      flex: 1,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    sectionCount: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 10,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    searchInput: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      height: 44,
+      paddingHorizontal: 14,
+    },
+    statusDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8,
+    },
+    statusDotReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    statusDotWarning: {
+      backgroundColor: theme.colors.danger,
+    },
+    statusDotPending: {
+      backgroundColor: theme.colors.textMuted,
+    },
+    eventStatusChip: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.45)",
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    statusChipLabel: {
+      color: "rgba(255,255,255,0.92)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    clubHeader: {
+      flex: 1,
+      gap: 4,
+    },
+    clubBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    clubBrandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    clubBrandSub: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      marginLeft: 26,
     },
   });

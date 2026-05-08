@@ -16,7 +16,11 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { useCreateSupportRequestMutation, useSupportRequestsQuery } from "@/features/support/support-requests";
+import {
+  useCreateSupportRequestMutation,
+  useSupportRequestRealtimeInvalidation,
+  useSupportRequestsQuery,
+} from "@/features/support/support-requests";
 import type {
   ClubSupportOption,
   BusinessSupportOption,
@@ -97,6 +101,30 @@ const createEmptyHistory = (area: SupportRequestArea, language: "fi" | "en"): st
     : "No support requests have been sent from this student account yet.";
 };
 
+const createAccountDeletionSubject = (language: "fi" | "en"): string =>
+  language === "fi" ? "Tilin ja tietojen poistopyyntö" : "Account and data deletion request";
+
+const createAccountDeletionMessage = (area: SupportRequestArea, language: "fi" | "en"): string => {
+  const areaLabel =
+    area === "BUSINESS"
+      ? language === "fi"
+        ? "yritystiliä"
+        : "business account"
+      : area === "CLUB"
+        ? language === "fi"
+          ? "klubitiliä"
+          : "club account"
+        : language === "fi"
+          ? "opiskelijatiliä"
+          : "student account";
+
+  if (language === "fi") {
+    return `Haluan pyytää ${areaLabel} ja siihen liittyvien henkilötietojen poistamista. Ymmärrän, että OmaLeima voi varmistaa henkilöllisyyteni ja säilyttää tietyt tiedot, jos laki, väärinkäytösten torjunta tai turvallisuus sitä edellyttää.`;
+  }
+
+  return `I want to request deletion of my ${areaLabel} and the personal data linked to it. I understand that OmaLeima may verify my identity and retain some records where required for legal, fraud-prevention, or security reasons.`;
+};
+
 export const SupportRequestSheet = ({
   area,
   businessOptions,
@@ -108,6 +136,11 @@ export const SupportRequestSheet = ({
   const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const supportQuery = useSupportRequestsQuery({
+    userId: userId ?? "",
+    area,
+    isEnabled: isVisible && userId !== null,
+  });
+  useSupportRequestRealtimeInvalidation({
     userId: userId ?? "",
     area,
     isEnabled: isVisible && userId !== null,
@@ -180,19 +213,19 @@ export const SupportRequestSheet = ({
           toValue: 1,
           duration: 180,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(planeScale, {
           toValue: 1,
           duration: 240,
           easing: Easing.out(Easing.back(1.4)),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(sentCopyOpacity, {
           toValue: 1,
           duration: 220,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
       Animated.parallel([
@@ -200,19 +233,19 @@ export const SupportRequestSheet = ({
           toValue: 72,
           duration: 720,
           easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(planeTranslateY, {
           toValue: -56,
           duration: 720,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(planeOpacity, {
           toValue: 0,
           duration: 720,
           easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
       Animated.timing(sentCopyOpacity, {
@@ -220,7 +253,7 @@ export const SupportRequestSheet = ({
         duration: 240,
         delay: 380,
         easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]);
 
@@ -281,6 +314,11 @@ export const SupportRequestSheet = ({
     setSubject("");
     setMessage("");
     setIsSentAnimationVisible(true);
+  };
+
+  const handleAccountDeletionTemplatePress = (): void => {
+    setSubject(createAccountDeletionSubject(language));
+    setMessage(createAccountDeletionMessage(area, language));
   };
 
   return (
@@ -357,6 +395,32 @@ export const SupportRequestSheet = ({
                 </View>
               </View>
             ) : null}
+
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>
+                {language === "fi" ? "Tili ja tietosuoja" : "Account and privacy"}
+              </Text>
+              <Pressable
+                disabled={createMutation.isPending}
+                onPress={handleAccountDeletionTemplatePress}
+                style={styles.secondaryActionRow}
+              >
+                <View style={styles.secondaryActionCopy}>
+                  <Text style={styles.optionTitle}>
+                    {language === "fi" ? "Pyydä tilin ja tietojen poistoa" : "Request account and data deletion"}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    {language === "fi"
+                      ? "Täyttää lomakkeen valmiiksi. Vahvistamme pyynnön ja mahdolliset säilytysperusteet ennen käsittelyä."
+                      : "Prefills this form. We will confirm the request and any required retention before processing it."}
+                  </Text>
+                </View>
+                <View style={styles.secondaryActionIconWrap}>
+                  <AppIcon color={theme.colors.textPrimary} name="support" size={16} />
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+            </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{language === "fi" ? "Aihe" : "Subject"}</Text>

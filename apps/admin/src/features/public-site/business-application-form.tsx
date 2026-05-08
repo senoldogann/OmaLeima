@@ -34,6 +34,10 @@ type FieldName =
   | "websiteUrl";
 
 type FieldErrorMap = Partial<Record<FieldName, string>>;
+type ServerResponseBody = {
+  fieldErrors?: FieldErrorMap;
+  message?: string;
+};
 
 type TurnstileApi = {
   reset: () => void;
@@ -50,8 +54,63 @@ const turnstileAction = "business_application";
 const isFieldErrorMap = (value: unknown): value is FieldErrorMap =>
   typeof value === "object" && value !== null;
 
+const isServerResponseBody = (value: unknown): value is ServerResponseBody =>
+  typeof value === "object" && value !== null;
+
 const readTurnstileToken = (formData: FormData): string =>
   String(formData.get("cf-turnstile-response") ?? "").trim();
+
+const createFieldErrorMessage = (
+  fieldName: FieldName,
+  content: BusinessApplicationContent
+): string => {
+  const messages: Record<FieldName, string> = {
+    address: content.requiredHint,
+    businessName: content.requiredHint,
+    city: content.requiredHint,
+    consent: content.requiredHint,
+    contactEmail: content.contactEmailHint,
+    contactName: content.requiredHint,
+    country: content.requiredHint,
+    instagramUrl: content.instagramHint,
+    message: content.messageHint,
+    phone: content.phoneHint,
+    turnstileToken: content.errorVerification,
+    website: content.requiredHint,
+    websiteUrl: content.websiteHint,
+  };
+
+  return messages[fieldName];
+};
+
+const createLocalizedFieldErrors = (
+  serverFieldErrors: FieldErrorMap,
+  content: BusinessApplicationContent
+): FieldErrorMap => {
+  const result: FieldErrorMap = {};
+  const fieldNames = Object.keys(serverFieldErrors) as FieldName[];
+
+  for (const fieldName of fieldNames) {
+    result[fieldName] = createFieldErrorMessage(fieldName, content);
+  }
+
+  return result;
+};
+
+const createSubmissionErrorMessage = (
+  responseBody: ServerResponseBody,
+  content: BusinessApplicationContent
+): string => {
+  if (responseBody.message === "Validation failed.") {
+    return content.errorValidation;
+  }
+
+  if (responseBody.message === "Verification failed.") {
+    return content.errorVerification;
+  }
+
+  return content.errorGeneric;
+};
 
 export const BusinessApplicationForm = ({
   apiPath,
@@ -76,17 +135,32 @@ export const BusinessApplicationForm = ({
     startedAtRef.current = Date.now();
   }, []);
 
+  useEffect(() => {
+    if (submissionState.kind !== "success") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSubmissionState({ kind: "idle" });
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [submissionState.kind]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setFieldErrors({});
     setSubmissionState({ kind: "submitting" });
+    const formElement = event.currentTarget;
 
     if (isProtectionUnavailable) {
       setSubmissionState({ kind: "error", message: content.protectionUnavailable });
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(formElement);
     const turnstileToken = readTurnstileToken(formData);
 
     if (hasTurnstileSiteKey && turnstileToken.length === 0) {
@@ -121,32 +195,23 @@ export const BusinessApplicationForm = ({
         method: "POST",
       });
       const responseBody = (await response.json()) as unknown;
+      const parsedResponseBody = isServerResponseBody(responseBody) ? responseBody : {};
 
       if (!response.ok) {
-        const message =
-          typeof responseBody === "object" &&
-          responseBody !== null &&
-          "message" in responseBody &&
-          typeof responseBody.message === "string"
-            ? responseBody.message
-            : content.errorGeneric;
-
-        if (
-          typeof responseBody === "object" &&
-          responseBody !== null &&
-          "fieldErrors" in responseBody &&
-          isFieldErrorMap(responseBody.fieldErrors)
-        ) {
-          setFieldErrors(responseBody.fieldErrors);
+        if (isFieldErrorMap(parsedResponseBody.fieldErrors)) {
+          setFieldErrors(createLocalizedFieldErrors(parsedResponseBody.fieldErrors, content));
         }
 
-        setSubmissionState({ kind: "error", message });
+        setSubmissionState({
+          kind: "error",
+          message: createSubmissionErrorMessage(parsedResponseBody, content),
+        });
         resetTurnstile();
         return;
       }
 
       setSubmissionState({ kind: "success" });
-      event.currentTarget.reset();
+      formElement.reset();
       startedAtRef.current = Date.now();
       resetTurnstile();
     } catch {
@@ -154,15 +219,6 @@ export const BusinessApplicationForm = ({
       resetTurnstile();
     }
   };
-
-  if (submissionState.kind === "success") {
-    return (
-      <div className="contact-success" role="status">
-        <h2>{content.successTitle}</h2>
-        <p>{content.successBody}</p>
-      </div>
-    );
-  }
 
   return (
     <form className="contact-form" onSubmit={(event) => void handleSubmit(event)}>
@@ -295,6 +351,13 @@ export const BusinessApplicationForm = ({
         <p className="contact-error" role="alert">
           {submissionState.message}
         </p>
+      ) : null}
+
+      {submissionState.kind === "success" ? (
+        <div className="contact-success" role="status">
+          <h2>{content.successTitle}</h2>
+          <p>{content.successBody}</p>
+        </div>
       ) : null}
 
       <button

@@ -91,13 +91,13 @@ export const GlassPanel = ({
         damping: 20,
         stiffness: 200,
         mass: 0.85,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacity, {
         delay: delayMs,
         toValue: 1,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]);
 

@@ -34,10 +34,10 @@ type BusinessRow = {
 
 type BusinessOwnerRow = {
   business_id: string;
-  user_id: string;
-  profiles: {
+  owner_profile: {
     email: string;
   } | null;
+  user_id: string;
 };
 
 type OwnerAccessSummary = BusinessApplicationRecord["ownerAccess"];
@@ -52,23 +52,23 @@ const mapBusinessApplicationRecord = (
   const ownerAccess = mapOwnerAccessSummary(row.status, business, owner);
 
   return {
-  id: row.id,
-  address: row.address,
-  businessId: business?.id ?? null,
-  businessName: row.business_name,
-  city: row.city,
-  contactEmail: row.contact_email,
-  contactName: row.contact_name,
-  country: row.country,
-  createdAt: row.created_at,
-  instagramUrl: normalizeExternalReviewUrl(row.instagram_url),
-  message: row.message,
-  phone: row.phone,
-  rejectionReason: row.rejection_reason,
-  reviewedAt: row.reviewed_at,
-  ownerAccess,
-  status: row.status,
-  websiteUrl: normalizeExternalReviewUrl(row.website_url),
+    id: row.id,
+    address: row.address,
+    businessId: business?.id ?? null,
+    businessName: row.business_name,
+    city: row.city,
+    contactEmail: row.contact_email,
+    contactName: row.contact_name,
+    country: row.country,
+    createdAt: row.created_at,
+    instagramUrl: normalizeExternalReviewUrl(row.instagram_url),
+    message: row.message,
+    phone: row.phone,
+    rejectionReason: row.rejection_reason,
+    reviewedAt: row.reviewed_at,
+    ownerAccess,
+    status: row.status,
+    websiteUrl: normalizeExternalReviewUrl(row.website_url),
   };
 };
 
@@ -102,7 +102,7 @@ const mapOwnerAccessSummary = (
   }
 
   return {
-    ownerEmail: owner.profiles?.email ?? null,
+    ownerEmail: owner.owner_profile?.email ?? null,
     ownerUserId: owner.user_id,
     status: "OWNER_READY",
   };
@@ -183,7 +183,7 @@ const fetchOwnersByBusinessIdsAsync = async (
 
   const { data, error } = await supabase
     .from("business_staff")
-    .select("business_id,user_id,profiles(email)")
+    .select("business_id,user_id,owner_profile:profiles!business_staff_user_id_fkey(email)")
     .in("business_id", businessIds)
     .eq("role", "OWNER")
     .eq("status", "ACTIVE")

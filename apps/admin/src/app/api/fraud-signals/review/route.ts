@@ -5,11 +5,25 @@ import {
   FraudSignalReviewValidationError,
   parseFraudSignalReviewPayloadOrThrow,
 } from "@/features/fraud-review/validation";
+import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
     const supabase = await createRouteHandlerClient();
+    const userId = await resolveAuthenticatedRouteUserIdAsync(supabase);
+
+    if (userId === null) {
+      return NextResponse.json({ message: "Sign in again before reviewing fraud signals.", status: "AUTH_REQUIRED" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "fraud-signal-review");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
+
     const body = parseFraudSignalReviewPayloadOrThrow(
       (await request.json()) as Record<string, unknown>
     );

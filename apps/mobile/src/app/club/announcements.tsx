@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,12 +17,13 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
+
 import {
   createClubAnnouncementDraftFromRecord,
   createEmptyClubAnnouncementDraft,
   useArchiveClubAnnouncementMutation,
   useClubAnnouncementsQuery,
+  useDeleteClubAnnouncementMutation,
   useSaveClubAnnouncementMutation,
   type ClubAnnouncementAudience,
   type ClubAnnouncementDraft,
@@ -164,10 +166,88 @@ const recordStatusState = (status: ClubAnnouncementStatus): "pending" | "ready" 
   return "pending";
 };
 
-const createActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice => ({
-  body: error instanceof Error ? error.message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
-  tone: "error",
-});
+const createActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice => {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("title must be between 3 and 120 characters")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tiedotteen otsikon täytyy olla 3-120 merkkiä."
+          : "The announcement title must be 3-120 characters.",
+      tone: "error",
+    };
+  }
+
+  if (message.includes("body must be between 12 and 1200 characters")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tiedotteen tekstin täytyy olla 12-1200 merkkiä."
+          : "The announcement body must be 12-1200 characters.",
+      tone: "error",
+    };
+  }
+
+  if (message.includes("ctaLabel must be at least 2 characters")) {
+    return {
+      body:
+        language === "fi"
+          ? "CTA-painikkeen tekstissä täytyy olla vähintään kaksi merkkiä."
+          : "The CTA button label must contain at least two characters.",
+      tone: "error",
+    };
+  }
+
+  if (message.includes("ctaUrl must be a full http or https URL")) {
+    return {
+      body:
+        language === "fi"
+          ? "CTA-linkin täytyy olla täydellinen http- tai https-osoite."
+          : "The CTA link must be a complete http or https URL.",
+      tone: "error",
+    };
+  }
+
+  if (message.includes("priority must be a whole number between 0 and 10")) {
+    return {
+      body:
+        language === "fi"
+          ? "Prioriteetin täytyy olla kokonaisluku välillä 0-10."
+          : "Priority must be a whole number between 0 and 10.",
+      tone: "error",
+    };
+  }
+
+  if (message.includes("endsAt must be after startsAt")) {
+    return {
+      body:
+        language === "fi"
+          ? "Päättymisajan täytyy olla aloitusajan jälkeen."
+          : "The end time must be after the start time.",
+      tone: "error",
+    };
+  }
+
+  if (
+    message.includes("Announcement was not updated") ||
+    message.includes("Announcement was not archived") ||
+    message.includes("Announcement was not deleted")
+  ) {
+    return {
+      body:
+        language === "fi"
+          ? "Tiedotetta ei voitu käsitellä. Se voi kuulua toiseen järjestäjätiliin tai olla jo poistettu."
+          : "The announcement could not be processed. It may belong to another organizer account or already be removed.",
+      tone: "error",
+    };
+  }
+
+  return {
+    body: message.length > 0 ? message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+    tone: "error",
+  };
+};
 
 const getCreatableMemberships = (memberships: ClubMembershipSummary[]): ClubMembershipSummary[] =>
   memberships.filter((membership) => membership.canCreateEvents);
@@ -297,6 +377,7 @@ export default function ClubAnnouncementsScreen() {
   });
   const saveMutation = useSaveClubAnnouncementMutation();
   const archiveMutation = useArchiveClubAnnouncementMutation();
+  const deleteMutation = useDeleteClubAnnouncementMutation();
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
   const [draft, setDraft] = useState<ClubAnnouncementDraft>(() => createEmptyClubAnnouncementDraft(null));
@@ -331,7 +412,7 @@ export default function ClubAnnouncementsScreen() {
       }),
     [localeTag]
   );
-  const isPending = saveMutation.isPending || archiveMutation.isPending || isUploadingImage;
+  const isPending = saveMutation.isPending || archiveMutation.isPending || deleteMutation.isPending || isUploadingImage;
   const localAnnouncementImagePreviewSource = useMemo(() => {
     if (localAnnouncementImagePreviewUri === null || localAnnouncementImagePreviewUri.trim().length === 0) {
       return null;
@@ -484,7 +565,8 @@ export default function ClubAnnouncementsScreen() {
 
       setDraft((currentDraft) => ({
         ...currentDraft,
-        imageUrl: uploadedImage.publicUrl,
+        imageStagingPath: uploadedImage.stagingPath,
+        imageUrl: uploadedImage.previewUrl,
       }));
       setActionNotice({
         body: language === "fi" ? "Kuva lisätty tiedotteeseen." : "Image attached to the announcement.",
@@ -576,16 +658,71 @@ export default function ClubAnnouncementsScreen() {
     }
   };
 
+  const handleDeleteAnnouncementAsync = async (announcement: ClubAnnouncementRecord): Promise<void> => {
+    if (userId === null || isPending) {
+      return;
+    }
+
+    hapticImpact(ImpactStyle.Medium);
+    setActionNotice(null);
+    setContextMenuAnnouncementId(null);
+
+    try {
+      const result = await deleteMutation.mutateAsync({
+        announcementId: announcement.announcementId,
+        clubId: announcement.clubId,
+        userId,
+      });
+      if (result.status === "SUCCESS") {
+        hapticNotification(NotificationType.Success);
+      } else {
+        hapticNotification(NotificationType.Error);
+      }
+      setActionNotice({
+        body:
+          result.status === "SUCCESS"
+            ? language === "fi"
+              ? "Tiedote poistettu."
+              : "Announcement deleted."
+            : result.message,
+        tone: result.status === "SUCCESS" ? "success" : "error",
+      });
+    } catch (error) {
+      hapticNotification(NotificationType.Error);
+      setActionNotice(createActionNotice(error, language));
+    }
+  };
+
+  const handleDeleteAnnouncementPress = (announcement: ClubAnnouncementRecord): void => {
+    Alert.alert(
+      language === "fi" ? "Poista tiedote?" : "Delete announcement?",
+      language === "fi"
+        ? "Tiedote poistetaan pysyvästi ja sen kuva poistetaan tallennuksesta, jos kuva kuuluu OmaLeimalle."
+        : "This permanently removes the announcement and deletes its image from storage when OmaLeima owns it.",
+      [
+        {
+          style: "cancel",
+          text: language === "fi" ? "Peruuta" : "Cancel",
+        },
+        {
+          onPress: () => void handleDeleteAnnouncementAsync(announcement),
+          style: "destructive",
+          text: language === "fi" ? "Poista" : "Delete",
+        },
+      ]
+    );
+  };
+
   return (
     <AppScreen>
       <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
-          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
-          <Text style={styles.screenTitle}>{language === "fi" ? "Tiedotteet" : "Announcements"}</Text>
-          <Text style={styles.metaText}>
-            {language === "fi"
-              ? "Julkaise opiskelijoille ja tapahtumapäivän tiimille näkyviä päivityksiä."
-              : "Publish updates for students and event-day teams."}
+        <View style={styles.clubHeader}>
+          <View style={styles.clubBrand}>
+            <AppIcon color={theme.colors.lime} name="star" size={18} />
+            <Text style={styles.clubBrandTitle}>OmaLeima</Text>
+          </View>
+          <Text style={styles.clubBrandSub}>
+            {language === "fi" ? "Tiedotteet" : "Announcements"}
           </Text>
         </View>
         {memberships.length > 0 ? (
@@ -604,7 +741,10 @@ export default function ClubAnnouncementsScreen() {
       ) : null}
 
       {dashboardQuery.error ? (
-        <InfoCard eyebrow="Club" title={language === "fi" ? "Klubeja ei voitu ladata" : "Could not load clubs"}>
+        <InfoCard
+          eyebrow={language === "fi" ? "Klubi" : "Club"}
+          title={language === "fi" ? "Klubeja ei voitu ladata" : "Could not load clubs"}
+        >
           <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
         </InfoCard>
       ) : null}
@@ -640,17 +780,24 @@ export default function ClubAnnouncementsScreen() {
 
       {announcementsQuery.data?.length === 0 ? (
         <InfoCard eyebrow="Feed" title={language === "fi" ? "Ei tiedotteita vielä" : "No announcements yet"}>
-          <Text style={styles.bodyText}>
-            {language === "fi"
-              ? "Ensimmäinen julkaistu tiedote näkyy opiskelijoille ja yrityksille heidän feedissään."
-              : "The first published announcement appears in the student and business feeds."}
-          </Text>
+          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+            <AppIcon color={theme.colors.textMuted} name="bell" size={16} />
+            <Text style={[styles.bodyText, { flex: 1 }]}>
+              {language === "fi"
+                ? "Ensimmäinen julkaistu tiedote näkyy opiskelijoille ja yrityksille heidän feedissään."
+                : "The first published announcement appears in the student and business feeds."}
+            </Text>
+          </View>
         </InfoCard>
       ) : null}
 
       {sortedAnnouncements.length > 0 ? (
         <View style={styles.listStack}>
-          <Text style={styles.sectionTitle}>{language === "fi" ? "Viimeisimmät" : "Latest"}</Text>
+          <View style={styles.sectionIconHeader}>
+            <AppIcon color={theme.colors.lime} name="bell" size={16} />
+            <Text style={styles.sectionTitle}>{language === "fi" ? "Viimeisimmät" : "Latest"}</Text>
+            <Text style={styles.sectionCount}>{sortedAnnouncements.length}</Text>
+          </View>
           {sortedAnnouncements.map((announcement) => (
             <Pressable
               key={announcement.announcementId}
@@ -665,10 +812,10 @@ export default function ClubAnnouncementsScreen() {
               >
                 <View style={styles.listImageOverlay} />
                 <View style={styles.listImageContent}>
-                  <StatusBadge
-                    label={recordStatusLabel(announcement.status, language)}
-                    state={recordStatusState(announcement.status)}
-                  />
+                  <View style={styles.eventStatusChip}>
+                    <View style={[styles.statusDot, recordStatusState(announcement.status) === "ready" ? styles.statusDotReady : recordStatusState(announcement.status) === "warning" ? styles.statusDotWarning : styles.statusDotPending]} />
+                    <Text style={styles.statusChipLabel}>{recordStatusLabel(announcement.status, language)}</Text>
+                  </View>
                 </View>
               </CoverImageSurface>
               <View style={styles.listCopy}>
@@ -701,6 +848,14 @@ export default function ClubAnnouncementsScreen() {
                 style={styles.actionSheetItem}
               >
                 <Text style={styles.actionSheetItemText}>{language === "fi" ? "Muokkaa" : "Edit"}</Text>
+              </Pressable>
+            ) : null}
+            {contextMenuAnnouncement !== null ? (
+              <Pressable
+                onPress={() => handleDeleteAnnouncementPress(contextMenuAnnouncement)}
+                style={styles.actionSheetItem}
+              >
+                <Text style={styles.actionSheetItemDangerText}>{language === "fi" ? "Poista" : "Delete"}</Text>
               </Pressable>
             ) : null}
             <Pressable
@@ -1556,15 +1711,20 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: 999,
-      height: 42,
+      height: 32,
       justifyContent: "center",
-      width: 42,
+      width: 32,
     },
     addButtonText: {
       color: theme.colors.actionPrimaryText,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: 24,
-      lineHeight: 28,
+      fontSize: 20,
+      height: 32,
+      includeFontPadding: false,
+      lineHeight: 32,
+      textAlign: "center",
+      textAlignVertical: "center",
+      width: 32,
     },
     actionSheetBackdrop: {
       backgroundColor: "rgba(0, 0, 0, 0.54)",
@@ -1597,6 +1757,12 @@ const createStyles = (theme: MobileTheme) =>
     actionSheetItemMutedText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    actionSheetItemDangerText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
@@ -1645,5 +1811,72 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
+    },
+    clubHeader: {
+      flex: 1,
+      gap: 4,
+    },
+    clubBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    clubBrandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    clubBrandSub: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      marginLeft: 26,
+    },
+    sectionIconHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionCount: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 10,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    statusDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8,
+    },
+    statusDotReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    statusDotWarning: {
+      backgroundColor: theme.colors.danger,
+    },
+    statusDotPending: {
+      backgroundColor: theme.colors.textMuted,
+    },
+    eventStatusChip: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.45)",
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    statusChipLabel: {
+      color: "rgba(255,255,255,0.92)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

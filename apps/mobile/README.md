@@ -25,6 +25,7 @@ npm run audit:native-push-device-readiness
 npm run audit:realtime-readiness
 npm run audit:reward-notification-bridge
 npm run audit:store-release-readiness
+npm run smoke:native-simulators
 ```
 
 ## Current scope
@@ -81,6 +82,12 @@ Use this command to confirm the current simulator and emulator wiring state:
 npm run audit:native-simulator-smoke
 ```
 
+Use this command to build, install, launch, and crash-check local Android/iOS simulator targets when the local SDKs are available:
+
+```bash
+npm run smoke:native-simulators
+```
+
 Use this command to confirm the hosted same-device scanner smoke wiring:
 
 ```bash
@@ -97,8 +104,16 @@ npm run audit:store-release-readiness
 
 - The repo now has a dedicated store/public-launch readiness audit for Expo config, build assets, native policy fields, and explicit EAS build environments.
 - The same gate also expects Expo EAS CLI auth and verifies the required remote EAS environment-variable names for `development`, `preview`, and `production`.
+- The gate also checks Android store permission hygiene: `SYSTEM_ALERT_WINDOW` and `RECORD_AUDIO` must be blocked, and Android backup must stay disabled for the mobile app.
+- The gate checks that the iOS privacy manifest source-of-truth declares app-functional collected data types and does not declare tracking.
+- If the ignored generated iOS project exists locally, the gate also checks `ios/OmaLeima/PrivacyInfo.xcprivacy`, stale iOS Pods paths, iOS Always/background location hygiene, and dev-client local-network plist hygiene.
+- Run `OMALEIMA_STORE_BUILD=1 npx expo prebuild --platform ios --no-install` and then `pod install` from `apps/mobile/ios` after privacy/config/dependency changes so local Xcode release builds do not use stale native files or keep Expo Dev Launcher Bonjour/local-network keys.
+- The gate now also checks repo-owned mobile privacy notice coverage and that signed-in users can initiate account/data deletion requests from the in-app support flow.
+- The gate also checks that Privacy and Terms links are reachable inside the mobile app before and after login, and that the public privacy notice acts as the web deletion request resource required for store listings.
+- The gate reads hosted active mobile login slides through the public Supabase API and fails if an active slide still contains placeholder/test copy, missing Finnish/English localized copy, or a non-HTTPS image URL.
 - This gate does not prove App Store Connect or Google Play Console state by itself.
-- Store listing metadata, screenshots, privacy/support URLs, and final submission credentials remain owner-owned work for the broader public launch phase.
+- Store listing metadata, screenshots, privacy/support URLs, final submission credentials, Play Console target-API confirmation from the uploaded AAB, and Apple provider credentials remain owner-owned work for the broader public launch phase.
+- Because student primary login currently uses Google, iOS App Store submission still needs Sign in with Apple or an equivalent privacy-preserving login option before public review.
 
 ## Redesign runtime note
 
@@ -119,7 +134,8 @@ npm run audit:store-release-readiness
 - The provider-owned diagnostics capture and device logs are the manual smoke surface for that step.
 - Simulator or emulator smoke can still validate launch flow, login flow, route guards, and diagnostics wiring before the final physical-device pass.
 - On Android specifically, the emulator is the current fallback when no phone is available: use it for auth, event, QR, and scanner-flow coverage, but do not count it as remote-push proof.
-- The repository audit for simulator or emulator work is wiring-only; it does not claim that a real native launch or remote push already succeeded.
+- The repository audit for simulator or emulator work now requires the executable launch-smoke script to be present; `npm run smoke:native-simulators` is the actual Android/iOS simulator launch proof.
+- Simulator or emulator smoke still does not prove APNs/FCM-backed remote push delivery.
 - The current iPhone development-build smoke has already passed login, hosted device registration, rotating QR, and remote push receipt plus notification-open response.
 - The runtime label now classifies the current physical-device dev client as a development build instead of `bare`.
 

@@ -23,6 +23,10 @@ export type PublicLandingContent = {
   footerNote: string;
   footerPhoneLabel: string;
   footerPostalLabel: string;
+  faqItems: ReadonlyArray<{
+    answer: string;
+    question: string;
+  }>;
   heroTitle: string;
   interestHref: string;
   interestLabel: string;
@@ -75,6 +79,38 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     footerNote: "Built for Finnish student culture. Pilot conversations are open.",
     footerPhoneLabel: "Phone",
     footerPostalLabel: "Mailing address",
+    faqItems: [
+      {
+        answer:
+          "OmaLeima is a digital leima pass for Finnish student events. Students collect QR-verified stamps on their phones, venues scan checkpoints from any device, and organizers monitor everything in one dashboard — no paper cards or manual tracking needed.",
+        question: "What is OmaLeima?",
+      },
+      {
+        answer:
+          "Apply on the website or reach out directly. Onboarding is fast: register your venue, add a checkpoint, and activate your scanner access. Most partners are ready for their first event within the same week.",
+        question: "How does a venue or business join?",
+      },
+      {
+        answer:
+          "The organizer creates the event in the app, adds venue partners as checkpoints, and sets reward thresholds. Students can see the event immediately and join from their phones.",
+        question: "How does an organizer set up an event?",
+      },
+      {
+        answer:
+          "The scanner requires a live connection because every stamp is verified in real-time on the backend. This is what prevents duplicate stamps and screenshot abuse.",
+        question: "Does scanning work without internet?",
+      },
+      {
+        answer:
+          "Any smartphone or tablet is enough. The venue logs in via browser or app and can start scanning QR codes immediately — no special hardware required.",
+        question: "What devices does a scanning venue need?",
+      },
+      {
+        answer:
+          "During the pilot phase, onboarding is free for partner venues. Long-term pricing is agreed on in the pilot discussion — get in touch and we will walk you through it.",
+        question: "Is the service free?",
+      },
+    ],
     heroTitle: "Leimas and rewards in one clean system.",
     interestHref,
     interestLabel: "Follow @omaleima",
@@ -164,6 +200,38 @@ export const publicLandingContentByLocale: Record<PublicLocale, PublicLandingCon
     footerNote: "Rakennettu suomalaiseen opiskelijakulttuuriin. Pilottikeskustelut ovat avoinna.",
     footerPhoneLabel: "Puhelin",
     footerPostalLabel: "Postiosoite",
+    faqItems: [
+      {
+        answer:
+          "OmaLeima on digitaalinen leimapassi opiskelijatapahtumiin. Opiskelija kerää QR-varmistettuja leimoja puhelimellaan, yritys skannaa rasteja omalta laitteeltaan ja järjestäjä seuraa kaikkea yhdestä näkymästä – ilman paperikortteja tai manuaalista seurantaa.",
+        question: "Mikä OmaLeima oikein on?",
+      },
+      {
+        answer:
+          "Hae kumppaniksi sivustolta tai ota suoraan yhteyttä. Käyttöönotto käy nopeasti: rekisteröi yritys, lisää rastipiste ja aktivoi skannerivaltuutus. Useimmat kumppanit ovat valmiita ensimmäiseen tapahtumaan saman viikon sisällä.",
+        question: "Miten yritys tai ravintola pääsee mukaan?",
+      },
+      {
+        answer:
+          "Järjestäjä luo tapahtuman sovelluksessa, lisää yrityskumppanit rasteiksi ja asettaa palkintorajat. Opiskelijat näkevät tapahtuman heti ja voivat liittyä mukaan omalla puhelimellaan.",
+        question: "Miten järjestäjä perustaa tapahtuman?",
+      },
+      {
+        answer:
+          "Skanneri tarvitsee verkkoyhteyden, koska jokainen leima tarkistetaan reaaliajassa taustajärjestelmästä. Näin tuplaleimat ja kuvakaappaukset eivät pääse läpi.",
+        question: "Toimiiko skannaus ilman nettiyhteyttä?",
+      },
+      {
+        answer:
+          "Mikä tahansa älypuhelin tai tabletti riittää. Yritys kirjautuu selaimella tai sovelluksella ja voi skannata QR-koodeja heti – erillistä laitehankintaa ei tarvita.",
+        question: "Mitä laitteita yritys tarvitsee skannaukseen?",
+      },
+      {
+        answer:
+          "Pilotin aikana käyttöönotto on kumppaniyrityksille maksuton. Jatkosta sovitaan yhdessä pilottikeskustelussa – ota yhteyttä niin käydään se läpi.",
+        question: "Onko palvelu maksullinen?",
+      },
+    ],
     heroTitle: "Leimat ja palkinnot yhdessä digitaalisessa passissa.",
     interestHref,
     interestLabel: "Seuraa @omaleima",

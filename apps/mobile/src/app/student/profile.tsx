@@ -16,7 +16,8 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
-import { LegalLinksCard } from "@/features/legal/legal-links-card";
+import { LegalLinksModal } from "@/features/legal/legal-links-card";
+import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { ProfileTagCard } from "@/features/profile/components/profile-tag-card";
 import {
@@ -32,7 +33,7 @@ import { useNativePushDiagnostics } from "@/features/push/native-push-diagnostic
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import { useSession } from "@/providers/session-provider";
 
-type PreferenceSheet = "language" | "theme" | null;
+type PreferenceSheet = "language" | null;
 
 const createTagSummary = (language: "fi" | "en", count: number, remainingTagSlots: number): string => {
   if (language === "fi") {
@@ -74,9 +75,9 @@ const createPushPreferenceSummary = (
   language: "fi" | "en",
   permissionState: "granted" | "denied" | "undetermined" | "provisional" | "unavailable",
   pushState: PushDeviceRegistrationResult | null
-): string => {
+): string | null => {
   if (pushState?.state === "registered") {
-    return language === "fi" ? "Ilmoitukset ovat käytössä tällä laitteella." : "Notifications are active on this device.";
+    return null;
   }
 
   if (language === "fi") {
@@ -181,7 +182,7 @@ const getUserMetadataDisplayName = (metadata: unknown): string | null => {
 
 export default function StudentProfileScreen() {
   const theme = useAppTheme();
-  const { copy, language, themeMode, setLanguage, setThemeMode } = useUiPreferences();
+  const { copy, language, setLanguage } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const { diagnostics, refreshPushPermissionStateAsync } = useNativePushDiagnostics();
@@ -191,6 +192,7 @@ export default function StudentProfileScreen() {
   const [isTagModalVisible, setIsTagModalVisible] = useState<boolean>(false);
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [isLegalLinksVisible, setIsLegalLinksVisible] = useState<boolean>(false);
   const tagModalScrollViewRef = useRef<ScrollView | null>(null);
   const autoRegisterAttemptedRef = useRef<boolean>(false);
 
@@ -219,8 +221,6 @@ export default function StudentProfileScreen() {
     createCustomTagMutation.isPending ||
     setPrimaryTagMutation.isPending ||
     removeTagMutation.isPending;
-  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
-  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const hasGrantedNotificationPermission = hasGrantedPushPermission(diagnostics.permissionState);
   const hasRegisteredNotificationDevice = pushState?.state === "registered";
   const notificationDetail = createPushRegistrationDetail(
@@ -228,6 +228,7 @@ export default function StudentProfileScreen() {
     pushState,
     registerPushMutation.isPending
   );
+  const notificationSummary = createPushPreferenceSummary(language, diagnostics.permissionState, pushState);
   const shouldShowNotificationAction =
     !hasRegisteredNotificationDevice &&
     (!hasGrantedNotificationPermission ||
@@ -411,35 +412,7 @@ export default function StudentProfileScreen() {
         ) : null}
 
         <View style={styles.preferenceSection}>
-          <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceSelectRow}>
-            <View style={styles.preferenceIconWrap}>
-              <AppIcon color={theme.colors.lime} name="palette" size={16} />
-            </View>
-            <View style={styles.preferenceHeaderCopy}>
-              <Text selectable style={styles.preferenceTitle}>{copy.common.theme}</Text>
-            </View>
-            <View style={styles.preferenceSelectValue}>
-              <Text selectable style={styles.preferenceSelectValueText}>{selectedThemeLabel}</Text>
-              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-            </View>
-          </Pressable>
-        </View>
-
-        <View style={styles.preferenceDivider} />
-
-        <View style={styles.preferenceSection}>
-          <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceSelectRow}>
-            <View style={styles.preferenceIconWrap}>
-              <AppIcon color={theme.colors.lime} name="globe" size={16} />
-            </View>
-            <View style={styles.preferenceHeaderCopy}>
-              <Text selectable style={styles.preferenceTitle}>{copy.common.language}</Text>
-            </View>
-            <View style={styles.preferenceSelectValue}>
-              <Text selectable style={styles.preferenceSelectValueText}>{selectedLanguageLabel}</Text>
-              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-            </View>
-          </Pressable>
+          <LanguageDropdown language={language} onLanguageChange={setLanguage} />
         </View>
 
         <View style={styles.preferenceDivider} />
@@ -451,9 +424,11 @@ export default function StudentProfileScreen() {
             </View>
             <View style={styles.preferenceHeaderCopy}>
               <Text selectable style={styles.preferenceTitle}>{copy.common.notifications}</Text>
-              <Text selectable style={styles.metaText}>
-                {createPushPreferenceSummary(language, diagnostics.permissionState, pushState)}
-              </Text>
+              {notificationSummary !== null ? (
+                <Text selectable style={styles.metaText}>
+                  {notificationSummary}
+                </Text>
+              ) : null}
               {notificationDetail !== null ? (
                 <Text selectable style={pushState?.state === "error" ? styles.errorText : styles.metaText}>
                   {notificationDetail}
@@ -500,11 +475,34 @@ export default function StudentProfileScreen() {
         <View style={styles.preferenceDivider} />
 
         <View style={styles.preferenceSection}>
+          <Pressable onPress={() => setIsLegalLinksVisible(true)} style={styles.preferenceSelectRow}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="info" size={16} />
+            </View>
+            <View style={styles.preferenceHeaderCopy}>
+              <Text selectable style={styles.preferenceTitle}>
+                {language === "fi" ? "Tietosuoja ja käyttöehdot" : "Privacy and terms"}
+              </Text>
+            </View>
+            <View style={styles.preferenceSelectValue}>
+              <Text selectable style={styles.preferenceSelectValueText}>{copy.common.open}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={styles.preferenceDivider} />
+
+        <View style={styles.preferenceSection}>
           <SignOutButton />
         </View>
       </View>
 
-      <LegalLinksCard language={language} />
+      <LegalLinksModal
+        isVisible={isLegalLinksVisible}
+        language={language}
+        onClose={() => setIsLegalLinksVisible(false)}
+      />
 
       <SupportRequestSheet
         area="STUDENT"
@@ -525,9 +523,7 @@ export default function StudentProfileScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
-                <Text style={styles.modalTitle}>
-                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
-                </Text>
+                <Text style={styles.modalTitle}>{copy.common.language}</Text>
               </View>
               <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
@@ -535,49 +531,26 @@ export default function StudentProfileScreen() {
             </View>
 
             <View style={styles.preferenceOptionList}>
-              {preferenceSheet === "theme" ? (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("dark");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("light");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("fi");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("en");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
-                  </Pressable>
-                </>
-              )}
+              <>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("fi");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("en");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                </Pressable>
+              </>
             </View>
           </Pressable>
         </Pressable>

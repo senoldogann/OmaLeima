@@ -45,3 +45,19 @@ export const submitRewardTierUpdateRequestAsync = async (
 
   return parseResponseAsync(response);
 };
+
+export const submitRewardTierDeleteRequestAsync = async (
+  rewardTierId: string
+): Promise<ClubRewardTierMutationResponse> => {
+  const response = await fetch("/api/club/reward-tiers/delete", {
+    body: JSON.stringify({
+      rewardTierId,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  return parseResponseAsync(response);
+};

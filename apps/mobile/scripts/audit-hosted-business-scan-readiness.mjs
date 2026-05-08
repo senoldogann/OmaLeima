@@ -51,7 +51,8 @@ const main = async () => {
   const studentQrScenePresent =
     studentActiveEventSource.includes("Show at the venue desk") &&
     studentActiveEventSource.includes("Active leima pass") &&
-    studentActiveEventSource.includes("Preview leima");
+    studentActiveEventSource.includes("Tonight's leimas") &&
+    studentActiveEventSource.includes("LEIMA QR");
   const scannerCameraGuidancePresent =
     businessScannerSource.includes("Aim the camera at the student QR.") &&
     businessScannerSource.includes("Camera permission is not granted.") &&

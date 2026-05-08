@@ -18,6 +18,8 @@ export type AnnouncementRecord = {
   ctaLabel: string | null;
   ctaUrl: string | null;
   endsAt: string | null;
+  eventId: string | null;
+  imageStagingPath: string;
   imageUrl: string | null;
   priority: number;
   pushDeliveryStatus: "FAILED" | "NOT_SENT" | "PARTIAL" | "SENT";
@@ -39,6 +41,8 @@ export type AnnouncementCreatePayload = {
   ctaLabel: string;
   ctaUrl: string;
   endsAt: string;
+  eventId: string;
+  imageStagingPath: string;
   imageUrl: string;
   priority: string;
   startsAt: string;

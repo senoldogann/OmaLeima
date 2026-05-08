@@ -111,8 +111,10 @@ export const parseAnnouncementCreatePayloadOrThrow = (
   audienceValue: AnnouncementAudience;
   clubIdValue: string | null;
   endsAtValue: string | null;
+  eventIdValue: string | null;
   priorityValue: number;
   imageUrlValue: string | null;
+  imageStagingPathValue: string | null;
   startsAtValue: string;
   statusValue: AnnouncementStatus;
 } => {
@@ -137,6 +139,8 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     typeof body.ctaLabel !== "string" ||
     typeof body.ctaUrl !== "string" ||
     typeof body.endsAt !== "string" ||
+    typeof body.eventId !== "string" ||
+    typeof body.imageStagingPath !== "string" ||
     typeof body.imageUrl !== "string" ||
     typeof body.priority !== "string" ||
     typeof body.startsAt !== "string"
@@ -150,17 +154,29 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     throw new AnnouncementValidationError("clubId must be a valid UUID when provided.");
   }
 
+  const eventIdValue = body.eventId.trim().length === 0 ? null : body.eventId.trim();
+
+  if (eventIdValue !== null && !isUuid(eventIdValue)) {
+    throw new AnnouncementValidationError("eventId must be a valid UUID when provided.");
+  }
+
+  if (eventIdValue !== null && (clubIdValue === null || body.audience !== "STUDENTS")) {
+    throw new AnnouncementValidationError("event-scoped announcements require a clubId and STUDENTS audience.");
+  }
+
   if (body.ctaLabel.trim().length > 0 && (body.ctaLabel.trim().length < 2 || body.ctaLabel.trim().length > 60)) {
     throw new AnnouncementValidationError("ctaLabel must be between 2 and 60 characters when provided.");
   }
 
-  if (body.ctaUrl.trim().length > 0 && body.ctaUrl.trim().length < 8) {
-    throw new AnnouncementValidationError("ctaUrl must be a full URL when provided.");
-  }
-
+  const ctaUrlValue = parseOptionalUrlOrThrow(body.ctaUrl, "ctaUrl");
   const imageUrlValue = parseOptionalUrlOrThrow(body.imageUrl, "imageUrl");
+  const imageStagingPathValue = body.imageStagingPath.trim().length === 0 ? null : body.imageStagingPath.trim();
   const startsAtValue = parseIsoDateTimeOrThrow(body.startsAt, "startsAt");
   const endsAtValue = parseOptionalIsoDateTimeOrThrow(body.endsAt, "endsAt");
+
+  if (body.status === "DRAFT" && imageUrlValue !== null && imageStagingPathValue === null) {
+    throw new AnnouncementValidationError("draft announcement imageUrl must be empty.");
+  }
 
   if (endsAtValue !== null && new Date(endsAtValue).getTime() <= new Date(startsAtValue).getTime()) {
     throw new AnnouncementValidationError("endsAt must be after startsAt.");
@@ -173,9 +189,13 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     clubId: body.clubId,
     clubIdValue,
     ctaLabel: body.ctaLabel.trim(),
-    ctaUrl: body.ctaUrl.trim(),
+    ctaUrl: ctaUrlValue ?? "",
     endsAt: body.endsAt,
     endsAtValue,
+    eventId: body.eventId,
+    eventIdValue,
+    imageStagingPath: body.imageStagingPath,
+    imageStagingPathValue,
     imageUrl: body.imageUrl.trim(),
     imageUrlValue,
     priority: body.priority,

@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
+import { createSignedStagedMediaUrlAsync } from "@/features/media/staged-media";
 
 import type {
   ClubDashboardEventMetrics,
@@ -21,19 +22,24 @@ type ClubMembershipRow = {
 };
 
 type ClubRow = {
+  address: string | null;
   announcement: string | null;
   city: string | null;
   contact_email: string | null;
   cover_image_url: string | null;
   id: string;
+  instagram_url: string | null;
   logo_url: string | null;
   name: string;
+  phone: string | null;
   university_name: string | null;
+  website_url: string | null;
 };
 
 type EventRow = {
   city: string;
   club_id: string;
+  cover_image_staging_path: string | null;
   cover_image_url: string | null;
   description: string | null;
   end_at: string;
@@ -45,6 +51,7 @@ type EventRow = {
   rules: EventRules;
   start_at: string;
   status: ClubDashboardEventSummary["status"];
+  ticket_url: string | null;
   visibility: ClubDashboardEventSummary["visibility"];
 };
 
@@ -110,7 +117,7 @@ const fetchClubsByIdsAsync = async (clubIds: string[]): Promise<ClubRow[]> => {
 
   const { data, error } = await supabase
     .from("clubs")
-    .select("id,name,city,university_name,logo_url,cover_image_url,announcement,contact_email")
+    .select("id,name,city,university_name,logo_url,cover_image_url,announcement,contact_email,phone,address,website_url,instagram_url")
     .in("id", clubIds)
     .eq("status", "ACTIVE")
     .returns<ClubRow[]>();
@@ -132,7 +139,7 @@ const fetchEventsByClubIdsAsync = async (clubIds: string[]): Promise<EventRow[]>
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,club_id,name,description,city,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules"
+      "id,club_id,name,description,city,cover_image_url,cover_image_staging_path,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules,ticket_url"
     )
     .in("club_id", clubIds)
     .gte("end_at", oldestRelevantEndAt)
@@ -276,6 +283,7 @@ const mapMemberships = (
 
     return [
       {
+        address: club.address,
         canCreateEvents: membership.role === "OWNER" || membership.role === "ORGANIZER",
         announcement: club.announcement,
         city: club.city,
@@ -283,9 +291,12 @@ const mapMemberships = (
         clubName: club.name,
         contactEmail: club.contact_email,
         coverImageUrl: club.cover_image_url,
+        instagramUrl: club.instagram_url,
         logoUrl: club.logo_url,
         membershipRole: membership.role,
+        phone: club.phone,
         universityName: club.university_name,
+        websiteUrl: club.website_url,
       },
     ];
   });
@@ -382,19 +393,27 @@ const mapEvents = (
   rows: EventRow[],
   memberships: ClubMembershipSummary[],
   metricsByEventId: Map<string, ClubDashboardEventMetrics>,
+  signedUrlByStagingPath: Map<string, string>,
   now: number
 ): ClubDashboardEventSummary[] => {
   const clubNameById = new Map(memberships.map((membership) => [membership.clubId, membership.clubName] as const));
+  const canManageEventByClubId = new Map(
+    memberships.map((membership) => [membership.clubId, membership.canCreateEvents] as const)
+  );
 
   return rows.map((row) => {
     const metrics = metricsByEventId.get(row.id) ?? createEmptyMetrics();
 
     return {
+      canManageEvent: canManageEventByClubId.get(row.club_id) ?? false,
       city: row.city,
       claimedRewardCount: metrics.claimedRewardCount,
       clubId: row.club_id,
       clubName: clubNameById.get(row.club_id) ?? "Unknown club",
-      coverImageUrl: row.cover_image_url,
+      coverImageStagingPath: row.cover_image_staging_path,
+      coverImageUrl:
+        row.cover_image_url ??
+        (row.cover_image_staging_path === null ? null : signedUrlByStagingPath.get(row.cover_image_staging_path) ?? null),
       description: row.description,
       endAt: row.end_at,
       eventId: row.id,
@@ -409,11 +428,30 @@ const mapEvents = (
       rewardTierCount: metrics.rewardTierCount,
       startAt: row.start_at,
       status: row.status,
+      ticketUrl: row.ticket_url,
       timelineState: deriveTimelineState(row.status, row.start_at, row.end_at, now),
       validStampCount: metrics.validStampCount,
       visibility: row.visibility,
     };
   });
+};
+
+const createSignedUrlByStagingPathAsync = async (rows: EventRow[]): Promise<Map<string, string>> => {
+  const stagingPaths = Array.from(
+    new Set(
+      rows
+        .map((row) => row.cover_image_staging_path)
+        .filter((value): value is string => value !== null && value.trim().length > 0)
+    )
+  );
+  const entries = await Promise.all(
+    stagingPaths.map(async (stagingPath): Promise<[string, string]> => [
+      stagingPath,
+      await createSignedStagedMediaUrlAsync(stagingPath),
+    ])
+  );
+
+  return new Map(entries);
 };
 
 const createSummary = (
@@ -453,10 +491,12 @@ export const fetchClubDashboardSnapshotAsync = async (userId: string): Promise<C
     fetchRewardClaimsAsync(eventIds),
     fetchStampsAsync(eventIds),
   ]);
+  const signedUrlByStagingPath = await createSignedUrlByStagingPathAsync(events);
   const mappedEvents = mapEvents(
     events,
     memberships,
     mapMetricsByEventId(registrations, venues, rewardTiers, rewardClaims, stamps),
+    signedUrlByStagingPath,
     Date.now()
   );
 

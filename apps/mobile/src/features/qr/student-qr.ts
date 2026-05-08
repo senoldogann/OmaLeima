@@ -61,10 +61,13 @@ type UseGenerateQrTokenQueryParams = {
   accessToken: string;
   eventId: string;
   isEnabled: boolean;
+  sessionCacheKey: string;
 };
 
 type UseQrSvgQueryParams = {
+  eventId: string;
   token: string;
+  tokenVersion: string;
   isEnabled: boolean;
 };
 
@@ -83,10 +86,11 @@ export const studentQrContextQueryKey = (studentId: string) => ["student-qr-cont
 export const studentEventStampCountQueryKey = (eventId: string, studentId: string) =>
   ["student-event-stamp-count", eventId, studentId] as const;
 
-export const studentGenerateQrTokenQueryKey = (eventId: string, accessTokenCacheKey: string) =>
-  ["student-generate-qr-token", eventId, accessTokenCacheKey] as const;
+export const studentGenerateQrTokenQueryKey = (eventId: string, sessionCacheKey: string) =>
+  ["student-generate-qr-token", eventId, sessionCacheKey] as const;
 
-export const studentQrSvgQueryKey = (token: string) => ["student-qr-svg", token] as const;
+export const studentQrSvgQueryKey = (eventId: string, tokenVersion: string) =>
+  ["student-qr-svg", eventId, tokenVersion] as const;
 
 const toRegisteredQrEvent = (row: EventRow): RegisteredQrEvent => ({
   id: row.id,
@@ -151,7 +155,6 @@ const fetchStudentQrContextAsync = async (studentId: string): Promise<StudentQrC
     .select("id,name,city,start_at,end_at,minimum_stamps_required,status")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE"])
-    .eq("visibility", "PUBLIC")
     .order("start_at", { ascending: true })
     .returns<EventRow[]>();
 
@@ -309,19 +312,25 @@ export const useGenerateQrTokenQuery = ({
   accessToken,
   eventId,
   isEnabled,
+  sessionCacheKey,
 }: UseGenerateQrTokenQueryParams): UseQueryResult<GenerateQrTokenResponse, Error> =>
   useQuery({
-    queryKey: studentGenerateQrTokenQueryKey(eventId, accessToken),
+    queryKey: studentGenerateQrTokenQueryKey(eventId, sessionCacheKey),
     queryFn: async () => fetchGenerateQrTokenAsync(accessToken, eventId),
     enabled: isEnabled,
-    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: minimumQrRefetchIntervalMs,
+    staleTime: 0,
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchInterval: (query) => {
       const result = query.state.data as GenerateQrTokenResponse | undefined;
 
-      if (!isEnabled || typeof result === "undefined") {
+      if (!isEnabled) {
         return false;
+      }
+
+      if (typeof result === "undefined") {
+        return minimumQrRefetchIntervalMs;
       }
 
       const expiresAtMs = new Date(result.expiresAt).getTime();
@@ -336,13 +345,17 @@ export const useGenerateQrTokenQuery = ({
   });
 
 export const useQrSvgQuery = ({
+  eventId,
   token,
+  tokenVersion,
   isEnabled,
 }: UseQrSvgQueryParams): UseQueryResult<string, Error> =>
   useQuery({
-    queryKey: studentQrSvgQueryKey(token),
+    queryKey: studentQrSvgQueryKey(eventId, tokenVersion),
     queryFn: async () => createQrSvgDataAsync(token),
     enabled: isEnabled,
+    gcTime: minimumQrRefetchIntervalMs,
+    staleTime: 0,
   });
 
 export const useActiveAppState = (): boolean => {
@@ -361,13 +374,31 @@ export const useActiveAppState = (): boolean => {
   return isActive;
 };
 
-export const useQrScreenProtection = (): QrProtectionState => {
+export const useQrScreenProtection = (isEnabled: boolean): QrProtectionState => {
   const [state, setState] = useState<QrProtectionState>({
     detail: "Preparing screen-capture protection for this view.",
     status: "UNAVAILABLE",
   });
 
   useEffect(() => {
+    if (!isEnabled) {
+      setState({
+        detail: "Screen-capture prevention is inactive outside the live QR view.",
+        status: "UNAVAILABLE",
+      });
+
+      if (Platform.OS !== "web") {
+        void ScreenCapture.allowScreenCaptureAsync().catch((error: unknown) => {
+          setState({
+            detail: error instanceof Error ? error.message : "Unknown capture-protection release error.",
+            status: "ERROR",
+          });
+        });
+      }
+
+      return;
+    }
+
     if (Platform.OS === "web") {
       setState({
         detail: "Web preview cannot block screenshots, so this screen only shows the warning surface here.",
@@ -423,7 +454,7 @@ export const useQrScreenProtection = (): QrProtectionState => {
       isActive = false;
       void ScreenCapture.allowScreenCaptureAsync();
     };
-  }, []);
+  }, [isEnabled]);
 
   return state;
 };

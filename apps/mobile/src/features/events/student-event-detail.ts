@@ -28,6 +28,7 @@ type EventRow = {
   join_deadline_at: string;
   status: "PUBLISHED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   visibility: "PUBLIC" | "PRIVATE" | "UNLISTED";
+  ticket_url: string | null;
   max_participants: number | null;
   minimum_stamps_required: number;
   rules: EventRules;
@@ -110,7 +111,7 @@ const fetchEventAsync = async (eventId: string): Promise<EventRow> => {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules,ticket_url"
     )
     .eq("id", eventId)
     .single<EventRow>();
@@ -305,6 +306,7 @@ export const fetchStudentEventDetailAsync = async (
     startAt: event.start_at,
     endAt: event.end_at,
     joinDeadlineAt: event.join_deadline_at,
+    ticketUrl: event.ticket_url,
     status: event.status,
     visibility: event.visibility,
     coverImageUrl: event.cover_image_url,

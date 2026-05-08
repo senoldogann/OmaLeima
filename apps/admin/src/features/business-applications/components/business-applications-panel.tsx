@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { formatBusinessApplicationDateTime } from "@/features/business-applications/format";
+import {
+  formatBusinessApplicationDateTime,
+  formatBusinessApplicationLocation,
+  formatBusinessApplicationStatus,
+} from "@/features/business-applications/format";
 import type { BusinessApplicationsReviewQueue } from "@/features/business-applications/types";
+import { ManualBusinessAccountForm } from "@/features/business-applications/components/manual-business-account-form";
+import { ManualOrganizationAccountForm } from "@/features/business-applications/components/manual-organization-account-form";
 import { PendingApplicationReviewCard } from "@/features/business-applications/components/pending-application-review-card";
-import { ReviewedApplicationCard } from "@/features/business-applications/components/reviewed-application-card";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 
 type BusinessApplicationsPanelProps = {
@@ -16,6 +21,7 @@ type BusinessApplicationsPanelProps = {
 
 const copyByLocale = {
   en: {
+    manualTab: "Create Account",
     decisionsTab: "Decisions",
     emptyDecisionsBody: "Approved and rejected applications will appear here after the first review action.",
     emptyDecisionsTitle: "No recent decisions",
@@ -26,9 +32,9 @@ const copyByLocale = {
     flowBody: "Applications are rows in the `business_applications` table. Admin approval calls the backend review function, creates the business profile once, links the original application, and records the decision in audit logs.",
     flowEyebrow: "How this queue works",
     flowTitle: "Business onboarding flow",
-    handoffBody: "After approval, create or reuse operator users from the pilot bootstrap script, assign business memberships, deliver scanner credentials privately, and ask the venue to change any temporary password before event day.",
+    handoffBody: "Use the manual account forms when you want to create a business or organization, owner login, password, and membership yourself. Approved applications still stay visible below as review history.",
     handoffEyebrow: "Account handoff",
-    handoffTitle: "How businesses and scanner accounts are delivered",
+    handoffTitle: "How business and organization accounts are delivered",
     latestDecisionsBody: "Keep an eye on the latest approvals and rejections without leaving the admin area.",
     latestDecisionsEyebrow: "Recent review activity",
     latestDecisionsTitle: "Latest decisions",
@@ -56,6 +62,7 @@ const copyByLocale = {
     showingSeparator: "of",
   },
   fi: {
+    manualTab: "Luo tilejä",
     decisionsTab: "Päätökset",
     emptyDecisionsBody: "Hyväksytyt ja hylätyt hakemukset näkyvät täällä ensimmäisen päätöksen jälkeen.",
     emptyDecisionsTitle: "Ei tehtyjä päätöksiä",
@@ -66,11 +73,11 @@ const copyByLocale = {
     flowBody: "Admin-hyväksyntä luo hakemuksesta virallisen yritysprofiilin, linkittää alkuperäisen hakemuksen ja estää duplikaatit.",
     flowEyebrow: "Näin jono toimii",
     flowTitle: "Yritysten hyväksyntä",
-    handoffBody: "Hyväksynnän jälkeen luo tai käytä yrityksen owner-tunnusta, varmista jäsenyys ja toimita scanner-onboarding ohjeet yksityisesti.",
+    handoffBody: "Käytä käsin luotavia tililomakkeita, kun haluat itse määrittää yrityksen tai organisaation, omistajan kirjautumisen, salasanan ja jäsenyyden. Hyväksytyt hakemukset jäävät alle päätöshistoriaan.",
     handoffEyebrow: "Tunnusten toimitus",
-    handoffTitle: "Yritys- ja scanner-tunnusten toimitus",
+    handoffTitle: "Yritys- ja organisaatiotunnusten toimitus",
     latestDecisionsBody: "Seuraa viimeisimpiä hyväksyntöjä ja hylkäyksiä poistumatta admin-alueelta.",
-    latestDecisionsEyebrow: "Viimeisin tarkistusaktiviteetti",
+    latestDecisionsEyebrow: "Viimeisin toiminta",
     latestDecisionsTitle: "Tehdyt päätökset",
     metricOldestBody: "Vanhin hakemus, joka odottaa vielä admin-päätöstä.",
     metricOldestLabel: "Vanhin avoin",
@@ -89,7 +96,7 @@ const copyByLocale = {
     queueTitle: "Avoimet hakemukset",
     rejectStepBody: "Puutteelliset tai varmistamattomat hakemukset eivät pääse yrityskatalogiin ja saavat selkeän hylkäyssyyn.",
     rejectStepTitle: "3. Hylkäys",
-    secondStepBody: "Kelvollinen paikka muuttuu yritysprofiiliksi atomisen hyväksyntävirran kautta; backend estää duplikaatit.",
+    secondStepBody: "Hyväksytty hakemus muuttuu yritysprofiiliksi; järjestelmä estää duplikaatit automaattisesti.",
     secondStepTitle: "2. Hyväksyntä",
     showingEmpty: "Näytetään 0 / 0.",
     showingPrefix: "Näytetään",
@@ -106,7 +113,7 @@ const buildPageHref = (pageNumber: number): string => {
 };
 
 export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessApplicationsPanelProps) => {
-  const [activeTab, setActiveTab] = useState<"pending-queue" | "decisions">("pending-queue");
+  const [activeTab, setActiveTab] = useState<"pending-queue" | "decisions" | "manual">("pending-queue");
   const copy = copyByLocale[locale];
 
   return (
@@ -142,35 +149,29 @@ export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessAppli
       <div className="tab-nav">
         <button className={activeTab === "pending-queue" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("pending-queue")} type="button">{copy.pendingTab}</button>
         <button className={activeTab === "decisions" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("decisions")} type="button">{copy.decisionsTab}</button>
-      </div>
-
-      <section className="info-callout stack-sm">
-        <div className="eyebrow">{copy.flowEyebrow}</div>
-        <p className="info-callout-title">{copy.flowTitle}</p>
-        <p className="muted-text">{copy.flowBody}</p>
-        <div className="content-grid">
-          <div className="stack-sm">
-            <span className="status-pill">{copy.firstStepTitle}</span>
-            <p className="muted-text">{copy.firstStepBody}</p>
-          </div>
-          <div className="stack-sm">
-            <span className="status-pill status-pill-success">{copy.secondStepTitle}</span>
-            <p className="muted-text">{copy.secondStepBody}</p>
-          </div>
-          <div className="stack-sm">
-            <span className="status-pill status-pill-danger">{copy.rejectStepTitle}</span>
-            <p className="muted-text">{copy.rejectStepBody}</p>
-          </div>
-        </div>
-      </section>
-
-      <div className="info-callout info-callout-accent">
-        <div className="eyebrow">{copy.handoffEyebrow}</div>
-        <p className="info-callout-title">{copy.handoffTitle}</p>
-        <p className="muted-text">{copy.handoffBody}</p>
+        <button className={activeTab === "manual" ? "tab-btn tab-btn-active" : "tab-btn"} onClick={() => setActiveTab("manual")} type="button">{copy.manualTab}</button>
       </div>
 
       <section className="stack-md" style={{ display: activeTab !== "pending-queue" ? "none" : undefined }}>
+        <section className="info-callout stack-sm">
+          <div className="eyebrow">{copy.flowEyebrow}</div>
+          <p className="info-callout-title">{copy.flowTitle}</p>
+          <p className="muted-text">{copy.flowBody}</p>
+          <div className="content-grid">
+            <div className="stack-sm">
+              <span className="status-pill">{copy.firstStepTitle}</span>
+              <p className="muted-text">{copy.firstStepBody}</p>
+            </div>
+            <div className="stack-sm">
+              <span className="status-pill status-pill-success">{copy.secondStepTitle}</span>
+              <p className="muted-text">{copy.secondStepBody}</p>
+            </div>
+            <div className="stack-sm">
+              <span className="status-pill status-pill-danger">{copy.rejectStepTitle}</span>
+              <p className="muted-text">{copy.rejectStepBody}</p>
+            </div>
+          </div>
+        </section>
         <div className="stack-sm">
           <div className="eyebrow">{copy.queueEyebrow}</div>
           <h3 className="section-title">{copy.queueTitle}</h3>
@@ -233,12 +234,59 @@ export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessAppli
             <p className="muted-text">{copy.emptyDecisionsBody}</p>
           </article>
         ) : (
-          <div className="content-grid">
-            {reviewQueue.recentlyReviewedApplications.map((application) => (
-              <ReviewedApplicationCard key={application.id} application={application} />
-            ))}
+          <div className="panel-table-wrap">
+            <table className="panel-table">
+              <thead>
+                <tr>
+                  <th>{locale === "fi" ? "Yritys" : "Business"}</th>
+                  <th>{locale === "fi" ? "Yhteyshenkilö" : "Contact"}</th>
+                  <th>{locale === "fi" ? "Sijainti" : "Location"}</th>
+                  <th>{locale === "fi" ? "Päätös" : "Decision"}</th>
+                  <th>{locale === "fi" ? "Tarkastettu" : "Reviewed"}</th>
+                  <th>{locale === "fi" ? "Omistajapääsy" : "Owner access"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewQueue.recentlyReviewedApplications.map((application) => (
+                  <tr key={application.id}>
+                    <td>{application.businessName}</td>
+                    <td className="record-meta">
+                      {application.contactName}
+                      <span className="record-meta">{application.contactEmail}</span>
+                    </td>
+                    <td className="record-meta">{formatBusinessApplicationLocation(application.city, application.country)}</td>
+                    <td>
+                      <span className={`status-pill ${application.status === "APPROVED" ? "status-pill-success" : "status-pill-danger"}`}>
+                        {formatBusinessApplicationStatus(application.status)}
+                      </span>
+                      {application.rejectionReason !== null ? (
+                        <span className="record-meta">{application.rejectionReason}</span>
+                      ) : null}
+                    </td>
+                    <td className="record-meta">{formatBusinessApplicationDateTime(application.reviewedAt)}</td>
+                    <td className="record-meta">
+                      {application.status === "APPROVED"
+                        ? application.ownerAccess.status === "OWNER_READY"
+                          ? (locale === "fi" ? "Valmis" : "Ready") + (application.ownerAccess.ownerEmail ? ` · ${application.ownerAccess.ownerEmail}` : "")
+                          : locale === "fi" ? "Ei yhdistetty" : "Not connected"
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
+      </section>
+
+      <section className="stack-md" style={{ display: activeTab !== "manual" ? "none" : undefined }}>
+        <div className="info-callout info-callout-accent">
+          <div className="eyebrow">{copy.handoffEyebrow}</div>
+          <p className="info-callout-title">{copy.handoffTitle}</p>
+          <p className="muted-text">{copy.handoffBody}</p>
+        </div>
+        <ManualBusinessAccountForm locale={locale} />
+        <ManualOrganizationAccountForm locale={locale} />
       </section>
     </div>
   );

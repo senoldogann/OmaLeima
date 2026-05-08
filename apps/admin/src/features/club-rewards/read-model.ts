@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
+import type { AdminAccess } from "@/features/auth/access";
 import type {
   ClubRewardTierRecord,
   ClubRewardsSnapshot,
@@ -34,6 +35,18 @@ type RewardTierRow = {
   title: string;
 };
 
+type ClubRow = {
+  city: string | null;
+  id: string;
+  name: string;
+  university_name: string | null;
+};
+
+type ManageableClub = {
+  canManageRewards: boolean;
+  clubName: string;
+};
+
 const fetchManageableEventsAsync = async (
   supabase: SupabaseClient,
   clubIds: string[]
@@ -59,6 +72,46 @@ const fetchManageableEventsAsync = async (
   return data;
 };
 
+const fetchAdminEventsAsync = async (
+  supabase: SupabaseClient
+): Promise<EventRow[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id,club_id,name,city,status,start_at")
+    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE", "COMPLETED"])
+    .order("start_at", {
+      ascending: false,
+    })
+    .returns<EventRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load admin reward events: ${error.message}`);
+  }
+
+  return data;
+};
+
+const fetchClubRowsByIdsAsync = async (
+  supabase: SupabaseClient,
+  clubIds: string[]
+): Promise<ClubRow[]> => {
+  if (clubIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("id,name,city,university_name")
+    .in("id", clubIds)
+    .returns<ClubRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load reward clubs: ${error.message}`);
+  }
+
+  return data;
+};
+
 const fetchRewardTierRowsAsync = async (
   supabase: SupabaseClient,
   eventIds: string[]
@@ -73,6 +126,7 @@ const fetchRewardTierRowsAsync = async (
       "id,event_id,title,description,required_stamp_count,reward_type,inventory_total,inventory_claimed,claim_instructions,status,created_at"
     )
     .in("event_id", eventIds)
+    .neq("status", "DELETED")
     .order("created_at", {
       ascending: false,
     })
@@ -141,6 +195,7 @@ const mapRewardTierRecords = (
 
     return [
       {
+        canDelete: event.canDeleteRewards,
         canEdit: event.canManageRewards,
         claimInstructions: row.claim_instructions,
         createdAt: row.created_at,
@@ -161,21 +216,31 @@ const mapRewardTierRecords = (
     ];
   });
 
-export const fetchClubRewardsSnapshotAsync = async (
-  supabase: SupabaseClient
-): Promise<ClubRewardsSnapshot> => {
-  const context = await fetchClubEventContextAsync(supabase);
-  const manageableMemberships = context.memberships.filter((membership) => membership.canCreateEvents);
-  const clubIds = manageableMemberships.map((membership) => membership.clubId);
-  const eventRows = await fetchManageableEventsAsync(supabase, clubIds);
-  const rewardTierRows = await fetchRewardTierRowsAsync(
-    supabase,
-    eventRows.map((row) => row.id)
-  );
-  const visibleRewardTierRows = rewardTierRows.slice(0, rewardTierVisibleLimit);
-  const tierCountByEventId = buildTierCountByEventId(rewardTierRows);
-  const membershipsByClubId = new Map(
-    manageableMemberships.map((membership) => [
+const buildManageableClubsForAccessAsync = async (
+  supabase: SupabaseClient,
+  access: AdminAccess,
+  eventRows: EventRow[],
+  memberships: Awaited<ReturnType<typeof fetchClubEventContextAsync>>["memberships"]
+): Promise<Map<string, ManageableClub>> => {
+  if (access.area === "admin") {
+    const clubRows = await fetchClubRowsByIdsAsync(
+      supabase,
+      Array.from(new Set(eventRows.map((row) => row.club_id)))
+    );
+
+    return new Map(
+      clubRows.map((club) => [
+        club.id,
+        {
+          canManageRewards: true,
+          clubName: club.name,
+        },
+      ])
+    );
+  }
+
+  return new Map(
+    memberships.map((membership) => [
       membership.clubId,
       {
         canManageRewards: membership.canCreateEvents,
@@ -183,8 +248,32 @@ export const fetchClubRewardsSnapshotAsync = async (
       },
     ])
   );
+};
+
+export const fetchClubRewardsSnapshotAsync = async (
+  supabase: SupabaseClient
+): Promise<ClubRewardsSnapshot> => {
+  const context = await fetchClubEventContextAsync(supabase);
+  const manageableMemberships = context.memberships.filter((membership) => membership.canCreateEvents);
+  const clubIds = manageableMemberships.map((membership) => membership.clubId);
+  const eventRows =
+    context.access.area === "admin"
+      ? await fetchAdminEventsAsync(supabase)
+      : await fetchManageableEventsAsync(supabase, clubIds);
+  const rewardTierRows = await fetchRewardTierRowsAsync(
+    supabase,
+    eventRows.map((row) => row.id)
+  );
+  const visibleRewardTierRows = rewardTierRows.slice(0, rewardTierVisibleLimit);
+  const tierCountByEventId = buildTierCountByEventId(rewardTierRows);
+  const manageableClubsById = await buildManageableClubsForAccessAsync(
+    supabase,
+    context.access,
+    eventRows,
+    manageableMemberships
+  );
   const events = eventRows.flatMap((row) => {
-    const membership = membershipsByClubId.get(row.club_id);
+    const membership = manageableClubsById.get(row.club_id);
 
     if (typeof membership === "undefined") {
       return [];
@@ -192,6 +281,7 @@ export const fetchClubRewardsSnapshotAsync = async (
 
     return [
       {
+        canDeleteRewards: membership.canManageRewards,
         canManageRewards:
           membership.canManageRewards &&
           (row.status === "DRAFT" || row.status === "PUBLISHED" || row.status === "ACTIVE"),

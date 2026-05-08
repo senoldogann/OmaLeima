@@ -9,12 +9,17 @@ import {
   getRewardStatusClassName,
   getRewardStockClassName,
 } from "@/features/club-rewards/format";
-import { rewardTierRefreshableStatuses, submitRewardTierUpdateRequestAsync } from "@/features/club-rewards/reward-tier-client";
+import {
+  rewardTierRefreshableStatuses,
+  submitRewardTierDeleteRequestAsync,
+  submitRewardTierUpdateRequestAsync,
+} from "@/features/club-rewards/reward-tier-client";
 import type {
   ClubRewardTierActionState,
   ClubRewardTierRecord,
   ClubRewardTierUpdatePayload,
 } from "@/features/club-rewards/types";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type RewardTierCardProps = {
   tier: ClubRewardTierRecord;
@@ -43,12 +48,19 @@ export const RewardTierCard = ({ tier }: RewardTierCardProps) => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [isDeletePending, setIsDeletePending] = useState<boolean>(false);
   const [payload, setPayload] = useState<ClubRewardTierUpdatePayload>(createUpdatePayload(tier));
   const [actionState, setActionState] = useState<ClubRewardTierActionState>({
     code: null,
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -79,6 +91,41 @@ export const RewardTierCard = ({ tier }: RewardTierCardProps) => {
       });
     } finally {
       setIsPending(false);
+    }
+  };
+
+  const handleDeletePress = async (): Promise<void> => {
+    if (!window.confirm("Delete this reward tier? Existing claim history stays preserved, but the tier will disappear from reward management and claimable lists.")) {
+      return;
+    }
+
+    setIsDeletePending(true);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitRewardTierDeleteRequestAsync(tier.rewardTierId);
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "REWARD_TIER_DELETED" ? "success" : "error",
+      });
+
+      if (response.status === "REWARD_TIER_DELETED") {
+        setIsEditing(false);
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown reward tier delete request error.",
+        tone: "error",
+      });
+    } finally {
+      setIsDeletePending(false);
     }
   };
 
@@ -250,15 +297,24 @@ export const RewardTierCard = ({ tier }: RewardTierCardProps) => {
           <div className="pagination-row">
             <button
               className="button button-secondary"
-              disabled={!tier.canEdit}
+              disabled={!tier.canEdit || isDeletePending}
               onClick={() => setIsEditing(true)}
               type="button"
             >
               Edit tier
             </button>
+            <button
+              className="button button-danger"
+              disabled={!tier.canDelete || isDeletePending}
+              onClick={() => void handleDeletePress()}
+              type="button"
+            >
+              {isDeletePending ? "Deleting..." : "Delete tier"}
+            </button>
+            {renderActionState(actionState)}
           </div>
         )}
-        {!tier.canEdit ? (
+        {!tier.canEdit && !tier.canDelete ? (
           <p className="muted-text">
             Reward tiers stay visible after the event ends, but only draft, published, or active events can be edited.
           </p>

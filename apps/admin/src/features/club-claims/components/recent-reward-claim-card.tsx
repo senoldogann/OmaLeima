@@ -22,7 +22,7 @@ export const RecentRewardClaimCard = ({ claim, locale }: RecentRewardClaimCardPr
       </div>
 
       <p className="muted-text">{formatClubClaimHistoryMeta(locale, claim)}</p>
-      <p className="review-note">{claim.notes ?? (locale === "fi" ? "Luovutusmuistiinpanoja ei ole tallennettu." : "No handoff notes recorded.")}</p>
+      <p className="review-note">{claim.notes ?? (locale === "fi" ? "Luovutushuomioita ei ole tallennettu." : "No handoff notes recorded.")}</p>
     </div>
   </article>
 );

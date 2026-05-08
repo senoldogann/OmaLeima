@@ -33,6 +33,7 @@ type CommonCopy = {
   official: string;
   custom: string;
   eventDetails: string;
+  community: string;
 };
 
 type AuthCopy = {
@@ -117,7 +118,6 @@ type BusinessCopy = {
   upcoming: string;
   signedIn: string;
   openScanner: string;
-  profileButton: string;
   scanHistory: string;
   manageEvents: string;
   joinedEvents: string;
@@ -177,6 +177,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       official: "Virallinen",
       custom: "Oma",
       eventDetails: "Tapahtuman tiedot",
+      community: "Yhteisö",
     },
     auth: {
       opening: "Avataan OmaLeimaa",
@@ -290,7 +291,6 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       upcoming: "Tulossa",
       signedIn: "kirjautunut sisään",
       openScanner: "Avaa skanneri",
-      profileButton: "Avaa profiili",
       scanHistory: "Skannaushistoria",
       manageEvents: "Hallitse tapahtumia",
       joinedEvents: "Liitytyt tapahtumat",
@@ -340,6 +340,7 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       official: "Official",
       custom: "Custom",
       eventDetails: "Event details",
+      community: "Community",
     },
     auth: {
       opening: "Opening OmaLeima",
@@ -453,7 +454,6 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       upcoming: "Upcoming",
       signedIn: "signed in",
       openScanner: "Open scanner",
-      profileButton: "Open profile",
       scanHistory: "Scan history",
       manageEvents: "Manage events",
       joinedEvents: "Joined events",

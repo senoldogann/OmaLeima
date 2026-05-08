@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -121,7 +122,7 @@ export default function ClubHomeScreen() {
         CANCELLED: language === "fi" ? "Peruttu" : "Cancelled",
         COMPLETED: language === "fi" ? "Päättynyt" : "Completed",
         DRAFT: language === "fi" ? "Luonnos" : "Draft",
-        LIVE: language === "fi" ? "Live" : "Live",
+        LIVE: language === "fi" ? "Käynnissä" : "Live",
         UPCOMING: language === "fi" ? "Tulossa" : "Upcoming",
       } satisfies Record<ClubDashboardTimelineState, string>,
     }),
@@ -164,8 +165,25 @@ export default function ClubHomeScreen() {
       ),
     [nextEvents]
   );
-  const primaryClub = dashboardQuery.data?.memberships[0] ?? null;
-
+  const upcomingCount = useMemo(
+    () => nextEvents.filter((event) => event.timelineState === "UPCOMING").length,
+    [nextEvents]
+  );
+  const livePulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (liveEvents.length === 0) {
+      livePulseAnim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePulseAnim, { toValue: 0.2, duration: 600, useNativeDriver: false }),
+        Animated.timing(livePulseAnim, { toValue: 1, duration: 600, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [liveEvents.length, livePulseAnim]);
   useEffect(() => {
     if (dashboardQuery.data) {
       void prefetchEventCoverUrls(dashboardQuery.data.events.map((event) => event.coverImageUrl));
@@ -220,15 +238,14 @@ export default function ClubHomeScreen() {
       }
     >
       <View style={styles.headerRow}>
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
-          <Text style={styles.screenTitle}>{primaryClub?.clubName ?? labels.title}</Text>
-          <Text style={styles.metaText}>{labels.subtitle}</Text>
-          {primaryClub !== null ? (
-            <Text style={styles.clubHeaderMeta}>
-              {[primaryClub.city, primaryClub.membershipRole].filter(Boolean).join(" · ")}
-            </Text>
-          ) : null}
+        <View style={styles.clubHeader}>
+          <View style={styles.clubBrand}>
+            <AppIcon color={theme.colors.lime} name="star" size={18} />
+            <Text style={styles.clubBrandTitle}>OmaLeima</Text>
+          </View>
+          <Text style={styles.clubBrandSub}>
+            {language === "fi" ? "Järjestäjänäkymä" : "Organizer view"}
+          </Text>
         </View>
         {isConfirmingSignOut ? (
           <View style={styles.signOutConfirmRow}>
@@ -293,26 +310,18 @@ export default function ClubHomeScreen() {
         <>
           <MobileRoleSwitchCard currentArea="club" />
 
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryCard}>
-              <AppIcon color={theme.colors.lime} name="scan" size={18} />
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.liveEventCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.live}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{dashboardQuery.data.summary.liveEventCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Käynnissä" : "Live"}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <AppIcon color={theme.colors.textMuted} name="user" size={18} />
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.registeredParticipantCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.participants}</Text>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{upcomingCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Tulossa" : "Upcoming"}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <AppIcon color={theme.colors.textMuted} name="map-pin" size={18} />
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.joinedVenueCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.venues}</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <AppIcon color={theme.colors.textMuted} name="check" size={18} />
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.validStampCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.stamps}</Text>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{dashboardQuery.data.summary.registeredParticipantCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Osallistujat" : "Participants"}</Text>
             </View>
           </View>
 
@@ -411,9 +420,10 @@ export default function ClubHomeScreen() {
           )}
 
           <View style={styles.eventsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEyebrow}>{labels.upcoming}</Text>
+            <View style={styles.sectionIconHeader}>
+              <AppIcon color={theme.colors.lime} name="calendar" size={16} />
               <Text style={styles.sectionTitle}>{labels.eventsTitle}</Text>
+              {nextEvents.length > 0 ? <Text style={styles.sectionCount}>{nextEvents.length}</Text> : null}
             </View>
             <View style={styles.sectionHeaderAction}>
               <Text style={styles.bodyText}>
@@ -449,7 +459,14 @@ export default function ClubHomeScreen() {
                             <Text numberOfLines={1} style={styles.eventCardTitle}>
                               {event.name}
                             </Text>
-                            <StatusBadge label={badge.label} state={badge.state} />
+                            <View style={styles.eventStatusRow}>
+                              {badge.state === "ready" ? (
+                                <Animated.View style={[styles.statusDot, styles.statusDotReady, { opacity: livePulseAnim }]} />
+                              ) : (
+                                <View style={[styles.statusDot, badge.state === "warning" ? styles.statusDotWarning : styles.statusDotPending]} />
+                              )}
+                              <Text style={styles.statusDotLabel}>{badge.label}</Text>
+                            </View>
                           </View>
                           <Text numberOfLines={1} style={styles.eventCardMeta}>
                             {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
@@ -827,5 +844,94 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    clubHeader: {
+      gap: 4,
+    },
+    clubBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    clubBrandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    clubBrandSub: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      marginLeft: 26,
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    statTile: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      flex: 1,
+      gap: 2,
+      paddingVertical: 14,
+    },
+    statValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 26,
+      lineHeight: 30,
+    },
+    statLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    sectionIconHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionCount: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 10,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    statusDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8,
+    },
+    statusDotReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    statusDotWarning: {
+      backgroundColor: theme.colors.danger,
+    },
+    statusDotPending: {
+      backgroundColor: theme.colors.textMuted,
+    },
+    eventStatusRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 5,
+    },
+    statusDotLabel: {
+      color: "rgba(255,255,255,0.85)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

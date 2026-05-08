@@ -9,6 +9,7 @@ import {
   parseAnnouncementCreatePayloadOrThrow,
 } from "@/features/announcements/validation";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -36,6 +37,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "announcement-create");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
+
     const body = parseAnnouncementCreatePayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
@@ -47,6 +54,8 @@ export async function POST(request: Request) {
       ctaLabel: body.ctaLabel.length === 0 ? null : body.ctaLabel,
       ctaUrl: body.ctaUrl.length === 0 ? null : body.ctaUrl,
       endsAt: body.endsAtValue,
+      eventId: body.eventIdValue,
+      imageStagingPath: body.imageStagingPathValue,
       imageUrl: body.imageUrlValue,
       priority: body.priorityValue,
       startsAt: body.startsAtValue,

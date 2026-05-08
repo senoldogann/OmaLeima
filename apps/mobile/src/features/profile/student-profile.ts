@@ -35,6 +35,11 @@ type DepartmentTagRow = {
   source_type: DepartmentTagSourceType;
 };
 
+type DepartmentTagLookupRow = DepartmentTagRow & {
+  status: "PENDING_REVIEW" | "ACTIVE" | "MERGED" | "BLOCKED";
+  merged_into_tag_id: string | null;
+};
+
 type UseStudentProfileOverviewQueryParams = {
   studentId: string;
   isEnabled: boolean;
@@ -63,6 +68,21 @@ type RemoveDepartmentTagMutationParams = {
   remainingTags: StudentProfileTag[];
 };
 
+type InsertCustomDepartmentTagParams = {
+  studentId: string;
+  normalizedTitle: string;
+  slug: string;
+};
+
+type InsertCustomDepartmentTagResult =
+  | {
+    status: "CREATED";
+    departmentTagId: string;
+  }
+  | {
+    status: "DUPLICATE";
+  };
+
 type PostgrestErrorLike = {
   message: string;
   code?: string | null;
@@ -70,6 +90,7 @@ type PostgrestErrorLike = {
 };
 
 const MAX_PROFILE_TAGS = 3;
+const MAX_CUSTOM_TAG_SLUG_ATTEMPTS = 10;
 
 export const studentProfileOverviewQueryKey = (studentId: string) => ["student-profile-overview", studentId] as const;
 
@@ -178,6 +199,85 @@ const fetchActiveDepartmentTagsAsync = async (): Promise<DepartmentTagRow[]> => 
   }
 
   return [...data].sort(compareDepartmentTags);
+};
+
+const fetchDepartmentTagBySlugAsync = async (slug: string): Promise<DepartmentTagLookupRow | null> => {
+  const { data, error } = await supabase
+    .from("department_tags")
+    .select("id,title,slug,university_name,city,source_type,status,merged_into_tag_id")
+    .eq("slug", slug)
+    .maybeSingle<DepartmentTagLookupRow>();
+
+  if (error !== null) {
+    throw new Error(toErrorMessage(`Failed to load department tag by slug ${slug}`, error));
+  }
+
+  return data;
+};
+
+const resolveExistingDepartmentTagAfterDuplicateAsync = async (slug: string): Promise<DepartmentTagLookupRow | null> => {
+  const existingTag = await fetchDepartmentTagBySlugAsync(slug);
+
+  if (existingTag === null) {
+    return null;
+  }
+
+  if (existingTag.status === "MERGED" && existingTag.merged_into_tag_id !== null) {
+    const { data, error } = await supabase
+      .from("department_tags")
+      .select("id,title,slug,university_name,city,source_type,status,merged_into_tag_id")
+      .eq("id", existingTag.merged_into_tag_id)
+      .maybeSingle<DepartmentTagLookupRow>();
+
+    if (error !== null) {
+      throw new Error(toErrorMessage(`Failed to load merged department tag target ${existingTag.merged_into_tag_id}`, error));
+    }
+
+    if (data !== null && data.status === "ACTIVE") {
+      return data;
+    }
+
+    return null;
+  }
+
+  if (existingTag.status !== "ACTIVE") {
+    return null;
+  }
+
+  return existingTag;
+};
+
+const insertCustomDepartmentTagAsync = async ({
+  studentId,
+  normalizedTitle,
+  slug,
+}: InsertCustomDepartmentTagParams): Promise<InsertCustomDepartmentTagResult> => {
+  const { data, error } = await supabase
+    .from("department_tags")
+    .insert({
+      title: normalizedTitle,
+      slug,
+      source_type: "USER",
+      created_by: studentId,
+      status: "ACTIVE",
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error !== null) {
+    if (error.code === "23505") {
+      return {
+        status: "DUPLICATE",
+      };
+    }
+
+    throw new Error(toErrorMessage(`Failed to create custom department tag "${normalizedTitle}" with slug "${slug}"`, error));
+  }
+
+  return {
+    status: "CREATED",
+    departmentTagId: data.id,
+  };
 };
 
 const mapSelectedTags = (
@@ -303,35 +403,51 @@ const createCustomDepartmentTagAsync = async ({
     };
   }
 
-  const existingSlugs = new Set(activeDepartmentTags.map((tag) => tag.slug));
-  const slug = createUniqueSlug(normalizedTitle, existingSlugs);
+  const attemptedSlugs = new Set(activeDepartmentTags.map((tag) => tag.slug));
 
-  const { data, error } = await supabase
-    .from("department_tags")
-    .insert({
-      title: normalizedTitle,
+  for (let attempt = 1; attempt <= MAX_CUSTOM_TAG_SLUG_ATTEMPTS; attempt += 1) {
+    const slug = createUniqueSlug(normalizedTitle, attemptedSlugs);
+    const insertResult = await insertCustomDepartmentTagAsync({
+      studentId,
+      normalizedTitle,
       slug,
-      source_type: "USER",
-      created_by: studentId,
-      status: "ACTIVE",
-    })
-    .select("id")
-    .single<{ id: string }>();
+    });
 
-  if (error !== null) {
-    throw new Error(toErrorMessage(`Failed to create custom department tag "${normalizedTitle}"`, error));
+    if (insertResult.status === "DUPLICATE") {
+      const duplicateTag = await resolveExistingDepartmentTagAfterDuplicateAsync(slug);
+
+      if (duplicateTag !== null) {
+        const attachResult = await attachDepartmentTagAsync({
+          studentId,
+          departmentTagId: duplicateTag.id,
+          currentTags,
+        });
+
+        return {
+          status: attachResult.status === "ALREADY_SELECTED" ? "ALREADY_SELECTED" : "ATTACHED_EXISTING",
+          departmentTagId: duplicateTag.id,
+        };
+      }
+
+      attemptedSlugs.add(slug);
+      continue;
+    }
+
+    const attachResult = await attachDepartmentTagAsync({
+      studentId,
+      departmentTagId: insertResult.departmentTagId,
+      currentTags,
+    });
+
+    return {
+      status: attachResult.status === "ALREADY_SELECTED" ? "ALREADY_SELECTED" : "CREATED_AND_ADDED",
+      departmentTagId: insertResult.departmentTagId,
+    };
   }
 
-  const attachResult = await attachDepartmentTagAsync({
-    studentId,
-    departmentTagId: data.id,
-    currentTags,
-  });
-
-  return {
-    status: attachResult.status === "ALREADY_SELECTED" ? "ALREADY_SELECTED" : "CREATED_AND_ADDED",
-    departmentTagId: data.id,
-  };
+  throw new Error(
+    `Failed to create custom department tag "${normalizedTitle}" after ${MAX_CUSTOM_TAG_SLUG_ATTEMPTS} slug attempts.`
+  );
 };
 
 const setPrimaryDepartmentTagAsync = async ({

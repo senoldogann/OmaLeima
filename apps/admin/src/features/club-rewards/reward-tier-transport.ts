@@ -27,6 +27,8 @@ const buildRewardTierMessage = (status: string | null): string => {
     REWARD_INVENTORY_TOTAL_INVALID: "Inventory total must be zero or greater when provided.",
     REWARD_REQUIRED_STAMPS_INVALID: "Required stamps must be greater than zero.",
     REWARD_STATUS_INVALID: "Reward tier status must be active or disabled.",
+    REWARD_TIER_ALREADY_DELETED: "Reward tier was already deleted.",
+    REWARD_TIER_DELETED: "Reward tier deleted successfully.",
     REWARD_TIER_EDITOR_NOT_ALLOWED: "Only organizers or owners can manage reward tiers for this event.",
     REWARD_TIER_NOT_FOUND: "The selected reward tier could not be found.",
     REWARD_TITLE_REQUIRED: "Reward tier title is required.",
@@ -41,6 +43,20 @@ export const requireClubRewardTierEditorAccessAsync = async (
   supabase: SupabaseClient
 ): Promise<ClubRewardTierTransportResult | null> => {
   const context = await fetchClubEventContextAsync(supabase);
+
+  if (context.access.area === "admin") {
+    if (context.access.userId === null) {
+      return {
+        response: {
+          message: "Sign in again before managing reward tiers.",
+          status: "AUTH_REQUIRED",
+        },
+        status: 401,
+      };
+    }
+
+    return null;
+  }
 
   if (context.access.area !== "club") {
     return {
@@ -99,6 +115,40 @@ export const invokeCreateRewardTierRpcAsync = async (
     p_required_stamp_count: payload.requiredStampCount,
     p_reward_type: payload.rewardType,
     p_title: payload.title,
+  });
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "FUNCTION_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  const responsePayload = data as RewardTierRpcPayload | null;
+  const status = typeof responsePayload?.status === "string" ? responsePayload.status : null;
+
+  return {
+    response: {
+      message: buildRewardTierMessage(status),
+      status,
+    },
+    status: 200,
+  };
+};
+
+export const invokeDeleteRewardTierRpcAsync = async (
+  supabase: SupabaseClient,
+  payload: {
+    deletedBy: string;
+    rewardTierId: string;
+  }
+): Promise<ClubRewardTierTransportResult> => {
+  const { data, error } = await supabase.rpc("delete_reward_tier_atomic", {
+    p_deleted_by: payload.deletedBy,
+    p_reward_tier_id: payload.rewardTierId,
   });
 
   if (error !== null) {

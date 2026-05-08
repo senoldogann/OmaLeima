@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 
 import { businessHomeOverviewQueryKey } from "@/features/business/business-home";
 import type { BusinessMembershipSummary } from "@/features/business/types";
+import { removeReplacedPublicStorageObjectAsync } from "@/features/media/storage-cleanup";
 
 export type BusinessProfileDraft = {
   businessId: string;
@@ -38,6 +39,14 @@ type BusinessProfileUpdatePayload = {
   opening_hours: string | null;
   announcement: string | null;
 };
+
+type BusinessMediaLookupRow = {
+  cover_image_url: string | null;
+  id: string;
+  logo_url: string | null;
+};
+
+const businessMediaBucketId = "business-media";
 
 const trimOptional = (value: string): string | null => {
   const trimmedValue = value.trim();
@@ -104,11 +113,40 @@ const updateBusinessProfileAsync = async (draft: BusinessProfileDraft): Promise<
     throw new Error("Business city must contain at least 2 characters.");
   }
 
+  const { data: existingBusiness, error: existingError } = await supabase
+    .from("businesses")
+    .select("id,cover_image_url,logo_url")
+    .eq("id", draft.businessId)
+    .maybeSingle<BusinessMediaLookupRow>();
+
+  if (existingError !== null) {
+    throw new Error(`Failed to load current business media ${draft.businessId}: ${existingError.message}`);
+  }
+
+  if (existingBusiness === null) {
+    throw new Error(`Business profile ${draft.businessId} was not found.`);
+  }
+
   const { error } = await supabase.from("businesses").update(payload).eq("id", draft.businessId);
 
   if (error !== null) {
     throw new Error(`Failed to update business profile ${draft.businessId}: ${error.message}`);
   }
+
+  await Promise.all([
+    removeReplacedPublicStorageObjectAsync({
+      bucketId: businessMediaBucketId,
+      context: `business ${draft.businessId} cover`,
+      newPublicUrl: payload.cover_image_url,
+      oldPublicUrl: existingBusiness.cover_image_url,
+    }),
+    removeReplacedPublicStorageObjectAsync({
+      bucketId: businessMediaBucketId,
+      context: `business ${draft.businessId} logo`,
+      newPublicUrl: payload.logo_url,
+      oldPublicUrl: existingBusiness.logo_url,
+    }),
+  ]);
 };
 
 export const useUpdateBusinessProfileMutation = (): UseMutationResult<void, Error, BusinessProfileDraft> => {

@@ -475,11 +475,17 @@ export default function BusinessHistoryScreen() {
 
           {historyEntries.length === 0 ? (
             <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
-              <Text style={styles.bodyText}>{labels.emptyBody}</Text>
+              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+                <AppIcon color={theme.colors.textMuted} name="history" size={16} />
+                <Text style={[styles.bodyText, { flex: 1 }]}>{labels.emptyBody}</Text>
+              </View>
             </InfoCard>
           ) : filteredEntries.length === 0 ? (
             <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
-              <Text style={styles.bodyText}>{labels.emptyFiltered}</Text>
+              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+                <AppIcon color={theme.colors.textMuted} name="search" size={16} />
+                <Text style={[styles.bodyText, { flex: 1 }]}>{labels.emptyFiltered}</Text>
+              </View>
             </InfoCard>
           ) : (
             <View style={styles.stack}>

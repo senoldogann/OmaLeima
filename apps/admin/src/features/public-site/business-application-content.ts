@@ -13,6 +13,7 @@ export type BusinessApplicationContent = {
   countryLabel: string;
   description: string;
   errorGeneric: string;
+  errorValidation: string;
   errorVerification: string;
   eyebrow: string;
   instagramHint: string;
@@ -51,6 +52,7 @@ const fiContent: BusinessApplicationContent = {
   description:
     "Täytä paikan perustiedot. Hakemus tulee suoraan admin-paneelin Yrityshakemukset-jonoon, jossa tiimi hyväksyy tai hylkää sen.",
   errorGeneric: "Hakemuksen lähetys epäonnistui. Yritä hetken kuluttua uudelleen.",
+  errorValidation: "Tarkista merkityt kentät ja yritä uudelleen.",
   errorVerification: "Vahvistus epäonnistui. Päivitä sivu ja yritä uudelleen.",
   eyebrow: "Yrityksen hakemus",
   instagramHint: "Valinnainen. Esim. https://instagram.com/paikka",
@@ -91,6 +93,7 @@ const enContent: BusinessApplicationContent = {
   description:
     "Add the venue basics. The application goes directly into the admin Business applications queue, where the team can approve or reject it.",
   errorGeneric: "Sending the application failed. Please try again in a moment.",
+  errorValidation: "Check the highlighted fields and try again.",
   errorVerification: "Verification failed. Refresh the page and try again.",
   eyebrow: "Business application",
   instagramHint: "Optional. For example https://instagram.com/venue",

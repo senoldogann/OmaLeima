@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { fetchActiveMobileLoginSlidesAsync, type MobileLoginSlideRecord } from "@/features/auth/login-slides";
 import { getOffsetFallbackCoverSourceByIndex } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -11,6 +12,7 @@ import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/prefer
 type OnboardingSlide = {
   body: string;
   eyebrow: string;
+  imageUrl: string | null;
   key: string;
   title: string;
 };
@@ -18,16 +20,73 @@ type OnboardingSlide = {
 export const LoginHero = () => {
   const { width } = useWindowDimensions();
   const theme = useAppTheme();
-  const { copy } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
+  const [remoteSlides, setRemoteSlides] = useState<MobileLoginSlideRecord[] | null>(null);
+  const [slideErrorMessage, setSlideErrorMessage] = useState<string | null>(null);
   const slideWidth = Math.max(width - theme.spacing.screenHorizontal * 2, 280);
-  const slides = useMemo<readonly OnboardingSlide[]>(() => copy.auth.onboardingSlides, [copy.auth.onboardingSlides]);
+  const fallbackSlides = useMemo<readonly OnboardingSlide[]>(
+    () =>
+      copy.auth.onboardingSlides.map((slide) => ({
+        ...slide,
+        imageUrl: null,
+      })),
+    [copy.auth.onboardingSlides]
+  );
+  const slides = useMemo<readonly OnboardingSlide[]>(() => {
+    if (remoteSlides === null || remoteSlides.length === 0) {
+      return fallbackSlides;
+    }
+
+    return remoteSlides.map((slide) => {
+      const localizedCopy = slide.localized[language];
+
+      return {
+        body: localizedCopy.body,
+        eyebrow: localizedCopy.eyebrow,
+        imageUrl: slide.imageUrl,
+        key: slide.id,
+        title: localizedCopy.title,
+      };
+    });
+  }, [fallbackSlides, language, remoteSlides]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadSlidesAsync = async (): Promise<void> => {
+      try {
+        const activeSlides = await fetchActiveMobileLoginSlidesAsync();
+
+        if (!isActive) {
+          return;
+        }
+
+        setRemoteSlides(activeSlides);
+        setSlideErrorMessage(null);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setRemoteSlides(null);
+        setSlideErrorMessage(error instanceof Error ? error.message : "Mobile login slides could not be loaded.");
+      }
+    };
+
+    void loadSlidesAsync();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
       <View style={styles.brandRow}>
         <Text style={styles.kicker}>OmaLeima</Text>
         <Text style={styles.brandHint}>{copy.auth.brandHint}</Text>
+        {slideErrorMessage !== null ? <Text style={styles.slideErrorText}>{slideErrorMessage}</Text> : null}
       </View>
 
       <AutoAdvancingRail
@@ -40,8 +99,9 @@ export const LoginHero = () => {
         railStyle={styles.rail}
         renderItem={(slide: OnboardingSlide, index: number) => (
           <CoverImageSurface
+            fallbackSource={slide.imageUrl === null ? null : getOffsetFallbackCoverSourceByIndex(index, 5)}
             imageStyle={styles.slideImage}
-            source={getOffsetFallbackCoverSourceByIndex(index, 5)}
+            source={slide.imageUrl === null ? getOffsetFallbackCoverSourceByIndex(index, 5) : { uri: slide.imageUrl }}
             style={styles.slide}
           >
             <View style={styles.slideOverlay} />
@@ -107,6 +167,12 @@ const createStyles = (theme: MobileTheme) =>
       letterSpacing: 1.2,
       lineHeight: theme.typography.lineHeights.eyebrow,
       textTransform: "uppercase",
+    },
+    slideErrorText: {
+      color: theme.colors.warning,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     slideFooter: {
       alignItems: "center",

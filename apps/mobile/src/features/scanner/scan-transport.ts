@@ -6,6 +6,7 @@ import type {
 
 type ScanQrTransportParams = {
   supabaseUrl: string;
+  publishableKey: string;
   accessToken: string;
   qrToken: string;
   businessId: string;
@@ -33,6 +34,7 @@ const knownScanStatuses = [
   "EVENT_CONTEXT_MISMATCH",
   "QR_ALREADY_USED_OR_REPLAYED",
   "ALREADY_STAMPED",
+  "STAMP_CARD_FULL",
   "EVENT_NOT_FOUND",
   "INVALID_QR",
   "INVALID_QR_TYPE",
@@ -43,10 +45,13 @@ const knownScanStatuses = [
   "VENUE_JOINED_TOO_LATE",
   "BUSINESS_STAFF_NOT_ALLOWED",
   "SCANNER_DEVICE_NOT_ALLOWED",
+  "SCANNER_DEVICE_REQUIRED",
   "SCANNER_PIN_REQUIRED",
   "SCANNER_PIN_INVALID",
+  "SCANNER_PIN_LOCKED",
   "NOT_BUSINESS_STAFF",
   "BUSINESS_CONTEXT_REQUIRED",
+  "RATE_LIMITED",
 ] as const satisfies readonly ScanQrResponse["status"][];
 
 const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["tone"]> = {
@@ -54,7 +59,8 @@ const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["to
   EVENT_CONTEXT_REQUIRED: "warning",
   EVENT_CONTEXT_MISMATCH: "danger",
   QR_ALREADY_USED_OR_REPLAYED: "warning",
-  ALREADY_STAMPED: "success",
+  ALREADY_STAMPED: "warning",
+  STAMP_CARD_FULL: "warning",
   EVENT_NOT_FOUND: "neutral",
   INVALID_QR: "danger",
   INVALID_QR_TYPE: "danger",
@@ -65,10 +71,13 @@ const scanResultTones: Record<ScanQrResponse["status"], ScannerAttemptResult["to
   VENUE_JOINED_TOO_LATE: "danger",
   BUSINESS_STAFF_NOT_ALLOWED: "danger",
   SCANNER_DEVICE_NOT_ALLOWED: "danger",
+  SCANNER_DEVICE_REQUIRED: "danger",
   SCANNER_PIN_REQUIRED: "warning",
   SCANNER_PIN_INVALID: "danger",
+  SCANNER_PIN_LOCKED: "danger",
   NOT_BUSINESS_STAFF: "danger",
   BUSINESS_CONTEXT_REQUIRED: "warning",
+  RATE_LIMITED: "warning",
 };
 
 const mapScanResponse = (response: ScanQrResponse): ScannerAttemptResult => ({
@@ -96,6 +105,7 @@ const isKnownScanResponse = (value: unknown): value is ScanQrResponse => {
 
 export const requestScanQrAsync = async ({
   supabaseUrl,
+  publishableKey,
   accessToken,
   qrToken,
   businessId,
@@ -110,6 +120,7 @@ export const requestScanQrAsync = async ({
   const response = await fetchImpl(`${supabaseUrl}/functions/v1/scan-qr`, {
     method: "POST",
     headers: {
+      apikey: publishableKey,
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },

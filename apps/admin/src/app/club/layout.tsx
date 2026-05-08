@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { resolveAdminAccessAsync } from "@/features/auth/access";
-import { createServerComponentClient } from "@/lib/supabase/server";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
 
 type ClubLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
 export default async function ClubLayout({ children }: ClubLayoutProps) {
-  const supabase = await createServerComponentClient();
-  const access = await resolveAdminAccessAsync(supabase);
+  const access = await resolveCurrentAdminAccessAsync();
 
   if (access.area === "anonymous") {
     redirect("/login");

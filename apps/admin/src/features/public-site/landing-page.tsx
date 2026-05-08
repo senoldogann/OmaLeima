@@ -2,12 +2,17 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getPublicLandingContent, type PublicLocale } from "@/features/public-site/content";
+import { AnimatedFAQGrid } from "@/features/public-site/motion/AnimatedFAQGrid";
+import { AnimatedGalleryGrid } from "@/features/public-site/motion/AnimatedGalleryGrid";
+import { AnimatedHeroContent } from "@/features/public-site/motion/AnimatedHeroContent";
+import { AnimatedHeroMedia } from "@/features/public-site/motion/AnimatedHeroMedia";
+import { AnimatedSectionHeading } from "@/features/public-site/motion/AnimatedSectionHeading";
+import { AnimatedStepsGrid } from "@/features/public-site/motion/AnimatedStepsGrid";
+import { FloatingOrbs } from "@/features/public-site/motion/FloatingOrbs";
 import { PublicFooter } from "@/features/public-site/public-footer";
 import {
   ContactIcon,
-  QrCodeIcon,
   ShieldCheckIcon,
-  StarIcon,
   UsersIcon,
   ZapIcon,
 } from "@/features/public-site/public-icons";
@@ -39,16 +44,6 @@ const featureImages = {
   },
 } as const;
 
-const timelineCardImages = [
-  "/images/public/gen-students-group.png",
-  "/images/public/gen-scanning-qr.png",
-  "/images/public/gen-reward-moment.png",
-] as const;
-
-const stepIcons = [UsersIcon, QrCodeIcon, StarIcon] as const;
-const proofIcons = [ZapIcon, ShieldCheckIcon, UsersIcon] as const;
-const supportIcons = [UsersIcon, StarIcon, ShieldCheckIcon, ZapIcon] as const;
-
 const galleryImages = [
   {
     alt: "Yksi scan. Leima heti. – OmaLeima QR-skannaus baarissa.",
@@ -68,6 +63,9 @@ const galleryImages = [
   },
 ] as const;
 
+const proofIcons = [ZapIcon, ShieldCheckIcon, UsersIcon] as const;
+const supportIcons = [UsersIcon, ZapIcon, ShieldCheckIcon, ZapIcon] as const;
+
 export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
   const content = getPublicLandingContent(locale);
 
@@ -85,102 +83,37 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
         navItems={content.navItems}
       />
 
-      <section aria-labelledby="public-title" className="public-shell public-poster-hero">
-        <div className="public-poster-grid">
-          <div className="public-poster-copy">
-            <p className="eyebrow">{content.eyebrow}</p>
-            <h1 id="public-title">{content.heroTitle}</h1>
-            <p className="public-poster-description">{content.description}</p>
+      <section aria-labelledby="public-title" className="public-shell public-poster-hero" style={{ position: "relative" }}>
+        <FloatingOrbs />
+        <div className="public-poster-grid" style={{ position: "relative", zIndex: 1 }}>
+          <AnimatedHeroContent
+            applyHref={content.applyHref}
+            applyLabel={content.applyLabel}
+            contactHref={content.contactHref}
+            contactLabel={content.contactLabel}
+            description={content.description}
+            eyebrow={content.eyebrow}
+            heroTitle={content.heroTitle}
+            sectionLabel={content.sectionLabel}
+            statItems={content.statItems}
+          />
 
-            <div className="public-actions">
-              <Link className="button button-primary" href={content.applyHref}>
-                {content.applyLabel}
-              </Link>
-              <Link className="button button-secondary" href={content.contactHref}>
-                <ContactIcon className="public-inline-icon" />
-                {content.contactLabel}
-              </Link>
-            </div>
-
-            <div aria-label={content.sectionLabel} className="public-poster-stat-row">
-              {content.statItems.map((item) => (
-                <article key={item.label} className="public-poster-stat">
-                  <strong>{item.value}</strong>
-                  <span>{item.label}</span>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          <div className="public-poster-media public-image-surface">
-            <Image
-              alt={featureImages.hero.alt}
-              className="public-image public-image-cover public-image-position-center"
-              height={featureImages.hero.height}
-              priority
-              quality={92}
-              sizes="(max-width: 980px) 100vw, 56vw"
-              src={featureImages.hero.src}
-              width={featureImages.hero.width}
-            />
-          </div>
+          <AnimatedHeroMedia
+            alt={featureImages.hero.alt}
+            height={featureImages.hero.height}
+            src={featureImages.hero.src}
+            width={featureImages.hero.width}
+          />
         </div>
       </section>
 
       <section className="public-shell public-steps-shell" id="flow">
-        <div className="public-section-heading public-section-heading-compact">
+        <AnimatedSectionHeading className="public-section-heading public-section-heading-compact">
           <p className="eyebrow">{locale === "fi" ? "Kolme vaihetta" : "Three steps"}</p>
           <h2>{locale === "fi" ? "Miten OmaLeima toimii" : "How OmaLeima works"}</h2>
-        </div>
+        </AnimatedSectionHeading>
 
-        <div className="public-step-grid">
-          {content.timelineItems.map((item, index) => {
-            const StepIcon = stepIcons[index as 0 | 1 | 2];
-
-            return (
-              <article key={item.step} className="public-step-card">
-                <div className="public-step-image-wrap">
-                  <Image
-                    alt=""
-                    aria-hidden="true"
-                    className="public-image public-image-cover public-image-position-center"
-                    fill
-                    sizes="(max-width: 980px) 100vw, 33vw"
-                    src={timelineCardImages[index as 0 | 1 | 2]}
-                  />
-                </div>
-                <div className="public-step-copy">
-                  <div className="public-step-topline">
-                    <span className="public-step-number">{item.step}</span>
-                    <StepIcon className="public-card-icon" />
-                  </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section aria-label={locale === "fi" ? "Appro-illan tunnelma" : "Appro night experience"} className="public-shell public-gallery-shell">
-        <div className="public-gallery-head">
-          <p className="eyebrow">{locale === "fi" ? "Hetket tallessa" : "Moments captured"}</p>
-          <h2>{locale === "fi" ? "Tältä appro-ilta näyttää" : "This is what an appro night looks like"}</h2>
-        </div>
-        <div className="public-gallery-grid">
-          {galleryImages.map((img) => (
-            <div key={img.src} className="public-gallery-item">
-              <Image
-                alt={img.alt}
-                className="public-image public-image-cover public-image-position-center"
-                fill
-                sizes="(max-width: 640px) calc(50vw - 28px), (max-width: 980px) calc(50vw - 36px), calc(25vw - 24px)"
-                src={img.src}
-              />
-            </div>
-          ))}
-        </div>
+        <AnimatedStepsGrid items={content.timelineItems} />
       </section>
 
       <section className="public-shell public-spotlight-shell" id="culture">
@@ -274,6 +207,22 @@ export const PublicLandingPage = ({ locale }: PublicLandingPageProps) => {
             width={featureImages.operations.width}
           />
         </div>
+      </section>
+
+      <section aria-label={locale === "fi" ? "Appro-illan tunnelma" : "Appro night experience"} className="public-shell public-gallery-shell" data-scroll-reveal>
+        <AnimatedSectionHeading className="public-gallery-head" delay={0.1}>
+          <p className="eyebrow">{locale === "fi" ? "Hetket tallessa" : "Moments captured"}</p>
+          <h2>{locale === "fi" ? "Tältä appro-ilta näyttää" : "This is what an appro night looks like"}</h2>
+        </AnimatedSectionHeading>
+        <AnimatedGalleryGrid images={galleryImages} />
+      </section>
+
+      <section className="public-shell public-faq-shell" id="faq">
+        <AnimatedSectionHeading className="public-section-heading public-section-heading-compact">
+          <p className="eyebrow">{locale === "fi" ? "Usein kysyttyä" : "FAQ"}</p>
+          <h2>{locale === "fi" ? "Vastaukset yleisimpiin kysymyksiin" : "Common questions, answered"}</h2>
+        </AnimatedSectionHeading>
+        <AnimatedFAQGrid items={content.faqItems} />
       </section>
 
       <section className="public-shell public-final-cta" id="contact">

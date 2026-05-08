@@ -1,24 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
-import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
 import { EventCard } from "@/features/events/components/event-card";
 import { StudentEventVenueMap } from "@/features/events/components/student-event-venue-map";
-import {
-  getEventCoverSource,
-  getOffsetFallbackCoverSourceByIndex,
-  prefetchEventCoverUrls,
-} from "@/features/events/event-visuals";
+import { prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { findOverlappingEvents } from "@/features/events/event-overlaps";
-import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
-import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/events/student-event-detail";
 import { rehydrateStudentEventsBuckets, useStudentEventsQuery } from "@/features/events/student-events";
@@ -26,15 +19,8 @@ import type { JoinEventResultStatus, StudentEventSummary } from "@/features/even
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
+import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useSession } from "@/providers/session-provider";
-
-type DiscoverySlide = {
-  copy: string;
-  eyebrow: string;
-  key: string;
-  meta: string;
-  title: string;
-};
 
 type ActionNotice = {
   body: string;
@@ -174,7 +160,6 @@ export default function StudentEventsScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const isAppActive = useActiveAppState();
-  const { width: windowWidth } = useWindowDimensions();
   const { session } = useSession();
   const { copy, language } = useUiPreferences();
   const theme = useAppTheme();
@@ -183,6 +168,8 @@ export default function StudentEventsScreen() {
   const studentId = session?.user.id ?? null;
   const [mapPreviewEvent, setMapPreviewEvent] = useState<StudentEventSummary | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "registered" | "active">("all");
   const eventsQuery = useStudentEventsQuery({
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
@@ -233,37 +220,27 @@ export default function StudentEventsScreen() {
       ),
     [overlappingEvents, visibleEvents]
   );
-  const heroWidth = windowWidth;
+  const filteredActive = useMemo(() => {
+    let list = activeEvents;
+    if (activeFilter === "registered") list = list.filter(e => e.registrationState === "REGISTERED");
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(e => e.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [activeEvents, activeFilter, searchQuery]);
 
-  const discoverySlides = useMemo<readonly DiscoverySlide[]>(
-    () => [
-      {
-        copy: copy.student.discoverySlides[0].body,
-        eyebrow: copy.student.discoveryEyebrow,
-        key: copy.student.discoverySlides[0].key,
-        meta: language === "fi" ? `${activeEvents.length} käynnissä` : `${activeEvents.length} live now`,
-        title: copy.student.discoverySlides[0].title,
-      },
-      {
-        copy: copy.student.discoverySlides[1].body,
-        eyebrow: copy.student.discoveryEyebrow,
-        key: copy.student.discoverySlides[1].key,
-        meta: language === "fi" ? `${upcomingEvents.length} tulossa` : `${upcomingEvents.length} coming up`,
-        title: copy.student.discoverySlides[1].title,
-      },
-      {
-        copy: copy.student.discoverySlides[2].body,
-        eyebrow: copy.student.discoveryEyebrow,
-        key: copy.student.discoverySlides[2].key,
-        meta:
-          language === "fi"
-            ? `${activeEvents.length + upcomingEvents.length} iltaa näkyvissä`
-            : `${activeEvents.length + upcomingEvents.length} nights visible`,
-        title: copy.student.discoverySlides[2].title,
-      },
-    ],
-    [activeEvents.length, copy.student.discoveryEyebrow, copy.student.discoverySlides, language, upcomingEvents.length]
-  );
+  const filteredUpcoming = useMemo(() => {
+    let list = upcomingEvents;
+    if (activeFilter === "registered") list = list.filter(e => e.registrationState === "REGISTERED");
+    if (activeFilter === "active") return [];
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(e => e.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [upcomingEvents, activeFilter, searchQuery]);
+
   const openEventDetail = (eventId: string): void => {
     router.push({
       pathname: "/student/events/[eventId]",
@@ -312,51 +289,66 @@ export default function StudentEventsScreen() {
         />
       }
     >
-      <AutoAdvancingRail
-        contentContainerStyle={styles.heroRailContent}
-        intervalMs={3000}
-        itemGap={0}
-        items={discoverySlides}
-        itemWidth={heroWidth}
-        keyExtractor={(slide: DiscoverySlide) => slide.key}
-        railStyle={styles.heroRail}
-        renderItem={(slide: DiscoverySlide, index: number) => (
-          <CoverImageSurface
-            imageStyle={styles.heroImage}
-            source={
-              visibleEvents.length > 0
-                ? getEventCoverSource(
-                  visibleEvents[index % visibleEvents.length].coverImageUrl,
-                  `${visibleEvents[index % visibleEvents.length].id}:hero:${slide.key}`
-                )
-                : getOffsetFallbackCoverSourceByIndex(index, 1)
-            }
-            style={styles.heroBand}
-          >
-            <View style={styles.heroOverlay} />
-            <View style={styles.heroContent}>
-              <View style={styles.heroCopyBlock}>
-                <Text style={styles.heroEyebrow}>{slide.eyebrow}</Text>
-                <Text style={styles.heroTitle}>{slide.title}</Text>
-                <Text style={styles.heroCopy}>{slide.copy}</Text>
-              </View>
-
-              <View style={styles.heroMetaRow}>
-                <Text style={styles.heroMetaText}>{slide.meta}</Text>
-              </View>
-            </View>
-          </CoverImageSurface>
-        )}
-        showsIndicators={false}
-      />
-
-      <View style={styles.headerRow}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{copy.student.eventsTitle}</Text>
-          <Text style={styles.headerMeta}>{copy.student.eventsMeta}</Text>
-        </View>
+      {/* App header bar */}
+      <View style={styles.appHeader}>
         <StudentProfileHeaderAction />
+        <Text style={styles.brandTitle}>OmaLeima</Text>
+        <Pressable
+          accessibilityLabel={language === "fi" ? "Ilmoitukset" : "Notifications"}
+          onPress={() => router.push("/student/updates")}
+          style={styles.headerIconButton}
+        >
+          <AppIcon color={theme.colors.textPrimary} name="bell" size={20} />
+        </Pressable>
       </View>
+
+      {/* Search bar */}
+      <View style={styles.searchBar}>
+        <AppIcon color={theme.colors.textMuted} name="search" size={16} />
+        <TextInput
+          onChangeText={setSearchQuery}
+          placeholder={language === "fi" ? "Etsi tapahtumia..." : "Search events..."}
+          placeholderTextColor={theme.colors.textMuted}
+          style={styles.searchInput}
+          value={searchQuery}
+        />
+        {searchQuery.length > 0 ? (
+          <Pressable onPress={() => setSearchQuery("")} style={styles.searchClearButton}>
+            <AppIcon color={theme.colors.textMuted} name="x" size={14} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* Filter chips */}
+      <ScrollView
+        horizontal
+        contentContainerStyle={styles.chipsContent}
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsScroll}
+      >
+        {(["all", "registered", "active"] as const).map((filter) => {
+          const isChipActive = activeFilter === filter;
+          const label = filter === "all"
+            ? (language === "fi" ? "Kaikki" : "All")
+            : filter === "registered"
+            ? (language === "fi" ? "Liitytty" : "Joined")
+            : (language === "fi" ? "Käynnissä" : "Live");
+          return (
+            <Pressable
+              key={filter}
+              onPress={() => setActiveFilter(filter)}
+              style={[styles.chip, isChipActive ? styles.chipActive : styles.chipInactive]}
+            >
+              {filter === "active" && isChipActive ? (
+                <View style={styles.liveDot} />
+              ) : null}
+              <Text style={[styles.chipText, isChipActive ? styles.chipTextActive : styles.chipTextInactive]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       <MobileRoleSwitchCard currentArea="student" />
 
@@ -401,18 +393,42 @@ export default function StudentEventsScreen() {
           <Text style={styles.messageTitle}>
             {language === "fi" ? "Ei aktiivisia tai tulevia tapahtumia" : "No active or upcoming events"}
           </Text>
-          <Text style={styles.bodyText}>
-            {language === "fi"
-              ? "Kun järjestäjät julkaisevat seuraavan tapahtuman, se ilmestyy tänne."
-              : "When organizers publish the next event, it will appear here."}
-          </Text>
+          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 10 }}>
+            <AppIcon color={theme.colors.textMuted} name="calendar" size={16} />
+            <Text style={[styles.bodyText, { flex: 1 }]}>
+              {language === "fi"
+                ? "Kun järjestäjät julkaisevat seuraavan tapahtuman, se ilmestyy tänne."
+                : "When organizers publish the next event, it will appear here."}
+            </Text>
+          </View>
         </View>
       ) : null}
 
-      {activeEvents.length > 0 ? (
+      {hasEvents && filteredActive.length === 0 && filteredUpcoming.length === 0 ? (
+        <View style={styles.messageCard}>
+          <Text style={styles.messageEyebrow}>{language === "fi" ? "EI TULOKSIA" : "NO RESULTS"}</Text>
+          <Text style={styles.messageTitle}>
+            {language === "fi" ? "Ei tapahtumia haulle" : "No events found"}
+          </Text>
+          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 10 }}>
+            <AppIcon color={theme.colors.textMuted} name="search" size={16} />
+            <Text style={[styles.bodyText, { flex: 1 }]}>
+              {language === "fi" ? "Kokeile eri hakusanaa tai poista suodatin." : "Try a different search or remove the filter."}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {filteredActive.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{language === "fi" ? "Käynnissä nyt" : "Live now"}</Text>
-          {activeEvents.map((event, index) => (
+          <View style={styles.sectionHeader}>
+            <AppIcon color={theme.colors.lime} name="zap" size={14} />
+            <Text style={styles.sectionTitle}>{language === "fi" ? "Käynnissä nyt" : "Live now"}</Text>
+            <View style={styles.sectionBadge}>
+              <Text style={styles.sectionBadgeText}>{filteredActive.length}</Text>
+            </View>
+          </View>
+          {filteredActive.map((event, index) => (
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
@@ -427,16 +443,22 @@ export default function StudentEventsScreen() {
         </View>
       ) : null}
 
-      {upcomingEvents.length > 0 ? (
+      {filteredUpcoming.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{language === "fi" ? "Tulossa" : "Coming up"}</Text>
-          {upcomingEvents.map((event, index) => (
+          <View style={styles.sectionHeader}>
+            <AppIcon color={theme.colors.textMuted} name="calendar" size={14} />
+            <Text style={styles.sectionTitle}>{language === "fi" ? "Tulossa" : "Upcoming"}</Text>
+            <View style={styles.sectionBadge}>
+              <Text style={styles.sectionBadgeText}>{filteredUpcoming.length}</Text>
+            </View>
+          </View>
+          {filteredUpcoming.map((event, index) => (
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
               isJoinPending={joinMutation.isPending}
               key={event.id}
-              motionIndex={activeEvents.length + index + 1}
+              motionIndex={filteredActive.length + index + 1}
               onJoinPress={() => void joinEventFromCard(event.id)}
               onMapPress={() => openVenueMapPreview(event)}
               onPress={() => openEventDetail(event.id)}
@@ -511,88 +533,98 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
-    header: {
-      flex: 1,
-      gap: 6,
-    },
-    headerMeta: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      maxWidth: 320,
-    },
-    headerTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
-    },
-    headerRow: {
-      alignItems: "flex-start",
-      flexDirection: "row",
-      gap: 12,
-      justifyContent: "space-between",
-    },
-    heroBand: {
-      height: 260,
-      position: "relative",
-      width: "100%",
-    },
-    heroCopy: {
-      color: "rgba(248, 250, 245, 0.86)",
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
-      maxWidth: 270,
-    },
-    heroCopyBlock: {
-      gap: 8,
-    },
-    heroContent: {
-      flex: 1,
-      justifyContent: "space-between",
-      padding: 22,
-    },
-    heroEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.2,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
-    },
-    heroImage: {
-      borderRadius: 0,
-    },
-    heroMetaRow: {
+    appHeader: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 6,
+      justifyContent: "space-between",
     },
-    heroMetaText: {
-      color: "rgba(248, 250, 245, 0.8)",
-      fontFamily: theme.typography.families.medium,
+    brandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      left: 0,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+      position: "absolute",
+      right: 0,
+      textAlign: "center",
+    },
+    chip: {
+      alignItems: "center",
+      borderRadius: 999,
+      borderWidth: 1.5,
+      flexDirection: "row",
+      gap: 5,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    chipActive: {
+      backgroundColor: theme.colors.lime,
+      borderColor: theme.colors.lime,
+    },
+    chipInactive: {
+      backgroundColor: "transparent",
+      borderColor: theme.colors.borderStrong,
+    },
+    chipText: {
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    heroOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.58)" : "rgba(7, 10, 7, 0.52)",
+    chipTextActive: {
+      color: theme.colors.actionPrimaryText,
     },
-    heroRail: {
-      marginHorizontal: -theme.spacing.screenHorizontal,
-      marginTop: -theme.spacing.screenVertical,
+    chipTextInactive: {
+      color: theme.colors.textSecondary,
     },
-    heroRailContent: {
-      paddingRight: 0,
+    chipsContent: {
+      gap: 8,
+      paddingHorizontal: 0,
     },
-    heroTitle: {
-      color: "#F8FAF5",
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      letterSpacing: -0.5,
-      lineHeight: theme.typography.lineHeights.title,
+    chipsScroll: {
+      flexGrow: 0,
+      marginHorizontal: 0,
+    },
+    headerIconButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 42,
+      justifyContent: "center",
+      width: 42,
+    },
+    liveDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 6,
+      width: 6,
+    },
+    searchBar: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: 999,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    searchClearButton: {
+      alignItems: "center",
+      height: 24,
+      justifyContent: "center",
+      width: 24,
+    },
+    searchInput: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      paddingVertical: 0,
     },
     messageCard: {
       backgroundColor: theme.colors.surfaceL1,
@@ -855,13 +887,32 @@ const createStyles = (theme: MobileTheme) =>
     section: {
       gap: theme.spacing.sectionGap,
     },
-    sectionTitle: {
-      color: theme.colors.lime,
+    sectionBadge: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 999,
+      height: 20,
+      justifyContent: "center",
+      minWidth: 20,
+      paddingHorizontal: 5,
+    },
+    sectionBadgeText: {
+      color: theme.colors.textMuted,
       fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.1,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
+      fontSize: 11,
+      lineHeight: 14,
+    },
+    sectionHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
     },
     screenContent: {
       paddingBottom: 104,

@@ -57,6 +57,7 @@ What is **not** yet fully verified:
 4. Public store-release steps
 5. Final hosted secret rotation and stronger operator credentials everywhere
 6. Expo store/public-launch readiness gate stays green
+7. iOS login policy gap closed: because the student primary account currently uses Google login, add Sign in with Apple or another equivalent privacy-preserving login option before App Store submission.
 
 ### Later
 
@@ -93,14 +94,36 @@ These are not required for the current private pilot path. They matter when we s
 1. Create the real App Store Connect app record for `fi.omaleima.mobile`.
 2. Create the real Google Play Console app record for `fi.omaleima.mobile`.
 3. Prepare store listing copy, screenshots, app icon marketing assets, privacy-policy URL, and support URL.
-4. Decide the first submission path:
+4. Confirm the privacy policy URL covers the mobile app, QR/leima/reward data, push tokens, scanner location proof, account deletion, and data deletion.
+5. Confirm the mobile app exposes Privacy and Terms links on the login screen and signed-in profile/settings surfaces.
+6. Confirm the privacy policy page is the Google Play web resource for account deletion and associated data deletion requests.
+7. Add Sign in with Apple or another equivalent privacy-preserving login option before submitting the Google-login student app to App Store Review.
+8. Confirm Android release manifest hygiene before uploading the AAB: `SYSTEM_ALERT_WINDOW` and `RECORD_AUDIO` are blocked, and Android backup is disabled.
+9. Confirm App Store Connect privacy nutrition labels match the Expo `ios.privacyManifests` collected-data declarations and the public privacy notice.
+10. If using the local generated iOS workspace, run `OMALEIMA_STORE_BUILD=1 npx expo prebuild --platform ios --no-install`, then `pod install` from `apps/mobile/ios`, and confirm `apps/mobile/ios/OmaLeima/PrivacyInfo.xcprivacy`, `apps/mobile/ios/OmaLeima/Info.plist`, and `apps/mobile/ios/Podfile.lock` are aligned before any Xcode archive. The generated iOS plist must not keep Expo Dev Launcher Bonjour/local-network keys or unused Always/background location keys.
+11. Decide the first submission path:
    - iOS through TestFlight first
    - Android through an internal track first
-5. Configure the final Apple and Google submission credentials outside the repo.
-6. Run the repo gate before any submission work:
+12. Configure the final Apple and Google submission credentials outside the repo.
+13. Run the repo gate before any submission work:
    - `npm run qa:mobile-store-release-readiness`
-7. Keep the required Expo EAS environment variables present for `development`, `preview`, and `production`.
-8. Only after that, move into EAS build + submit execution.
+14. Keep the required Expo EAS environment variables present for `development`, `preview`, and `production`.
+15. Only after that, move into EAS build + submit execution.
+
+## Mobile edge security boundary
+
+Cloudflare WAF protects the web app and public website when traffic enters through the Cloudflare-managed domain. Direct Supabase mobile traffic is not protected by Cloudflare WAF, because the native app calls Supabase Auth, Realtime, Storage, and Edge Functions over the Supabase project URL.
+
+Current mobile security controls therefore must stay server-side and source-of-truth based:
+
+- Supabase Auth validates the user session on every protected request.
+- RLS and security-definer RPCs own data authorization; UI hiding is never the permission boundary.
+- QR scan, stamp, reward, fraud, and audit writes stay behind Edge Functions or atomic database functions.
+- Dashboard and mutation routes keep explicit rate limits.
+- Draft event and announcement media now stage in the private `media-staging` bucket and are copied to public buckets only when published.
+- Signed staging URLs are preview-only and short-lived.
+
+Do not put static Cloudflare bypass secrets or service-role secrets into the mobile app. If we need Cloudflare-level protection for mobile mutations later, the production architecture should route selected mobile write endpoints through a Cloudflare Worker or API gateway on an OmaLeima domain, then forward to Supabase with normal user JWT validation plus Worker-side bot/rate controls. Supabase Auth and Realtime can remain direct unless we intentionally redesign those flows.
 
 ## Senin icin kisa not (TR)
 
@@ -140,6 +163,10 @@ Store hazirligi icin repo icinde artik ayri bir gate var:
 
 Bu gate sadece bizim repo tarafindan dogrulanabilecek kisimlari kontrol eder. App Store Connect veya Google Play Console icindeki gerçek listing, screenshot, privacy policy, support URL ve submission credential adimlari daha sonra owner isi olarak yapilacak.
 Repo tarafinda buna ek olarak Expo EAS environment variable isimlerinin `development`, `preview`, `production` icinde var olup olmadigi da kontrol edilir.
+Mobil uygulama icinde Privacy/Terms linkleri login ekraninda ve profil/ayarlar yuzeylerinde gorunur olmali. Google Play account deletion icin privacy sayfasindaki "Account and data deletion requests" bolumu web kaynak linki olarak kullanilir.
+Hosted active mobile login slides da store gate'inin parcasidir: aktif slide varsa Fince/İngilizce copy launch-ready olmali, placeholder/test metin icermemeli ve image URL HTTPS olmali. Aktif slide yoksa mobil uygulama local fallback onboarding slide'larini kullanir.
+
+iOS icin ayrica dikkat: ogrenci birincil girisi Google ile oldugu surece App Store submission oncesinde Sign in with Apple veya Apple'in kabul edecegi esdeger gizlilik-koruyucu giris secenegi eklenmeli. Bu repo gate'i bu riski belgelemeyi kontrol eder, ama Apple provider credential kurulumunu tek basina kanitlamaz.
 
 ### Expo EAS env notu
 
@@ -307,10 +334,11 @@ Before asking a human tester to do the final remote push proof on a physical dev
 
 1. `npm run qa:mobile-native-simulator-smoke`
 2. `npm run qa:mobile-native-push-readiness`
-3. confirm `apps/mobile/script/build_and_run.sh --help` works
-4. confirm Codex actions inside `apps/mobile/.codex/environments/environment.toml` are present
+3. optionally repeat only the heavy native launch portion with `npm --prefix apps/mobile run smoke:native-simulators`
+4. confirm `apps/mobile/script/build_and_run.sh --help` works
+5. confirm Codex actions inside `apps/mobile/.codex/environments/environment.toml` are present
 
-This handoff does not mean simulator or emulator launch already passed. It only means the repo-owned entrypoints and diagnostics surface are wired and documented.
+The first command proves repo-owned wiring and local Android/iOS simulator launch/crash smoke where SDK tooling is available. It still does not prove real APNs or FCM remote push delivery.
 
 At that point the remaining human step should be only:
 
@@ -319,6 +347,21 @@ At that point the remaining human step should be only:
 - enable notifications from the student profile route
 - trigger a real remote reward-unlocked push
 - confirm the diagnostics surface shows a remote source for both receipt and response
+
+## Leima card save/share smoke handoff
+
+Before App Store or Google Play submission, install a fresh native build that was produced after `expo-media-library`, `expo-sharing`, and `react-native-view-shot` were added. The QR screen must be tested on a real device because Expo Go or an older dev client can load the JavaScript bundle but still miss the native modules.
+
+Required device proof:
+
+1. QR face opens without `Cannot find native module 'ExpoMediaLibrary'`.
+2. QR screenshot or screen recording is blocked while the live QR is visible.
+3. LEIMA side can be screenshotted because it contains no QR code.
+4. `Save image` requests photo-library permission and writes the card to Photos/Gallery.
+5. Permission denial shows an actionable error.
+6. `Share card` opens the native share sheet.
+7. The saved/shared image does not include the live QR token.
+8. Returning from LEIMA to QR generates a fresh QR that the business scanner can validate.
 
 ## Physical device verification status
 

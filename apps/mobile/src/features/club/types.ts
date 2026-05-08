@@ -1,6 +1,7 @@
 export type ClubMembershipRole = "ORGANIZER" | "OWNER" | "STAFF";
 
 export type ClubMembershipSummary = {
+  address: string | null;
   canCreateEvents: boolean;
   coverImageUrl: string | null;
   announcement: string | null;
@@ -8,9 +9,12 @@ export type ClubMembershipSummary = {
   clubId: string;
   clubName: string;
   contactEmail: string | null;
+  instagramUrl: string | null;
   logoUrl: string | null;
   membershipRole: ClubMembershipRole;
+  phone: string | null;
   universityName: string | null;
+  websiteUrl: string | null;
 };
 
 export type ClubDashboardTimelineState = "CANCELLED" | "COMPLETED" | "DRAFT" | "LIVE" | "UPCOMING";
@@ -24,9 +28,11 @@ export type ClubDashboardEventMetrics = {
 };
 
 export type ClubDashboardEventSummary = ClubDashboardEventMetrics & {
+  canManageEvent: boolean;
   city: string;
   clubId: string;
   clubName: string;
+  coverImageStagingPath: string | null;
   coverImageUrl: string | null;
   description: string | null;
   endAt: string;
@@ -39,6 +45,7 @@ export type ClubDashboardEventSummary = ClubDashboardEventMetrics & {
   rules: EventRules;
   startAt: string;
   status: "ACTIVE" | "CANCELLED" | "COMPLETED" | "DRAFT" | "PUBLISHED";
+  ticketUrl: string | null;
   timelineState: ClubDashboardTimelineState;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
 };
@@ -72,6 +79,7 @@ export type ClubEventEditableStatus = "ACTIVE" | "DRAFT" | "PUBLISHED";
 export type ClubEventFormDraft = {
   city: string;
   clubId: string;
+  coverImageStagingPath: string;
   coverImageUrl: string;
   description: string;
   endAt: string;
@@ -84,5 +92,6 @@ export type ClubEventFormDraft = {
   rules: EventRules;
   startAt: string;
   status: ClubEventEditableStatus;
+  ticketUrl: string;
   visibility: ClubEventVisibility;
 };

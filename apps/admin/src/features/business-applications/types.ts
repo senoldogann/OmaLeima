@@ -53,15 +53,3 @@ export type ReviewMutationResponse = {
   message: string;
   status: string | null;
 };
-
-export type OwnerAccessMutationResponse = {
-  authUserCreated?: boolean;
-  businessId?: string;
-  businessName?: string;
-  message: string;
-  onboardingLink?: string | null;
-  onboardingLinkError?: string | null;
-  ownerEmail?: string;
-  ownerUserId?: string;
-  status: string | null;
-};

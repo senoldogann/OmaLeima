@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { useRouter } from "expo-router";
 
@@ -7,6 +7,7 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
+import { SkeletonCard } from "@/components/skeleton-block";
 import {
   getEventCoverSource,
   getEventCoverSourceWithFallback,
@@ -38,6 +39,9 @@ export default function StudentRewardsScreen() {
   const claimableCount = events.filter((event) => event.claimableTierCount > 0).length;
   const totalStamps = events.reduce((accumulator, event) => accumulator + event.stampCount, 0);
   const railCardWidth = Math.max(Math.min(windowWidth - 52, 420), 286);
+  const summaryFontSize = totalStamps >= 1000 ? 44 : totalStamps >= 100 ? 54 : 72;
+  const summaryLineHeight = totalStamps >= 1000 ? 48 : totalStamps >= 100 ? 58 : 76;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const featuredEvent = events[0] ?? null;
   const featuredHeroSource =
     featuredEvent === null
@@ -58,6 +62,21 @@ export default function StudentRewardsScreen() {
   useEffect(() => {
     void prefetchEventCoverUrls(events.map((event) => event.coverImageUrl));
   }, [events]);
+
+  useEffect(() => {
+    if (claimableCount === 0) {
+      pulseAnim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.72, duration: 900, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [claimableCount, pulseAnim]);
 
   return (
     <AppScreen>
@@ -82,30 +101,25 @@ export default function StudentRewardsScreen() {
           </View>
 
           <View style={styles.summaryCountWrap}>
-            <Text style={styles.summaryNumber}>{totalStamps}</Text>
+            <Text style={[styles.summaryNumber, { fontSize: summaryFontSize, lineHeight: summaryLineHeight }]}>{totalStamps}</Text>
             <Text style={styles.summaryCountLabel}>{language === "fi" ? "leimaa" : "leimat"}</Text>
           </View>
         </View>
       </CoverImageSurface>
 
       {claimableCount > 0 ? (
-        <View style={styles.claimableAlert}>
+        <Animated.View style={[styles.claimableAlert, { opacity: pulseAnim }]}>
+          <AppIcon color={theme.colors.lime} name="gift" size={16} />
           <Text style={styles.claimableAlertText}>
             {language === "fi"
               ? `${claimableCount} tapahtumaa valmiina — lunasta paikan päällä.`
               : `${claimableCount} event${claimableCount === 1 ? "" : "s"} ready — go to venue to claim.`}
           </Text>
-        </View>
+        </Animated.View>
       ) : null}
 
       {rewardOverviewQuery.isLoading ? (
-        <InfoCard eyebrow={copy.common.loading} title={language === "fi" ? "Avataan palkintoja" : "Opening rewards"}>
-          <Text style={styles.bodyText}>
-            {language === "fi"
-              ? "Ladataan leimat ja palkintotasot."
-              : "Loading leima counts and tier status."}
-          </Text>
-        </InfoCard>
+        <SkeletonCard rows={3} hasHeader />
       ) : null}
 
       {rewardOverviewQuery.error ? (
@@ -121,18 +135,24 @@ export default function StudentRewardsScreen() {
         <InfoCard eyebrow={copy.common.standby} title={language === "fi" ? "Ei palkintopolkuja vielä" : "No reward progress yet"}>
           {registeredEventCount === 0 ? (
             <>
-              <Text style={styles.bodyText}>{copy.student.noRewardProgress}</Text>
+              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+                <AppIcon color={theme.colors.textMuted} name="gift" size={16} />
+                <Text style={[styles.bodyText, { flex: 1 }]}>{copy.student.noRewardProgress}</Text>
+              </View>
               <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
                 <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={18} />
                 <Text style={styles.primaryButtonText}>{copy.student.browseEvents}</Text>
               </Pressable>
             </>
           ) : (
-            <Text style={styles.bodyText}>
-              {language === "fi"
-                ? "Olet jo ilmoittautunut, mutta palkintotasoja ei näy vielä. Tarkista myöhemmin uudelleen."
-                : "Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers."}
-            </Text>
+            <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+              <AppIcon color={theme.colors.textMuted} name="gift" size={16} />
+              <Text style={[styles.bodyText, { flex: 1 }]}>
+                {language === "fi"
+                  ? "Olet jo ilmoittautunut, mutta palkintotasoja ei näy vielä. Tarkista myöhemmin uudelleen."
+                  : "Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers."}
+              </Text>
+            </View>
           )}
         </InfoCard>
       ) : null}
@@ -159,6 +179,7 @@ export default function StudentRewardsScreen() {
                 <RewardProgressCard
                   event={event}
                   onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
+                  studentId={studentId}
                   visibleTierCount={2}
                 />
               </View>
@@ -182,10 +203,13 @@ const createStyles = (theme: MobileTheme) =>
     claimableAlert: {
       alignItems: "center",
       backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
       borderRadius: 999,
+      borderWidth: 1,
       flexDirection: "row",
+      gap: 10,
       paddingHorizontal: 16,
-      paddingVertical: 11,
+      paddingVertical: 14,
     },
     claimableAlertText: {
       color: theme.colors.lime,
@@ -262,7 +286,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 2,
     },
     railSection: {
-      gap: 12,
+      gap: 16,
     },
     railTitle: {
       color: theme.colors.textPrimary,
@@ -291,8 +315,8 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      lineHeight: theme.typography.lineHeights.titleLarge,
     },
     summaryCountLabel: {
       color: "rgba(248, 250, 245, 0.74)",
@@ -314,7 +338,7 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     summaryHero: {
-      minHeight: 232,
+      minHeight: 300,
       overflow: "hidden",
       position: "relative",
     },
@@ -346,8 +370,8 @@ const createStyles = (theme: MobileTheme) =>
     summaryNumber: {
       color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
-      fontSize: 52,
-      lineHeight: 56,
+      fontSize: 72,
+      lineHeight: 76,
     },
     summaryTitle: {
       color: "#F8FAF5",
