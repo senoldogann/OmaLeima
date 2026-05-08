@@ -4,6 +4,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 ## Son Ajan Devri (Latest Agent Handoff)
 
+- **Tarih:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Yapılan iş:** 12 UI iyileştirmesi tüm rollerde (Student, Business Scanner, Club Organizer, Admin) tamamlandı. Mobile: QR flip'e Animated.spring fizigi (damping:18 stiffness:160 mass:0.9); geri sayım ≤5s amber / ≤3s danger rengi + Haptics.notificationAsync; rewards loading InfoCard → SkeletonCard shimmer; büyük stamp sayıları için dinamik font boyutu (72→54→44); claimable alert için opacity pulse loop (1800ms); leaderboard için her zaman görünür rank banner (lime pill, ekranın tepesinde); tarih filtre chips için step-gradient edge fade; scanner için translateY scan line (useNativeDriver:true, 2200ms loop); scan sonucu için overlay flash (550ms); club home LIVE badge için opacity pulse (1200ms). Admin: urgent CSS + shortcut kart keyframe animasyonu; DashboardLastUpdated istemci component'i ("Updated Xs ago", 10s refresh); overview-header flex row; overview tile "urgent" tonu. Yeni dosya: `apps/mobile/src/components/skeleton-block.tsx`.
+- **Neden yapıldı:** Kullanıcı tüm rollerdeki UI'nin canlılık, geribildirim ve yükleme deneyimini iyileştirmek istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck` ve `npm --prefix apps/admin run typecheck` her ikisi de 0 hatayla geçti.
+- **Sıradaki önerilen adım:** `admin-overview-tile-trend` (trend okları) read model'e `previousValue` alanı eklenene kadar beklemede; backend değişikliği gerekiyor. Mobil fiziksel cihaz duman testi (kamera QR, Google OAuth, push bildirimleri) hâlâ bekliyor.
+- **Açık risk/blokaj:** `admin-overview-tile-trend` BLOCKED — mevcut read model'de önceki dönem verisi yok. `prefers-reduced-motion` desteği (AccessibilityInfo.isReduceMotionEnabled) tüm yeni animasyonlar için henüz eklenmedi; bir sonraki erişilebilirlik geçişinde ele alınmalı.
+
 - **Tarih:** 2026-05-08
 - **Branch:** `feature/code-review-refactor-sweep`
 - **Yapılan iş:** Private media staging + mobile edge security slice tamamlandi. `20260508103000_private_media_staging.sql` ile hosted Supabase'e private `media-staging` bucket, owner-scoped storage RLS policy'leri, `events.cover_image_staging_path`, `announcements.image_staging_path` ve draft/public media guard trigger'lari uygulandi. Admin web ve organizer mobile event/announcement upload akislari artik public bucket'a pick aninda yazmiyor; once private staging path'e yukluyor, signed preview URL gosteriyor, publish/update sirasinda public bucket'a kopyalayip staging objesini temizliyor. Cloudflare web WAF'in mobil direkt Supabase trafigini korumadigi runbook/checklist/audit seviyesinde belgelendi.
