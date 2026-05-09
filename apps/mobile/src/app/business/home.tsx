@@ -264,7 +264,12 @@ export default function BusinessHomeScreen() {
             return (
               <Pressable
                 key={event.eventVenueId}
-                onPress={() => router.push("/business/events")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/business/event-detail",
+                    params: { businessId: event.businessId, eventId: event.eventId },
+                  })
+                }
                 style={[styles.eventCard, isActive ? styles.eventCardActive : null]}
               >
                 <View style={[styles.eventCardAccent, { backgroundColor: accentColor }]} />

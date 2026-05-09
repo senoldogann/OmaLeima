@@ -32,6 +32,15 @@ type EventRegistrationRow = {
   status: EventRegistrationStatus;
 };
 
+type ProfileDepartmentTagCityRow = {
+  is_primary: boolean;
+  slot: number;
+  department_tag: {
+    city: string | null;
+    status: "ACTIVE" | "BLOCKED" | "MERGED" | "PENDING_REVIEW";
+  } | null;
+};
+
 type UseStudentEventsQueryParams = {
   studentId: string;
   isEnabled: boolean;
@@ -45,6 +54,8 @@ const createRegistrationMap = (
   registrations: EventRegistrationRow[]
 ): ReadonlyMap<string, EventRegistrationStatus> =>
   new Map(registrations.map((registration) => [registration.event_id, registration.status]));
+
+const normalizeCity = (city: string | null): string => city?.trim().toLocaleLowerCase("fi-FI") ?? "";
 
 const deriveRegistrationState = (
   eventId: string,
@@ -202,8 +213,44 @@ const fetchStudentRegistrationsAsync = async (studentId: string): Promise<EventR
   return data;
 };
 
+const fetchStudentPrimaryCityAsync = async (studentId: string): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from("profile_department_tags")
+    .select("is_primary,slot,department_tag:department_tags(city,status)")
+    .eq("profile_id", studentId)
+    .order("is_primary", { ascending: false })
+    .order("slot", { ascending: true })
+    .returns<ProfileDepartmentTagCityRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load student primary city for ${studentId}: ${error.message}`);
+  }
+
+  const primaryCityRow = data.find((row) => row.department_tag?.status === "ACTIVE" && normalizeCity(row.department_tag.city).length > 0);
+
+  return primaryCityRow?.department_tag?.city ?? null;
+};
+
+const compareStudentEvents = (localCity: string | null) => (left: StudentEventSummary, right: StudentEventSummary): number => {
+  const normalizedLocalCity = normalizeCity(localCity);
+
+  if (normalizedLocalCity.length > 0) {
+    const leftIsLocal = normalizeCity(left.city) === normalizedLocalCity;
+    const rightIsLocal = normalizeCity(right.city) === normalizedLocalCity;
+
+    if (leftIsLocal !== rightIsLocal) {
+      return leftIsLocal ? -1 : 1;
+    }
+  }
+
+  return new Date(left.startAt).getTime() - new Date(right.startAt).getTime();
+};
+
 export const fetchStudentEventsAsync = async (studentId: string): Promise<StudentEventsBuckets> => {
-  const registrations = await fetchStudentRegistrationsAsync(studentId);
+  const [registrations, primaryCity] = await Promise.all([
+    fetchStudentRegistrationsAsync(studentId),
+    fetchStudentPrimaryCityAsync(studentId),
+  ]);
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
   const registeredEventIds = Array.from(
@@ -224,7 +271,8 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
   const registrationsByEventId = createRegistrationMap(registrations);
   const visibleEvents = events
     .map((row) => mapEventSummary(row, now, registrationsByEventId))
-    .filter((event): event is StudentEventSummary => event !== null);
+    .filter((event): event is StudentEventSummary => event !== null)
+    .sort(compareStudentEvents(primaryCity));
 
   return createStudentEventsBuckets(visibleEvents);
 };

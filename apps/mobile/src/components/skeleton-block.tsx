@@ -17,12 +17,15 @@ const SkeletonRow = ({ height = 16, width = "100%", borderRadius = 6 }: Skeleton
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: false }),
+        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: false }),
       ]),
     );
     loop.start();
-    return () => loop.stop();
+    return () => {
+      loop.stop();
+      shimmer.stopAnimation();
+    };
   }, [shimmer]);
 
   const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] });
@@ -53,7 +56,6 @@ export const SkeletonCard = ({ rows = 3, hasHeader = true }: SkeletonCardProps) 
       <View style={styles.bodyRows}>
         {Array.from({ length: rows }).map((_, i) => (
           <SkeletonRow
-            // eslint-disable-next-line react/no-array-index-key
             key={i}
             height={14}
             width={i === rows - 1 ? "60%" : "100%"}

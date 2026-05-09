@@ -18,6 +18,9 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "fi.omaleima.mobile",
     buildNumber: "1",
     icon: "./assets/images/icon.png",
+    entitlements: {
+      "keychain-access-groups": ["$(AppIdentifierPrefix)fi.omaleima.mobile"],
+    },
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription: "OmaLeima uses the camera to scan student QR codes during events.",

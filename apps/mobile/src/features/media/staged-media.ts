@@ -62,6 +62,34 @@ export const createSignedStagedMediaUrlAsync = async (stagingPath: string): Prom
   return data.signedUrl;
 };
 
+const removePublishedMediaAfterFailureAsync = async ({
+  context,
+  destinationBucketId,
+  destinationPath,
+  originalError,
+}: {
+  context: string;
+  destinationBucketId: string;
+  destinationPath: string;
+  originalError: unknown;
+}): Promise<never> => {
+  const { error: cleanupError } = await supabase.storage
+    .from(destinationBucketId)
+    .remove([destinationPath]);
+
+  if (cleanupError !== null) {
+    throw new Error(
+      `Failed to finalize published ${context} media and failed to remove orphaned ${destinationBucketId}/${destinationPath}: ${
+        originalError instanceof Error ? originalError.message : String(originalError)
+      }; cleanup error: ${cleanupError.message}`
+    );
+  }
+
+  throw originalError instanceof Error
+    ? originalError
+    : new Error(`Failed to finalize published ${context} media: ${String(originalError)}`);
+};
+
 export const publishStagedMediaAsync = async ({
   context,
   destinationBucketId,
@@ -99,17 +127,26 @@ export const publishStagedMediaAsync = async ({
     .from(destinationBucketId)
     .getPublicUrl(destinationPath);
 
-  await verifyPublicMediaUrlAsync({
-    context,
-    publicUrl: publicUrlData.publicUrl,
-  });
+  try {
+    await verifyPublicMediaUrlAsync({
+      context,
+      publicUrl: publicUrlData.publicUrl,
+    });
 
-  const { error: removeError } = await supabase.storage
-    .from(mediaStagingBucketId)
-    .remove([normalizedStagingPath]);
+    const { error: removeError } = await supabase.storage
+      .from(mediaStagingBucketId)
+      .remove([normalizedStagingPath]);
 
-  if (removeError !== null) {
-    throw new Error(`Failed to remove staged ${context} media ${normalizedStagingPath}: ${removeError.message}`);
+    if (removeError !== null) {
+      throw new Error(`Failed to remove staged ${context} media ${normalizedStagingPath}: ${removeError.message}`);
+    }
+  } catch (error) {
+    await removePublishedMediaAfterFailureAsync({
+      context,
+      destinationBucketId,
+      destinationPath,
+      originalError: error,
+    });
   }
 
   return publicUrlData.publicUrl;

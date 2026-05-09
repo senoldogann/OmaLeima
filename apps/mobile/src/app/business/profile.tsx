@@ -256,8 +256,10 @@ export default function BusinessProfileScreen() {
     isEnabled: canEditSelectedMembership && selectedMembership !== null,
   });
   const scannerLoginQrSvgQuery = useBusinessScannerLoginQrSvgQuery({
-    token: scannerLoginQrQuery.data?.qrPayload.token ?? "",
+    businessId: scannerLoginQrQuery.data?.businessId ?? selectedMembership?.businessId ?? "",
+    expiresAt: scannerLoginQrQuery.data?.expiresAt ?? "",
     isEnabled: canEditSelectedMembership && scannerLoginQrQuery.data !== undefined,
+    token: scannerLoginQrQuery.data?.qrPayload.token ?? "",
   });
   const scannerDeviceCount = scannerDevicesQuery.data?.length ?? 0;
   const scannerDeviceSummary =

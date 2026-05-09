@@ -126,11 +126,10 @@ const parsePerBusinessLimitOrThrow = (value: string): number => {
 
   if (
     !Number.isInteger(parsedValue) ||
-    parsedValue < 1 ||
-    parsedValue > 5 ||
+    parsedValue !== 1 ||
     String(parsedValue) !== normalizedValue
   ) {
-    throw new Error("perBusinessLimit must be an integer between 1 and 5.");
+    throw new Error("perBusinessLimit must be 1.");
   }
 
   return parsedValue;
@@ -274,8 +273,10 @@ const buildCreateMessage = (status: string): string => {
     AUTH_REQUIRED: "Sign in again before creating an event.",
     CLUB_EVENT_CREATOR_NOT_ALLOWED: "Only organizers or owners can create events for this club.",
     CLUB_MEMBERSHIP_NOT_ALLOWED: "This account does not have an active membership for the selected club.",
+    CLUB_CITY_REQUIRED: "The selected club is missing a city. Update the organizer profile before creating events.",
     CLUB_NOT_ACTIVE: "The selected club is not active anymore.",
     EVENT_CITY_REQUIRED: "City is required.",
+    EVENT_CITY_OUT_OF_SCOPE: "Organizer events must use the selected club city.",
     EVENT_END_BEFORE_START: "End time must be after the start time.",
     EVENT_JOIN_DEADLINE_INVALID: "Join deadline must be before the event start.",
     EVENT_MAX_PARTICIPANTS_INVALID: "Max participants must be a positive number when provided.",
@@ -303,6 +304,10 @@ const createClubEventDatabaseErrorMessage = ({
   message: string;
   userId: string;
 }): string => {
+  if (message.includes("EVENT_CITY_OUT_OF_SCOPE") || message.includes("CLUB_CITY_REQUIRED")) {
+    return `Failed to ${action} club event ${eventId} for ${userId}: organizer events must use the selected club city. Database message: ${message}`;
+  }
+
   if (message.includes("events_check") || message.includes("violates check constraint")) {
     return [
       `Failed to ${action} club event ${eventId} for ${userId}: event timing is invalid.`,

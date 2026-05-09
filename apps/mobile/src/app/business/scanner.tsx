@@ -463,11 +463,14 @@ export default function BusinessScannerScreen() {
       Animated.timing(scanLineAnim, {
         toValue: 1,
         duration: 2200,
-        useNativeDriver: true,
+        useNativeDriver: false,
       })
     );
     loop.start();
-    return () => loop.stop();
+    return () => {
+      loop.stop();
+      scanLineAnim.stopAnimation();
+    };
   }, [isScannerLocked, scanLineAnim]);
 
   const flashAnim = useRef(new Animated.Value(0)).current;

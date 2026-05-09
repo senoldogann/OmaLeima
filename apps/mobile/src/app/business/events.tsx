@@ -1,12 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { createBusinessEventRequestErrorBody } from "@/features/business/business-event-errors";
 import {
   useJoinBusinessEventMutation,
   useLeaveBusinessEventMutation,
@@ -34,16 +35,6 @@ type FeedbackState = {
   message: string;
 };
 
-type EventPreview =
-  | {
-    event: BusinessJoinedEventSummary;
-    kind: "joined";
-  }
-  | {
-    event: BusinessOpportunitySummary;
-    kind: "opportunity";
-  };
-
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
 
@@ -60,9 +51,6 @@ const getJoinedEventBadge = (
       return { label: language === "fi" ? "Päättynyt" : "Completed", state: "warning" };
   }
 };
-
-const getPreviewEvent = (preview: EventPreview): BusinessJoinedEventSummary | BusinessOpportunitySummary =>
-  preview.event;
 
 const createJoinResultMessages = (
   language: "fi" | "en"
@@ -83,10 +71,18 @@ const createJoinResultMessages = (
     language === "fi"
       ? "Tapahtumaa ei voi liittää yritykselle juuri nyt."
       : "This event is not available for business joining.",
+  EVENT_CITY_MISMATCH:
+    language === "fi"
+      ? "Yritys voi liittyä vain oman kaupunkinsa tapahtumiin."
+      : "A business can only join events in its own city.",
   EVENT_JOIN_CLOSED:
     language === "fi"
       ? "Liittymisikkuna on jo sulkeutunut."
       : "Join window has already closed for this event.",
+  BUSINESS_CITY_REQUIRED:
+    language === "fi"
+      ? "Yritykseltä puuttuu kaupunki. Lisää sijainti profiiliin ennen tapahtumaan liittymistä."
+      : "The business city is missing. Add the location in the profile before joining events.",
   BUSINESS_NOT_ACTIVE:
     language === "fi"
       ? "Valittu yritys ei ole enää aktiivinen."
@@ -200,38 +196,12 @@ const createFeedback = (
   return null;
 };
 
-const createRequestErrorBody = (error: unknown, language: "fi" | "en"): string => {
-  const message = error instanceof Error ? error.message : "";
-
-  if (message.includes("Failed to join event")) {
-    return language === "fi"
-      ? "Tapahtumaan liittyminen ei onnistunut juuri nyt. Päivitä näkymä ja yritä uudelleen."
-      : "Joining the event failed right now. Refresh the view and try again.";
-  }
-
-  if (message.includes("Failed to leave event")) {
-    return language === "fi"
-      ? "Tapahtumasta poistuminen ei onnistunut juuri nyt. Päivitä näkymä ja yritä uudelleen."
-      : "Leaving the event failed right now. Refresh the view and try again.";
-  }
-
-  if (message.includes("RPC returned no data")) {
-    return language === "fi"
-      ? "Palvelu ei palauttanut odotettua vastausta. Yritä hetken päästä uudelleen."
-      : "The service did not return the expected response. Try again in a moment.";
-  }
-
-  return message.length > 0 ? message : language === "fi" ? "Tuntematon pyyntövirhe." : "Unknown request error.";
-};
-
 export default function BusinessEventsScreen() {
   const router = useRouter();
-  const { height: windowHeight } = useWindowDimensions();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
-  const [preview, setPreview] = useState<EventPreview | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const formatter = useMemo(
@@ -274,14 +244,6 @@ export default function BusinessEventsScreen() {
           ? "Tällä yrityksellä ei ole vielä päättyneitä liittyneitä tapahtumia."
           : "This business does not have past joined events yet.",
       endedAt: language === "fi" ? "Päättyi" : "Ended",
-      closePreview: language === "fi" ? "Sulje" : "Close",
-      eventPreview: language === "fi" ? "Tapahtuman tiedot" : "Event details",
-      description: language === "fi" ? "Kuvaus" : "Description",
-      noDescription:
-        language === "fi"
-          ? "Tälle tapahtumalle ei ole vielä lisätty kuvausta."
-          : "No description has been added for this event yet.",
-      venue: language === "fi" ? "Piste" : "Venue",
       openScanner: copy.business.openScanner,
       openHistory: copy.business.history,
       leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",
@@ -362,15 +324,6 @@ export default function BusinessEventsScreen() {
     successNoticeDurationMs
   );
 
-  const previewEvent = preview === null ? null : getPreviewEvent(preview);
-  const previewBadge =
-    preview === null
-      ? null
-      : preview.kind === "joined"
-        ? getJoinedEventBadge(preview.event, language)
-        : { label: language === "fi" ? "Liityttävissä" : "Joinable", state: "pending" as const };
-  const modalMaxHeight = Math.max(360, windowHeight - 132);
-
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredActiveJoinedEvents = useMemo(
     () =>
@@ -415,7 +368,15 @@ export default function BusinessEventsScreen() {
 
     return (
       <View key={event.eventVenueId} style={styles.railCard}>
-        <Pressable onPress={() => setPreview({ event, kind: "joined" })} style={styles.cardPreviewButton}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/business/event-detail",
+              params: { businessId: event.businessId, eventId: event.eventId },
+            })
+          }
+          style={styles.cardPreviewButton}
+        >
           <CoverImageSurface
             fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
@@ -454,7 +415,15 @@ export default function BusinessEventsScreen() {
 
     return (
       <View key={joinKey} style={styles.railCard}>
-        <Pressable onPress={() => setPreview({ event, kind: "opportunity" })} style={styles.cardPreviewButton}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/business/event-detail",
+              params: { businessId: event.businessId, eventId: event.eventId },
+            })
+          }
+          style={styles.cardPreviewButton}
+        >
           <CoverImageSurface
             fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
@@ -489,7 +458,7 @@ export default function BusinessEventsScreen() {
               eventId: event.eventId,
               businessId: event.businessId,
               staffUserId: userId,
-            });
+            }).catch(() => undefined);
           }}
           style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
         >
@@ -547,7 +516,7 @@ export default function BusinessEventsScreen() {
       {joinMutation.isError || leaveMutation.isError ? (
         <InfoCard eyebrow={copy.common.error} title={labels.requestFailedTitle}>
           <Text style={styles.bodyText}>
-            {createRequestErrorBody(joinMutation.error ?? leaveMutation.error, language)}
+            {createBusinessEventRequestErrorBody(joinMutation.error ?? leaveMutation.error, language)}
           </Text>
         </InfoCard>
       ) : null}
@@ -663,7 +632,7 @@ export default function BusinessEventsScreen() {
                             eventId: event.eventId,
                             businessId: event.businessId,
                             staffUserId: userId,
-                          });
+                          }).catch(() => undefined);
                         }}
                         style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
                       >
@@ -722,66 +691,6 @@ export default function BusinessEventsScreen() {
           )}
         </InfoCard>
       ) : null}
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setPreview(null)}
-        transparent
-        visible={preview !== null}
-      >
-        <Pressable onPress={() => setPreview(null)} style={styles.modalBackdrop}>
-          {previewEvent !== null && previewBadge !== null ? (
-            <Pressable onPress={() => undefined} style={[styles.modalSheet, { maxHeight: modalMaxHeight }]}>
-              <ScrollView
-                bounces={false}
-                contentContainerStyle={styles.modalScrollContent}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator
-              >
-                <CoverImageSurface
-                  fallbackSource={getFallbackCoverSource("eventDiscovery")}
-                  imageStyle={styles.modalCoverImage}
-                  source={getEventCoverSource(
-                    previewEvent.coverImageUrl,
-                    `${previewEvent.eventId}:${previewEvent.eventName}`
-                  )}
-                  style={styles.modalCover}
-                >
-                  <View style={styles.modalCoverOverlay} />
-                  <View style={styles.modalCoverContent}>
-                    <View style={styles.eventStatusRow}>
-                      <Text style={styles.eyebrow}>{labels.eventPreview}</Text>
-                      <StatusBadge label={previewBadge.label} state={previewBadge.state} />
-                    </View>
-                    <Text numberOfLines={2} style={styles.modalTitle}>{previewEvent.eventName}</Text>
-                    <Text numberOfLines={1} style={styles.coverMeta}>{previewEvent.city}</Text>
-                  </View>
-                </CoverImageSurface>
-                <View style={styles.modalContent}>
-                  <View style={styles.detailGrid}>
-                    <View style={styles.detailPill}>
-                      <Text style={styles.detailLabel}>{language === "fi" ? "Alkaa" : "Starts"}</Text>
-                      <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.startAt)}</Text>
-                    </View>
-                    <View style={styles.detailPill}>
-                      <Text style={styles.detailLabel}>{language === "fi" ? "Päättyy" : "Ends"}</Text>
-                      <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.endAt)}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.sectionLabel}>{labels.description}</Text>
-                  <Text style={styles.bodyText}>
-                    {previewEvent.description !== null && previewEvent.description.trim().length > 0
-                      ? previewEvent.description.trim()
-                      : labels.noDescription}
-                  </Text>
-                  <Pressable onPress={() => setPreview(null)} style={styles.secondaryButton}>
-                    <Text style={styles.secondaryButtonText}>{labels.closePreview}</Text>
-                  </Pressable>
-                </View>
-              </ScrollView>
-            </Pressable>
-          ) : null}
-        </Pressable>
-      </Modal>
     </AppScreen>
   );
 }

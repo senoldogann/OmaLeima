@@ -62,6 +62,22 @@ const runInherit = (label, command, args, cwd, env) => {
   });
 };
 
+const runOptionalCapture = (label, command, args, cwd, env) => {
+  console.log(`==> ${label}`);
+  const result = spawnSync(command, args, {
+    cwd,
+    env,
+    encoding: "utf8",
+    shell: false,
+    stdio: "pipe",
+  });
+
+  if (result.status !== 0) {
+    const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+    console.log(`${label}:non_blocking_status=${String(result.status)}${output.length > 0 ? ` ${output}` : ""}`);
+  }
+};
+
 const parseModes = (args) => {
   const requestedModes = new Set();
 
@@ -234,8 +250,15 @@ const assertAndroidLaunchUi = (uiXml) => {
   const acceptedMarkers = [
     "Accept and continue",
     "Continue with Google",
+    "Kirjaudu Googlella",
+    "Opiskelijan sisäänkirjautuminen",
+    "Yrityksen sisäänkirjautuminen",
     "Student",
+    "Opiskelija",
     "Business",
+    "Yritys",
+    "MEKAN",
+    "LEIMA SAATU",
     "Checking app version",
     "Update required",
     "Could not verify app version",
@@ -277,6 +300,7 @@ const smokeAndroidAsync = async () => {
   }
 
   runCapture("android install release apk", adbPath, ["-s", serial, "install", "-r", apkPath], repoRoot, androidEnv);
+  runCapture("android reset app data", adbPath, ["-s", serial, "shell", "pm", "clear", androidPackageName], repoRoot, androidEnv);
   runCapture("android resolve activity", adbPath, ["-s", serial, "shell", "cmd", "package", "resolve-activity", "--brief", androidPackageName], repoRoot, androidEnv);
   runCapture("android launch app", adbPath, ["-s", serial, "shell", "am", "start", "-n", `${androidPackageName}/.MainActivity`], repoRoot, androidEnv);
   await sleepAsync(launchWaitMs);
@@ -371,7 +395,6 @@ const smokeIosAsync = async () => {
       "-derivedDataPath",
       derivedDataPath,
       "build",
-      "CODE_SIGNING_ALLOWED=NO",
       "ONLY_ACTIVE_ARCH=YES",
       "COMPILER_INDEX_STORE_ENABLE=NO",
     ],
@@ -381,6 +404,8 @@ const smokeIosAsync = async () => {
   );
 
   const appPath = findIosAppBundle(derivedDataPath);
+  runOptionalCapture("ios terminate previous app", "xcrun", ["simctl", "terminate", iosSimulatorId, iosBundleId], repoRoot, process.env);
+  runOptionalCapture("ios uninstall previous app", "xcrun", ["simctl", "uninstall", iosSimulatorId, iosBundleId], repoRoot, process.env);
   runCapture("ios install app", "xcrun", ["simctl", "install", iosSimulatorId, appPath], repoRoot, process.env);
   runCapture("ios launch app", "xcrun", ["simctl", "launch", iosSimulatorId, iosBundleId], repoRoot, process.env);
   await sleepAsync(launchWaitMs);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
@@ -78,11 +78,7 @@ export const announcementFeedQueryKey = (userId: string) => ["announcement-feed"
 export const announcementDetailQueryKey = (userId: string, announcementId: string) =>
   ["announcement-detail", userId, announcementId] as const;
 
-const buildAnnouncementRealtimeChannelName = (userId: string, instanceId: string): string =>
-  `announcement-feed:${userId}:${instanceId}`;
-
-const createAnnouncementRealtimeInstanceId = (): string =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+const announcementFreshnessIntervalMs = 60_000;
 
 const getAnnouncementSourceType = (clubId: string | null): AnnouncementSourceType =>
   clubId === null ? "PLATFORM" : "CLUB";
@@ -377,26 +373,20 @@ const recordAnnouncementImpressionsAsync = async ({
 
 const acknowledgeAnnouncementAsync = async ({
   announcementId,
-  userId,
 }: {
   announcementId: string;
   userId: string;
 }): Promise<void> => {
-  const { error } = await supabase
-    .from("announcement_acknowledgements")
-    .upsert(
-      {
-        announcement_id: announcementId,
-        user_id: userId,
-      },
-      {
-        ignoreDuplicates: true,
-        onConflict: "announcement_id,user_id",
-      }
-    );
+  const { data, error } = await supabase.rpc("acknowledge_announcement_atomic", {
+    p_announcement_id: announcementId,
+  });
 
   if (error !== null) {
-    throw new Error(`Failed to acknowledge announcement ${announcementId} for ${userId}: ${error.message}`);
+    throw new Error(`Failed to acknowledge announcement ${announcementId}: ${error.message}`);
+  }
+
+  if (data !== "SUCCESS") {
+    throw new Error(`Failed to acknowledge announcement ${announcementId}: ${String(data)}`);
   }
 };
 
@@ -480,6 +470,7 @@ export const useActiveAnnouncementsQuery = ({
     enabled: isEnabled,
     queryFn: async () => fetchActiveAnnouncementsAsync(userId),
     queryKey: activeAnnouncementsQueryKey(userId),
+    refetchInterval: isEnabled ? announcementFreshnessIntervalMs : false,
   });
 
 export const useAnnouncementFeedQuery = ({
@@ -490,6 +481,7 @@ export const useAnnouncementFeedQuery = ({
     enabled: isEnabled,
     queryFn: async () => fetchAnnouncementFeedAsync(userId),
     queryKey: announcementFeedQueryKey(userId),
+    refetchInterval: isEnabled ? announcementFreshnessIntervalMs : false,
   });
 
 export const useAnnouncementDetailQuery = ({
@@ -508,55 +500,30 @@ export const useAnnouncementRealtimeInvalidation = ({
   userId,
 }: AnnouncementRealtimeInvalidationParams): void => {
   const queryClient = useQueryClient();
-  const channelInstanceIdRef = useRef<string>(createAnnouncementRealtimeInstanceId());
 
   useEffect(() => {
     if (!isEnabled || userId.length === 0) {
       return;
     }
 
-    const channel = supabase
-      .channel(buildAnnouncementRealtimeChannelName(userId, channelInstanceIdRef.current))
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "announcements",
-        },
-        () => {
-          void Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: activeAnnouncementsQueryKey(userId),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: announcementFeedQueryKey(userId),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: ["announcement-detail", userId],
-            }),
-          ]).catch((error: unknown) => {
-            console.warn("announcement_realtime_invalidation_failed", {
-              userId,
-              message: error instanceof Error ? error.message : String(error),
-            });
-          });
-        }
-      )
-      .subscribe((status, error) => {
-        if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT") {
-          return;
-        }
+    const invalidateAnnouncementQueries = (): void => {
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: activeAnnouncementsQueryKey(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: announcementFeedQueryKey(userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["announcement-detail", userId],
+        }),
+      ]);
+    };
 
-        console.warn("announcement_realtime_channel_warning", {
-          status,
-          userId,
-          message: error?.message ?? null,
-        });
-      });
+    const interval = setInterval(invalidateAnnouncementQueries, announcementFreshnessIntervalMs);
 
     return () => {
-      void supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [isEnabled, queryClient, userId]);
 };

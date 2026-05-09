@@ -267,16 +267,35 @@ export default function StudentProfileScreen() {
 
     autoRegisterAttemptedRef.current = true;
 
-    void registerPushMutation.mutateAsync({ accessToken }).then(async (result) => {
-      setPushState(result);
-      await refreshPushPermissionStateAsync();
-    });
+    void registerPushMutation.mutateAsync({ accessToken })
+      .then(async (result) => {
+        setPushState(result);
+        try {
+          await refreshPushPermissionStateAsync();
+        } catch (error) {
+          console.warn("student_profile_push_permission_refresh_failed", {
+            error,
+            userId: session?.user.id ?? null,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        setPushState({
+          backendDeviceTokenId: null,
+          backendStatus: "CLIENT_ERROR",
+          detail: error instanceof Error ? error.message : "Push notification registration failed unexpectedly.",
+          expoPushToken: null,
+          state: "error",
+          status: "misconfigured",
+        });
+      });
   }, [
     hasGrantedNotificationPermission,
     hasRegisteredNotificationDevice,
     refreshPushPermissionStateAsync,
     registerPushMutation,
     session?.access_token,
+    session?.user.id,
   ]);
 
   useEffect(() => {
@@ -286,11 +305,29 @@ export default function StudentProfileScreen() {
 
   const handleRegisterPushPress = async (): Promise<void> => {
     autoRegisterAttemptedRef.current = true;
-    const result = await registerPushMutation.mutateAsync({
-      accessToken: session?.access_token ?? "",
-    });
-    setPushState(result);
-    await refreshPushPermissionStateAsync();
+    try {
+      const result = await registerPushMutation.mutateAsync({
+        accessToken: session?.access_token ?? "",
+      });
+      setPushState(result);
+      try {
+        await refreshPushPermissionStateAsync();
+      } catch (error) {
+        console.warn("student_profile_push_permission_refresh_failed", {
+          error,
+          userId: session?.user.id ?? null,
+        });
+      }
+    } catch (error) {
+      setPushState({
+        backendDeviceTokenId: null,
+        backendStatus: "CLIENT_ERROR",
+        detail: error instanceof Error ? error.message : "Push notification registration failed unexpectedly.",
+        expoPushToken: null,
+        state: "error",
+        status: "misconfigured",
+      });
+    }
   };
 
   const handleAttachSuggestedTagPress = async (tag: DepartmentTagSuggestion): Promise<void> => {

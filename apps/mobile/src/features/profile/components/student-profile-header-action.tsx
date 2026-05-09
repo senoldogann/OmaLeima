@@ -21,7 +21,14 @@ export const StudentProfileHeaderAction = ({
             accessibilityHint={language === "fi" ? "Avaa opiskelijaprofiili" : "Open student profile"}
             accessibilityLabel={language === "fi" ? "Profiili" : "Profile"}
             accessibilityRole="button"
-            onPress={() => router.navigate(route)}
+            onPress={() =>
+                router.push({
+                    pathname: route,
+                    params: {
+                        openedAt: String(Date.now()),
+                    },
+                })
+            }
             style={styles.button}
         >
             <AppIcon color={theme.colors.textPrimary} name="user" size={18} />

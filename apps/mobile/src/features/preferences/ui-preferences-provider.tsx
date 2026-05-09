@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import { StyleSheet } from "react-native";
-import * as SecureStore from "expo-secure-store";
 
 import {
   darkMobileTheme,
@@ -15,6 +14,7 @@ import {
   type AppLanguage,
   type MobileCopy,
 } from "@/features/i18n/translations";
+import { deviceStorage } from "@/lib/device-storage";
 
 const LANGUAGE_KEY = "ui-language";
 
@@ -41,7 +41,7 @@ export const UiPreferencesProvider = ({ children }: PropsWithChildren) => {
     let isActive = true;
 
     const loadPreferencesAsync = async (): Promise<void> => {
-      const storedLanguage = await SecureStore.getItemAsync(LANGUAGE_KEY);
+      const storedLanguage = await deviceStorage.getItemAsync(LANGUAGE_KEY);
 
       if (!isActive) {
         return;
@@ -65,7 +65,7 @@ export const UiPreferencesProvider = ({ children }: PropsWithChildren) => {
 
   const setLanguage = async (nextLanguage: AppLanguage): Promise<void> => {
     setLanguageState(nextLanguage);
-    await SecureStore.setItemAsync(LANGUAGE_KEY, nextLanguage);
+    await deviceStorage.setItemAsync(LANGUAGE_KEY, nextLanguage);
   };
 
   const value = useMemo<UiPreferencesContextValue>(

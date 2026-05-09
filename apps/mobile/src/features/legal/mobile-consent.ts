@@ -1,6 +1,5 @@
-import * as SecureStore from "expo-secure-store";
-
 import type { AppLanguage } from "@/features/i18n/translations";
+import { deviceStorage } from "@/lib/device-storage";
 
 export type MobileLegalConsentRecord = {
   acceptedAt: string;
@@ -41,7 +40,7 @@ const parseMobileLegalConsentRecord = (rawValue: string): MobileLegalConsentReco
 };
 
 export const readMobileLegalConsentAsync = async (): Promise<MobileLegalConsentRecord | null> => {
-  const rawValue = await SecureStore.getItemAsync(mobileLegalConsentStoreKey);
+  const rawValue = await deviceStorage.getItemAsync(mobileLegalConsentStoreKey);
 
   if (rawValue === null) {
     return null;
@@ -57,7 +56,7 @@ export const writeMobileLegalConsentAsync = async (language: AppLanguage): Promi
     version: mobileLegalConsentVersion,
   };
 
-  await SecureStore.setItemAsync(mobileLegalConsentStoreKey, JSON.stringify(record));
+  await deviceStorage.setItemAsync(mobileLegalConsentStoreKey, JSON.stringify(record));
 
   return record;
 };

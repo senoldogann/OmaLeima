@@ -93,16 +93,15 @@ export default function LoginScreen() {
         <View style={styles.cardHandle} />
 
         <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderCopy}>
-            <Text style={styles.cardTitle}>
-              {mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
-            </Text>
-            <Text style={styles.cardSubtitle}>
-              {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
-            </Text>
-          </View>
-          <LanguageDropdown language={language} onLanguageChange={setLanguage} />
+          <Text style={styles.cardTitle}>
+            {mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
+          </Text>
+          <Text style={styles.cardSubtitle}>
+            {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
+          </Text>
         </View>
+
+        <LanguageDropdown language={language} onLanguageChange={setLanguage} />
 
         <View style={styles.modeSelector}>
           <Pressable
@@ -176,13 +175,6 @@ const createStyles = (theme: MobileTheme) =>
       width: 36,
     },
     cardHeader: {
-      alignItems: "flex-start",
-      flexDirection: "row",
-      gap: 12,
-      justifyContent: "space-between",
-    },
-    cardHeaderCopy: {
-      flex: 1,
       gap: 4,
     },
     cardTitle: {

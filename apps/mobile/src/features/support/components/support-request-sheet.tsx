@@ -563,7 +563,12 @@ export const SupportRequestSheet = ({
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Sulje" : "Close"}</Text>
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={styles.historyModalContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              contentContainerStyle={styles.historyModalContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              style={styles.historyModalScroll}
+            >
               {supportQuery.isLoading ? (
                 <Text style={styles.metaText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
               ) : null}
@@ -673,6 +678,9 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       justifyContent: "center",
       paddingVertical: 24,
+    },
+    historyModalScroll: {
+      flexShrink: 1,
     },
     historyStatus: {
       color: theme.colors.lime,

@@ -50,8 +50,13 @@ const scannerLoginQrDarkColor = "#111827";
 export const businessScannerLoginQrQueryKey = (businessId: string) =>
   ["business-scanner-login-qr", businessId] as const;
 
-export const businessScannerLoginQrSvgQueryKey = (token: string) =>
-  ["business-scanner-login-qr-svg", token] as const;
+export const businessScannerLoginQrSvgQueryKey = ({
+  businessId,
+  expiresAt,
+}: {
+  businessId: string;
+  expiresAt: string;
+}) => ["business-scanner-login-qr-svg", businessId, expiresAt] as const;
 
 const isBusinessScannerLoginQr = (value: unknown): value is BusinessScannerLoginQr => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -107,6 +112,16 @@ const createBusinessScannerLoginQrSvgAsync = async (token: string): Promise<stri
     type: "svg",
     width: 240,
   });
+
+const createScannerLoginQrSvgGcTimeMs = (expiresAt: string): number => {
+  const expiresAtMs = new Date(expiresAt).getTime();
+
+  if (!Number.isFinite(expiresAtMs)) {
+    return minimumQrRefetchIntervalMs;
+  }
+
+  return Math.max(expiresAtMs - Date.now(), minimumQrRefetchIntervalMs);
+};
 
 const fetchBusinessScannerLoginQrAsync = async (businessId: string): Promise<BusinessScannerLoginQr> => {
   const { data, error } = await supabase.functions.invoke("generate-business-scanner-login-qr", {
@@ -190,15 +205,23 @@ export const useBusinessScannerLoginQrQuery = ({
   });
 
 export const useBusinessScannerLoginQrSvgQuery = ({
+  businessId,
+  expiresAt,
   isEnabled,
   token,
 }: {
+  businessId: string;
+  expiresAt: string;
   isEnabled: boolean;
   token: string;
 }): UseQueryResult<string, Error> =>
   useQuery({
     enabled: isEnabled && token.length > 0,
+    gcTime: createScannerLoginQrSvgGcTimeMs(expiresAt),
     queryFn: async () => createBusinessScannerLoginQrSvgAsync(token),
-    queryKey: businessScannerLoginQrSvgQueryKey(token),
+    queryKey: businessScannerLoginQrSvgQueryKey({
+      businessId,
+      expiresAt,
+    }),
     staleTime: Number.POSITIVE_INFINITY,
   });

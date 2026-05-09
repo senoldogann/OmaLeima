@@ -274,6 +274,16 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
     };
   }
 
+  if (message.includes("EVENT_CITY_OUT_OF_SCOPE") || message.includes("CLUB_CITY_REQUIRED")) {
+    return {
+      body:
+        language === "fi"
+          ? "Järjestäjän tapahtuman kaupunki lukitaan oman organisaation kaupunkiin. Päivitä organisaation profiili, jos kaupunki on väärä."
+          : "Organizer events are locked to the organization's own city. Update the organization profile if the city is wrong.",
+      title: language === "fi" ? "Kaupunki lukittu" : "City is locked",
+    };
+  }
+
   if (message.includes("Event name must contain")) {
     return {
       body:
@@ -304,12 +314,12 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
     };
   }
 
-  if (message.includes("perBusinessLimit must be an integer between 1 and 5")) {
+  if (message.includes("perBusinessLimit must be an integer between 1 and 5") || message.includes("perBusinessLimit must be 1")) {
     return {
       body:
         language === "fi"
-          ? "Valitse samasta pisteestä sallittu leimamäärä välillä 1-5."
-          : "Choose a same-venue stamp limit between 1 and 5.",
+          ? "Samasta pisteestä voi saada yhden leiman."
+          : "Same-venue stamp limit must be 1.",
       title: language === "fi" ? "Tarkista leimaraja" : "Check stamp limit",
     };
   }
@@ -704,8 +714,8 @@ export default function ClubEventsScreen() {
     }
   };
 
-  const handleCancelPress = async (): Promise<void> => {
-    if (userId === null || selectedEvent === null) {
+  const cancelEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
+    if (userId === null) {
       return;
     }
 
@@ -713,7 +723,7 @@ export default function ClubEventsScreen() {
     setActionNotice(null);
 
     try {
-      const result = await cancelMutation.mutateAsync({ eventId: selectedEvent.eventId, userId });
+      const result = await cancelMutation.mutateAsync({ eventId: event.eventId, userId });
 
       assertClubEventMutationSucceeded(result);
       hapticNotification(NotificationType.Success);
@@ -723,6 +733,32 @@ export default function ClubEventsScreen() {
       hapticNotification(NotificationType.Error);
       setActionNotice(createClubEventActionNotice(error, language));
     }
+  };
+
+  const handleCancelPress = (): void => {
+    if (userId === null || selectedEvent === null || isPending) {
+      return;
+    }
+
+    const eventToCancel = selectedEvent;
+
+    Alert.alert(
+      language === "fi" ? "Perutaanko tapahtuma?" : "Cancel event?",
+      language === "fi"
+        ? "Tapahtuma piilotetaan aktiivisista näkymistä. Leimat, ilmoittautumiset ja audit-historia säilyvät."
+        : "This hides the event from active views. Stamps, registrations, and audit history stay intact.",
+      [
+        {
+          style: "cancel",
+          text: language === "fi" ? "Ei, palaa" : "No, go back",
+        },
+        {
+          onPress: () => void cancelEventAsync(eventToCancel),
+          style: "destructive",
+          text: language === "fi" ? "Kyllä, peru tapahtuma" : "Yes, cancel event",
+        },
+      ]
+    );
   };
 
   const handleDeleteEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
@@ -1080,7 +1116,7 @@ export default function ClubEventsScreen() {
                   {creatableMemberships.map((membership: ClubMembershipSummary) => (
                     <Pressable
                       key={membership.clubId}
-                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, clubId: membership.clubId, city: currentDraft.city || membership.city || "" }))}
+                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, clubId: membership.clubId, city: membership.city ?? "" }))}
                       style={[styles.optionChip, draft.clubId === membership.clubId ? styles.optionChipSelected : null]}
                     >
                       <Text style={styles.optionChipText}>{membership.clubName}</Text>
@@ -1133,7 +1169,11 @@ export default function ClubEventsScreen() {
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
                       autoCapitalize={config.field === "ticketUrl" ? "none" : "sentences"}
-                      editable={!isPending && (mode === "create" || canEditEvent(selectedEvent))}
+                      editable={
+                        !isPending &&
+                        config.field !== "city" &&
+                        (mode === "create" || canEditEvent(selectedEvent))
+                      }
                       keyboardType={
                         config.field === "minimumStampsRequired" || config.field === "maxParticipants"
                           ? "number-pad"
@@ -1181,11 +1221,11 @@ export default function ClubEventsScreen() {
                 </Text>
                 <Text style={styles.metaText}>
                   {language === "fi"
-                    ? "Kuinka monta leimaa yksi opiskelija voi saada samasta pisteestä tämän tapahtuman aikana. Yksi onnistunut skannaus kirjaa yhden leiman, joten lisäleimat vaativat aina uuden QR:n."
-                    : "How many stamps one student can collect from the same venue during this event. One successful scan records one stamp, so extra stamps always need a fresh QR."}
+                    ? "Yksi opiskelija voi saada samasta pisteestä yhden leiman tämän tapahtuman aikana."
+                    : "One student can collect one stamp from the same venue during this event."}
                 </Text>
                 <View style={styles.optionRow}>
-                  {(["1", "2", "3", "4", "5"] as const).map((limit) => (
+                  {(["1"] as const).map((limit) => (
                     <Pressable
                       disabled={isPending || (mode === "edit" && !canEditEvent(selectedEvent))}
                       key={limit}
@@ -1252,7 +1292,7 @@ export default function ClubEventsScreen() {
               {mode === "edit" && selectedEvent !== null && canEditEvent(selectedEvent) ? (
                 <Pressable
                   disabled={isPending}
-                  onPress={() => void handleCancelPress()}
+                  onPress={handleCancelPress}
                   style={[styles.secondaryButton, isPending ? styles.disabledButton : null]}
                 >
                   <Text style={styles.secondaryButtonText}>

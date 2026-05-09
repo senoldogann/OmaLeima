@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import { deviceStorage } from "@/lib/device-storage";
 
 const mobileRoleAreaPreferenceKey = "mobile-role-area-preference";
 
@@ -8,15 +8,15 @@ export const isMobileRoleArea = (value: unknown): value is MobileRoleArea =>
   value === "student" || value === "business" || value === "club";
 
 export const getPreferredMobileRoleAreaAsync = async (): Promise<MobileRoleArea | null> => {
-  const storedArea = await SecureStore.getItemAsync(mobileRoleAreaPreferenceKey);
+  const storedArea = await deviceStorage.getItemAsync(mobileRoleAreaPreferenceKey);
 
   return isMobileRoleArea(storedArea) ? storedArea : null;
 };
 
 export const setPreferredMobileRoleAreaAsync = async (area: MobileRoleArea): Promise<void> => {
-  await SecureStore.setItemAsync(mobileRoleAreaPreferenceKey, area);
+  await deviceStorage.setItemAsync(mobileRoleAreaPreferenceKey, area);
 };
 
 export const clearPreferredMobileRoleAreaAsync = async (): Promise<void> => {
-  await SecureStore.deleteItemAsync(mobileRoleAreaPreferenceKey);
+  await deviceStorage.deleteItemAsync(mobileRoleAreaPreferenceKey);
 };

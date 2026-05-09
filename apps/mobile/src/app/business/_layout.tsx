@@ -182,6 +182,7 @@ export default function BusinessLayout() {
         options={{ href: isBusinessScannerOnly ? null : undefined, title: copy.common.profile }}
       />
       <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="event-detail" options={{ href: null }} />
       <Tabs.Screen name="updates" options={{ href: null }} />
       <Tabs.Screen name="announcement-detail" options={{ href: null }} />
     </Tabs>

@@ -86,10 +86,23 @@ export const AnnouncementPopupBridge = () => {
       return;
     }
 
-    await acknowledgeMutation.mutateAsync({
-      announcementId: announcement.announcementId,
-      userId: session.user.id,
-    });
+    const announcementId = announcement.announcementId;
+    const userId = session.user.id;
+
+    try {
+      await acknowledgeMutation.mutateAsync({
+        announcementId,
+        userId,
+      });
+    } catch (error) {
+      console.warn("announcement_popup_acknowledge_failed", {
+        announcementId,
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setDismissedAnnouncementId(announcementId);
+    }
   };
 
   const handleCtaPress = async (): Promise<void> => {
