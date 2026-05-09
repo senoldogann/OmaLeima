@@ -2,6 +2,18 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Organizer Live Event Name Lock Parity)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Make active/live event names immutable on mobile to match organizer expectations, then compare shared organizer web/mobile surfaces and confirm there is no other meaningful parity regression in the common pages/buttons.
+
+## Organizer Live Event Name Lock Parity Findings
+
+- The organizer event update flows live in `apps/admin/src/features/club-events/*` and `apps/mobile/src/app/club/events.tsx` / `apps/mobile/src/features/club/club-event-mutations.ts`. Neither client currently hard-locks the event name for `ACTIVE` events at mutation level, so parity should be enforced explicitly instead of relying on user expectation.
+- Mobile already covers the same main organizer surfaces as the shared mobile product scope: home, events, upcoming, announcements, reports, claims, and profile. Web adds some broader desktop-only operator surfaces (for example reward/fraud management), but on the shared organizer pages the main actions and routes already line up.
+- The only concrete parity bug found in the shared event-edit experience is the live-name lock. The safer fix is dual-layer: disable the name input in both web and mobile when the selected event is active/live, and preserve the existing name server/mutation side even if a crafted request submits a different value.
+
 ## Current Review (Club Event Update Error Cleanup)
 
 - **Date:** 2026-05-09

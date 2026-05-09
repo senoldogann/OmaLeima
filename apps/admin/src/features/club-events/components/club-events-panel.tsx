@@ -215,6 +215,8 @@ const createUpdatePayload = (event: ClubEventRecord): ClubEventUpdatePayload => 
 const canEditEvent = (event: ClubEventRecord): boolean =>
   event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED";
 
+const canEditEventName = (event: ClubEventRecord): boolean => event.status !== "ACTIVE";
+
 const canCancelEvent = (event: ClubEventRecord): boolean =>
   event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED";
 
@@ -986,7 +988,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     <span className="field-label">{copy.name}</span>
                     <input
                       className="field-input"
-                      disabled={isUpdatePending}
+                      disabled={isUpdatePending || !canEditEventName(selectedEvent)}
                       onChange={(event) =>
                         setUpdatePayload((currentPayload) =>
                           currentPayload === null
@@ -999,6 +1001,13 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                       }
                       value={updatePayload.name}
                     />
+                    {!canEditEventName(selectedEvent) ? (
+                      <span className="field-help">
+                        {locale === "fi"
+                          ? "Käynnissä olevan tapahtuman nimeä ei voi enää muuttaa."
+                          : "Active event names can no longer be changed."}
+                      </span>
+                    ) : null}
                   </label>
 
                   <label className="field">

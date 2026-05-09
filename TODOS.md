@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Organizer Live Event Name Lock Parity)
+
+- [x] Re-read required project docs and inspect organizer web/mobile event-edit parity.
+- [x] Lock active event name editing in both organizer web and mobile forms.
+- [x] Enforce the same active-name lock in both update transport/mutation layers.
+- [x] Run web/mobile validation and update handoff.
+
 ## Current Todos (Club Event Update Error Cleanup)
 
 - [x] Re-read required project docs and inspect the reported organizer save errors.

@@ -29,6 +29,8 @@ type EventMediaLookupRow = {
   cover_image_staging_path: string | null;
   cover_image_url: string | null;
   id: string;
+  name: string;
+  status: "ACTIVE" | "DRAFT" | "PUBLISHED";
 };
 
 const eventMediaBucketId = "event-media";
@@ -251,7 +253,7 @@ export const updateClubEventAsync = async (
 ): Promise<ClubEventTransportResult> => {
   const { data: existingEvent, error: existingError } = await supabase
     .from("events")
-    .select("id,club_id,cover_image_url,cover_image_staging_path")
+    .select("id,club_id,cover_image_url,cover_image_staging_path,name,status")
     .eq("id", payload.eventId)
     .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
     .maybeSingle<EventMediaLookupRow>();
@@ -303,6 +305,7 @@ export const updateClubEventAsync = async (
         submittedCoverUrl: payload.coverImageUrl,
       });
   const nextCoverImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
+  const nextEventName = existingEvent.status === "ACTIVE" ? existingEvent.name : payload.name.trim();
 
   const { data, error } = await supabase
     .from("events")
@@ -315,7 +318,7 @@ export const updateClubEventAsync = async (
       join_deadline_at: payload.joinDeadlineAtIso,
       max_participants: payload.maxParticipants,
       minimum_stamps_required: payload.minimumStampsRequired,
-      name: payload.name,
+      name: nextEventName,
       rules: payload.rules,
       start_at: payload.startAtIso,
       status: payload.status,

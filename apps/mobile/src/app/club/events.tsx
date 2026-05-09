@@ -406,6 +406,9 @@ const canEditEvent = (event: ClubDashboardEventSummary | null): boolean =>
   event.timelineState !== "CANCELLED" &&
   (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
 
+const canEditEventName = (event: ClubDashboardEventSummary | null): boolean =>
+  event === null || event.status !== "ACTIVE";
+
 const isDraftEvent = (event: ClubDashboardEventSummary): boolean =>
   event.status === "DRAFT" || event.timelineState === "DRAFT";
 
@@ -1174,6 +1177,7 @@ export default function ClubEventsScreen() {
                       editable={
                         !isPending &&
                         config.field !== "city" &&
+                        !(config.field === "name" && mode === "edit" && !canEditEventName(selectedEvent)) &&
                         (mode === "create" || canEditEvent(selectedEvent))
                       }
                       keyboardType={
@@ -1191,6 +1195,13 @@ export default function ClubEventsScreen() {
                       textAlignVertical={config.multiline ? "top" : "center"}
                       value={draft[config.field]}
                     />
+                    {config.field === "name" && mode === "edit" && selectedEvent?.status === "ACTIVE" ? (
+                      <Text style={styles.metaText}>
+                        {language === "fi"
+                          ? "Käynnissä olevan tapahtuman nimeä ei voi enää muuttaa mobiilissa tai webissä."
+                          : "Active event names cannot be changed on mobile or web."}
+                      </Text>
+                    ) : null}
                   </View>
                 ))}
 

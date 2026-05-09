@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Organizer Live Event Name Lock Parity)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Enforce the "active event name is immutable" rule consistently in both organizer web and mobile, then close the shared organizer parity check with a focused validation pass.
+
+## Organizer Live Event Name Lock Parity Architectural Decisions
+
+- Treat active/live event name immutability as a business rule, not just a UI affordance. Apply it in both update transports/mutations so crafted clients cannot bypass it.
+- Mirror the rule in both organizer forms by disabling the name field and showing a short hint when the selected event is already active/live.
+- Limit the parity review to shared organizer surfaces that exist on both platforms: home/dashboard shortcuts, events, upcoming, announcements, claims, reports, and profile routing. Do not create new mobile pages for desktop-only operator tools in this slice.
+
+## Prompt
+
+Sen OmaLeima organizer parity engineer olarak calisiyorsun.
+Hedef: Aktif/Kaynnissa event adinin web ve mobile organizer tarafinda degistirilememesini garanti et; ortak organizer sayfalari ve butonlari parity acisindan kontrol edip tek anlamli bug olan bu name-lock farkini kapat.
+Mimari: web ve mobile event update formunda name alanini disable et, server/mobile mutation katmaninda ACTIVE event icin mevcut ismi koru, shared organizer sayfa rotalarini hizli parity review ile dogrula.
+Kapsam: `apps/admin/src/features/club-events/components/club-events-panel.tsx`, `apps/admin/src/features/club-events/event-transport.ts`, `apps/mobile/src/app/club/events.tsx`, `apps/mobile/src/features/club/club-event-mutations.ts`, ilgili working docs ve validation. Yeni sayfa ekleme veya unrelated organizer refactor yok.
+Cikti: minimal TS/TSX patch, cross-platform organizer name-lock parity, validation evidence, handoff notu.
+Yasaklar: desktop-only surface'lari mobile'a tasimak yok, historical migration rewrite yok, scanner/business flow degistirmek yok, fake parity claim yok.
+Standartlar: AGENTS.md focused changes, strict typing, explicit behavior lock, no silent failure.
+
 ## Current Plan (Club Event Update Error Cleanup)
 
 - **Date:** 2026-05-09

@@ -33,6 +33,7 @@ type EventMediaLookupRow = {
   cover_image_staging_path: string | null;
   cover_image_url: string | null;
   id: string;
+  name: string;
   status: string;
 };
 
@@ -481,7 +482,7 @@ const updateClubEventAsync = async ({
   const parsedDraft = parseDraft(draft);
   const { data: existingEvent, error: existingError } = await supabase
     .from("events")
-    .select("id,club_id,cover_image_url,cover_image_staging_path,status")
+    .select("id,club_id,cover_image_url,cover_image_staging_path,name,status")
     .eq("id", draft.eventId)
     .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
     .maybeSingle<EventMediaLookupRow>();
@@ -505,6 +506,7 @@ const updateClubEventAsync = async ({
     };
   }
 
+  const nextEventName = existingEvent.status === "ACTIVE" ? existingEvent.name : parsedDraft.name;
   const publishedCoverImageUrl =
     draft.status === "DRAFT"
       ? null
@@ -546,7 +548,7 @@ const updateClubEventAsync = async ({
       join_deadline_at: parsedDraft.joinDeadlineAtIso,
       max_participants: parsedDraft.maxParticipants,
       minimum_stamps_required: parsedDraft.minimumStampsRequired,
-      name: parsedDraft.name,
+      name: nextEventName,
       rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
       start_at: parsedDraft.startAtIso,
       status: draft.status,
