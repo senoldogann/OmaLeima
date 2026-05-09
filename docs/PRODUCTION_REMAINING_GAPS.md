@@ -1,7 +1,7 @@
 # Production Remaining Gaps
 
 **Date:** 2026-05-09  
-**Branch:** `feature/code-review-refactor-sweep`  
+**Branch:** `feature/apple-sign-in-store-release`
 **Decision:** Private pilot is feasible with operator supervision. Broad public launch on web, iOS, and Android is not ready until the items below are closed.
 
 This file lists the remaining issues that cannot be fully completed from this workspace alone because they require external provider accounts, physical devices, production credentials, store-console work, paid service setup, or owner/business decisions. Code-side items that can be safely fixed in-repo should not live here as blockers; they should be implemented on the feature branch.
@@ -16,7 +16,7 @@ The product is not yet ready for broad public launch because launch readiness de
 
 | Priority | Gap | Why it matters | Owner-side action |
 |---|---|---|---|
-| P0 | **iOS login policy** | The mobile student login currently relies on Google. App Store review generally requires Sign in with Apple or an accepted equivalent/privacy-preserving alternative when third-party social login is offered. | Decide and configure the Apple/Auth provider path or prepare written exemption evidence before App Store submission. |
+| P0 | **iOS Apple sign-in provider smoke** | Native Sign in with Apple code is now wired in the mobile app and the Apple Developer App ID `fi.omaleima.mobile` has the capability enabled, but App Store readiness still depends on hosted Supabase Apple provider confirmation and a real iOS/TestFlight sign-in proof. | Confirm the Supabase Apple provider/audience for `fi.omaleima.mobile`, regenerate invalidated provisioning profiles, build iOS, and record a physical Apple sign-in smoke. |
 | P0 | **Real-device Android proof** | Physical-device QR scanning has been tested by the owner, but simulator/emulator checks still do not prove Android Google OAuth callback, FCM/Expo remote push delivery, or notification tap routing on actual hardware. The hosted `device_tokens` check currently shows no Android token, so Android background push cannot yet be treated as proven. | Test an Android development/internal-track build on a physical Android device, allow notifications, confirm a hosted Android token is created, and record remote push + tap-routing evidence. |
 | P0 | **Real-device iOS/TestFlight proof** | Physical-device QR scanning has been tested by the owner, but iOS simulator screenshots still do not prove APNs delivery/tap, TestFlight install behavior, share/save sheets, Photos permission, or store-signed keychain behavior. Hosted DB currently has enabled iOS push tokens, but that is token evidence, not full store-signed TestFlight proof. | Test a TestFlight or development build on a physical iPhone and record the result. |
 | P0 | **Store-console readiness** | App Store Connect and Google Play Console records, listing assets, privacy labels, submission credentials, and review steps are external to this repo. | Create store records, upload final screenshots/copy, configure privacy/support URLs, and set submission credentials outside the repo. |
@@ -36,6 +36,7 @@ The product is not yet ready for broad public launch because launch readiness de
 ## Notification/background push proof state
 
 - Physical-device QR scanning has been owner-tested on real devices and is no longer tracked as an open QR/camera proof blocker in this file.
+- Sign in with Apple capability was enabled in Apple Developer for App ID `fi.omaleima.mobile` on 2026-05-09. Apple showed the standard warning that provisioning profiles must be regenerated after the capability change.
 - Hosted `public.device_tokens` was checked without printing token values: **2 enabled iOS tokens across 2 users** were present, with latest `last_seen_at` on 2026-05-09 UTC.
 - Hosted `public.device_tokens` currently has **0 Android tokens**. Android background/closed-app remote push remains unproven until a physical Android development/internal build registers a token and receives a remote notification.
 - Background or closed-app delivery is not a purely code-side property: it requires a native build, OS notification permission, an enabled Expo push token in Supabase, Expo/APNs/FCM delivery, and tap-routing confirmation on the physical device.
@@ -43,6 +44,6 @@ The product is not yet ready for broad public launch because launch readiness de
 ## Launch position
 
 - **Private pilot:** feasible after real operator accounts are configured and the final hosted dry-run passes.
-- **Public iOS launch:** blocked until iOS login policy and physical-device/TestFlight proof are closed.
+- **Public iOS launch:** blocked until hosted Apple provider confirmation and physical-device/TestFlight Apple sign-in + push proof are closed.
 - **Public Android launch:** blocked until real Android OAuth, push, and camera QR proof are closed.
 - **Public web launch:** technically close, but should not be declared production-ready until release traceability, observability, incident handling, and final hosted smoke evidence are complete.

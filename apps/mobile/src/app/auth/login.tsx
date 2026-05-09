@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
+import { AppleSignInButton } from "@/features/auth/components/apple-sign-in-button";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
 import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
 import { LoginHero } from "@/features/auth/components/login-hero";
@@ -139,7 +140,12 @@ export default function LoginScreen() {
 
         {legalConsentError !== null ? <Text style={styles.errorText}>{legalConsentError}</Text> : null}
         {isLegalConsentAccepted ? (
-          mode === "student" ? <GoogleSignInButton /> : <BusinessPasswordSignIn />
+          mode === "student" ? (
+            <View style={styles.studentAuthActions}>
+              <GoogleSignInButton />
+              <AppleSignInButton />
+            </View>
+          ) : <BusinessPasswordSignIn />
         ) : null}
       </View>
 
@@ -225,6 +231,9 @@ const createStyles = (theme: MobileTheme) =>
     },
     modeSelector: {
       flexDirection: "row",
+      gap: 10,
+    },
+    studentAuthActions: {
       gap: 10,
     },
   });

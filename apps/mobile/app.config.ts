@@ -18,6 +18,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "fi.omaleima.mobile",
     buildNumber: "1",
     icon: "./assets/images/icon.png",
+    usesAppleSignIn: true,
     entitlements: {
       "keychain-access-groups": ["$(AppIdentifierPrefix)fi.omaleima.mobile"],
     },
@@ -137,6 +138,7 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    "expo-apple-authentication",
     "expo-asset",
     [
       "expo-audio",

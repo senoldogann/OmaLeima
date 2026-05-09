@@ -49,6 +49,11 @@ type AuthCopy = {
   googlePreparing: string;
   googleReturning: string;
   googleRedirecting: string;
+  appleButton: string;
+  appleOpening: string;
+  applePreparing: string;
+  appleReturning: string;
+  appleRedirecting: string;
   businessEmail: string;
   businessPassword: string;
   businessEmailPlaceholder: string;
@@ -192,6 +197,11 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       googlePreparing: "Valmistellaan Google-kirjautumista.",
       googleReturning: "Palataan OmaLeimaan",
       googleRedirecting: "Odotetaan, että OmaLeima vastaanottaa Google-palautuksen.",
+      appleButton: "Kirjaudu Applella",
+      appleOpening: "Avataan Apple...",
+      applePreparing: "Valmistellaan Apple-kirjautumista.",
+      appleReturning: "Palataan OmaLeimaan",
+      appleRedirecting: "Viimeistellään Apple-kirjautumista.",
       businessEmail: "Yrityksen sähköposti",
       businessPassword: "Salasana",
       businessEmailPlaceholder: "scanner@example.com",
@@ -355,6 +365,11 @@ export const mobileTranslations: Record<AppLanguage, MobileCopy> = {
       googlePreparing: "Preparing the Google sign-in flow.",
       googleReturning: "Returning to OmaLeima",
       googleRedirecting: "Waiting for OmaLeima to receive the Google redirect.",
+      appleButton: "Continue with Apple",
+      appleOpening: "Opening Apple...",
+      applePreparing: "Preparing the Apple sign-in flow.",
+      appleReturning: "Returning to OmaLeima",
+      appleRedirecting: "Finishing Apple sign-in.",
       businessEmail: "Business email",
       businessPassword: "Password",
       businessEmailPlaceholder: "scanner@example.com",

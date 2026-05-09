@@ -25,6 +25,9 @@ const rootReadmePath = path.join(repoRoot, "README.md");
 const publicLegalContentPath = path.join(repoRoot, "apps", "admin", "src", "features", "public-site", "legal-content.ts");
 const legalLinksCardPath = path.join(mobileRoot, "src", "features", "legal", "legal-links-card.tsx");
 const supportRequestSheetPath = path.join(mobileRoot, "src", "features", "support", "components", "support-request-sheet.tsx");
+const authLibPath = path.join(mobileRoot, "src", "lib", "auth.ts");
+const loginScreenPath = path.join(mobileRoot, "src", "app", "auth", "login.tsx");
+const appleSignInButtonPath = path.join(mobileRoot, "src", "features", "auth", "components", "apple-sign-in-button.tsx");
 const scanFeedbackPath = path.join(mobileRoot, "src", "features", "foundation", "safe-scan-feedback.ts");
 const releaseGatePath = path.join(mobileRoot, "src", "features", "release", "release-gate.ts");
 const releaseGateProviderPath = path.join(mobileRoot, "src", "features", "release", "release-gate-provider.tsx");
@@ -87,6 +90,9 @@ const requiredNativeShareDependencies = [
 const requiredNativeFeedbackDependencies = [
   "expo-audio",
   "expo-haptics",
+];
+const requiredNativeAppleSignInDependencies = [
+  "expo-apple-authentication",
 ];
 const requiredStoreIconDimensions = {
   "assets/store-icons/android/mipmap-hdpi-72.png": [72, 72],
@@ -337,6 +343,9 @@ const main = async () => {
     publicLegalContentSource,
     legalLinksCardSource,
     supportRequestSheetSource,
+    authLibSource,
+    loginScreenSource,
+    appleSignInButtonSource,
     scanFeedbackSource,
     releaseGateSource,
     releaseGateProviderSource,
@@ -362,6 +371,9 @@ const main = async () => {
       readUtf8Async(publicLegalContentPath),
       readUtf8Async(legalLinksCardPath),
       readUtf8Async(supportRequestSheetPath),
+      readUtf8Async(authLibPath),
+      readUtf8Async(loginScreenPath),
+      readUtf8Async(appleSignInButtonPath),
       readUtf8Async(scanFeedbackPath),
       readUtf8Async(releaseGatePath),
       readUtf8Async(releaseGateProviderPath),
@@ -478,6 +490,16 @@ const main = async () => {
     scanFeedbackSource.includes("scan-success.wav") &&
     scanFeedbackSource.includes("scan-warning.wav") &&
     scanFeedbackSource.includes("scan-error.wav");
+  const nativeAppleSignInSourceReady =
+    requiredNativeAppleSignInDependencies.every((dependencyName) => typeof packageJson.dependencies?.[dependencyName] === "string") &&
+    appConfigSource.includes("usesAppleSignIn: true") &&
+    appConfigSource.includes('"expo-apple-authentication"') &&
+    authLibSource.includes('provider: "apple"') &&
+    authLibSource.includes("signInWithIdToken") &&
+    authLibSource.includes("AppleAuthentication.signInAsync") &&
+    appleSignInButtonSource.includes("AppleAuthenticationButton") &&
+    appleSignInButtonSource.includes("Platform.OS !== \"ios\"") &&
+    loginScreenSource.includes("<AppleSignInButton />");
   const iosLocationAlwaysPermissionHygieneReady =
     appConfigSource.includes("locationAlwaysAndWhenInUsePermission: false") &&
     appConfigSource.includes("locationAlwaysPermission: false") &&
@@ -656,6 +678,7 @@ const main = async () => {
     !staleBuildGateReady ||
     !nativeShareSourceReady ||
     !nativeFeedbackSourceReady ||
+    !nativeAppleSignInSourceReady ||
     !iosLocationAlwaysPermissionHygieneReady ||
     !iosDevClientLocalNetworkHygieneReady ||
     !androidStorePermissionHygieneReady ||
@@ -684,6 +707,7 @@ const main = async () => {
       `nativeShareSourceReady=${nativeShareSourceReady}`,
       `nativeFeedbackSourceReady=${nativeFeedbackSourceReady}`,
       `nativeFeedbackSourceUsesSafeAudioLoad=${nativeFeedbackSourceUsesSafeAudioLoad}`,
+      `nativeAppleSignInSourceReady=${nativeAppleSignInSourceReady}`,
       `iosLocationAlwaysPermissionHygieneReady=${iosLocationAlwaysPermissionHygieneReady}`,
       `iosDevClientLocalNetworkHygieneReady=${iosDevClientLocalNetworkHygieneReady}`,
       `androidStorePermissionHygieneReady=${androidStorePermissionHygieneReady}`,
@@ -718,6 +742,7 @@ const main = async () => {
       "stale-build-gate:present",
       "native-share-modules:declared",
       "native-scan-feedback:declared",
+      "ios-sign-in-with-apple:declared",
       "ios-location-always-permissions:blocked",
       "ios-dev-client-local-network:blocked",
       "android-sensitive-permissions:blocked",
@@ -736,7 +761,6 @@ const main = async () => {
       "eas-build-environments:explicit",
       "eas-remote-envs:present",
       "owner-store-tasks:documented",
-      "ios-google-login-policy:blocker-documented",
       "next:prepare-app-store-connect-and-google-play-listings-when-broader-launch-starts",
     ].join("|")
   );

@@ -5,14 +5,17 @@ Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek
 ## Current Review (Store Release Prep + Apple Sign-In)
 
 - **Date:** 2026-05-09
-- **Branch:** `feature/code-review-refactor-sweep`
-- **Scope:** Mark the owner-confirmed physical QR scan proof, clean the remaining uncommitted notification-card polish, then prepare a clean Apple Sign in store-release branch.
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Mark the owner-confirmed physical QR scan proof, clean the remaining uncommitted notification-card polish, then implement the native Apple Sign in store-release branch.
 
 ## Store Release Prep + Apple Sign-In Findings
 
 - The user confirmed QR scanning was tested on physical devices. This closes the QR/camera proof wording in `docs/PRODUCTION_REMAINING_GAPS.md`, but it does not automatically prove Android push token registration, APNs/FCM delivery, notification tap routing, or store-signed TestFlight behavior.
 - The only current uncommitted code change is `apps/mobile/src/features/push/push-notification-setup-card.tsx`, where the registered state hides redundant summary copy and keeps the ready pill as the success signal. This is small enough to validate and commit before starting Apple login work.
 - Public store release is now the active goal. Because student login uses Google, Apple App Store submission requires Sign in with Apple or an equivalent privacy-focused option; the next feature branch should focus on Supabase Apple provider setup, native Expo config, auth UI, and account/profile mapping.
+- Apple Developer Certificates, Identifiers & Profiles now has Sign in with Apple enabled on App ID `fi.omaleima.mobile`. Apple warned that existing provisioning profiles are invalidated by this capability change, so the next iOS builds must regenerate profiles through EAS/Xcode.
+- The mobile implementation should stay iOS-only: `expo-apple-authentication` provides the native button/token, `supabase.auth.signInWithIdToken` exchanges the Apple identity token, and Android/web continue to show only existing supported auth controls.
+- Remaining external proof is not code-side: the hosted Supabase Apple provider/audience must be confirmed for `fi.omaleima.mobile`, then a physical iPhone/TestFlight Apple sign-in smoke must prove the provider, entitlement, profile, and profile creation path together.
 
 ## Current Review (Notification Completion)
 

@@ -9,8 +9,12 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Review and tidy the uncommitted notification setup card change.
 - [x] Run mobile validation and diff checks for the cleanup.
 - [x] Commit the cleanup slice.
-- [ ] Create a clean Apple Sign in feature branch for store release work.
-- [ ] Open App Store Connect / Apple Developer path with user login and record the exact external setup state.
+- [x] Create a clean Apple Sign in feature branch for store release work.
+- [x] Open App Store Connect / Apple Developer path with user login and record the exact external setup state.
+- [x] Enable Sign in with Apple capability for the `fi.omaleima.mobile` App ID in Apple Developer.
+- [x] Add native Expo Apple authentication wiring and the iOS-only student login button.
+- [x] Extend store-release audit coverage for the Apple sign-in source/config contract.
+- [ ] Confirm hosted Supabase Apple auth provider settings and run a physical iOS/TestFlight Apple sign-in smoke.
 
 ## Current Todos (Notification Completion)
 

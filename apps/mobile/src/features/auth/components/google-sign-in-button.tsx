@@ -9,13 +9,13 @@ import {
 } from "@/features/foundation/theme";
 import { useAppTheme, useUiPreferences, useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 import { signInWithGoogleAsync } from "@/lib/auth";
-import type { GoogleSignInState } from "@/types/app";
+import type { SocialSignInState } from "@/types/app";
 
 export const GoogleSignInButton = () => {
   const theme = useAppTheme();
   const { copy } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
-  const [state, setState] = useState<GoogleSignInState>("idle");
+  const [state, setState] = useState<SocialSignInState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handlePress = async (): Promise<void> => {

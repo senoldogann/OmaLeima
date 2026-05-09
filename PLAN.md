@@ -5,14 +5,16 @@ Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kulla
 ## Current Plan (Store Release Prep + Apple Sign-In)
 
 - **Date:** 2026-05-09
-- **Branch:** `feature/code-review-refactor-sweep`
-- **Goal:** Clean the current release branch state, mark physical QR scanning as externally tested, then start a focused Apple Sign in branch for App Store readiness.
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Clean the current release branch state, mark physical QR scanning as externally tested, then add native Sign in with Apple wiring for App Store readiness.
 
 ## Store Release Prep + Apple Sign-In Architectural Decisions
 
 - Do not mix QR proof with push proof. Update the production gap wording only for physical QR/camera scanning, while keeping Android/iOS notification delivery and store-signed behavior as separate open evidence.
 - Keep the notification-card uncommitted change if validation passes: after successful registration, the ready pill is enough feedback and redundant summary copy can be hidden.
 - Start Apple login from a clean branch after committing the current workspace state. The Apple slice should include provider/config setup, mobile UI, auth callback/session handling, and validation, but should not fake external App Store Connect or Apple Developer actions that require owner login.
+- Use native `expo-apple-authentication` on iOS and Supabase `signInWithIdToken({ provider: "apple" })` instead of a browser OAuth redirect. This keeps the App Store login surface native and avoids adding Apple UI on Android/web.
+- Treat Apple Developer capability setup, Supabase Auth provider setup, and physical TestFlight smoke as separate gates. The App ID capability is now enabled for `fi.omaleima.mobile`; hosted Supabase provider confirmation and device smoke remain release proof items.
 
 ## Prompt
 

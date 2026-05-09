@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Yapılan iş:** Store release icin temiz Apple Sign in branch'i acildi. Apple Developer tarafinda App ID `fi.omaleima.mobile` icin Sign in with Apple capability kullanici login/onayi ile etkinlestirildi; Apple'in provisioning profile invalidation uyarisi kaydedildi. Mobile app'e native `expo-apple-authentication` bagimliligi, iOS `usesAppleSignIn` config'i, native Apple auth butonu ve Supabase `signInWithIdToken({ provider: "apple" })` akisi eklendi. Store readiness audit artik Apple sign-in source/config kontratini kontrol ediyor.
+- **Neden yapıldı:** App Store submission hedefinde Google ile ogrenci girisi sunuldugu icin iOS tarafinda Sign in with Apple gereksinimini code-side ve Apple Developer capability seviyesinde kapatmak gerekiyordu.
+- **Doğrulama:** `npx expo install expo-apple-authentication`, `OMALEIMA_STORE_BUILD=1 npx expo prebuild --platform ios --no-install`, `pod install`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run export:web`, `npm --prefix apps/mobile run audit:store-release-readiness` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Hosted Supabase Auth Apple provider ayarini `fi.omaleima.mobile` audience/client ID ile dogrula, EAS/Xcode provisioning profile'lari capability degisikligi sonrasi yeniden uret, ardindan fiziksel iPhone/TestFlight Apple sign-in smoke yap.
+- **Açık risk/blokaj:** Supabase Apple provider confirmation ve physical iOS/TestFlight Apple sign-in henuz tamamlanmadi; Apple capability degisikligi mevcut provisioning profile'lari gecersiz kilabilir.
+
+- **Tarih:** 2026-05-09
 - **Branch:** `feature/code-review-refactor-sweep`
 - **Yapılan iş:** Kullanici, fiziksel cihazlarda QR okutma testinin yapildigini bildirdi. Bu kanit `docs/PRODUCTION_REMAINING_GAPS.md` icinde QR/camera proof blocker'i olarak kapatildi; ancak Android push token, APNs/FCM delivery, notification tap-routing ve store-signed TestFlight davranisi ayri kanit gerektirdigi icin acik birakildi. Mevcut tek uncommitted notification setup card polish'i incelendi; registered durumda redundant summary copy gizleniyor ve `Ready/Valmis` pill success sinyali olarak kaliyor.
 - **Neden yapıldı:** Artik hedef App Store ve Google Play yayinina gecmek; release gap dosyasi gercek cihaz QR kanitini dogru yansitmali ve Apple Sign in calismasi temiz git state uzerinden baslamali.
