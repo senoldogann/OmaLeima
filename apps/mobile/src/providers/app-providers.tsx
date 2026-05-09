@@ -10,6 +10,7 @@ import { StudentRewardCelebrationProvider } from "@/features/notifications/stude
 import { StudentRewardNotificationBridge } from "@/features/notifications/student-reward-notifications";
 import { UiPreferencesProvider } from "@/features/preferences/ui-preferences-provider";
 import { NativePushDiagnosticsProvider } from "@/features/push/native-push-diagnostics";
+import { PushAutoRegistrationBridge } from "@/features/push/push-auto-registration";
 import { ReleaseGateProvider } from "@/features/release/release-gate-provider";
 import { createQueryClient } from "@/lib/query-client";
 import { SessionProvider } from "@/providers/session-provider";
@@ -23,6 +24,7 @@ export const AppProviders = ({ children }: PropsWithChildren) => {
         <ReleaseGateProvider>
           <SessionProvider>
             <NativePushDiagnosticsProvider>
+              <PushAutoRegistrationBridge />
               <StudentRewardCelebrationProvider>
                 <AnnouncementPushRouterBridge />
                 <StudentEventReminderBridge />

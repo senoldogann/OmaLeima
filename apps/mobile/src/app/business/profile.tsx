@@ -29,6 +29,7 @@ import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-erro
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { PushNotificationSetupCard } from "@/features/push/push-notification-setup-card";
 import {
   useBusinessScannerLoginQrQuery,
   useBusinessScannerLoginQrSvgQuery,
@@ -1045,6 +1046,10 @@ export default function BusinessProfileScreen() {
           <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={copy.common.profile}>
             <View style={styles.preferenceSection}>
               <LanguageDropdown language={language} onLanguageChange={setLanguage} />
+
+              <View style={styles.preferenceDivider} />
+
+              <PushNotificationSetupCard context="business" />
 
               <View style={styles.preferenceDivider} />
 

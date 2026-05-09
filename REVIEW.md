@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Notification Completion)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Complete repo-fixable notification gaps across mobile roles without changing the validated QR/scanner product flow, and document any background-token proof that still requires physical devices.
+
+## Notification Completion Findings
+
+- Announcement push already has the most complete path: backend send, delivery attempts, preferences, and tap-routing. Other push types existed but tap-routing was incomplete, so reward unlock, event reminder, support reply, and promotion notifications could open the app without taking the user to the relevant screen.
+- Push setup/onboarding was clearly available for students only. Business and club users needed an equivalent settings control, and devices that already granted OS permission should be registered automatically for any signed-in role without prompting again.
+- Reward unlock had duplicate risk because `scan-qr` now sends the remote backend push while the foreground mobile bridge also created a local unlock notification from realtime state. The safe split is backend push for unlocks plus local foreground stock-change alerts only.
+- Hosted token proof can be checked safely by counting `device_tokens` rows without printing Expo push tokens. Current hosted state proves enabled iOS tokens exist, but no Android token exists yet, so Android background push remains a manual physical-device proof item.
+
 ## Current Review (Organizer Live Event Name Lock Parity)
 
 - **Date:** 2026-05-09

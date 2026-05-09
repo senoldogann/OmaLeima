@@ -2,6 +2,31 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Notification Completion)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Finish notification behavior that can be completed in repo: role-visible push setup, automatic token registration after permission is already granted, tap-routing for all existing push payload types, duplicate reward alert prevention, and honest token/background proof documentation.
+
+## Notification Completion Architectural Decisions
+
+- Keep Expo/Supabase as the notification architecture. Do not add a new provider or Sentry/observability wiring in this slice.
+- Add a role-neutral auto-registration bridge that only runs when OS permission is already granted/provisional, so it never surprises users with a permission prompt.
+- Add business/club notification setup cards in existing profile settings, matching the student profile capability without changing scanner-only flows.
+- Preserve announcement routing exactly, then extend the same router to handle reward unlocks, event reminders, support replies, and promotions with existing screens.
+- Remove only the duplicate local reward-unlock notification call; keep local stock-change alerts and in-app reward celebration behavior.
+- Query hosted token counts without exposing Expo token values, then document what is proven and what remains manual.
+
+## Prompt
+
+Sen OmaLeima mobile notification reliability engineer olarak calisiyorsun.
+Hedef: Mevcut bildirim sistemindeki repo-ici eksikleri tamamla; tum roller icin push token kayit/onboarding yuzeyini tamamla; background push token durumunu guvenli sekilde kontrol et; fiziksel cihaz gerektiren kanitlari remaining gaps dosyasina yaz.
+Mimari: Expo Notifications + Supabase `device_tokens` + mevcut Edge Function payloadlari + tek notification response router + role profile settings kartlari + permission-granted auto-registration bridge.
+Kapsam: `apps/mobile/src/features/push/*`, `apps/mobile/src/features/notifications/*`, business/club profile settings, `docs/PRODUCTION_REMAINING_GAPS.md`, working docs ve validation. Apple login, Sentry, yeni push provider, scanner flow redesign yok.
+Cikti: strict TS/TSX patch, safe token-count proof note, validation, focused commit.
+Yasaklar: Expo push token degerlerini loglamak yok, kullanici izni olmadan permission prompt tetiklemek yok, duplicate reward push/local alert yok, Android push kaniti yoksa varmis gibi gostermek yok.
+Standartlar: AGENTS.md strict typing, no silent failures, localized UI copy, physical-device proof ile repo-side validation ayrimi net olacak.
+
 ## Current Plan (Organizer Live Event Name Lock Parity)
 
 - **Date:** 2026-05-09

@@ -19,23 +19,6 @@ import { useStudentRewardOverviewQuery } from "@/features/rewards/student-reward
 import { presentLocalNotificationAsync } from "@/lib/push";
 import { useSession } from "@/providers/session-provider";
 
-const createUnlockNotificationTitle = (candidates: RewardNotificationCandidate[]): string =>
-  candidates.length === 1 ? "Reward unlocked" : `${candidates.length} rewards unlocked`;
-
-const createUnlockNotificationBody = (candidates: RewardNotificationCandidate[]): string => {
-  const [firstCandidate] = candidates;
-
-  if (typeof firstCandidate === "undefined") {
-    return "A reward is now claimable.";
-  }
-
-  if (candidates.length === 1) {
-    return `${firstCandidate.tierTitle} is now claimable in ${firstCandidate.eventName}.`;
-  }
-
-  return `${firstCandidate.tierTitle} and ${candidates.length - 1} more rewards are now claimable.`;
-};
-
 const createStockChangeNotificationTitle = (candidates: RewardNotificationCandidate[]): string =>
   candidates.length === 1 ? "Reward stock changed" : `${candidates.length} rewards sold out`;
 
@@ -55,27 +38,6 @@ const createStockChangeNotificationBody = (candidates: RewardNotificationCandida
 
 const logRewardNotificationWarning = (code: string, detail: Record<string, unknown>): void => {
   console.warn(code, detail);
-};
-
-const notifyRewardUnlocksAsync = async (
-  studentId: string,
-  candidates: RewardNotificationCandidate[]
-): Promise<void> => {
-  if (candidates.length === 0) {
-    return;
-  }
-
-  await presentLocalNotificationAsync({
-    title: createUnlockNotificationTitle(candidates),
-    body: createUnlockNotificationBody(candidates),
-    data: {
-      studentId,
-      eventId: candidates[0]?.eventId ?? null,
-      rewardTierId: candidates[0]?.tierId ?? null,
-      type: "REWARD_UNLOCKED_LOCAL",
-    },
-    sound: "default",
-  });
 };
 
 const notifyStockChangesAsync = async (
@@ -175,7 +137,6 @@ export const StudentRewardNotificationBridge = (): null => {
             ? newStamps
             : createRewardCelebrationCandidates(newlyUnlocked);
         triggerRewardCelebration(celebrationCandidates);
-        await notifyRewardUnlocksAsync(studentId, newlyUnlocked);
         await notifyStockChangesAsync(studentId, newlyOutOfStock);
       } catch (error) {
         logRewardNotificationWarning("student-reward-notification-failed", {

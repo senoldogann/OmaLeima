@@ -17,6 +17,7 @@ import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-erro
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { PushNotificationSetupCard } from "@/features/push/push-notification-setup-card";
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import type { ClubSupportOption } from "@/features/support/types";
 import { useSession } from "@/providers/session-provider";
@@ -383,6 +384,10 @@ export default function ClubProfileScreen() {
       <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={language === "fi" ? "Valinnat" : "Settings"}>
         <View style={styles.preferenceSection}>
           <LanguageDropdown language={language} onLanguageChange={setLanguage} />
+
+          <View style={styles.preferenceDivider} />
+
+          <PushNotificationSetupCard context="club" />
 
           <View style={styles.preferenceDivider} />
 

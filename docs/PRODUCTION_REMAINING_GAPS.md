@@ -17,8 +17,8 @@ The product is not yet ready for broad public launch because launch readiness de
 | Priority | Gap | Why it matters | Owner-side action |
 |---|---|---|---|
 | P0 | **iOS login policy** | The mobile student login currently relies on Google. App Store review generally requires Sign in with Apple or an accepted equivalent/privacy-preserving alternative when third-party social login is offered. | Decide and configure the Apple/Auth provider path or prepare written exemption evidence before App Store submission. |
-| P0 | **Real-device Android proof** | Simulator/emulator checks do not prove Android Google OAuth callback, FCM/Expo remote push delivery, notification tap routing, or camera QR scanning on actual hardware. | Test an Android development/internal-track build on a physical Android device and record the result. |
-| P0 | **Real-device iOS/TestFlight proof** | iOS simulator screenshots do not prove APNs delivery/tap, real camera QR scanning, TestFlight install behavior, share/save sheets, Photos permission, or store-signed keychain behavior. | Test a TestFlight or development build on a physical iPhone and record the result. |
+| P0 | **Real-device Android proof** | Simulator/emulator checks do not prove Android Google OAuth callback, FCM/Expo remote push delivery, notification tap routing, or camera QR scanning on actual hardware. The hosted `device_tokens` check currently shows no Android token, so Android background push cannot yet be treated as proven. | Test an Android development/internal-track build on a physical Android device, allow notifications, confirm a hosted Android token is created, and record remote push + tap-routing evidence. |
+| P0 | **Real-device iOS/TestFlight proof** | iOS simulator screenshots do not prove APNs delivery/tap, real camera QR scanning, TestFlight install behavior, share/save sheets, Photos permission, or store-signed keychain behavior. Hosted DB currently has enabled iOS push tokens, but that is token evidence, not full store-signed TestFlight proof. | Test a TestFlight or development build on a physical iPhone and record the result. |
 | P0 | **Store-console readiness** | App Store Connect and Google Play Console records, listing assets, privacy labels, submission credentials, and review steps are external to this repo. | Create store records, upload final screenshots/copy, configure privacy/support URLs, and set submission credentials outside the repo. |
 | P1 | **Production observability provider** | The master plan expects crash/error monitoring, but provider setup needs account/project decisions and production DSNs/tokens. | Choose Sentry or an equivalent provider, create projects for web/mobile/functions, set production secrets, and define alert recipients. |
 | P1 | **Production custom domain cutover** | Supabase Auth, Storage, Realtime, and Edge Function URLs still require a Supabase custom-domain setup if final branded API/Auth URLs are desired. This may require a paid Supabase plan/add-on. | Activate Supabase Custom Domains, configure DNS, update OAuth callback URLs, rotate env vars, rebuild clients, and smoke OAuth/media URLs. |
@@ -32,6 +32,12 @@ The product is not yet ready for broad public launch because launch readiness de
 1. **Business owner vs business staff model:** The app has working business scanner/event/report surfaces, but self-serve owner staff management is still a product decision. For a private pilot, manual admin-created staff accounts are acceptable. For scale, decide whether owners need staff invites, scanner device reset, role assignment, and business dashboard controls.
 2. **Club staff role depth:** Organizer surfaces are strong, but a lighter staff-only reward/claim operator mode may be needed for larger events where many volunteers validate rewards.
 3. **Paid plan and cost decisions:** Supabase custom domains, observability, and store operations may introduce recurring costs. Decide these only when moving from private pilot to public launch.
+
+## Notification/background push proof state
+
+- Hosted `public.device_tokens` was checked without printing token values: **2 enabled iOS tokens across 2 users** were present, with latest `last_seen_at` on 2026-05-09 UTC.
+- Hosted `public.device_tokens` currently has **0 Android tokens**. Android background/closed-app remote push remains unproven until a physical Android development/internal build registers a token and receives a remote notification.
+- Background or closed-app delivery is not a purely code-side property: it requires a native build, OS notification permission, an enabled Expo push token in Supabase, Expo/APNs/FCM delivery, and tap-routing confirmation on the physical device.
 
 ## Launch position
 

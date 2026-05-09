@@ -2,6 +2,16 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Notification Completion)
+
+- [x] Re-read required project docs and inspect notification registration/routing/reminder/reward flows.
+- [x] Add automatic token registration for already-granted native notification permission.
+- [x] Add business and club notification setup controls.
+- [x] Route all existing notification push payloads to appropriate mobile screens.
+- [x] Remove duplicate local reward-unlock notifications while keeping stock-change local alerts.
+- [x] Check hosted token counts without printing tokens and document remaining background proof gaps.
+- [x] Run mobile validation and update handoff.
+
 ## Current Todos (Organizer Live Event Name Lock Parity)
 
 - [x] Re-read required project docs and inspect organizer web/mobile event-edit parity.
