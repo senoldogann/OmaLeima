@@ -599,7 +599,7 @@ export default function ClubEventsScreen() {
   }, [manageableEvents, requestedEventId]);
 
   useEffect(() => {
-    if (requestedEventId !== null || mode !== "edit") {
+    if (requestedEventId !== null || mode !== "edit" || selectedEventId !== null || isFormModalOpen) {
       return;
     }
 
@@ -608,7 +608,7 @@ export default function ClubEventsScreen() {
     setActionNotice(null);
     setMode("create");
     setDraft(createNewDraft(selectedMembership?.clubId ?? "", selectedMembership?.city ?? null));
-  }, [creatableMemberships, mode, requestedEventId]);
+  }, [creatableMemberships, isFormModalOpen, mode, requestedEventId, selectedEventId]);
 
   useEffect(() => {
     setDateTimeEditor(null);
@@ -680,6 +680,7 @@ export default function ClubEventsScreen() {
 
   const handleSelectCreateMode = (): void => {
     const selectedMembership = creatableMemberships[0] ?? null;
+    setSelectedEventId(null);
     setMode("create");
     setActionNotice(null);
     setDraft(createNewDraft(selectedMembership?.clubId ?? "", selectedMembership?.city ?? null));

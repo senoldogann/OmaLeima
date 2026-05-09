@@ -2,6 +2,18 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Mobile Organizer Edit + Student Header/Rewards UX)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix three user-reported mobile issues without changing the validated scanner/business flow: club organizer event edit should open the real edit form with the selected event, the student rewards hero count must render fully without clipping, and the student profile header button must register taps reliably.
+
+## Mobile Organizer Edit + Student Header/Rewards UX Findings
+
+- The organizer "Approt" screen lives in `apps/mobile/src/app/club/events.tsx`. Its action sheet already sets `mode="edit"` and seeds the selected event draft, but a follow-up effect resets the form back to create mode whenever there is no route `eventId`, which explains why tapping **Muokkaa** opens the new-event form instead of the edit form.
+- The student rewards clipping issue is on `apps/mobile/src/app/student/rewards.tsx`. The summary count uses very large typography inside an overflow-hidden hero card with a tight line height and no extra inset, so single-digit counts like `0` can clip at the top/right edge on iOS.
+- The student profile header CTA is shared through `StudentProfileHeaderAction`. Because it sits in scrollable headers on multiple student tabs, a small visual button without extra hit slop can feel unreliable; expanding the touch target centrally is the safest fix without altering layout.
+
 ## Current Review (Role/Security Flow Completion)
 
 - **Date:** 2026-05-09

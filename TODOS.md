@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Mobile Organizer Edit + Student Header/Rewards UX)
+
+- [x] Re-read required project docs and inspect the reported mobile screens.
+- [x] Fix organizer Approt edit so the selected event opens in the edit form with existing values.
+- [x] Fix student rewards hero count clipping on the right-side badge.
+- [x] Improve student profile header button tap reliability without changing layout semantics.
+- [x] Run mobile validation and update handoff.
+
 ## Current Todos (Role/Security Flow Completion)
 
 - [x] Re-read required project docs after compaction and user clarification.

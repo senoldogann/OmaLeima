@@ -41,7 +41,7 @@ export default function StudentRewardsScreen() {
   const totalStamps = events.reduce((accumulator, event) => accumulator + event.stampCount, 0);
   const railCardWidth = Math.max(Math.min(windowWidth - 52, 420), 286);
   const summaryFontSize = totalStamps >= 1000 ? 44 : totalStamps >= 100 ? 54 : 72;
-  const summaryLineHeight = totalStamps >= 1000 ? 48 : totalStamps >= 100 ? 58 : 76;
+  const summaryLineHeight = totalStamps >= 1000 ? 56 : totalStamps >= 100 ? 64 : 84;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const featuredEvent = events[0] ?? null;
   const featuredHeroSource =
@@ -329,6 +329,9 @@ const createStyles = (theme: MobileTheme) =>
     summaryCountWrap: {
       alignItems: "flex-end",
       gap: 2,
+      minWidth: 92,
+      paddingRight: 6,
+      paddingTop: 8,
     },
     summaryEyebrow: {
       color: theme.colors.lime,

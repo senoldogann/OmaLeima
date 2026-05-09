@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Mobile Organizer Edit + Student Header/Rewards UX)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Fix the reported organizer edit-routing bug and the two student mobile touch/layout regressions with minimal, targeted React Native changes.
+
+## Mobile Organizer Edit + Student Header/Rewards UX Architectural Decisions
+
+- Keep the organizer event screen architecture as-is. Fix the bug by preventing the "reset to create" effect from firing while a user-selected edit target is active, rather than introducing a new route or second form screen.
+- Keep the rewards hero design unchanged, but give the large count a safer box: slightly more inset and taller line box so iOS glyph rendering cannot crop the number.
+- Reuse the shared `StudentProfileHeaderAction` component for the tap reliability fix so all student tabs benefit from the larger hit target consistently.
+
+## Prompt
+
+Sen OmaLeima mobile UX maintenance engineer olarak calisiyorsun.
+Hedef: Organizator mobilde secilen appro etkinligi icin gercek edit formunu ac; ogrenci rewards hero sayacindaki clipping'i gider; ogrenci profil butonunun dokunma alanini guvenilir hale getir.
+Mimari: mevcut Expo Router / React Native ekran yapisini koru, tekil state-reset bug'ini duzelt, rewards hero typography/container inset'lerini guvenli hale getir, shared profile header CTA hit target'ini buyut.
+Kapsam: `apps/mobile/src/app/club/events.tsx`, `apps/mobile/src/app/student/rewards.tsx`, `apps/mobile/src/features/profile/components/student-profile-header-action.tsx`, ilgili working docs, validation ve handoff. Scanner flow, Supabase logic, unrelated refactor yok.
+Cikti: minimal TypeScript/TSX patch, kullanici raporundaki 3 mobil problem icin dogrudan duzeltme, validation evidence.
+Yasaklar: yeni ekran mimarisi yok, calisan organizer/scanner akislarini bozmak yok, gereksiz stil refactor'u yok, tahmine dayali backend degisikligi yok.
+Standartlar: AGENTS.md focused changes, strict typing, no silent failures, existing UI patterns korunacak.
+
 ## Current Plan (Role/Security Flow Completion)
 
 - **Date:** 2026-05-09
