@@ -14,6 +14,7 @@ import {
 import { BusinessOnboardingModal } from "@/features/business/components/business-onboarding-modal";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -167,7 +168,7 @@ export default function BusinessHomeScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "business")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>

@@ -25,6 +25,7 @@ import type { BusinessMembershipSummary } from "@/features/business/types";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -422,7 +423,7 @@ export default function BusinessProfileScreen() {
       setDraft(nextDraft);
       await updateBusinessProfileMutation.mutateAsync(nextDraft);
     } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Unknown business media upload error.");
+      setMediaError(createUserSafeErrorMessage(error, language, "businessMedia"));
     } finally {
       setUploadingMediaKind(null);
     }
@@ -447,7 +448,7 @@ export default function BusinessProfileScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={copy.common.business}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "business")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -607,10 +608,10 @@ export default function BusinessProfileScreen() {
               </View>
 
               {scannerLoginQrQuery.error ? (
-                <Text style={styles.errorText}>{scannerLoginQrQuery.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerLoginQrQuery.error, language, "businessScanner")}</Text>
               ) : null}
               {scannerLoginQrSvgQuery.error ? (
-                <Text style={styles.errorText}>{scannerLoginQrSvgQuery.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerLoginQrSvgQuery.error, language, "businessScanner")}</Text>
               ) : null}
             </View>
           ) : null}
@@ -759,7 +760,7 @@ export default function BusinessProfileScreen() {
               )}
 
               {updateBusinessProfileMutation.error ? (
-                <Text style={styles.errorText}>{updateBusinessProfileMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(updateBusinessProfileMutation.error, language, "business")}</Text>
               ) : null}
               {updateBusinessProfileMutation.isSuccess ? (
                 <Text style={styles.successText}>
@@ -796,7 +797,7 @@ export default function BusinessProfileScreen() {
 
               {scannerDevicesQuery.error ? (
                 <View style={styles.inlineErrorBlock}>
-                  <Text style={styles.errorText}>{scannerDevicesQuery.error.message}</Text>
+                  <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerDevicesQuery.error, language, "businessScanner")}</Text>
                   <Pressable onPress={() => void scannerDevicesQuery.refetch()} style={styles.secondaryButton}>
                     <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
                   </Pressable>
@@ -1010,16 +1011,16 @@ export default function BusinessProfileScreen() {
               </View>
 
               {renameScannerDeviceMutation.error ? (
-                <Text style={styles.errorText}>{renameScannerDeviceMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(renameScannerDeviceMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {revokeScannerDeviceMutation.error ? (
-                <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(revokeScannerDeviceMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {setScannerPinMutation.error ? (
-                <Text style={styles.errorText}>{setScannerPinMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(setScannerPinMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {clearScannerPinMutation.error ? (
-                <Text style={styles.errorText}>{clearScannerPinMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(clearScannerPinMutation.error, language, "businessScanner")}</Text>
               ) : null}
             </InfoCard>
           ) : null}

@@ -71,12 +71,37 @@ export const jsonResponse = (body: JsonObject, status: number): Response =>
     },
   });
 
+const isSensitiveErrorDetailKey = (key: string): boolean => {
+  const normalizedKey = key.toLowerCase();
+
+  return normalizedKey === "error" || normalizedKey.endsWith("error") || normalizedKey.includes("errormessage");
+};
+
+const sanitizeErrorDetailValue = (key: string, value: unknown): unknown => {
+  if (isSensitiveErrorDetailKey(key)) {
+    return typeof value === "undefined" || value === null ? value : "redacted";
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => (typeof item === "object" && item !== null ? sanitizeErrorDetails(item as Record<string, unknown>) : item));
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return sanitizeErrorDetails(value as Record<string, unknown>);
+  }
+
+  return value;
+};
+
+const sanitizeErrorDetails = (details: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(details).map(([key, value]) => [key, sanitizeErrorDetailValue(key, value)]));
+
 export const errorResponse = (
   status: number,
   code: ErrorCode,
   message: string,
   details: Record<string, unknown>,
-): Response => jsonResponse({ status: code, message, details }, status);
+): Response => jsonResponse({ status: code, message, details: sanitizeErrorDetails(details) }, status);
 
 export const optionsResponse = (): Response => new Response("ok", { headers: corsHeaders });
 

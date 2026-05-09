@@ -2,6 +2,17 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Role/Security Flow Completion)
+
+- [x] Re-read required project docs after compaction and user clarification.
+- [x] Spawn role, Supabase security, UI flow, and production gap subagents.
+- [x] Record focused REVIEW/PLAN/TODOS context before code changes.
+- [x] Add shared mobile user-safe error copy and replace raw role-surface error messages.
+- [x] Make student join and club reward handoff pending states item-scoped.
+- [x] Sanitize scanner/role Edge Function DB/provider error responses.
+- [x] Add forward migration for leave role parity and SECURITY DEFINER search_path hardening.
+- [x] Run validation, update PROGRESS, and commit the sweep.
+
 ## Current Todos (QR Rate Limit Hosted Apply + UX)
 
 - [x] Re-read required project docs and inspect active QR error rendering.

@@ -7,9 +7,11 @@ type ProvisionBusinessScannerSessionRequest = {
   deviceModel: string | null;
   installationId: string;
   label: string | null;
-  platform: "ANDROID" | "IOS" | "UNKNOWN" | "WEB";
+  platform: ScannerPlatform;
   qrToken: string;
 };
+
+type ScannerPlatform = "ANDROID" | "IOS" | "UNKNOWN" | "WEB";
 
 type ProvisionBusinessScannerDeviceResult =
   | {
@@ -33,7 +35,10 @@ type ProvisionBusinessScannerDeviceResult =
         | "QR_NOT_FOUND";
     };
 
-const validPlatforms = new Set(["ANDROID", "IOS", "UNKNOWN", "WEB"]);
+const validPlatforms = new Set<ScannerPlatform>(["ANDROID", "IOS", "UNKNOWN", "WEB"]);
+
+const isScannerPlatform = (value: unknown): value is ScannerPlatform =>
+  typeof value === "string" && validPlatforms.has(value as ScannerPlatform);
 
 const parseRequestBody = (body: Record<string, unknown>): ProvisionBusinessScannerSessionRequest => {
   if (typeof body.qrToken !== "string" || body.qrToken.length === 0) {
@@ -44,7 +49,7 @@ const parseRequestBody = (body: Record<string, unknown>): ProvisionBusinessScann
     throw new Error("installationId is required.");
   }
 
-  if (typeof body.platform !== "string" || !validPlatforms.has(body.platform)) {
+  if (!isScannerPlatform(body.platform)) {
     throw new Error("platform must be IOS, ANDROID, WEB, or UNKNOWN.");
   }
 

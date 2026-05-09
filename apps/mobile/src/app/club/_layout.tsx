@@ -8,6 +8,7 @@ import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { GlassTabBarBackground } from "@/features/foundation/components/glass-tab-bar-background";
 import { TabIcon } from "@/features/foundation/components/tab-icon";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -73,7 +74,7 @@ export default function ClubLayout() {
       <AppScreen>
         <AccessIssueCard
           title={language === "fi" ? "Klubipääsy epäonnistui" : "Club access failed"}
-          detail={accessQuery.error.message}
+          detail={createUserSafeErrorMessage(accessQuery.error, language, "access")}
           retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />

@@ -60,7 +60,7 @@ type PushTarget = {
 type NotificationInsertRow = {
   user_id: string;
   business_id: string;
-  event_id: string;
+  event_id: string | null;
   type: "PROMOTION";
   title: string;
   body: string;

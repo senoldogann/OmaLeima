@@ -5,6 +5,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -62,7 +63,7 @@ export default function AuthLayout() {
         <AppScreen>
           <AccessIssueCard
             title={language === "fi" ? "Käyttöoikeuden tarkistus epäonnistui" : "Access check failed"}
-            detail={accessQuery.error.message}
+            detail={createUserSafeErrorMessage(accessQuery.error, language, "access")}
             retryLabel={language === "fi" ? "Yritä uudelleen" : "Retry access check"}
             onRetry={() => void accessQuery.refetch()}
           />

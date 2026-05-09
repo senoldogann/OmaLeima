@@ -333,6 +333,15 @@ This gate checks repo-owned broader-launch prerequisites only:
 - required remote Expo EAS environment-variable names for development, preview, and production
 - owner-facing store/public-launch checklist documentation
 
+For CI or offline script tests where the EAS CLI cannot read remote environment state, set `MOBILE_STORE_EAS_ENV_LIST_JSON` to a JSON array shaped like the EAS environment list output:
+
+```bash
+MOBILE_STORE_EAS_ENV_LIST_JSON='[{"name":"production","variables":[{"name":"EXPO_PUBLIC_SUPABASE_URL"},{"name":"EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"}]}]' \
+  npm --prefix apps/mobile run audit:store-release-readiness
+```
+
+Use this override only to simulate deterministic EAS input. For a final store release gate, run the audit against the real EAS project state.
+
 This gate does **not** prove App Store Connect or Google Play Console state. It also does **not** prove:
 
 - screenshots or listing copy

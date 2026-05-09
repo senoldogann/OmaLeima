@@ -25,6 +25,7 @@ import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/featu
 import { findOverlappingEvents } from "@/features/events/event-overlaps";
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
@@ -293,7 +294,7 @@ export default function ClubHomeScreen() {
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow="Club" title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
           <Pressable onPress={() => void dashboardQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{language === "fi" ? "Yritä uudelleen" : "Retry"}</Text>
           </Pressable>

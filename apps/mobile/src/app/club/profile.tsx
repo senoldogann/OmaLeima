@@ -13,6 +13,7 @@ import type { ClubMembershipSummary } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -107,7 +108,7 @@ export default function ClubProfileScreen() {
   const isContactEmailValid = isValidOptionalEmail(normalizedContactEmail);
   const clubProfileValidationMessage = !isContactEmailValid
     ? language === "fi"
-      ? "Anna kelvollinen sahkopostiosoite tai jata kentta tyhjaksi."
+      ? "Anna kelvollinen sähköpostiosoite tai jätä kenttä tyhjäksi."
       : "Enter a valid email address or leave the field empty."
     : null;
 
@@ -153,7 +154,7 @@ export default function ClubProfileScreen() {
         userId,
       });
     } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Unknown club media upload error.");
+      setMediaError(createUserSafeErrorMessage(error, language, "clubMedia"));
     } finally {
       setUploadingMediaKind(null);
     }
@@ -183,7 +184,7 @@ export default function ClubProfileScreen() {
         {dashboardQuery.isLoading ? (
           <Text style={styles.bodyText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
         ) : null}
-        {dashboardQuery.error ? <Text style={styles.errorText}>{dashboardQuery.error.message}</Text> : null}
+        {dashboardQuery.error ? <Text style={styles.errorText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text> : null}
         {!dashboardQuery.isLoading && !dashboardQuery.error ? (
           <View style={styles.clubEditorStack}>
             {memberships.length > 1 ? (
@@ -370,7 +371,7 @@ export default function ClubProfileScreen() {
               <Text style={styles.errorText}>{clubProfileValidationMessage}</Text>
             ) : null}
             {updateClubProfileMutation.error ? (
-              <Text style={styles.errorText}>{updateClubProfileMutation.error.message}</Text>
+              <Text style={styles.errorText}>{createUserSafeErrorMessage(updateClubProfileMutation.error, language, "clubDashboard")}</Text>
             ) : null}
             {updateClubProfileMutation.data ? (
               <Text style={styles.successText}>{language === "fi" ? "Tallennettu." : "Saved."}</Text>

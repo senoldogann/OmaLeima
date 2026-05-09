@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import { useBusinessRoiQuery, type BusinessRoiEvent, type BusinessRoiSummary } from "@/features/business/business-roi";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -274,13 +275,13 @@ export default function BusinessReportsScreen() {
 
         {overviewQuery.error ? (
           <InfoCard eyebrow={copy.common.error} title={roiCopy.overviewFailed}>
-            <Text style={styles.bodyText}>{overviewQuery.error.message}</Text>
+            <Text style={styles.bodyText}>{createUserSafeErrorMessage(overviewQuery.error, language, "business")}</Text>
           </InfoCard>
         ) : null}
 
         {roiQuery.error ? (
           <InfoCard eyebrow={copy.common.error} title={roiCopy.reportFailed}>
-            <Text style={styles.bodyText}>{roiQuery.error.message}</Text>
+            <Text style={styles.bodyText}>{createUserSafeErrorMessage(roiQuery.error, language, "reports")}</Text>
           </InfoCard>
         ) : null}
 

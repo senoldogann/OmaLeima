@@ -17,6 +17,7 @@ import { getEventCoverSource, prefetchEventCoverUrls } from "@/features/events/e
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import {
   useCancelEventRegistrationMutation,
   useJoinEventMutation,
@@ -832,7 +833,7 @@ export default function StudentEventDetailScreen() {
 
       {detailQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Tapahtumaa ei voitu ladata" : "Could not load event"}>
-          <Text style={themeStyles.bodyText}>{detailQuery.error.message}</Text>
+          <Text style={themeStyles.bodyText}>{createUserSafeErrorMessage(detailQuery.error, language, "eventDetail")}</Text>
           <Pressable onPress={() => void detailQuery.refetch()} style={themeStyles.secondaryButton}>
             <Text style={themeStyles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>

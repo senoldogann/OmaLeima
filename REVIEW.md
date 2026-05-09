@@ -2,6 +2,21 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Role/Security Flow Completion)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Kullanici staff/business owner scanner akisini fiziksel cihazlarda dogruladigini belirtti. Bu turda calisan owner/staff QR akisini yeniden tasarlamadan, subagent destekli sekilde kalan repo-ici guvenlik ve UX aciklarini kapat.
+
+## Role/Security Flow Completion Findings
+
+- Business owner/staff flow'un urun davranisi korunmali: OWNER/MANAGER scanner QR olusturur; SCANNER hesaplari sadece ilgili isletmenin aktif etkinlik QR'larini okur. Bu model degistirilmeyecek.
+- UI audit, mobile app'te cok sayida query/mutation alaninin raw `error.message` gosterdigini buldu. Bu production'da DB/RPC/provider detaylarini kullaniciya sizdirabilir; cozum calisan akis yerine localized, kullanici-guvenli fallback mesajlari kullanmak.
+- UI audit ayrica student event join ve club reward handoff butonlarinin global mutation pending state ile tum kartlari ayni anda disable ettigini buldu. Bu davranis islevi bozmaz ama event-day operasyonunda belirsiz feedback yaratir; item-scoped loading ile duzeltilecek.
+- Role audit, join akisi OWNER/MANAGER ile sinirliyken `leave_business_event_atomic` icinde ayni role kontrolunun olmadigini buldu. SCANNER'in event yonetimi yapamamasi invariant'i leave icin de ayni olmali.
+- Role/Supabase audit, Edge Function response details icinde DB/provider `error.message` alanlarinin donduruldugunu buldu. Bu detaylar server log'a alinabilir, ama HTTP response'ta generic context kalmali.
+- Supabase audit'in `claim_reward_atomic` bulgusu urun akisi acisindan blocker olarak alinmadi: kulup gorevlisinin event kapsamindaki ogrencinin odulunu teslim etmesi tasarimin kendisi. Mevcut RPC reward tier'in event'e ait oldugunu, claimer'in event kulubunde aktif oldugunu, ogrencinin yeterli valid stamp'i oldugunu ve `(event_id, student_id, reward_tier_id)` unique constraint'ini dogruluyor.
+
 ## Current Review (QR Rate Limit Hosted Apply + UX)
 
 - **Date:** 2026-05-09

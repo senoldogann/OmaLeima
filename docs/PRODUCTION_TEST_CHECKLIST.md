@@ -18,6 +18,7 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] `npm --prefix apps/mobile run audit:store-release-readiness` gecti.
 - [ ] `npm run qa:mobile-native-simulator-smoke` Android emulator ve iOS simulator executable launch-smoke dahil gecti.
 - [ ] `npm --prefix apps/mobile run smoke:native-simulators` direct repeat gerekirse Android emulator ve iOS simulator icin gecti.
+- [ ] Native simulator smoke icin root entrypoint `npm run qa:mobile-native-simulator-smoke`; prefix komut ayni gate'i dogrudan tekrar calistirmak icindir.
 - [ ] `npm --prefix apps/mobile run audit:hosted-business-scan-readiness` gecti.
 - [ ] `npm --prefix apps/mobile run audit:native-push-device-readiness` gecti.
 - [ ] `npm --prefix apps/mobile run audit:realtime-readiness` gecti.

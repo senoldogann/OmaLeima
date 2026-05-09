@@ -29,6 +29,7 @@ import { businessScanHistoryQueryKey } from "@/features/business/business-histor
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
 import { triggerScanFeedback } from "@/features/foundation/safe-scan-feedback";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import {
   registerBusinessScannerDeviceAsync,
   resetScannerInstallationIdAsync,
@@ -623,7 +624,7 @@ export default function BusinessScannerScreen() {
 
         setScannerDeviceState({
           device: null,
-          error: error instanceof Error ? error.message : "Unknown scanner device registration error.",
+          error: createUserSafeErrorMessage(error, language, "businessScanner"),
           status: "error",
         });
       }
@@ -634,7 +635,7 @@ export default function BusinessScannerScreen() {
     return () => {
       isActive = false;
     };
-  }, [labels.scannerAccessRevoked, scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
+  }, [labels.scannerAccessRevoked, language, scannerDeviceRetryNonce, selectedBusinessId, selectedBusinessName]);
 
   useEffect(() => {
     if (activeJoinedEvents.length <= 1) {
@@ -790,7 +791,7 @@ export default function BusinessScannerScreen() {
       }
     } catch (error) {
       scanInFlightRef.current = false;
-      setSubmitError(error instanceof Error ? error.message : "Unknown scanner error.");
+      setSubmitError(createUserSafeErrorMessage(error, language, "businessScanner"));
       setIsScannerLocked(false);
     } finally {
       setIsSubmitting(false);
@@ -856,7 +857,7 @@ export default function BusinessScannerScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "businessScanner")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>

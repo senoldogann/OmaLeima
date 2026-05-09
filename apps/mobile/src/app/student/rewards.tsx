@@ -15,6 +15,7 @@ import {
 } from "@/features/events/event-visuals";
 import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
@@ -124,7 +125,7 @@ export default function StudentRewardsScreen() {
 
       {rewardOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Palkintoja ei voitu ladata" : "Could not load rewards"}>
-          <Text style={styles.bodyText}>{rewardOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(rewardOverviewQuery.error, language, "rewards")}</Text>
           <Pressable onPress={() => void rewardOverviewQuery.refetch()} style={styles.ghostButton}>
             <Text style={styles.ghostButtonText}>{copy.common.retry}</Text>
           </Pressable>

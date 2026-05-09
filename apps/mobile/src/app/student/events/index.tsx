@@ -19,6 +19,7 @@ import type { JoinEventResultStatus, StudentEventSummary } from "@/features/even
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useSession } from "@/providers/session-provider";
 
@@ -111,7 +112,7 @@ const createJoinActionNotice = (status: JoinEventResultStatus, language: "fi" | 
 };
 
 const createErrorNotice = (error: unknown, language: "fi" | "en"): ActionNotice => ({
-  body: error instanceof Error ? error.message : language === "fi" ? "Tuntematon virhe." : "Unknown error.",
+  body: createUserSafeErrorMessage(error, language, "action"),
   title: language === "fi" ? "Toiminto epäonnistui" : "Action failed",
 });
 
@@ -168,6 +169,7 @@ export default function StudentEventsScreen() {
   const studentId = session?.user.id ?? null;
   const [mapPreviewEvent, setMapPreviewEvent] = useState<StudentEventSummary | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [pendingJoinEventId, setPendingJoinEventId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "registered" | "active">("all");
   const eventsQuery = useStudentEventsQuery({
@@ -253,10 +255,11 @@ export default function StudentEventsScreen() {
   };
 
   const joinEventFromCard = async (eventId: string): Promise<boolean> => {
-    if (studentId === null) {
+    if (studentId === null || pendingJoinEventId !== null) {
       return false;
     }
 
+    setPendingJoinEventId(eventId);
     setActionNotice(null);
 
     try {
@@ -271,6 +274,8 @@ export default function StudentEventsScreen() {
     } catch (error) {
       setActionNotice(createErrorNotice(error, language));
       return false;
+    } finally {
+      setPendingJoinEventId(null);
     }
   };
 
@@ -358,7 +363,7 @@ export default function StudentEventsScreen() {
           <Text style={styles.messageTitle}>
             {language === "fi" ? "Tapahtumia ei voitu ladata" : "Could not load events"}
           </Text>
-          <Text style={styles.bodyText}>{eventsQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(eventsQuery.error, language, "events")}</Text>
           <Pressable onPress={() => void eventsQuery.refetch()} style={styles.retryButton}>
             <Text style={styles.retryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -432,7 +437,7 @@ export default function StudentEventsScreen() {
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
-              isJoinPending={joinMutation.isPending}
+               isJoinPending={pendingJoinEventId === event.id}
               key={event.id}
               motionIndex={index + 1}
               onJoinPress={canShowJoinAction(event) ? () => void joinEventFromCard(event.id) : undefined}
@@ -456,7 +461,7 @@ export default function StudentEventsScreen() {
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
-              isJoinPending={joinMutation.isPending}
+               isJoinPending={pendingJoinEventId === event.id}
               key={event.id}
               motionIndex={filteredActive.length + index + 1}
               onJoinPress={() => void joinEventFromCard(event.id)}
@@ -504,11 +509,7 @@ export default function StudentEventsScreen() {
                   <View style={styles.messageCard}>
                     <Text style={styles.messageEyebrow}>{copy.common.error}</Text>
                     <Text style={styles.bodyText}>
-                      {venueMapQuery.error.message.trim().length > 0
-                        ? venueMapQuery.error.message
-                        : language === "fi"
-                          ? "Kartan lataaminen epäonnistui."
-                          : "Failed to load map."}
+                      {createUserSafeErrorMessage(venueMapQuery.error, language, "map")}
                     </Text>
                   </View>
                 ) : null}

@@ -115,6 +115,18 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
+    if (!Array.isArray(validStamps)) {
+      return errorResponse(500, "INTERNAL_ERROR", "Valid stamp query returned an unexpected shape.", {
+        validStampShape: typeof validStamps,
+      });
+    }
+
+    if (!Array.isArray(leaderboardUpdates)) {
+      return errorResponse(500, "INTERNAL_ERROR", "Leaderboard update query returned an unexpected shape.", {
+        leaderboardUpdateShape: typeof leaderboardUpdates,
+      });
+    }
+
     const latestStampMap = latestStampByEvent(validStamps);
     const leaderboardUpdatedAtMap = leaderboardUpdatedAtByEvent(leaderboardUpdates);
 

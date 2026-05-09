@@ -14,6 +14,7 @@ import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/fe
 import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
 import { findOverlappingEvents } from "@/features/events/event-overlaps";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -215,7 +216,7 @@ export default function ClubUpcomingScreen() {
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow="Club" title={language === "fi" ? "Tapahtumat eivät latautuneet" : "Events did not load"}>
-          <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
         </InfoCard>
       ) : null}
 

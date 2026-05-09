@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { useClubReportQuery, type ClubReportEvent, type ClubReportSummary } from "@/features/club/club-reports";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
@@ -274,13 +275,13 @@ export default function ClubReportsScreen() {
 
         {dashboardQuery.error ? (
           <InfoCard eyebrow={copy.common.error} title={reportCopy.dashboardFailed}>
-            <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+            <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
           </InfoCard>
         ) : null}
 
         {reportQuery.error ? (
           <InfoCard eyebrow={copy.common.error} title={reportCopy.reportFailed}>
-            <Text style={styles.bodyText}>{reportQuery.error.message}</Text>
+            <Text style={styles.bodyText}>{createUserSafeErrorMessage(reportQuery.error, language, "reports")}</Text>
           </InfoCard>
         ) : null}
 

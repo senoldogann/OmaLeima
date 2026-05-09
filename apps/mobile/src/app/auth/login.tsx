@@ -10,6 +10,7 @@ import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-bu
 import { LoginHero } from "@/features/auth/components/login-hero";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { MobileConsentCard } from "@/features/legal/mobile-consent-card";
 import { readMobileLegalConsentAsync } from "@/features/legal/mobile-consent";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
@@ -54,7 +55,7 @@ export default function LoginScreen() {
         }
 
         setIsLegalConsentAccepted(false);
-        setLegalConsentError(error instanceof Error ? error.message : "Mobile legal consent could not be loaded.");
+        setLegalConsentError(createUserSafeErrorMessage(error, language, "legalConsent"));
       } finally {
         if (isActive) {
           setIsLegalConsentLoading(false);
@@ -67,7 +68,7 @@ export default function LoginScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [language]);
 
   if (!isScannerProvisioningActive && !isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
     return <Redirect href={accessQuery.data.homeHref} />;

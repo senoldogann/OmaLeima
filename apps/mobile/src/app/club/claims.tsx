@@ -20,6 +20,7 @@ import {
 } from "@/features/club/club-claims";
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -75,6 +76,7 @@ export default function ClubClaimsScreen() {
   const confirmMutation = useConfirmClubRewardClaimMutation();
   const manualRefresh = useManualRefresh(claimsQuery.refetch);
   const [notesByCandidateKey, setNotesByCandidateKey] = useState<Record<string, string>>({});
+  const [processingCandidateKey, setProcessingCandidateKey] = useState<string | null>(null);
   const [actionState, setActionState] = useState<ActionState>({
     message: null,
     tone: "idle",
@@ -136,6 +138,11 @@ export default function ClubClaimsScreen() {
 
     hapticImpact(ImpactStyle.Medium);
     const candidateKey = createCandidateKey(candidate);
+    if (processingCandidateKey !== null) {
+      return;
+    }
+
+    setProcessingCandidateKey(candidateKey);
     setActionState({
       message: null,
       tone: "idle",
@@ -161,14 +168,17 @@ export default function ClubClaimsScreen() {
     } catch (error) {
       hapticNotification(NotificationType.Error);
       setActionState({
-        message: error instanceof Error ? error.message : language === "fi" ? "Tuntematon luovutusvirhe." : "Unknown handoff error.",
+        message: createUserSafeErrorMessage(error, language, "clubClaims"),
         tone: "error",
       });
+    } finally {
+      setProcessingCandidateKey(null);
     }
   };
 
   const renderCandidate = (candidate: ClubClaimCandidateRecord) => {
     const candidateKey = createCandidateKey(candidate);
+    const isProcessingCandidate = processingCandidateKey === candidateKey;
 
     return (
       <View key={candidateKey} style={styles.candidateCard}>
@@ -204,13 +214,13 @@ export default function ClubClaimsScreen() {
         </View>
 
         <Pressable
-          disabled={confirmMutation.isPending}
+          disabled={processingCandidateKey !== null}
           onPress={() => void handleConfirmPressAsync(candidate)}
-          style={[styles.primaryButton, confirmMutation.isPending ? styles.disabledButton : null]}
+          style={[styles.primaryButton, processingCandidateKey !== null ? styles.disabledButton : null]}
         >
-          {confirmMutation.isPending ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
+          {isProcessingCandidate ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
           <Text style={styles.primaryButtonText}>
-            {confirmMutation.isPending ? labels.submitting : labels.submit}
+            {isProcessingCandidate ? labels.submitting : labels.submit}
           </Text>
         </Pressable>
       </View>
@@ -258,7 +268,7 @@ export default function ClubClaimsScreen() {
 
       {claimsQuery.error ? (
         <InfoCard eyebrow={language === "fi" ? "Palkinnot" : "Rewards"} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{claimsQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(claimsQuery.error, language, "clubClaims")}</Text>
           <Pressable onPress={() => void claimsQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{labels.retry}</Text>
           </Pressable>

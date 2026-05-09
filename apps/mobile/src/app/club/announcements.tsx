@@ -40,6 +40,7 @@ import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -745,7 +746,7 @@ export default function ClubAnnouncementsScreen() {
           eyebrow={language === "fi" ? "Klubi" : "Club"}
           title={language === "fi" ? "Klubeja ei voitu ladata" : "Could not load clubs"}
         >
-          <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
         </InfoCard>
       ) : null}
 
@@ -771,7 +772,7 @@ export default function ClubAnnouncementsScreen() {
 
       {announcementsQuery.error ? (
         <InfoCard eyebrow="Feed" title={language === "fi" ? "Tiedotteita ei voitu ladata" : "Could not load posts"}>
-          <Text style={styles.bodyText}>{announcementsQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(announcementsQuery.error, language, "announcements")}</Text>
           <Pressable onPress={() => void announcementsQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{language === "fi" ? "Yritä uudelleen" : "Retry"}</Text>
           </Pressable>

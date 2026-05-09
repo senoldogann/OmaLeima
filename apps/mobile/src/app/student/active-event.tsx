@@ -31,6 +31,7 @@ import { useStudentEventDetailQuery } from "@/features/events/student-event-deta
 import { triggerScanFeedback } from "@/features/foundation/safe-scan-feedback";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
@@ -117,7 +118,7 @@ const resolveQrTokenErrorMessage = (error: Error, language: "fi" | "en"): string
       : "QR will refresh automatically in a moment. Keep this screen open.";
   }
 
-  return error.message;
+  return createUserSafeErrorMessage(error, language, "qrToken");
 };
 
 const isUnknownRecord = (value: unknown): value is UnknownRecord =>
@@ -757,7 +758,7 @@ export default function StudentActiveEventScreen() {
 
       {qrContextQuery.error ? (
         <InfoCard eyebrow={copy.common.error} motionIndex={0} title={language === "fi" ? "QR-tilannetta ei voitu ladata" : "Could not load QR context"}>
-          <Text style={styles.bodyText}>{qrContextQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(qrContextQuery.error, language, "qrContext")}</Text>
           <Pressable onPress={() => void qrContextQuery.refetch()} style={styles.ghostButton}>
             <Text style={styles.ghostButtonText}>{copy.common.retry}</Text>
           </Pressable>

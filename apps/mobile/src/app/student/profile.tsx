@@ -16,6 +16,7 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { interactiveSurfaceShadowStyle, type MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -283,7 +284,7 @@ export default function StudentProfileScreen() {
         setPushState({
           backendDeviceTokenId: null,
           backendStatus: "CLIENT_ERROR",
-          detail: error instanceof Error ? error.message : "Push notification registration failed unexpectedly.",
+          detail: createUserSafeErrorMessage(error, language, "pushRegistration"),
           expoPushToken: null,
           state: "error",
           status: "misconfigured",
@@ -292,6 +293,7 @@ export default function StudentProfileScreen() {
   }, [
     hasGrantedNotificationPermission,
     hasRegisteredNotificationDevice,
+    language,
     refreshPushPermissionStateAsync,
     registerPushMutation,
     session?.access_token,
@@ -322,7 +324,7 @@ export default function StudentProfileScreen() {
       setPushState({
         backendDeviceTokenId: null,
         backendStatus: "CLIENT_ERROR",
-        detail: error instanceof Error ? error.message : "Push notification registration failed unexpectedly.",
+        detail: createUserSafeErrorMessage(error, language, "pushRegistration"),
         expoPushToken: null,
         state: "error",
         status: "misconfigured",
@@ -402,7 +404,7 @@ export default function StudentProfileScreen() {
 
       {profileOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={copy.common.profile}>
-          <Text selectable style={styles.bodyText}>{profileOverviewQuery.error.message}</Text>
+          <Text selectable style={styles.bodyText}>{createUserSafeErrorMessage(profileOverviewQuery.error, language, "profile")}</Text>
           <Pressable onPress={() => void profileOverviewQuery.refetch()} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>

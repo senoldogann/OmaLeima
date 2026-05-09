@@ -109,7 +109,7 @@ export const EventCard = ({
         >
           <Text style={styles.joinButtonText}>
             {isJoinPending
-              ? "..."
+              ? language === "fi" ? "Liittyy..." : "Joining..."
               : language === "fi" ? "Liity" : "Join"}
           </Text>
         </Pressable>

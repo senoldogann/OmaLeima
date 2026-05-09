@@ -2,6 +2,30 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Role/Security Flow Completion)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Finish remaining repo-fixable production hardening without changing the user-confirmed business owner/staff scanner flow.
+
+## Role/Security Flow Completion Architectural Decisions
+
+- Preserve the current scanner model: owner/manager can issue scanner QR and manage joined events; scanner staff can scan only the selected business/event context.
+- Add a shared mobile user-safe error mapper and replace raw query/mutation messages on app role surfaces with localized, non-sensitive fallback copy.
+- Keep action semantics the same, but scope loading indicators by item: one joining event card or one reward handoff candidate at a time.
+- Use a forward-only Supabase migration for role/search-path hardening. Do not edit historical migrations.
+- Remove raw DB/provider error messages from Edge HTTP `details`; log server-side error objects with stable event labels instead.
+
+## Prompt
+
+Sen OmaLeima release security engineer olarak calisiyorsun.
+Hedef: Kullanici tarafindan dogrulanmis business owner/staff scanner akisini bozmadan kalan repo-ici guvenlik ve UX aciklarini kapat.
+Mimari: read-only subagent bulgulari + shared mobile safe-error mapper + item-scoped pending UI + forward-only Supabase migration + Edge Function response sanitization.
+Kapsam: mobile/admin role surfaces, scanner/owner Edge Functions, business event leave RPC, REVIEW/PLAN/TODOS/PROGRESS, validation ve focused commit. Apple/Sentry/store/custom-domain veya scanner flow redesign yok.
+Cikti: strict TypeScript/SQL patch, safe localized error copy, role parity migration, sanitized Edge responses, validation evidence.
+Yasaklar: calisan QR scan akisini bozmak yok, raw secret/provider error response yok, historical migration rewrite yok, unrelated refactor yok, false production-ready claim yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, forward-only migrations, no silent failures.
+
 ## Current Plan (QR Rate Limit Hosted Apply + UX)
 
 - **Date:** 2026-05-09
