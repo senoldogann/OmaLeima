@@ -6,6 +6,7 @@ import type { ClubEventFormDraft, EventRuleValue, EventRules } from "@/features/
 import {
   removePublicStorageObjectByUrlAsync,
   removeReplacedPublicStorageObjectAsync,
+  readPublicStoragePath,
 } from "@/features/media/storage-cleanup";
 import { isMediaStagingSignedUrl, mediaStagingBucketName, publishStagedMediaAsync } from "@/features/media/staged-media";
 import { supabase } from "@/lib/supabase";
@@ -120,7 +121,7 @@ const parseMinimumStampsOrThrow = (value: string): number => {
   return parsedValue;
 };
 
-const parsePerBusinessLimitOrThrow = (value: string): number => {
+const normalizePerBusinessLimit = (value: string): number => {
   const normalizedValue = value.trim();
   const parsedValue = Number.parseInt(normalizedValue, 10);
 
@@ -129,10 +130,30 @@ const parsePerBusinessLimitOrThrow = (value: string): number => {
     parsedValue !== 1 ||
     String(parsedValue) !== normalizedValue
   ) {
-    throw new Error("perBusinessLimit must be 1.");
+    return 1;
   }
 
   return parsedValue;
+};
+
+const isReachablePublicEventCoverUrlAsync = async (publicUrl: string | null): Promise<boolean> => {
+  if (
+    publicUrl === null ||
+    publicUrl.trim().length === 0 ||
+    readPublicStoragePath({ bucketId: eventMediaBucketId, publicUrl }) === null
+  ) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(publicUrl, {
+      method: "HEAD",
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
 };
 
 const parseOptionalHttpUrlOrThrow = (value: string, fieldName: string): string | null => {
@@ -260,7 +281,7 @@ const parseDraft = (draft: ClubEventFormDraft): ParsedClubEventDraft => {
     maxParticipants: parseOptionalPositiveIntegerOrThrow(draft.maxParticipants, "maxParticipants"),
     minimumStampsRequired: parseMinimumStampsOrThrow(draft.minimumStampsRequired),
     name: draft.name.trim(),
-    perBusinessLimit: parsePerBusinessLimitOrThrow(draft.perBusinessLimit),
+    perBusinessLimit: normalizePerBusinessLimit(draft.perBusinessLimit),
     startAtIso: startAt.isoValue,
     startAtTime: startAt.timeValue,
     ticketUrl: parseOptionalHttpUrlOrThrow(draft.ticketUrl, "ticketUrl"),
@@ -504,10 +525,14 @@ const updateClubEventAsync = async ({
     parsedDraft.coverImageUrl.length === 0 || isMediaStagingSignedUrl(parsedDraft.coverImageUrl)
       ? null
       : parsedDraft.coverImageUrl;
+  const verifiedExistingCoverImageUrl =
+    existingPublicCoverImageUrl !== null && (await isReachablePublicEventCoverUrlAsync(existingPublicCoverImageUrl))
+      ? existingPublicCoverImageUrl
+      : null;
   const nextCoverImageUrl =
     draft.status === "DRAFT"
       ? null
-      : publishedCoverImageUrl ?? existingPublicCoverImageUrl;
+      : publishedCoverImageUrl ?? verifiedExistingCoverImageUrl;
   const nextCoverImageStagingPath = draft.status === "DRAFT" ? parsedDraft.coverImageStagingPath : null;
 
   const { data, error } = await supabase

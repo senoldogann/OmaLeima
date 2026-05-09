@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Club Event Update Error Cleanup)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the two organizer mobile errors shown while saving edited events: the bogus stamp-limit validation failure and the published event cover rejection for unchanged legacy media URLs.
+
+## Club Event Update Error Cleanup Findings
+
+- `apps/mobile/src/features/club/club-event-mutations.ts` still treats `perBusinessLimit` as a free-form parsed field even though the organizer UI only allows the single supported value `1`. Legacy/stale draft state can therefore raise a pointless client-side error before save.
+- The same mutation re-sends an existing `cover_image_url` when editing published/active events. After the published-media hardening migration, legacy or missing public URLs no longer pass DB validation, so unchanged old covers can block unrelated event edits. The client should keep only verified `event-media` URLs; otherwise it should clear the invalid legacy URL or replace it with a newly published cover.
+
 ## Current Review (Mobile Organizer Edit + Student Header/Rewards UX)
 
 - **Date:** 2026-05-09

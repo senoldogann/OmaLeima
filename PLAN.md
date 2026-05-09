@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Club Event Update Error Cleanup)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Remove the two incorrect organizer event-save failures by normalizing the fixed stamp-limit field and by avoiding invalid legacy published cover URLs in update payloads.
+
+## Club Event Update Error Cleanup Architectural Decisions
+
+- Treat organizer event `perBusinessLimit` as a product constant at mutation time. Since the UI only exposes `1`, save logic should normalize any stale/legacy draft value back to `1` rather than failing on an invisible state mismatch.
+- Preserve published cover handling rules, but only send existing cover URLs that still resolve to a real public `event-media` object. If an unchanged legacy cover no longer satisfies the hardened DB rule, clear it during update so the event can still be edited safely.
+- Keep the fix inside the mobile mutation layer. No Supabase migration or broader event form redesign is needed for this regression.
+
+## Prompt
+
+Sen OmaLeima mobile mutation hardening engineer olarak calisiyorsun.
+Hedef: Organizator mobilde etkinlik guncellerken gorulen iki anlamsiz hatayi kaldir; sabit stamp-limit alanini guvenli sekilde normalize et ve eski/legacy published cover URL'lerinin guncellemeyi bloke etmesini engelle.
+Mimari: mevcut club event mutation katmaninda minimal TypeScript degisikligi, verified existing media URL kontrolu, gerekiyorsa invalid legacy URL'yi payload'dan temizleme.
+Kapsam: `apps/mobile/src/features/club/club-event-mutations.ts`, ilgili working docs, mobile validation ve handoff. UI form redesign, Supabase migration, scanner/business flow degisikligi yok.
+Cikti: minimal TS patch, organizer save akisini toparlayan fix, validation evidence.
+Yasaklar: historical migration rewrite yok, calisan media publish akisini bozmak yok, gereksiz refactor yok, fake success yok.
+Standartlar: AGENTS.md focused changes, strict typing, explicit error handling, no silent backend hacks.
+
 ## Current Plan (Mobile Organizer Edit + Student Header/Rewards UX)
 
 - **Date:** 2026-05-09

@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-05-09
 - **Branch:** `feature/code-review-refactor-sweep`
+- **Yapılan iş:** Organizer etkinlik guncelleme akisindaki iki anlamsiz save hatasi kapatildi. Mobile `club-event-mutations` katmaninda same-venue stamp limit artik urun kontrati gibi normalize edilerek her zaman `1` olarak kaydediliyor; boylece stale/legacy draft state yuzunden `Tarkista leimaraja` hatasi alinmiyor. Ayrica published/active event guncellerken mevcut `cover_image_url` sadece gercek ve erisilebilir bir public `event-media` objesine isaret ediyorsa yeniden gonderiliyor; legacy veya artik gecersiz cover URL'leri guncellemeyi bloke etmek yerine payload'dan temizleniyor, boylece kullanici cover degistirmese bile etkinlik bilgilerini kaydedebiliyor.
+- **Neden yapıldı:** Kullanici organizer etkinlik duzenleme ekraninda iki ekran goruntusu paylasti: biri sabit leima limiti icin anlamsiz validation hatasi, digeri ise `PUBLISHED_MEDIA_URL_NOT_ALLOWED` nedeniyle ilgisiz event guncellemelerinin bloklanmasi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Fiziksel cihazda organizer event edit ekraninda ayni kaydetme adimini bir kez daha dene; eger event eski/legacy cover kullanıyorsa guncelleme tamamlanmali ve gerekirse cover sonradan yeniden secilerek event-media bucket'ina yeniden publish edilebilmeli.
+- **Açık risk/blokaj:** Bu fix eski gecersiz public cover URL'lerini kaydetme payload'indan temizler; dolayisiyla legacy bir cover DB kuralini saglamiyorsa edit sonrasi cover bos kalabilir. Bu, save akisini bloke etmekten daha guvenli tercih edildi; yeni cover secilirse guncel `event-media` objesi normal sekilde publish edilmeye devam eder.
+
+- **Tarih:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
 - **Yapılan iş:** Kullanici raporundaki uc mobil UX problemi kapatildi. Organizatorun Approt listesindeki etkinlik action sheet'inden **Muokkaa** secmesi artik yeni etkinlik draft'ina geri dusmuyor; secilen etkinlik edit mode'da mevcut verileriyle aciliyor. Ogrenci `Palkinnot` ekranindaki hero sayaci icin count box inset/line-height guvenli hale getirildi, boylece sagdaki buyuk `0` gibi tek haneli degerler iOS'ta ustten/sagdan kirpilmayacak. Ortak `StudentProfileHeaderAction` butonuna daha buyuk hit slop / retention offset ve minimum genislik verilerek profil CTA'nin dokunma guvenilirligi artirildi.
 - **Neden yapıldı:** Kullanici mobil tarafta dogrudan gozlemledigi uc UX/regresyon problemini bildirdi: organizer edit formu yanlis aciliyordu, rewards hero sayaci kirpiliyordu, profil butonu zor tiklaniyordu.
 - **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.

@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Club Event Update Error Cleanup)
+
+- [x] Re-read required project docs and inspect the reported organizer save errors.
+- [x] Normalize the fixed same-venue stamp limit in the mobile event mutation layer.
+- [x] Stop unchanged invalid legacy published cover URLs from blocking event edits.
+- [x] Run mobile validation and update handoff.
+
 ## Current Todos (Mobile Organizer Edit + Student Header/Rewards UX)
 
 - [x] Re-read required project docs and inspect the reported mobile screens.
