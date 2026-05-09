@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 
@@ -13,8 +13,37 @@ export const AppleSignInButton = () => {
   const styles = useThemeStyles(createStyles);
   const [state, setState] = useState<SocialSignInState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAvailable, setIsAvailable] = useState(false);
 
-  if (Platform.OS !== "ios") {
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAvailabilityAsync = async (): Promise<void> => {
+      if (Platform.OS !== "ios") {
+        return;
+      }
+
+      try {
+        const nextIsAvailable = await AppleAuthentication.isAvailableAsync();
+
+        if (isMounted) {
+          setIsAvailable(nextIsAvailable);
+        }
+      } catch {
+        if (isMounted) {
+          setIsAvailable(false);
+        }
+      }
+    };
+
+    void checkAvailabilityAsync();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (Platform.OS !== "ios" || !isAvailable) {
     return null;
   }
 
