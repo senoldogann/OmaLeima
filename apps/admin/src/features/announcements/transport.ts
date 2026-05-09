@@ -65,6 +65,20 @@ const createPublishedAnnouncementImagePath = ({
   return clubId === null ? `platform/${fileName}` : `clubs/${clubId}/${fileName}`;
 };
 
+const resolveExistingAnnouncementImageUrl = ({
+  existingImageUrl,
+  submittedImageUrl,
+}: {
+  existingImageUrl: string | null;
+  submittedImageUrl: string | null;
+}): string | null => {
+  if (submittedImageUrl === null || submittedImageUrl.trim().length === 0) {
+    return null;
+  }
+
+  return existingImageUrl;
+};
+
 export const requireAnnouncementAccessAsync = async (
   supabase: SupabaseClient
 ): Promise<AnnouncementTransportResult | null> => {
@@ -227,7 +241,7 @@ export const createAnnouncementAsync = async (
   const nextImageUrl =
     payload.status === "DRAFT"
       ? null
-      : publishedImageUrl ?? payload.imageUrl;
+      : publishedImageUrl;
   const { data, error } = await supabase
     .from("announcements")
     .insert({
@@ -347,7 +361,10 @@ export const updateAnnouncementAsync = async (
   const nextImageUrl =
     payload.status === "DRAFT"
       ? null
-      : publishedImageUrl ?? payload.imageUrl;
+      : publishedImageUrl ?? resolveExistingAnnouncementImageUrl({
+        existingImageUrl: existingAnnouncement.image_url,
+        submittedImageUrl: payload.imageUrl,
+      });
   const nextImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
 
   const updateQuery = supabase
@@ -372,6 +389,13 @@ export const updateAnnouncementAsync = async (
   const { data, error } = await scopedQuery.select("id").maybeSingle<AnnouncementInsertRow>();
 
   if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `failed announcement ${payload.announcementId} image publish rollback`,
+      publicUrl: publishedImageUrl,
+      supabase,
+    });
+
     return {
       response: {
         message: error.message,

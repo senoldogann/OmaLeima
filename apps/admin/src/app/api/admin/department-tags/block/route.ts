@@ -7,6 +7,7 @@ import {
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
 import { isUuid } from "@/features/department-tags/validation";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 type BlockRequestBody = {
@@ -27,6 +28,12 @@ const parseBlockRequestBody = async (request: Request): Promise<{ tagId: string 
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireAdminDepartmentTagAccessAsync(supabase);
 

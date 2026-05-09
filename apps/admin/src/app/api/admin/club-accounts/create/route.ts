@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -213,6 +214,12 @@ const createClubOwnerAccountAsync = async (
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const access = await resolveAdminAccessAsync(supabase);
 

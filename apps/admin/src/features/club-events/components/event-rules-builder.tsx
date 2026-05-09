@@ -17,7 +17,7 @@ type ParsedRulesState = {
 type EventRulesBuilderCopy = {
   invalidJson: string;
   limitLabel: string;
-  optionLabel: (value: number) => string;
+  optionLabel: string;
   savedAs: string;
   status: string;
   title: string;
@@ -25,28 +25,22 @@ type EventRulesBuilderCopy = {
 };
 
 const defaultPerBusinessLimit = 1;
-const maximumPerBusinessLimit = 5;
+const maximumPerBusinessLimit = 1;
 const copyByLocale: Record<DashboardLocale, EventRulesBuilderCopy> = {
   en: {
-    body: "Controls the total number of valid leimat one student can collect from the same business during this event. One accepted scan records one leima; higher limits require fresh QR scans.",
+    body: "One student can collect one valid leima from the same business during this event.",
     invalidJson: "Existing rules JSON is invalid. Choose a limit to rebuild it.",
     limitLabel: "Same venue total stamp limit",
-    optionLabel: (value: number): string =>
-      value === 1
-        ? "1 total leima from the same business"
-        : `${value} total leimat from the same business`,
+    optionLabel: "1 total leima from the same business",
     savedAs: "Saved as",
     status: "Typed rules",
     title: "Stamp policy",
   },
   fi: {
-    body: "Määrittää, montako kelvollista leimaa yksi opiskelija voi kerätä samalta yritykseltä tämän tapahtuman aikana. Yksi hyväksytty skannaus lisää yhden leiman; suuremmat rajat vaativat uuden QR-skannauksen.",
+    body: "Yksi opiskelija voi kerätä yhden kelvollisen leiman samalta yritykseltä tämän tapahtuman aikana.",
     invalidJson: "Nykyinen sääntöjen JSON on virheellinen. Valitse raja, niin se rakennetaan uudelleen.",
     limitLabel: "Saman yrityksen leimojen kokonaisraja",
-    optionLabel: (value: number): string =>
-      value === 1
-        ? "1 leima yhteensä samalta yritykseltä"
-        : `${value} leimaa yhteensä samalta yritykseltä`,
+    optionLabel: "1 leima yhteensä samalta yritykseltä",
     savedAs: "Tallennetaan kenttään",
     status: "Säännöt",
     title: "Leimapolitiikka",
@@ -156,11 +150,7 @@ export const EventRulesBuilder = ({ disabled, locale, onChange, value }: EventRu
             onChange={(event) => onChange(buildRulesJson(value, Number.parseInt(event.target.value, 10)))}
             value={String(rulesState.perBusinessLimit)}
           >
-            <option value="1">{copy.optionLabel(1)}</option>
-            <option value="2">{copy.optionLabel(2)}</option>
-            <option value="3">{copy.optionLabel(3)}</option>
-            <option value="4">{copy.optionLabel(4)}</option>
-            <option value="5">{copy.optionLabel(5)}</option>
+            <option value="1">{copy.optionLabel}</option>
           </select>
         </label>
 

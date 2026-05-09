@@ -152,8 +152,8 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     platformSender: "OmaLeima Support",
     priority: "Priority",
     publishedStatus: "Published",
-    pushAlreadySent: "Push already sent successfully.",
-    pushPartiallySent: "Push was only partially delivered. Retry is allowed for failed recipients.",
+    pushAlreadySent: "Push was sent before. You can send it again.",
+    pushPartiallySent: "Push was only partially delivered. You can send it again.",
     pushReady: "Push is ready to send.",
     pushSent: "Push sent",
     pushUnavailableEnded: "Push window has already ended.",
@@ -227,8 +227,8 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     platformSender: "OmaLeima-tiimi",
     priority: "Tärkeysaste",
     publishedStatus: "Livenä",
-    pushAlreadySent: "Push-ilmoitus on jo lähetetty onnistuneesti.",
-    pushPartiallySent: "Osa vastaanottajista jäi ilman pushia. Voit yrittää epäonnistuneita uudelleen.",
+    pushAlreadySent: "Push on lähetetty aiemmin. Voit lähettää sen uudelleen.",
+    pushPartiallySent: "Osa vastaanottajista jäi ilman pushia. Voit lähettää sen uudelleen.",
     pushReady: "Push on valmis lähetettäväksi.",
     pushSent: "Push lähetetty",
     pushUnavailableEnded: "Push-ikkuna on jo päättynyt.",
@@ -308,6 +308,20 @@ const createPayloadFromAnnouncement = (
   title: announcement.title,
 });
 
+const isEventScopedPayload = (payload: AnnouncementCreatePayload): boolean =>
+  payload.eventId.trim().length > 0;
+
+const createSubmitPayload = (payload: AnnouncementCreatePayload): AnnouncementCreatePayload => {
+  if (!isEventScopedPayload(payload)) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    audience: "STUDENTS",
+  };
+};
+
 const formatDate = (locale: DashboardLocale, value: string): string =>
   new Intl.DateTimeFormat(locale === "fi" ? "fi-FI" : "en-GB", {
     day: "numeric",
@@ -333,13 +347,6 @@ const readPushAvailability = (
     return {
       canSendPush: false,
       reason: copy.pushUnavailableNotPublished,
-    };
-  }
-
-  if (announcement.pushDeliveryStatus === "SENT") {
-    return {
-      canSendPush: false,
-      reason: copy.pushAlreadySent,
     };
   }
 
@@ -399,6 +406,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
   const [renderedNow, setRenderedNow] = useState<number>(() => Date.now());
   const canCreate = snapshot.scope === "ADMIN" || snapshot.clubOptions.length > 0;
   const scopeTitle = snapshot.scope === "ADMIN" ? copy.scopeTitlePlatform : copy.scopeTitleClub;
+  const hasEventScope = isEventScopedPayload(payload);
   const audienceOptions = useMemo<AnnouncementAudienceOption[]>(
     () =>
       snapshot.scope === "ADMIN"
@@ -406,6 +414,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
         : ["ALL", "STUDENTS", "CLUBS"],
     [snapshot.scope]
   );
+  const renderedAudienceOptions: AnnouncementAudienceOption[] = hasEventScope ? ["STUDENTS"] : audienceOptions;
   const isEditingAnnouncement = editingAnnouncementId !== null;
   const isFormDisabled =
     !canCreate ||
@@ -502,10 +511,11 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     });
 
     try {
+      const submitPayload = createSubmitPayload(payload);
       const response =
         editingAnnouncementId === null
-          ? await submitAnnouncementCreateRequestAsync(payload)
-          : await submitAnnouncementUpdateRequestAsync(editingAnnouncementId, payload);
+          ? await submitAnnouncementCreateRequestAsync(submitPayload)
+          : await submitAnnouncementUpdateRequestAsync(editingAnnouncementId, submitPayload);
       setActionState({
         code: response.status,
         message: response.message,
@@ -771,16 +781,16 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
           <label className="field-stack">
             <span className="field-label">{copy.audience}</span>
             <select
-              disabled={isFormDisabled}
+              disabled={isFormDisabled || hasEventScope}
               onChange={(event) =>
                 setPayload((current) => ({
                   ...current,
                   audience: event.target.value as AnnouncementCreatePayload["audience"],
                 }))
               }
-              value={payload.audience}
+              value={hasEventScope ? "STUDENTS" : payload.audience}
             >
-              {audienceOptions.map((audience) => (
+              {renderedAudienceOptions.map((audience) => (
                 <option key={audience} value={audience}>
                   {copy.audienceLabels[audience]}
                 </option>

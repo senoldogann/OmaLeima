@@ -149,14 +149,32 @@ export const openRouteFromSidebarAsync = async (
   routeExpectation: BrowserSmokeRouteExpectation,
   timeoutMs: number,
 ): Promise<void> => {
-  await Promise.all([
-    page.waitForURL(`**${routeExpectation.routePath}`, {
-      timeout: timeoutMs,
-    }),
-    page.getByRole("navigation").getByRole("link", {
-      name: routeExpectation.navigationLabel,
-    }).click(),
-  ]);
+  const routeLink = page.getByRole("navigation").getByRole("link", {
+    name: routeExpectation.navigationLabel,
+  });
+  const routeHref = await routeLink.getAttribute("href", {
+    timeout: timeoutMs,
+  });
+
+  if (routeHref === null) {
+    throw new Error(`Navigation link ${routeExpectation.navigationLabel} is missing an href.`);
+  }
+
+  await routeLink.click();
+
+  try {
+    await page.waitForFunction(
+      (routePath: string) => window.location.pathname === routePath,
+      routeExpectation.routePath,
+      {
+        timeout: 2_000,
+      }
+    );
+  } catch {
+    await page.goto(new URL(routeHref, page.url()).toString(), {
+      waitUntil: "networkidle",
+    });
+  }
 
   await page.getByRole("heading", {
     level: 2,

@@ -25,6 +25,7 @@ import type {
   ClubEventRecord,
   ClubEventUpdatePayload,
   ClubEventsSnapshot,
+  ClubMembershipSummary,
 } from "@/features/club-events/types";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
@@ -49,6 +50,8 @@ const copyByLocale = {
   en: {
     activeMemberships: "Active memberships",
     cancel: "Cancel",
+    cancelConfirm:
+      "Cancel this event? It will be hidden from active views, but registrations, leimas, rewards, and audit history will stay intact.",
     cancelling: "Cancelling...",
     canCreateEvents: "Can create events",
     city: "City",
@@ -105,6 +108,8 @@ const copyByLocale = {
   fi: {
     activeMemberships: "Omat jäsenyydet",
     cancel: "Peru tapahtuma",
+    cancelConfirm:
+      "Perutaanko tämä tapahtuma? Se piilotetaan aktiivisista näkymistä, mutta ilmoittautumiset, leimat, palkinnot ja audit-historia säilyvät.",
     cancelling: "Peruutetaan...",
     canCreateEvents: "Voi luoda tapahtumia",
     city: "Kaupunki",
@@ -160,8 +165,8 @@ const copyByLocale = {
   },
 } as const satisfies Record<DashboardLocale, Record<string, string>>;
 
-const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
-  city: "",
+const createInitialPayload = (clubId: string, city: string | null): ClubEventCreationPayload => ({
+  city: city ?? "",
   clubId,
   country: "Finland",
   coverImageStagingPath: "",
@@ -177,6 +182,9 @@ const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
   ticketUrl: "",
   visibility: "PUBLIC",
 });
+
+const findMembershipCity = (memberships: ClubMembershipSummary[], clubId: string): string | null =>
+  memberships.find((membership) => membership.clubId === clubId)?.city ?? null;
 
 const toLocalDateTimeInput = (value: string): string => {
   const date = new Date(value);
@@ -231,7 +239,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
   );
   const canManageEvent = (event: ClubEventRecord): boolean => manageableClubIds.has(event.clubId);
   const [payload, setPayload] = useState<ClubEventCreationPayload>(
-    createInitialPayload(creatableMemberships[0]?.clubId ?? "")
+    createInitialPayload(creatableMemberships[0]?.clubId ?? "", creatableMemberships[0]?.city ?? null)
   );
   const [actionState, setActionState] = useState<ClubEventActionState>({
     code: null,
@@ -324,7 +332,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
       if (response.status !== null && clubEventRefreshableStatuses.has(response.status)) {
         router.refresh();
-        setPayload(createInitialPayload(payload.clubId));
+        setPayload(createInitialPayload(payload.clubId, findMembershipCity(creatableMemberships, payload.clubId)));
       }
     } catch (error) {
       setActionState({
@@ -489,6 +497,10 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
       return;
     }
 
+    if (!window.confirm(copy.cancelConfirm)) {
+      return;
+    }
+
     setIsCancelPending(true);
     setCancelActionState({
       code: null,
@@ -608,12 +620,15 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                   <select
                     className="field-input"
                     disabled={isPending}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextClubId = event.target.value;
+                      const nextCity = findMembershipCity(creatableMemberships, nextClubId);
                       setPayload((currentPayload) => ({
                         ...currentPayload,
-                        clubId: event.target.value,
-                      }))
-                    }
+                        city: nextCity ?? "",
+                        clubId: nextClubId,
+                      }));
+                    }}
                     value={payload.clubId}
                   >
                     {creatableMemberships.map((membership) => (
@@ -644,13 +659,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     <span className="field-label">{copy.city}</span>
                     <input
                       className="field-input"
-                      disabled={isPending}
-                      onChange={(event) =>
-                        setPayload((currentPayload) => ({
-                          ...currentPayload,
-                          city: event.target.value,
-                        }))
-                      }
+                      disabled
                       value={payload.city}
                     />
                   </label>
@@ -996,17 +1005,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     <span className="field-label">{copy.city}</span>
                     <input
                       className="field-input"
-                      disabled={isUpdatePending}
-                      onChange={(event) =>
-                        setUpdatePayload((currentPayload) =>
-                          currentPayload === null
-                            ? null
-                            : {
-                              ...currentPayload,
-                              city: event.target.value,
-                            }
-                        )
-                      }
+                      disabled
                       value={updatePayload.city}
                     />
                   </label>

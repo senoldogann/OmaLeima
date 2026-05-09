@@ -4,6 +4,7 @@ import { invokeReviewEdgeFunctionAsync, requireAdminReviewAccessAsync } from "@/
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
 import { isUuid } from "@/features/business-applications/validation";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 type RejectRequestBody = {
@@ -38,6 +39,12 @@ const parseRejectRequestBody = async (
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireAdminReviewAccessAsync(supabase);
 

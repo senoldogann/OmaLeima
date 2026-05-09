@@ -52,6 +52,36 @@ export const createSignedStagedMediaUrlAsync = async ({
   return data.signedUrl;
 };
 
+const removePublishedMediaAfterFailureAsync = async ({
+  context,
+  destinationBucketId,
+  destinationPath,
+  originalError,
+  supabase,
+}: {
+  context: string;
+  destinationBucketId: string;
+  destinationPath: string;
+  originalError: unknown;
+  supabase: SupabaseClient;
+}): Promise<never> => {
+  const { error: cleanupError } = await supabase.storage
+    .from(destinationBucketId)
+    .remove([destinationPath]);
+
+  if (cleanupError !== null) {
+    throw new Error(
+      `Failed to finalize published ${context} media and failed to remove orphaned ${destinationBucketId}/${destinationPath}: ${
+        originalError instanceof Error ? originalError.message : String(originalError)
+      }; cleanup error: ${cleanupError.message}`
+    );
+  }
+
+  throw originalError instanceof Error
+    ? originalError
+    : new Error(`Failed to finalize published ${context} media: ${String(originalError)}`);
+};
+
 export const publishStagedMediaAsync = async ({
   context,
   destinationBucketId,
@@ -89,20 +119,30 @@ export const publishStagedMediaAsync = async ({
     .from(destinationBucketId)
     .getPublicUrl(destinationPath);
 
-  const response = await fetch(publicUrlData.publicUrl, {
-    method: "HEAD",
-  });
+  try {
+    const response = await fetch(publicUrlData.publicUrl, {
+      method: "HEAD",
+    });
 
-  if (!response.ok) {
-    throw new Error(`Published ${context} media is not publicly readable. Status: ${response.status}. URL: ${publicUrlData.publicUrl}`);
-  }
+    if (!response.ok) {
+      throw new Error(`Published ${context} media is not publicly readable. Status: ${response.status}. URL: ${publicUrlData.publicUrl}`);
+    }
 
-  const { error: removeError } = await supabase.storage
-    .from(mediaStagingBucketId)
-    .remove([normalizedStagingPath]);
+    const { error: removeError } = await supabase.storage
+      .from(mediaStagingBucketId)
+      .remove([normalizedStagingPath]);
 
-  if (removeError !== null) {
-    throw new Error(`Failed to remove staged ${context} media ${normalizedStagingPath}: ${removeError.message}`);
+    if (removeError !== null) {
+      throw new Error(`Failed to remove staged ${context} media ${normalizedStagingPath}: ${removeError.message}`);
+    }
+  } catch (error) {
+    await removePublishedMediaAfterFailureAsync({
+      context,
+      destinationBucketId,
+      destinationPath,
+      originalError: error,
+      supabase,
+    });
   }
 
   return publicUrlData.publicUrl;

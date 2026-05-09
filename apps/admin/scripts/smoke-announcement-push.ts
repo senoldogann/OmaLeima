@@ -463,8 +463,8 @@ const run = async (): Promise<void> => {
       );
     }
 
-    if (retryResult.responseBody.notificationsCreated !== 1 || retryResult.responseBody.notificationsSent !== 1) {
-      throw new Error(`Expected one retried announcement notification, got ${JSON.stringify(retryResult.responseBody)}.`);
+    if (retryResult.responseBody.notificationsCreated !== 2 || retryResult.responseBody.notificationsSent !== 2) {
+      throw new Error(`Expected two repeat announcement notifications, got ${JSON.stringify(retryResult.responseBody)}.`);
     }
 
     const retryNotificationState = await readSqlTextAsync(`
@@ -475,11 +475,11 @@ const run = async (): Promise<void> => {
         and payload->>'announcementId' = '${retryFixture.announcementId}';
     `);
 
-    if (retryNotificationState !== "FAILED,SENT") {
-      throw new Error(`Expected retry fixture to keep FAILED and add SENT notification rows, got ${retryNotificationState}.`);
+    if (retryNotificationState !== "FAILED,SENT,SENT") {
+      throw new Error(`Expected repeat fixture to keep previous rows and add new SENT rows, got ${retryNotificationState}.`);
     }
 
-    outputs.push("failed-retry:SUCCESS");
+    outputs.push("repeat-after-history:SUCCESS");
 
     const retryBatches = pushMockServer.getReceivedBatches();
     const retryBatch = retryBatches[1] ?? [];
@@ -492,27 +492,27 @@ const run = async (): Promise<void> => {
 
     if (
       typeof retryFailedRecipientMessage === "undefined" ||
-      typeof retrySuccessfulRecipientMessage !== "undefined"
+      typeof retrySuccessfulRecipientMessage === "undefined"
     ) {
-      throw new Error(`Expected retry push to exclude the previously successful recipient, got ${JSON.stringify(retryBatch)}.`);
+      throw new Error(`Expected repeat push to include all eligible recipients, got ${JSON.stringify(retryBatch)}.`);
     }
 
-    outputs.push("retry-target:failed-only");
+    outputs.push("repeat-target:all-eligible");
 
     const duplicateRetryResult = await invokeFunctionAsync("send-announcement-push", adminAccessToken, {
       announcementId: retryFixture.announcementId,
     });
 
     if (
-      duplicateRetryResult.status !== 409 ||
-      duplicateRetryResult.responseBody.status !== "ANNOUNCEMENT_ALREADY_SENT"
+      duplicateRetryResult.status !== 200 ||
+      duplicateRetryResult.responseBody.status !== "SUCCESS" ||
+      duplicateRetryResult.responseBody.notificationsCreated !== 2 ||
+      duplicateRetryResult.responseBody.notificationsSent !== 2
     ) {
-      throw new Error(
-        `Expected successful retry to block duplicate sends, got ${duplicateRetryResult.status} ${duplicateRetryResult.responseBody.status ?? "null"}.`
-      );
+      throw new Error(`Expected repeated send to stay SUCCESS, got ${JSON.stringify(duplicateRetryResult)}.`);
     }
 
-    outputs.push("retry-after-success:blocked");
+    outputs.push("repeat-after-success:SUCCESS");
     console.log(outputs.join("|"));
   } catch (error) {
     runError = error instanceof Error ? error : new Error("Unknown announcement push smoke error.");

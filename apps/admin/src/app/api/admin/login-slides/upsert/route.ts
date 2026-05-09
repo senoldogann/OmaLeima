@@ -7,6 +7,7 @@ import {
   parseLoginSlidePayloadOrThrow,
 } from "@/features/login-slides/validation";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -14,6 +15,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const access = await resolveAdminAccessAsync(supabase);
 

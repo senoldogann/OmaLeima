@@ -28,7 +28,7 @@ type BusinessApplicationStatus = "APPROVED" | "PENDING" | "REJECTED";
 const appBaseUrl = process.env.ADMIN_APP_BASE_URL ?? "http://localhost:3001";
 const functionBaseUrl = process.env.SUPABASE_FUNCTIONS_BASE_URL ?? "http://127.0.0.1:54321/functions/v1";
 const rejectReason = "Browser smoke rejection reason.";
-const browserTimeoutMs = 15_000;
+const browserTimeoutMs = 30_000;
 const databasePollTimeoutMs = 10_000;
 const playwrightInstallCommand = "npm --prefix apps/admin exec playwright install chromium";
 

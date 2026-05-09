@@ -53,6 +53,20 @@ const createPublishedEventCoverPath = ({
   stagingPath: string;
 }): string => `clubs/${clubId}/events/${eventId}/cover-${Date.now()}.${readStorageExtension(stagingPath)}`;
 
+const resolveExistingEventCoverUrl = ({
+  existingCoverUrl,
+  submittedCoverUrl,
+}: {
+  existingCoverUrl: string | null;
+  submittedCoverUrl: string;
+}): string | null => {
+  if (submittedCoverUrl.trim().length === 0) {
+    return null;
+  }
+
+  return existingCoverUrl;
+};
+
 const deleteStagedEventCoverAsync = async ({
   context,
   stagingPath,
@@ -79,8 +93,10 @@ const buildClubEventMessage = (status: string | null): string => {
     AUTH_REQUIRED: "Sign in again before creating an event.",
     CLUB_EVENT_CREATOR_NOT_ALLOWED: "Only organizers or owners can create events for this club.",
     CLUB_MEMBERSHIP_NOT_ALLOWED: "This account does not have an active membership for the selected club.",
+    CLUB_CITY_REQUIRED: "The selected club is missing a city. Update the organizer profile before creating events.",
     CLUB_NOT_ACTIVE: "The selected club is not active anymore.",
     EVENT_CITY_REQUIRED: "City is required.",
+    EVENT_CITY_OUT_OF_SCOPE: "Organizer events must use the selected club city.",
     EVENT_END_BEFORE_START: "End time must be after the start time.",
     EVENT_JOIN_DEADLINE_INVALID: "Join deadline must be before the event start.",
     EVENT_MAX_PARTICIPANTS_INVALID: "Max participants must be a positive number when provided.",
@@ -282,7 +298,10 @@ export const updateClubEventAsync = async (
   const nextCoverImageUrl =
     payload.status === "DRAFT"
       ? null
-      : publishedCoverImageUrl ?? (payload.coverImageUrl.trim().length === 0 ? null : payload.coverImageUrl);
+      : publishedCoverImageUrl ?? resolveExistingEventCoverUrl({
+        existingCoverUrl: existingEvent.cover_image_url,
+        submittedCoverUrl: payload.coverImageUrl,
+      });
   const nextCoverImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
 
   const { data, error } = await supabase
@@ -309,12 +328,21 @@ export const updateClubEventAsync = async (
     .maybeSingle<UpdatedEventRow>();
 
   if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: eventMediaBucketId,
+      context: `failed event ${payload.eventId} cover publish rollback`,
+      publicUrl: publishedCoverImageUrl,
+      supabase,
+    });
+
+    const isCityScopeError = error.message.includes("EVENT_CITY_OUT_OF_SCOPE") || error.message.includes("CLUB_CITY_REQUIRED");
+
     return {
       response: {
-        message: error.message,
-        status: "UPDATE_ERROR",
+        message: isCityScopeError ? buildClubEventMessage("EVENT_CITY_OUT_OF_SCOPE") : error.message,
+        status: isCityScopeError ? "EVENT_CITY_OUT_OF_SCOPE" : "UPDATE_ERROR",
       },
-      status: 502,
+      status: isCityScopeError ? 400 : 502,
     };
   }
 

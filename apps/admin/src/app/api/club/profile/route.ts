@@ -9,6 +9,7 @@ import {
   type ClubProfileMembershipRow,
 } from "@/features/club-profile/read-model";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import type { ClubProfileUpdateResponse } from "@/features/club-profile/types";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
@@ -64,6 +65,12 @@ const fetchEditableMembershipAsync = async (
 };
 
 export async function PATCH(request: Request) {
+  const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+  if (requestGuardResponse !== null) {
+    return requestGuardResponse;
+  }
+
   const supabase = await createRouteHandlerClient();
   const access = await resolveAdminAccessAsync(supabase);
 

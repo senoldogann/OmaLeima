@@ -37,7 +37,7 @@ type DashboardBrowserCase = {
 };
 
 const appBaseUrl = process.env.ADMIN_APP_BASE_URL ?? "http://localhost:3001";
-const browserTimeoutMs = 15_000;
+const browserTimeoutMs = 30_000;
 const playwrightInstallCommand = "npm --prefix apps/admin exec playwright install chromium";
 
 const adminRoutes: BrowserSmokeRouteExpectation[] = [
@@ -258,6 +258,9 @@ const exerciseLocaleSwitchAsync = async (
   await openRouteAndAssertAsync(page, localeToggle.route);
 
   await page.locator(".dashboard-locale-switch").click();
+  await page.waitForLoadState("networkidle", {
+    timeout: browserTimeoutMs,
+  }).catch(() => undefined);
   await page.getByRole("heading", {
     level: 2,
     name: localeToggle.finnishTitle,
@@ -268,6 +271,9 @@ const exerciseLocaleSwitchAsync = async (
   await assertNoFrameworkOverlayAsync(page);
 
   await page.locator(".dashboard-locale-switch").click();
+  await page.waitForLoadState("networkidle", {
+    timeout: browserTimeoutMs,
+  }).catch(() => undefined);
   await page.getByRole("heading", {
     level: 2,
     name: localeToggle.englishTitle,

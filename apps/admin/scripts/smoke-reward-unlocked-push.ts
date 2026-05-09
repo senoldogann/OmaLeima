@@ -35,10 +35,13 @@ type PushRequestMessage = {
 type RewardUnlockFixture = {
   eventId: string;
   firstBusinessId: string;
+  firstScannerDeviceId: string;
   firstEventVenueId: string;
   secondBusinessId: string;
+  secondScannerDeviceId: string;
   secondEventVenueId: string;
   thirdBusinessId: string;
+  thirdScannerDeviceId: string;
   thirdEventVenueId: string;
   firstRewardTierId: string;
   secondRewardTierId: string;
@@ -209,10 +212,13 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
   const eventId = randomUUID();
   const firstBusinessId = randomUUID();
   const firstEventVenueId = randomUUID();
+  const firstScannerDeviceId = randomUUID();
   const secondBusinessId = randomUUID();
   const secondEventVenueId = randomUUID();
+  const secondScannerDeviceId = randomUUID();
   const thirdBusinessId = randomUUID();
   const thirdEventVenueId = randomUUID();
+  const thirdScannerDeviceId = randomUUID();
   const firstRewardTierId = randomUUID();
   const secondRewardTierId = randomUUID();
   const soldOutRewardTierId = randomUUID();
@@ -291,6 +297,43 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
         'ACTIVE'
       );
 
+    insert into public.business_scanner_devices (
+      id,
+      business_id,
+      installation_id,
+      label,
+      platform,
+      status,
+      created_by
+    ) values
+      (
+        '${firstScannerDeviceId}',
+        '${firstBusinessId}',
+        'reward-unlock-device-a-${suffix.toLowerCase()}',
+        'Reward Unlock Scanner A ${suffix}',
+        'WEB',
+        'ACTIVE',
+        '${seededScannerProfileId}'
+      ),
+      (
+        '${secondScannerDeviceId}',
+        '${secondBusinessId}',
+        'reward-unlock-device-b-${suffix.toLowerCase()}',
+        'Reward Unlock Scanner B ${suffix}',
+        'WEB',
+        'ACTIVE',
+        '${seededScannerProfileId}'
+      ),
+      (
+        '${thirdScannerDeviceId}',
+        '${thirdBusinessId}',
+        'reward-unlock-device-c-${suffix.toLowerCase()}',
+        'Reward Unlock Scanner C ${suffix}',
+        'WEB',
+        'ACTIVE',
+        '${seededScannerProfileId}'
+      );
+
     insert into public.events (
       id,
       club_id,
@@ -317,7 +360,7 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
       now() - interval '90 minutes',
       'ACTIVE',
       'PUBLIC',
-      2,
+      3,
       '${seededOrganizerProfileId}'
     );
 
@@ -455,10 +498,13 @@ const seedRewardUnlockFixtureAsync = async (suffix: string): Promise<RewardUnloc
   return {
     eventId,
     firstBusinessId,
+    firstScannerDeviceId,
     firstEventVenueId,
     secondBusinessId,
+    secondScannerDeviceId,
     secondEventVenueId,
     thirdBusinessId,
+    thirdScannerDeviceId,
     thirdEventVenueId,
     firstRewardTierId,
     secondRewardTierId,
@@ -500,6 +546,9 @@ const cleanupRewardUnlockFixtureAsync = async (fixture: RewardUnlockFixture): Pr
 
     delete from public.event_venues
     where event_id = '${fixture.eventId}'::uuid;
+
+    delete from public.business_scanner_devices
+    where id in ('${fixture.firstScannerDeviceId}'::uuid, '${fixture.secondScannerDeviceId}'::uuid, '${fixture.thirdScannerDeviceId}'::uuid);
 
     delete from public.events
     where id = '${fixture.eventId}'::uuid;
@@ -573,7 +622,7 @@ const run = async (): Promise<void> => {
       eventId: fixture.eventId,
       eventVenueId: fixture.firstEventVenueId,
       qrToken: firstQrToken,
-      scannerDeviceId: null,
+      scannerDeviceId: fixture.firstScannerDeviceId,
     });
 
     if (firstScan.status !== 200 || firstScan.responseBody.status !== "SUCCESS") {
@@ -614,7 +663,7 @@ const run = async (): Promise<void> => {
       eventId: fixture.eventId,
       eventVenueId: fixture.secondEventVenueId,
       qrToken: secondQrToken,
-      scannerDeviceId: null,
+      scannerDeviceId: fixture.secondScannerDeviceId,
     });
 
     if (secondScan.status !== 200 || secondScan.responseBody.status !== "SUCCESS") {
@@ -705,7 +754,7 @@ const run = async (): Promise<void> => {
       eventId: fixture.eventId,
       eventVenueId: fixture.thirdEventVenueId,
       qrToken: thirdQrToken,
-      scannerDeviceId: null,
+      scannerDeviceId: fixture.thirdScannerDeviceId,
     });
 
     if (thirdScan.status !== 200 || thirdScan.responseBody.status !== "SUCCESS") {
