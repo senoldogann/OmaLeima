@@ -2,6 +2,252 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Production Gap Report + Git Cleanup)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Create a clear remaining production gaps report, clean the accumulated dirty branch into traceable commits, and complete only safe in-repo fixes that do not require Apple/Sentry/provider credentials.
+
+## Production Gap Report + Git Cleanup Architectural Decisions
+
+- Write one durable report file under `docs/` that separates: current readiness decision, code-fixable backlog, and issues that require owner/provider/manual production work.
+- Do not implement Sign in with Apple, Sentry, App Store/Play Console setup, Supabase custom-domain activation, or real-device smoke. These need external accounts/devices or explicit provider choices and belong in the report.
+- Improve git hygiene without destructive history rewrite: use logical commits on the current feature branch, include forward migration files, exclude generated screenshots/output artifacts via `.gitignore`, and never reset/revert unrelated work.
+- Reuse existing Supabase rate-limit infrastructure for any safe backend hardening. Avoid adding new external dependencies or environment variables.
+- Validate touched areas with existing commands only: targeted Deno check, admin/mobile typecheck/lint where relevant, Supabase migration/lint if SQL changes are made, and `git diff --check`.
+
+## Prompt
+
+Sen OmaLeima release cleanup ve production-readiness engineer olarak calisiyorsun.
+Hedef: Subagent review'da bulunan eksikleri acik bir dosyada listele; buradan yapilamayacak Apple/Sentry/real-device/provider islerini rapora ayir; mevcut dirty branch'i mantikli commit'lerle izlenebilir hale getir; sadece bu ortamda guvenle duzeltilebilen kucuk kod-side blocker'lari uygula.
+Mimari: docs-first gap report + forward-only Supabase/Edge hardening + existing validation gates + logical git commits.
+Kapsam: `docs/PRODUCTION_REMAINING_GAPS.md`, REVIEW/PLAN/TODOS/PROGRESS handoff, `.gitignore` artifact hygiene, optional QR generation rate limiting, git commit cleanup. Apple login, Sentry integration, hosted custom-domain activation, store submission, destructive git reset yok.
+Cikti: Report file, validated code/docs changes, logical commits with required Co-authored-by trailer, clean working tree except intentionally ignored local artifacts.
+Yasaklar: history rewrite/reset-hard yok, external provider setup yok, generated screenshots/output commit yok, historical migration rewrite yok, false production-ready claim yok.
+Standartlar: AGENTS.md strict workflow, zero-trust backend controls, explicit errors, strict typing, focused changes.
+
+## Current Plan (Final Production Readiness Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Treat the current branch as a release candidate, independently re-run the highest-value validation and rendered/native smoke paths, collect subagent review findings, and fix only concrete production blockers discovered during this pass.
+
+## Final Production Readiness Sweep Architectural Decisions
+
+- Use subagents as read-only parallel reviewers for security/admin mutations, database/RLS/migrations, TypeScript/mobile-web correctness, and QA evidence. The main thread owns command execution, integration, and any file edits.
+- Prefer existing project validation scripts and smoke tests. Add or update tests only when a release-critical path has no executable coverage or the existing smoke harness is stale.
+- Keep Chrome, Computer, Expo, iOS, and Android evidence truthful: Chrome must follow the extension workflow; Computer is for non-destructive UI inspection; Expo/native scripts prove simulator launch/render, not physical APNs/camera/OAuth/share/photo behavior.
+- Avoid destructive hosted actions. Hosted checks should be read-only unless the user has explicitly requested a production deploy/apply step for a specific change.
+- Preserve already-applied migrations and unrelated dirty work. Any database correction must be a forward migration; any refactor must stay tightly scoped to a newly verified problem.
+
+## Prompt
+
+Sen OmaLeima final production-readiness lead engineer olarak calisiyorsun.
+Hedef: Current release branch'i production oncesi son kez karis karis dogrula; subagent review bulgularini topla; admin web, Expo mobile, Supabase DB/RLS/Edge Functions, Chrome, Computer, iOS ve Android kanitlarini yeniden calistir; yalnizca yeni bulunan release blocker'lari minimal diff ile duzelt.
+Mimari: read-only subagent lanes + existing validation commands + Chrome extension workflow retry + Playwright smoke fallback + Computer/iOS/Android simulator inspection + forward-only fixes.
+Kapsam: announcement push repeatability/audit/no-target behavior, admin mutation hardening, media staging ownership, FK/search-path migrations, business event detail, support scroll, native login/startup, Vercel/admin panel smoke, working-doc handoff.
+Cikti: Validation command evidence, browser/native QA notes, subagent bulgu ozeti, varsa strict TS/TSX/SQL minimal patch, updated handoff.
+Yasaklar: false-green test sonucu yok, unrelated dirty revert yok, historical migration rewrite yok, destructive hosted mutation yok, token'i olmayan cihaza push teslim oldu gibi gostermek yok, silent failure yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, structured logging, focused changes, no secret/cookie inspection.
+
+## Current Plan (Full Production Verification Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Use subagents and requested plugin workflows to re-review the production release branch, run validation gates, exercise web/native smoke paths where possible, and fix only high-confidence blockers discovered during the pass.
+
+## Full Production Verification Sweep Architectural Decisions
+
+- Split review into parallel read-only lanes first: security/admin mutations, Supabase DB/RLS/migrations, TypeScript/web/mobile correctness, and QA/native/browser evidence. Main thread owns integration and any final code edits.
+- Prefer existing project commands and smoke scripts over adding new tests. Add or adjust tests only if a current release-critical path has no executable coverage or a smoke script has drifted.
+- Use Chrome through the extension workflow. If the extension path still fails after retry and local checks, document it and use project Playwright smoke scripts for web evidence without claiming Chrome success.
+- Use Computer Use for non-destructive simulator/app inspection only. Use Xcode/adb/Expo scripts for deeper native checks because they provide repeatable logs and artifacts.
+- Keep hosted/destructive actions out of this sweep unless a command is read-only or explicitly scoped to temporary smoke data with cleanup.
+- Treat physical-device-only flows as externally tested by the user and record them as such, not as local simulator coverage.
+
+## Prompt
+
+Sen OmaLeima production verification lead engineer olarak calisiyorsun.
+Hedef: Release branch'i admin web, Expo mobile, Supabase DB/RLS/Edge Functions ve native/browser QA acisindan tekrar incele; subagent bulgularini topla; mevcut testleri calistir; sadece high-confidence release blocker'lari minimal diff ile duzelt.
+Mimari: subagent-parallel read-only review + existing validation scripts + Chrome skill retry + Playwright fallback evidence + Computer/iOS/Android simulator smoke + forward-only fixes.
+Kapsam: admin mutation security, announcement push repeatability/audit, media staging ownership, FK indexes, business event detail, support scroll, native startup/login, docs/handoff. Production data mutation ve unrelated refactor yok.
+Cikti: Validation command evidence, browser/native QA notes, subagent finding summary, minimal TS/TSX/SQL fixes if needed, updated handoff.
+Yasaklar: false-green simulator sonucu yok, unrelated dirty revert yok, already-applied migration rewrite yok, token'i olmayan cihaza push gitmis gibi gostermek yok, silent failure yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, structured logging, focused changes, no secret/cookie inspection.
+
+## Current Plan (P2 Durable Push/Media/Index Backlog)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Close the remaining P2 backlog with forward-only Supabase hardening, durable announcement delivery attempts, Chrome admin panel smoke, and `serve-sim` execution evidence.
+
+## P2 Durable Push/Media/Index Architectural Decisions
+
+- Add `announcement_push_delivery_attempts` as the durable send-attempt source of truth. Insert the attempt after recipient/token resolution but before the Expo Push API call; update it after Expo results, no-token completion, or post-send persistence failures.
+- Preserve repeatable push semantics. Every send can create a new attempt and new notification rows for currently token-enabled recipients; existing notification history must not block later sends.
+- Keep no-token sends non-blocking for the admin UI while still recording a `NO_TARGETS` delivery attempt with skipped counts.
+- Add DB helper functions that derive the staging owner UUID from `users/<uuid>/...` and validate that owner against active club editor membership or platform-admin status. Apply those checks inside the existing event/announcement staging triggers.
+- Close FK index backlog with a single forward migration using `create index if not exists`; avoid rewriting historical migrations.
+- Use Chrome only after the user's approval and avoid inspecting secrets/cookies. If authentication is required, verify public/login and protected-route behavior without forcing destructive or externally visible actions.
+
+## Prompt
+
+Sen OmaLeima Supabase/Edge release hardening engineer olarak calisiyorsun.
+Hedef: Announcement push delivery attempt row'unu Expo send oncesi durable yaz; private media staging path sahibini DB'de club editor/platform admin membership ile dogrula; FK index backlog'unu forward migration ile kapat; Chrome admin panel smoke ve `npx serve-sim` kaniti topla.
+Mimari: forward-only SQL migration + strict Deno Edge Function attempt lifecycle + local Supabase migration/db lint validation + Chrome approved admin smoke + serve-sim command probe.
+Kapsam: `send-announcement-push`, Supabase migrations, working docs, local validation, admin smoke. Hosted deploy, destructive hosted mutation, store submission ve real production push send yok.
+Cikti: Strict SQL/TypeScript patch, validation command evidence, Chrome/serve-sim result, updated handoff.
+Yasaklar: push token'i olmayan cihaza teslim oldu gibi gostermek yok, Expo send oncesi attempt insert basarisizsa send yapmak yok, historical migration rewrite yok, silent failure yok, unrelated dirty revert yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, structured metadata, focused minimal changes.
+
+## Current Plan (Production Hardening Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Continue broad release-candidate review with concrete hardening fixes, rendered admin QA, native simulator checks, and subagent-assisted code review.
+
+## Production Hardening Sweep Architectural Decisions
+
+- Split implementation by ownership to avoid conflicts: media publish hardening, dashboard mutation CSRF guard, read-only security/database review, and rendered/native QA run independently.
+- Keep hosted/destructive actions out of scope unless explicitly confirmed. Local Supabase migrations and local admin/mobile builds are allowed.
+- Prefer existing project smoke scripts and package commands before adding new tests. Add or update tests only when an existing regression harness is stale or missing for changed behavior.
+- Use Browser/Chrome as requested, but if Chrome extension communication fails after the skill-mandated checks, document the plugin blocker and use Playwright/Computer/Xcode/adb for local evidence.
+- Treat physical-device-only flows as residual risk, not as simulator-proven: push delivery/tap, camera QR, Google native OAuth callback, share/save sheets, and Photos permissions.
+
+## Prompt
+
+Sen OmaLeima production hardening lead engineer olarak calisiyorsun.
+Hedef: Admin web, mobile/native, Supabase DB/RPC/Edge Functions ve release QA gate'lerini karis karis incele; code-review bulgularindan high-confidence blocker'lari duzelt; testleri ve simulator/browser evidence'i calistir.
+Mimari: subagent-parallel review + scoped implementation ownership + local Supabase forward migrations + admin/mobile validation gates + Browser/Chrome/Computer/iOS/Android simulator QA.
+Kapsam: published media hardening, dashboard mutation CSRF guard, native/browser smoke, existing smoke/audit tests, working docs/handoff. Hosted deploy, production push send, store submission ve destructive hosted data mutation yok.
+Cikti: Strict TS/TSX/SQL patch, validation command evidence, simulator/browser QA notes, remaining production risk list.
+Yasaklar: unrelated dirty revert yok, false-green simulator sonucu yok, secrets/cookies/session stores inspect etmek yok, public/disruptive actions without confirmation yok, broad rewrite yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, structured logging, strict typing, focused minimal changes, no silent failures.
+
+## Current Plan (Production Code Review + Refactor Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Verify the last three requested slices with production-level review, run broad validation, exercise browser/native smoke paths where available, and fix high-confidence blockers found during review.
+
+## Production Code Review + Refactor Sweep Architectural Decisions
+
+- Treat already-applied migration files as migration history, not mutable scratch files. New DB behavior changes must go into a forward migration, while the untracked historical files must be preserved for git parity.
+- Keep the new business event detail route and support modal architecture. Fix correctness and native layout risks without redesigning those surfaces.
+- Use React Query mutation error state for user-visible request failures, but catch async press-handler rejections so native does not redbox.
+- Make `join_business_event_atomic` conflict-idempotent with `ON CONFLICT DO NOTHING` plus locked existing-row handling. This preserves clear statuses (`SUCCESS`, `ALREADY_JOINED`, `VENUE_REMOVED`) and avoids raw unique-constraint leaks under double taps.
+- Revoke default execution grants on new helper functions in a separate hardening migration.
+
+## Prompt
+
+Sen production release code-review ve refactor engineer olarak calisiyorsun.
+Hedef: Son uc promptaki degisikliklerin gercekten dogru calistigini kanitla; web/mobile/Supabase/native validation calistir; subagent bulgularini topla; high-confidence release blocker'lari minimal diff ile duzelt.
+Mimari: evidence-first review + requested plugin/tool smoke + focused TSX fixes + forward-only Supabase migration hardening + working-doc handoff.
+Kapsam: support history scroll, business event detail, repeatable announcement push, city-scoped business join RPC, validation docs. Unrelated dirty dosyalari revert etme.
+Cikti: Strict TSX/SQL patch, validation command evidence, browser/native smoke notes, subagent bulgu ozeti.
+Yasaklar: false-green test sonucu yok, uygulanmis migration dosyasini sessizce rewrite etmek yok, token'i olmayan cihaza push gitmis gibi gostermek yok, catch-all silent failure yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, focused changes, no unrelated revert.
+
+## Current Plan (Business Event Detail + Repeatable Announcement Push)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Make support history visibly self-scrolling, allow repeated announcement push sends, avoid no-device-token hard failures, and open business event cards into a real detail screen instead of a popup.
+
+## Business Event Detail + Repeatable Announcement Push Architectural Decisions
+
+- Keep support requests in the existing modal architecture. The fix is to make the bounded history `ScrollView` visibly scrollable and nested-scroll friendly, not to redesign support.
+- Keep push delivery truthful: enabled device tokens are still required for remote phone notifications, including when the user is outside the app. The send operation should skip users without enabled tokens and return a successful zero-target result when nobody is currently push-targetable.
+- Remove repeat-send blocking in `send-announcement-push`. Existing notification rows remain as audit/delivery history, and each button press creates a new delivery attempt for all currently resolved, preference-enabled, token-enabled recipients.
+- Update admin push availability so `SENT` no longer disables the button. `PARTIAL` and `FAILED` remain useful status hints, but all active published announcements can be pushed again.
+- Add `/business/event-detail` as a hidden tab route. It should resolve event data from the existing business overview query, show event timing, description, venue/business context, scanner/history actions, join/leave where applicable, and no modal popup.
+- Route business event cards from `home` and `events` to the detail page with explicit `eventId` and `businessId` params. Keep scanner/history buttons as separate direct actions.
+
+## Prompt
+
+Sen Expo mobile ve Supabase Edge Function release engineer olarak calisiyorsun.
+Hedef: Tuki/support gecmisinde cok mesaj oldugunda liste kendi icinde scroll oldugunu belirginlestir; announcement push'u tekrar tekrar gonderilebilir yap; token'i olmayan kullanicilar yuzunden tum push istegini hata gibi gostermeyi birak; isletme event kartlarini popup yerine detay sayfasina ac.
+Mimari: bounded support history ScrollView polish + send-announcement-push repeatable delivery semantics + admin push availability update + hidden Expo Router business detail route + existing business overview query reuse.
+Kapsam: mobile support sheet, mobile business home/events/detail surfaces, admin announcement panel, announcement Edge Function, working docs, validation. Native APNs/FCM provider setup bu slice'ta degismez.
+Cikti: Strict TS/TSX/Deno patch, mobile/admin/function validation, acik push-token davranisi notu.
+Yasaklar: token'i olmayan cihaza push gitmis gibi gostermek yok, onceki notification audit kayitlarini silmek yok, business event join/leave yetki kurallarini UI-only yapmak yok, unrelated dirty revert yok.
+Standartlar: AGENTS.md explicit errors, strict typing, no silent failures, focused minimal diff, user-facing FI/EN copy.
+
+## Current Plan (Club Event Cancel Confirm + Announcement Acknowledgement)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Add localized destructive confirmation for club event cancellation and move announcement acknowledgement writes behind an atomic Supabase RPC so the student popup does not redbox on RLS failures.
+
+## Club Event Cancel Confirm + Announcement Acknowledgement Architectural Decisions
+
+- Add confirmation at every direct event-cancel button, not only delete. Web can use the existing lightweight `window.confirm` pattern already used by announcements/login slides; mobile should use `Alert.alert` like the existing event delete confirmation.
+- Keep cancel and delete semantics separate. Cancel preserves operational history and hides the event from active views; delete remains permanent only for drafts.
+- Add `acknowledge_announcement_atomic(p_announcement_id uuid)` as a SECURITY DEFINER RPC. It must derive the user from `auth.uid()`, verify `public.can_read_announcement`, and upsert the acknowledgement idempotently.
+- Keep mobile query invalidation keyed by the known session user id, but do not trust a user id parameter for the DB write.
+- Popup close should never produce an uncaught promise. If acknowledgement fails, log a structured warning and dismiss only the local popup instance so the app remains usable; feed/detail screens continue exposing retriable errors.
+
+## Prompt
+
+Sen Supabase RLS ve Expo/Next.js UX hardening engineer olarak calisiyorsun.
+Hedef: Organizer club event cancel aksiyonlari icin FI/EN onay popup'i ekle; student announcement `Selvä/Got it` acknowledgement RLS redbox'unu atomik RPC ve popup error handling ile kapat; Apple login gereksinimini resmi kaynaklara dayanarak netlestir.
+Mimari: Web `window.confirm` guard + mobile `Alert.alert` guard + SECURITY DEFINER RPC + mobile mutation transport update + hosted migration verification.
+Kapsam: club event cancel buttons, announcement acknowledgement DB/mobile flow, working docs, validation. Apple login implementasyonu bu slice'ta sadece karar/gereksinim analizi olarak kalir.
+Cikti: Strict TS/TSX/SQL patch, hosted migration apply proof, admin/mobile validation, Apple login notlari.
+Yasaklar: Cancel'i delete ile birlestirmek yok, client-supplied user id ile DB yazmak yok, popup redbox yok, unrelated dirty revert yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, localized user-facing copy.
+
+## Current Plan (Native Simulator Completion + Login Sheet Fix)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Complete the remaining feasible validation, fix Android login sheet visibility, apply the city-scope migration to hosted Supabase, and capture browser/computer/native simulator evidence.
+
+## Native Simulator Completion + Login Sheet Architectural Decisions
+
+- Keep login controls in one vertical flow on mobile. The language selector is a full-width row component, so it must not be placed as a sibling inside a horizontal title row.
+- Preserve the current student/business mode split and legal-consent gate. The fix is layout-only, not an auth-policy change.
+- Centralize mobile storage behind a platform adapter. Native keeps SecureStore; web export uses browser localStorage so Browser smoke can validate login without loading native-only SecureStore methods.
+- Keep iOS simulator smoke deterministic by terminating/uninstalling the previous app before install and building with signing enabled so keychain-backed storage is not tested in an entitlement-less app.
+- Apply the city-scope migration to hosted Supabase with the Supabase migration tool/API so production and local behavior match.
+- Re-run Android native smoke after the login layout patch and inspect the UI tree/screenshot. Re-run iOS smoke with clean build cache; if simulator tooling still stalls, record the exact gate instead of claiming false green.
+- Use Browser for mobile-web rendering only. Use Computer/Xcode/adb for native simulator surfaces. Treat SimCam as a documented future QR camera automation path unless it is already installed.
+
+## Prompt
+
+Sen Expo mobile QA, Supabase migration ve native simulator engineer olarak calisiyorsun.
+Hedef: Android login ekraninda slider disinda auth kontrollerinin gorunmemesine neden olan layout regresyonunu duzelt; city scope migration'ini hosted Supabase'e uygula; Browser/Computer/Android/iOS simulator araclariyla mumkun olan smoke kanitini topla; SimCam/serve-sim sinirlarini dogru raporla.
+Mimari: minimal login layout patch + hosted migration apply + native smoke runner + Browser mobile-web visual check + Computer Use simulator inspection.
+Kapsam: mobile login layout, working docs/handoff, hosted migration apply, validation commands and simulator/browser artifacts. SimCam kurulumu ve DNS custom-domain aktivasyonu bu slice disinda.
+Cikti: Strict TSX/doc patch, hosted migration proof, Android/iOS smoke evidence, Browser/Computer evidence, kalan real-device/SimCam notlari.
+Yasaklar: auth flow'u yeniden tasarlama yok, false-green simulator sonucu yok, newly downloaded GUI app install/run yok, unrelated dirty revert yok.
+Standartlar: AGENTS.md, explicit errors, no silent failures, focused minimal diff, real evidence over assumptions.
+
+## Current Plan (City Scope + Runtime Warning + Simulator QA)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Make city-scoped event discovery/eligibility consistent, remove reported mobile runtime warnings/regressions, document Supabase custom-domain requirements, and verify with local browser/native smoke where possible.
+
+## City Scope + Runtime Warning + Simulator QA Architectural Decisions
+
+- Use city as a soft discovery priority for students and a hard eligibility boundary for businesses and organizers.
+- Student discovery will keep all public/upcoming events visible, but order the student's primary department-tag city first so local events are the default experience without hiding travel-worthy events.
+- Business join eligibility is enforced in `join_business_event_atomic` with normalized city comparison. Mobile/web copy must expose a first-class `EVENT_CITY_MISMATCH` status instead of a generic error.
+- Organizer event creation is enforced in `create_club_event_atomic`: the event city must match the active club city for organizer-owned creates. Existing update paths will reject changing the city away from the event's club city.
+- Announcement feed freshness should not open a broad realtime channel that can error repeatedly. Use bounded polling/refetch for in-app state, while remote/offline delivery remains Expo push based.
+- For Supabase URL branding, do not proxy storage/auth casually through Cloudflare. The correct path is Supabase Custom Domains, then update `NEXT_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_URL` to the branded API hostname.
+
+## Prompt
+
+Sen Expo, Supabase ve release-QA engineer olarak calisiyorsun.
+Hedef: Ogrenci event kesfinde sehir onceligini ekle; isletme ve organizator event uygunlugunu DB/API seviyesinde sehirle sinirla; profile navigation ve announcement realtime warning sorunlarini duzelt; Supabase custom domain gereksinimini dokumante et; Browser/native simulator smoke ile dogrula.
+Mimari: Supabase atomic RPC/trigger-level invariant + mobile read-model sort + explicit mutation status mapping + polling-based announcement invalidation + release docs.
+Kapsam: mobile student/business/organizer event surfaces, admin organizer event API/transport, Supabase migration, working docs, validation and simulator smoke. Production DNS activation is documented but not performed from code.
+Cikti: Strict TS/SQL patch, local migration validation, mobile/admin checks, simulator/browser evidence.
+Yasaklar: UI-only authorization, broad noisy realtime fallback, hiding other-city student events completely, Cloudflare proxy-as-storage workaround, unrelated dirty revert yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, no silent failures, repeatable smoke tests.
+
 ## Current Plan (Private Media Staging + Mobile Edge Protection)
 
 - **Date:** 2026-05-08
@@ -5124,3 +5370,48 @@ Standartlar: AGENTS.md, Presentations skill, imagegen skill asset rules, Finnish
 - Visually inspect both contact sheets for readability, rhythm, and brand coherence.
 - Verify PPTX zip structure contains the expected slide XML files: 12 organizer slides and 11 business slides.
 - Run scoped `git --no-pager diff --check` for the presentation deliverables and working notes.
+# Current Plan (Release Candidate Bug Fix Slice)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Fix the reported admin organization account, announcement update, and student Approt profile navigation regressions while keeping release preparation moving.
+
+## Architectural Decisions
+
+- Re-publish `admin_create_club_owner_account_atomic` with a new idempotent Supabase migration and `pgrst` schema reload notification so hosted PostgREST can discover the RPC.
+- Keep website, Instagram, logo URL and banner URL optional in manual account forms; only owner identity and required business/organization location fields remain required.
+- Treat event-scoped announcements as immutable in audience semantics: if `eventId` exists, submit/update as `STUDENTS` and do not let the select drift to `ALL`, `BUSINESSES`, or `CLUBS`.
+- Make student profile header navigation push a unique profile route URL so repeated taps from Approt still open the hidden profile screen after returning.
+
+## Prompt
+
+Sen release-candidate full-stack bug fix engineer olarak calisiyorsun.
+Hedef: Admin organizer account RPC not-found hatasini hosted Supabase icin idempotent migration + schema reload ile kapat; event-scoped announcement update audience drift bug'ini UI ve submit payload seviyesinde engelle; student Approt profile button navigation no-op regresyonunu duzelt; optional URL/media fields'in required olmadigini dogrula.
+Mimari: Supabase security-definer RPC migration + focused Next.js form normalization + Expo Router profile navigation patch + validation commands.
+Kapsam: admin organization account creation, announcements panel update flow, student profile header action, working docs and release notes. Google Play/App Store dashboard form submissions destructive/external visible oldugu icin bu slice'ta sadece hazirlik ve yonlendirme.
+Cikti: SQL/TS/TSX patch, hosted/local migration apply attempt, admin/mobile typecheck/lint validation, net release status.
+Yasaklar: store console'da kullanici onayi olmadan submit/deploy/yayin yok, unrelated dirty revert yok, auth flow redesign yok, push token absence'i veri kaybi gibi gosterme yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, no silent failures, strict typing, minimal focused diff.
+# Current Plan (Published Media Hardening)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Prevent published event and announcement media from being replaced by arbitrary caller-supplied public URLs, and clean up newly published public objects when DB writes fail.
+
+## Published Media Architectural Decisions
+
+- Treat private staging paths as the only source for newly published media. Caller-provided public preview URLs are not trusted for persistence.
+- For published updates without a new staged object, preserve the existing DB media URL when the form still sends it, or clear media when the form sends an empty URL.
+- For published creates without staged media, store `null` media instead of trusting a submitted URL.
+- Roll back a newly copied public object on both DB error and no-row update paths.
+- Add a forward Supabase trigger migration that rejects published event/announcement media URLs unless they are same-project public URLs in the expected bucket.
+
+## Prompt
+
+Sen OmaLeima admin media transport ve Supabase storage hardening engineer olarak calisiyorsun.
+Hedef: Published event/announcement media alanlarinin arbitrary caller-supplied public URL ile degistirilmesini engelle; publish-copy sonrasi DB write basarisiz olursa yeni public object'i temizle; DB seviyesinde expected bucket URL invariant'i ekle.
+Mimari: Next.js route transport server-side URL decision + existing private staging publish helper + public storage cleanup rollback + forward-only Postgres trigger guard.
+Kapsam: admin event/announcement transport, media cleanup helper if needed, Supabase media guard migration, focused validation. Historical migrations, mobile flows, unrelated dirty files yok.
+Cikti: Strict TS/SQL patch, admin typecheck/lint or targeted TS validation, local migration validation if feasible.
+Yasaklar: caller URL fallback yok, applied migration rewrite yok, silent cleanup failure yok, unrelated revert yok, broad UI redesign yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, focused minimal diff, no silent failures.

@@ -125,6 +125,21 @@ Current mobile security controls therefore must stay server-side and source-of-t
 
 Do not put static Cloudflare bypass secrets or service-role secrets into the mobile app. If we need Cloudflare-level protection for mobile mutations later, the production architecture should route selected mobile write endpoints through a Cloudflare Worker or API gateway on an OmaLeima domain, then forward to Supabase with normal user JWT validation plus Worker-side bot/rate controls. Supabase Auth and Realtime can remain direct unless we intentionally redesign those flows.
 
+## Supabase branded API/Auth/Storage domain
+
+If Google login or image URLs still show `*.supabase.co`, that is expected until Supabase Custom Domains is activated for the hosted project. Cloudflare or Vercel custom domains for the web app do not change Supabase Auth callback URLs or Storage public URLs.
+
+Launch timing note: Supabase Custom Domains requires a paid Supabase plan and the Custom Domain add-on, currently planned as a final store/web launch expense. Do not block development on this. Pay for the Pro plan plus the custom domain add-on when the app is otherwise ready to submit to App Store, Google Play, and production web.
+
+Use one Supabase API hostname, for example `https://api.omaleima.fi`, for Auth, Realtime, Edge Functions, and Storage:
+
+1. Enable Supabase Custom Domains for the production project from the Supabase dashboard or CLI.
+2. Add the DNS CNAME from `api.omaleima.fi` to the current Supabase project hostname.
+3. Add the required ACME/TXT verification record and wait for Supabase certificate activation.
+4. Add both callback URLs in Google Cloud OAuth during the cutover: the old `https://<project-ref>.supabase.co/auth/v1/callback` and the new `https://api.omaleima.fi/auth/v1/callback`.
+5. After activation, set production `NEXT_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_URL` to `https://api.omaleima.fi`, rebuild web/mobile, and rerun OAuth + public Storage URL smoke.
+6. Keep the old project hostname available during rollout, but do not store new public media URLs with the old hostname after the env cutover.
+
 ## Senin icin kisa not (TR)
 
 Bu bolum sadece sana yonelik kisa ozet. Ana teknik akis degismiyor.

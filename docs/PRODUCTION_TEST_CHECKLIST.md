@@ -28,6 +28,9 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] Android dev/preview/store build yeni native dependency graph ile yeniden alindi.
 - [ ] Mobile edge security boundary kontrol edildi: Cloudflare web WAF sadece web domainini koruyor; mobil direkt Supabase Auth/RLS/Edge Functions/Storage kontrolleri production'da aktif.
 - [ ] Private `media-staging` bucket production'da private, event/announcement draft gorselleri staging path + signed URL ile gorunuyor, publish sonrasi public copy olusuyor ve staging temizleniyor.
+- [ ] Supabase Pro plan + Custom Domain add-on final launch asamasinda aktif edildi; bu maliyet App Store/Google Play/production web submission hazir olana kadar ertelendi.
+- [ ] Supabase Custom Domain cutover tamamlandi: Google OAuth callback, `NEXT_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_URL`, Edge Function URLs ve Storage public URLs `api.omaleima.fi` gibi markali Supabase hostname'i uzerinden calisiyor.
+- [ ] City scope smoke tamamlandi: student local-city events first siralaniyor, business baska sehir eventine katilamiyor, organizer kendi club city disinda event create/update edemiyor.
 
 ## 1. Web Public Site
 

@@ -1,0 +1,41 @@
+# Production Remaining Gaps
+
+**Date:** 2026-05-09  
+**Branch:** `feature/code-review-refactor-sweep`  
+**Decision:** Private pilot is feasible with operator supervision. Broad public launch on web, iOS, and Android is not ready until the items below are closed.
+
+This file lists the remaining issues that cannot be fully completed from this workspace alone because they require external provider accounts, physical devices, production credentials, store-console work, paid service setup, or owner/business decisions. Code-side items that can be safely fixed in-repo should not live here as blockers; they should be implemented on the feature branch.
+
+## Current product fit
+
+OmaLeima is aligned with the core Finland student event problem: digital leima collection for appro/pub-crawl/overalls events, short-lived QR scanning, rewards, leaderboards, organizer tools, and admin oversight. The current codebase is strong enough for a controlled private pilot, especially with one known club, known venues, and supervised operator accounts.
+
+The product is not yet ready for broad public launch because launch readiness depends on external verification and production operations that cannot be proven only by repository code.
+
+## External blockers before broad public launch
+
+| Priority | Gap | Why it matters | Owner-side action |
+|---|---|---|---|
+| P0 | **iOS login policy** | The mobile student login currently relies on Google. App Store review generally requires Sign in with Apple or an accepted equivalent/privacy-preserving alternative when third-party social login is offered. | Decide and configure the Apple/Auth provider path or prepare written exemption evidence before App Store submission. |
+| P0 | **Real-device Android proof** | Simulator/emulator checks do not prove Android Google OAuth callback, FCM/Expo remote push delivery, notification tap routing, or camera QR scanning on actual hardware. | Test an Android development/internal-track build on a physical Android device and record the result. |
+| P0 | **Real-device iOS/TestFlight proof** | iOS simulator screenshots do not prove APNs delivery/tap, real camera QR scanning, TestFlight install behavior, share/save sheets, Photos permission, or store-signed keychain behavior. | Test a TestFlight or development build on a physical iPhone and record the result. |
+| P0 | **Store-console readiness** | App Store Connect and Google Play Console records, listing assets, privacy labels, submission credentials, and review steps are external to this repo. | Create store records, upload final screenshots/copy, configure privacy/support URLs, and set submission credentials outside the repo. |
+| P1 | **Production observability provider** | The master plan expects crash/error monitoring, but provider setup needs account/project decisions and production DSNs/tokens. | Choose Sentry or an equivalent provider, create projects for web/mobile/functions, set production secrets, and define alert recipients. |
+| P1 | **Production custom domain cutover** | Supabase Auth, Storage, Realtime, and Edge Function URLs still require a Supabase custom-domain setup if final branded API/Auth URLs are desired. This may require a paid Supabase plan/add-on. | Activate Supabase Custom Domains, configure DNS, update OAuth callback URLs, rotate env vars, rebuild clients, and smoke OAuth/media URLs. |
+| P1 | **Real operator credentials** | Placeholder or fixture operator accounts are acceptable for local/hosted smoke, but not for a real pilot. | Pick the first pilot club, final venue/scanner roster, and replace placeholder emails/passwords with real operator identities. |
+| P1 | **Production secret rotation** | Final Supabase, Expo, Vercel, OAuth, and store credentials must be rotated and stored outside the repo before public launch. | Rotate hosted secrets, keep credential files outside git, and rerun the repo's pilot secret/operator hygiene audits. |
+| P1 | **Backup/restore and incident procedure** | Repository code cannot prove disaster recovery. Production needs a tested restore path and owner-facing incident process. | Define RTO/RPO, confirm Supabase backup coverage, run a restore drill in a safe environment, and document who responds during event day incidents. |
+| P2 | **Chrome extension test path** | The Codex Chrome Extension backend repeatedly failed with `Browser is not available: extension`; Playwright fallback is usable but not the requested Chrome-extension path. | Reinstall/repair the extension/native host locally and rerun browser checks if Chrome-extension evidence is required. |
+
+## Operational gaps to decide before scaling
+
+1. **Business owner vs business staff model:** The app has working business scanner/event/report surfaces, but self-serve owner staff management is still a product decision. For a private pilot, manual admin-created staff accounts are acceptable. For scale, decide whether owners need staff invites, scanner device reset, role assignment, and business dashboard controls.
+2. **Club staff role depth:** Organizer surfaces are strong, but a lighter staff-only reward/claim operator mode may be needed for larger events where many volunteers validate rewards.
+3. **Paid plan and cost decisions:** Supabase custom domains, observability, and store operations may introduce recurring costs. Decide these only when moving from private pilot to public launch.
+
+## Launch position
+
+- **Private pilot:** feasible after real operator accounts are configured and the final hosted dry-run passes.
+- **Public iOS launch:** blocked until iOS login policy and physical-device/TestFlight proof are closed.
+- **Public Android launch:** blocked until real Android OAuth, push, and camera QR proof are closed.
+- **Public web launch:** technically close, but should not be declared production-ready until release traceability, observability, incident handling, and final hosted smoke evidence are complete.

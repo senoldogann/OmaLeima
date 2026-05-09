@@ -2,6 +2,152 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Production Gap Report + Git Cleanup)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Convert the subagent production-readiness findings into a clear committed report, clean release traceability by grouping the accumulated dirty branch into logical commits, and fix only code-side issues that can be safely completed from this workspace without external provider setup.
+
+## Production Gap Report + Git Cleanup Findings
+
+- The product direction is sound for Finnish student appro/pub-crawl events, but public launch remains blocked by external/provider tasks: iOS Apple login policy, real-device store smoke, custom-domain/store-console setup, production observability provider setup, and final operator credentials.
+- The user explicitly does not want Apple login or Sentry implementation in this slice. Those items should be documented as remaining outside-work/backlog rather than partially wired.
+- Release traceability is the local issue that can be fixed here: the branch has many modified files and untracked forward migrations. These should be staged into intentional commits, while generated screenshots/output folders should be ignored rather than committed.
+- Safe code-side work from this environment should avoid broad refactors. Prioritize small backend hardening that does not require external credentials, such as rate-limit coverage for QR token generation if the existing rate-limit table/RPC can be reused.
+- Do not rewrite historical migrations or reset the worktree. Preserve already-applied forward migration files so a clean checkout can match hosted/local database state.
+
+## Current Review (Final Production Readiness Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Re-run a final production-readiness pass over the current dirty release branch using focused subagents, existing admin/mobile/Supabase/Edge validation gates, Chrome skill retry, Computer/simulator inspection, Expo/iOS/Android smoke evidence, and only minimal fixes for newly discovered release blockers.
+
+## Final Production Readiness Sweep Findings
+
+- The latest handoff already reports successful hosted Supabase migration apply, `send-announcement-push` deploy, Vercel production deploy, admin Playwright smokes, mobile static/export gates, Supabase local lint/migration gates, and native launch/render checks. This pass must verify those claims, not assume them.
+- The branch remains intentionally dirty with large accumulated release work and untracked forward migration files. Do not revert unrelated work or rewrite migration history that may already be applied locally/hosted.
+- Chrome extension communication previously failed with `Browser is not available: extension` even while local install/native-host checks passed. Retry the Chrome skill path once; if it still fails, document the plugin blocker and rely on project Playwright smokes for web evidence.
+- Physical-device-only flows are now user-tested: Google OAuth callback, camera QR scan, APNs/FCM push delivery/tap, share/save sheet, Photos permission, and screenshot protection. Local simulator checks should cover launch/render/regression behavior only.
+- Highest-risk re-check surfaces are announcement push repeatability/audit/no-target behavior, admin cookie-authenticated mutation hardening, private media staging ownership guards, FK index/search-path migrations, business event detail navigation, native login/startup, and admin review dashboards.
+
+## Current Review (Full Production Verification Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Run a broad production verification pass across the already-dirty release branch: admin web, Expo mobile, Supabase migrations/RLS/Edge Functions, Chrome-admin checks, Computer/simulator checks, Expo/iOS/Android validation, and subagent-assisted review.
+
+## Full Production Verification Sweep Findings
+
+- The branch intentionally contains many prior changes and untracked migration files. This sweep must not revert unrelated work or rewrite already-applied migration history.
+- The previous hosted deploy proved repeatable announcement push behavior with durable attempt rows, but a final local/hosted sanity pass should still verify that `ANNOUNCEMENT_ALREADY_SENT` is not reachable through current code paths.
+- Chrome previously failed to communicate with the Codex Chrome Extension even after extension/native-host checks. This sweep should retry the Chrome skill workflow once and record the blocker precisely if it persists.
+- `serve-sim` is already running on `http://localhost:3200`; keep it available for simulator/web inspection instead of restarting unless the process is gone.
+- The user's physical-device tests cover Google OAuth callback, camera QR scan, APNs/FCM push delivery/tap, share/save sheet, Photos permission, and screenshot protection. Simulator QA should focus on launch/render/regression evidence and must not re-label physical-only coverage as simulator-proven.
+- The highest-risk surfaces for this pass are cookie-authenticated admin mutation routes, recent media staging DB triggers, announcement push delivery/audit lifecycle, business event detail navigation/join-leave handlers, and native startup/login flows.
+
+## Current Review (P2 Durable Push/Media/Index Backlog)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Close the remaining P2 backlog from the production sweep: durable announcement push attempt rows before Expo delivery, DB-level private media staging ownership by club membership, FK index backlog, Chrome admin panel smoke, and `serve-sim` availability check.
+
+## P2 Durable Push/Media/Index Findings
+
+- `supabase/functions/send-announcement-push/index.ts` currently writes `notifications` only after Expo Push returns and writes `audit_logs` only at the end. If Expo send throws or the function crashes between send and DB insert, there is no durable delivery-attempt row proving the push attempt started.
+- No separate delivery attempt table exists. A forward migration should add `announcement_push_delivery_attempts`, optionally link `notifications.delivery_attempt_id`, and index the new FK columns so repeat sends remain auditable.
+- Private staging DB triggers validate only the staging path shape. They do not verify that the profile UUID embedded in `users/<uuid>/...` is an active organizer/owner for the target club or a platform admin.
+- Announcement staging ownership needs two modes: platform announcements require a platform-admin owner; club/event announcements require an active club event editor or platform admin owner.
+- Local FK-index query still reports missing indexes across announcement preferences, announcements, audit logs, scanner/device tables, membership/user references, fraud signals, promotions, QR uses, rewards, and stamps. Add explicit `create index if not exists` entries in a forward migration.
+- The user has now confirmed physical-device tests for Google OAuth callback, camera QR scan, APNs/FCM delivery/tap, share/save sheet, Photos permission, and screenshot protection. The handoff should move these from open blockers to externally tested evidence.
+
+## Current Review (Production Hardening Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Start a broad release-candidate code review/refactor pass across admin web, mobile/native, Supabase/Edge Functions, browser QA, and simulator QA using requested plugin workflows and subagents.
+
+## Production Hardening Sweep Findings
+
+- Previous production review left two code-fixable blockers open: published media URL fallback/rollback hardening and shared same-origin/CSRF protection for cookie-authenticated dashboard mutation routes.
+- Native/browser validation has partial evidence, but must be treated carefully: simulator evidence proves launch/render only, not real device push, camera, OAuth callback, share sheet, Photos permission, or APNs/FCM delivery.
+- Chrome plugin communication failed previously with `Browser is not available: extension`; the Chrome skill requires a retry and local extension/native-host checks before falling back or reporting the plugin blocker.
+- `qa:mobile-native-simulator-smoke` can be long-running and may hang around iOS install/build steps. It must not be left running at final response time; if it stalls, capture the exact phase and process state.
+- The repo has many dirty files and untracked migration files that may be deliberate prior work. Any refactor must be focused, avoid unrelated reverts, and preserve migration history files that already appear in local/remote migration lists.
+
+## Current Review (Production Code Review + Refactor Sweep)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Re-review the last three prompt slices, run broad production validation, use requested browser/native tooling where practical, collect subagent findings, and fix high-confidence release blockers without reverting unrelated work.
+
+## Production Code Review + Refactor Sweep Findings
+
+- The latest support-history scroll change made the indicator visible and enabled nested scrolling, but the native `ScrollView` still needs an explicit shrinking/bounded style inside the max-height modal card so long histories scroll instead of being clipped.
+- The new business event detail screen correctly replaces the old preview popup route, but its join/leave handlers await `mutateAsync` without catching rejections. React Query will expose the error state, but the async press handler can still create an unhandled promise rejection on native.
+- Announcement push is now repeatable and no-device-token-safe at the Edge Function level. The remaining production caveat is physical: a user must have opened the native app and allowed notifications before a remote push can reach the phone while outside the app.
+- Database review found the city-scope migration versions are already present in local/remote migration history while their SQL files are still untracked in git. They must be included before release so a clean checkout matches the applied DB history.
+- `join_business_event_atomic` enforces city scope and permissions, but concurrent first joins can still race into the `event_venues(event_id, business_id)` unique constraint because the insert path is not conflict-idempotent.
+- New city-scope helper functions use default execute grants. Trigger-only/security-definer helpers should revoke public execution, and utility helpers should expose only the roles that need them.
+
+## Current Review (Business Event Detail + Repeatable Announcement Push)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Verify support history scrolling, make announcement pushes repeatable without noisy no-token blockers, and replace business event preview modals with a full detail screen.
+
+## Business Event Detail + Repeatable Announcement Push Findings
+
+- Mobile support `SupportRequestSheet` already wraps the form in a bounded sheet `ScrollView`, and the latest support requests open inside a separate bounded history modal. The history list can scroll internally when there are many support messages, but its indicator is currently hidden, making the behavior less obvious.
+- Mobile push registration is configured through Expo notifications and `register-device-token`; remote push can reach users outside the app only after a native app install has registered an enabled Expo device token. Users without an enabled token cannot physically receive remote push, so the send flow should skip those users without turning the whole operation into a scary admin error.
+- `supabase/functions/send-announcement-push/index.ts` currently blocks repeat sends when previous notification rows exist and returns `ANNOUNCEMENT_ALREADY_SENT`. This conflicts with the requested admin/organizer behavior: announcements should be sendable repeatedly, with each send creating a fresh delivery/audit attempt.
+- The same Edge Function returns a 404 when all resolved recipients lack enabled device tokens. That is useful diagnostics for launch, but in production UI it reads like a broken send. The safer behavior is a successful no-target result with counts, while still making the skipped-token count explicit.
+- Admin announcement UI disables the push button when `pushDeliveryStatus === "SENT"` and displays "already sent"; that must change if repeat sends are allowed server-side.
+- Business mobile `events.tsx` currently opens a `Modal` preview for active/upcoming/completed/joinable event cards. There is no `/business/event-detail` route, so businesses cannot inspect the event with the same depth as the student event detail surface.
+
+## Current Review (Club Event Cancel Confirm + Announcement Acknowledgement)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Prevent accidental club event cancellations, fix the mobile announcement acknowledgement RLS failure reported from the student popup, and clarify Apple login requirements.
+
+## Club Event Cancel Confirm + Announcement Acknowledgement Findings
+
+- Web organizer `apps/admin/src/features/club-events/components/club-events-panel.tsx` calls `/api/club/events/cancel` directly from both the selected event form and recent events table. The button label is destructive but there is no final confirmation, so it is easy to confuse with closing/cancelling the edit form.
+- Mobile organizer `apps/mobile/src/app/club/events.tsx` already confirms the `Delete event` path, but the separate `Cancel event` button in the edit form still cancels immediately.
+- Mobile announcement popup `apps/mobile/src/features/announcements/announcement-popup-bridge.tsx` awaits `acknowledgeMutation.mutateAsync` without a `try/catch`; any DB/RLS error becomes an uncaught promise and redbox.
+- Announcement acknowledgements currently write directly to `public.announcement_acknowledgements` from the client. The table has an insert RLS policy, but event-scoped visibility and client-side `upsert` make this brittle. A security-definer RPC that checks `auth.uid()` and `can_read_announcement` before writing gives a single audited DB boundary.
+- Existing feed/detail acknowledgement callers already catch errors; the popup needs the same non-redbox behavior while still logging the failure with structured context.
+
+## Current Review (Native Simulator Completion + Login Sheet Fix)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Finish remaining city/custom-domain/simulator validation, fix the Android login sheet that visually exposes only the slider/language row, and document the practical SimCam/browser-simulator boundary.
+
+## Native Simulator Completion + Login Sheet Findings
+
+- Android login screenshot shows the mobile login hero correctly, but the auth sheet effectively exposes only `LanguageDropdown`. In `apps/mobile/src/app/auth/login.tsx`, the shared `LanguageDropdown` has `width: "100%"` and is placed inside a horizontal `cardHeader` row next to title copy. On Android this can consume the row and push the real sign-in controls out of the visible sheet. The login sheet should use a vertical header: title/subtitle first, then language selector, then role selector and auth controls.
+- Browser mobile-web export exposed direct `expo-secure-store` calls outside the Supabase adapter. Those calls work in native builds but produce `getValueWithKeyAsync is not a function` on web-export login surfaces. Storage must be centralized behind a platform-aware adapter so Browser smoke can test the same auth screen without native-only module calls.
+- iOS simulator release smoke initially launched but then stayed on session-restore. Computer Use plus simulator logs showed `ERR_KEY_CHAIN` from SecureStore because the simulator app was built/installed without a deterministic fresh install and without the keychain access group entitlement in the project config. The smoke runner should uninstall previous app data and the iOS target should carry the keychain access group for signed builds.
+- The previous iOS simulator launch smoke failed after a long Xcode timeout and produced an incomplete `.app` without a bundle id. The next attempt should clean DerivedData/cache and use the repo smoke runner rather than installing a half-built artifact.
+- Browser-in-Codex can render local web/mobile-web targets, but it cannot embed the native iOS Simulator itself unless a separate bridge/server is installed. This repo has Codex native actions and screenshot artifacts, not a checked-in `serve-sim` bridge.
+- SimCam is a valid third-party iOS Simulator virtual camera option according to the vendor docs. It can inject QR/image/video sources into AVFoundation, but it is not currently installed here; installing/running a newly acquired GUI camera tool is outside safe automatic execution without explicit user confirmation and license handling.
+
+## Current Review (City Scope + Runtime Warning + Simulator QA)
+
+- **Date:** 2026-05-08
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Fix the reported student profile navigation regression, noisy announcement realtime/animation warnings, define and enforce city-scoped event rules, explain Supabase custom domain branding, and run the strongest available local web/native smoke checks.
+
+## City Scope + Runtime Warning + Simulator QA Findings
+
+- Student event header uses `router.navigate("/student/profile")`. Hidden tab routes can become a no-op after returning from the same destination; profile access should push a fresh route intent instead of relying on navigate semantics.
+- Announcement warning originates from a broad `postgres_changes` subscription to `public.announcements`. The table is in the realtime publication, but broad RLS-protected table subscriptions can still fail with `CHANNEL_ERROR` for some mobile sessions. Push delivery is already handled separately, so the app needs a non-noisy invalidation strategy that does not depend on a fragile broad realtime channel.
+- Business event opportunities are already filtered client-side by business city, but `join_business_event_atomic` does not enforce the same invariant. A crafted client could join an out-of-city event unless the RPC rejects it.
+- Organizer event creation defaults to the selected club city in mobile, but both mobile and web still pass editable city text. The authoritative rule belongs in `create_club_event_atomic` and event update paths: non-admin club organizers may only create/update events in their club city.
+- Students do not have a dedicated `profiles.city` field. Their best current city signal is the primary selected `department_tags.city`. The product-friendly model should prioritize that city while still allowing deliberate all-city discovery because students may travel for events.
+- Supabase OAuth/storage URLs showing `*.supabase.co` are expected until a Supabase custom domain is activated and both web/mobile clients use that custom Supabase URL. Cloudflare site protection alone does not rewrite Supabase Auth or Storage hostnames.
+
 ## Current Review (Private Media Staging + Mobile Edge Protection)
 
 - **Date:** 2026-05-08
@@ -2885,3 +3031,42 @@ Implement a focused admin support inbox. Add a security-definer RPC that locks t
 ## Organizer + Business Sales Deck Review Outcome
 
 Build two editable PPTX files with Presentations artifact-tool: `docs/presentations/omaleima-organizer-presentation-fi.pptx` and `docs/presentations/omaleima-business-presentation-fi.pptx`. Keep copy conversational Finnish, use dark OmaLeima/lime visual language, use project image assets only, and keep all essential copy as editable slide text.
+# Review - Release Candidate Bug Fix Slice
+
+## Scope
+
+- Admin manual organization account creation fails because hosted Supabase/PostgREST cannot find `admin_create_club_owner_account_atomic`.
+- Admin announcement update can submit an event-scoped announcement with a non-`STUDENTS` audience, which violates the existing validation invariant.
+- Student Approt header profile shortcut can become a navigation no-op after returning from the hidden profile route.
+- Business/organization manual account optional public media/social fields should stay optional; existing UI already leaves website, Instagram, logo and banner URLs optional.
+
+## Risks
+
+- Recreating an RPC must preserve service-role-only execution and rollback-safe account creation behavior.
+- Event-scoped announcements must retain their `clubId` and `eventId`; only the invalid audience drift should be blocked.
+- Mobile profile navigation should not break normal tab back behavior or expose the hidden profile tab.
+
+## Existing Logic
+
+- Existing SQL body lives in `supabase/migrations/20260507194500_admin_club_owner_account.sql`.
+- Admin organization route calls `/api/admin/club-accounts/create` and rolls back newly created auth users if the DB RPC fails.
+- Announcement validation intentionally requires `eventId => clubId + STUDENTS`.
+- `StudentProfileHeaderAction` currently uses a plain `router.push("/student/profile")`.
+# Current Review (Published Media Hardening)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Admin event and announcement media transport, storage cleanup helpers, and forward Supabase media guard migration.
+
+## Published Media Findings
+
+- Event and announcement publish/update transports already copy private `media-staging` objects into public buckets at publish time.
+- Published create/update paths still fall back to caller-supplied `coverImageUrl` / `imageUrl` when no staged path is provided, so an arbitrary public URL can replace published media.
+- Announcement update rolls back newly published media only when no row is returned, but not when the DB update returns an error. Event update has the same DB-error rollback gap.
+- Existing DB triggers block draft public storage URLs and published rows retaining staging paths, but they do not ensure published event/announcement media URLs belong to the expected public Supabase bucket.
+
+## Published Media Risks
+
+- A malicious or stale client could point published event or announcement media at a third-party URL, bypassing the private staging lifecycle.
+- If a publish copy succeeds and the DB update fails, the newly public object can become orphaned.
+- DB-level validation must be forward-only; historical migrations are migration history and must not be edited.

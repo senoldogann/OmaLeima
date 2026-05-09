@@ -2,6 +2,136 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Production Gap Report + Git Cleanup)
+
+- [x] Re-read required project docs and inspect current git/dirty state.
+- [x] Add focused REVIEW/PLAN/TODOS context for this cleanup slice.
+- [x] Create a clear remaining production gaps report file.
+- [x] Apply safe in-repo fixes that do not require Apple/Sentry/provider setup.
+- [x] Ignore generated local artifacts instead of committing screenshots/output folders.
+- [x] Run targeted validation gates for touched surfaces.
+- [x] Commit intentional changes in logical groups with the required co-author trailer.
+- [x] Update PROGRESS handoff with the final state and remaining external blockers.
+
+## Current Todos (Final Production Readiness Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Record final production-readiness review and REASONS plan before new edits.
+- [x] Spawn focused subagents for security, DB/RLS, TypeScript/mobile-web, and QA evidence.
+- [x] Re-run admin, mobile, Supabase, and Edge validation gates.
+- [x] Re-run Chrome skill path and admin Playwright smoke fallback as needed.
+- [x] Collect Computer, Expo, iOS, and Android simulator evidence.
+- [x] Fix any newly verified production blockers with minimal focused changes.
+- [x] Update handoff with command evidence, subagent findings, and remaining risks.
+
+## Current Todos (Full Production Verification Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Record full production verification review and REASONS plan before edits.
+- [x] Spawn focused subagents for security, DB, TypeScript/UI, and QA evidence.
+- [x] Run broad admin/mobile/Supabase/Edge validation gates.
+- [x] Retry Chrome admin panel workflow and record exact result.
+- [x] Run Computer/Expo/iOS/Android feasible simulator checks.
+- [x] Fix high-confidence blockers found during review.
+- [x] Update handoff with command evidence, subagent findings, and remaining risks.
+
+## Current Todos (P2 Durable Push/Media/Index Backlog)
+
+- [x] Re-read required project docs after compaction.
+- [x] Inspect announcement push attempt lifecycle, media staging triggers, and FK index backlog.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add durable push delivery attempt schema and FK indexes.
+- [x] Update `send-announcement-push` to create attempt rows before Expo send and update outcomes.
+- [x] Add DB-level media staging owner membership validation.
+- [x] Run Supabase/Edge/admin validation gates.
+- [x] Run approved Chrome admin panel smoke and `npx serve-sim`.
+- [x] Update handoff with user-confirmed real-device tests and remaining risks.
+
+## Current Todos (Production Hardening Sweep)
+
+- [x] Re-read required project docs and requested plugin skill workflows.
+- [x] Record production hardening review and REASONS plan.
+- [x] Inspect published event/announcement media transport and Supabase media guards.
+- [x] Block caller-supplied public URL replacement for published media.
+- [x] Add rollback cleanup on DB update errors after publish-copy.
+- [x] Add forward DB guard for expected published media buckets.
+- [x] Run targeted admin/Supabase validation for media hardening.
+- [x] Spawn scoped subagents for media hardening, CSRF guard, security/database review, and QA.
+- [x] Run baseline validation and inspect high-risk admin/mobile/Supabase surfaces.
+- [x] Implement and integrate high-confidence hardening fixes.
+- [x] Run rendered web QA with Chrome path or documented fallback.
+- [x] Run native simulator checks with Computer/iOS/Android tooling where practical.
+- [x] Re-run targeted validation gates and update handoff.
+
+## Current Todos (Production Code Review + Refactor Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Spawn focused review subagents for recent slice verification, TS, DB, security, and QA.
+- [x] Run broad baseline admin/mobile/Supabase validation.
+- [x] Fix high-confidence blockers from subagent/local review.
+- [x] Run targeted validation after fixes.
+- [x] Use Chrome/Computer/native tooling for practical rendered smoke evidence.
+- [x] Collect remaining subagent results.
+- [x] Update production handoff.
+
+## Current Todos (Business Event Detail + Repeatable Announcement Push)
+
+- [x] Re-read required project docs and inspect support, push, and business event surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make support history modal visibly self-scrolling.
+- [x] Make announcement push sends repeatable and no-token-safe.
+- [x] Update admin announcement push availability/copy.
+- [x] Add business event detail route and route cards to it.
+- [x] Run relevant validation.
+- [x] Update handoff.
+
+## Current Todos (Club Event Cancel Confirm + Announcement Acknowledgement)
+
+- [x] Re-read required project docs after the new runtime report.
+- [x] Inspect club event cancel buttons and mobile announcement acknowledgement flow.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add localized event-cancel confirmation on web organizer panel.
+- [x] Add localized event-cancel confirmation on mobile organizer form.
+- [x] Add and apply atomic announcement acknowledgement RPC.
+- [x] Update mobile acknowledgement mutation and popup error handling.
+- [x] Run admin/mobile/Supabase validation.
+- [x] Document Apple login requirement and update handoff.
+
+## Current Todos (Release Candidate Bug Fix Slice)
+
+- [x] Re-read required project docs and Chrome skill guidance.
+- [x] Inspect admin organization account RPC, announcement update validation, student profile navigation, and manual account optional fields.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add hosted-safe RPC republish migration and schema reload.
+- [x] Lock event-scoped announcement update payloads to `STUDENTS`.
+- [x] Make student profile header navigation repeatable from Approt.
+- [x] Run admin/mobile validation and targeted Supabase verification where available.
+- [x] Update handoff with release/store next steps and push-token interpretation.
+
+## Current Todos (Native Simulator Completion + Login Sheet Fix)
+
+- [x] Re-read required project docs and load Browser/Computer/native simulator guidance.
+- [x] Inspect Android login screenshot against the current auth/login layout.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix login sheet layout so language selector cannot hide sign-in controls.
+- [x] Apply city-scope migration to hosted Supabase and verify runtime objects.
+- [x] Re-run mobile/admin validation and native simulator smoke where available.
+- [x] Use Browser and Computer Use for visible smoke/inspection evidence.
+- [x] Update handoff with SimCam/browser-simulator limits and remaining real-device checks.
+
+## Current Todos (City Scope + Runtime Warning + Simulator QA)
+
+- [x] Re-read required project docs and load Browser/Computer/native QA guidance.
+- [x] Inspect student profile navigation, announcement realtime, event city, and Supabase custom-domain surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix student profile header navigation regression.
+- [x] Replace noisy announcement realtime invalidation with a non-redbox/non-warning freshness path.
+- [x] Add DB-level city eligibility for business event joins and organizer event creation/update.
+- [x] Prioritize student local-city events without hiding other cities.
+- [x] Document Supabase custom-domain setup for branded Auth/Storage URLs.
+- [x] Run local Supabase, admin/mobile validation, and simulator/browser smoke where available.
+- [x] Update handoff with evidence, remaining DNS/setup tasks, and real-device checks.
+
 ## Current Todos (Private Media Staging + Mobile Edge Protection)
 
 - [x] Re-read required project docs and load Codex Security guidance.
