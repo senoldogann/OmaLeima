@@ -2,13 +2,21 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (QR Rate Limit Hosted Apply + UX)
+
+- [x] Re-read required project docs and inspect active QR error rendering.
+- [x] Record focused REVIEW/PLAN/TODOS context for QR hosted apply and UX.
+- [x] Add localized calm `QR_RATE_LIMITED` copy on the active QR screen.
+- [x] Apply the QR limiter migration and deploy `generate-qr-token` with Supabase CLI, or document the blocker.
+- [x] Run validation, update handoff, and commit the follow-up slice.
+
 ## Current Todos (QR Generation Rate-Limit Tuning)
 
 - [x] Re-read required project docs and inspect the real QR refresh cadence.
 - [x] Add focused REVIEW/PLAN/TODOS context for the QR tuning slice.
 - [x] Replace the generic dashboard limiter with a QR-specific Supabase burst limiter.
 - [x] Run targeted Deno/Supabase validation and diff checks.
-- [ ] Commit the QR tuning slice with a focused message.
+- [x] Commit the QR tuning slice with a focused message.
 
 ## Current Todos (Production Gap Report + Git Cleanup)
 

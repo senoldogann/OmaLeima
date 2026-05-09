@@ -110,6 +110,16 @@ const createNativeShareModuleError = (moduleName: string, language: "fi" | "en")
       : `${moduleName} is not included in this app build. Install the latest OmaLeima development or store build and try again.`
   );
 
+const resolveQrTokenErrorMessage = (error: Error, language: "fi" | "en"): string => {
+  if (error.message.startsWith("QR_RATE_LIMITED:")) {
+    return language === "fi"
+      ? "QR päivittyy hetken päästä automaattisesti. Pidä tämä näkymä auki."
+      : "QR will refresh automatically in a moment. Keep this screen open.";
+  }
+
+  return error.message;
+};
+
 const isUnknownRecord = (value: unknown): value is UnknownRecord =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -933,8 +943,8 @@ export default function StudentActiveEventScreen() {
                     {canRenderQrSvg && qrSvgQuery.data ? <SvgXml height={272} width={272} xml={qrSvgQuery.data} /> : null}
                     {qrTokenQuery.error ? (
                       <View style={styles.qrPlaceholder}>
-                        <Text style={styles.qrErrorText}>{language === "fi" ? "QR päivitys epäonnistui" : "Token refresh failed"}</Text>
-                        <Text selectable style={styles.qrErrorDetailText}>{qrTokenQuery.error.message}</Text>
+                        <Text style={styles.qrErrorText}>{language === "fi" ? "QR päivittyy" : "QR is catching up"}</Text>
+                        <Text selectable style={styles.qrErrorDetailText}>{resolveQrTokenErrorMessage(qrTokenQuery.error, language)}</Text>
                       </View>
                     ) : null}
                   </View>

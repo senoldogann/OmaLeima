@@ -2,6 +2,18 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (QR Rate Limit Hosted Apply + UX)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Apply the QR-specific Supabase limiter to hosted Supabase if CLI credentials allow it, deploy the updated `generate-qr-token` Edge Function, and make the rare mobile `QR_RATE_LIMITED` state user-friendly.
+
+## QR Rate Limit Hosted Apply + UX Findings
+
+- The dedicated QR limiter is intentionally generous and should not be visible in normal use. If it ever appears, it likely means a reconnect/remount loop or a very fast retry burst, not that the user did something wrong.
+- The active QR screen currently renders `qrTokenQuery.error.message` directly. For `QR_RATE_LIMITED`, that would expose backend phrasing even though the right UX is calm: keep the screen open and let the automatic refresh catch up.
+- Hosted Supabase is linked to project `jwhdlcnfhrwdxptmoret`. The migration can be applied with Supabase CLI if the local session has permissions. If CLI auth fails, the migration/function deployment must be left as a clear handoff item.
+
 ## Current Review (QR Generation Rate-Limit Tuning)
 
 - **Date:** 2026-05-09

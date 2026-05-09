@@ -2,6 +2,29 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (QR Rate Limit Hosted Apply + UX)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Complete the immediate QR follow-up by smoothing the rare rate-limit UX and applying/deploying the Supabase QR limiter to the hosted project where credentials permit.
+
+## QR Rate Limit Hosted Apply + UX Architectural Decisions
+
+- Keep the backend limit unchanged: it is burst-only and already aligned with the QR refresh cadence.
+- Add a local screen-level mapper for `QR_RATE_LIMITED` so the active QR screen shows a calm FI/EN retry/catch-up message instead of raw backend text.
+- Use Supabase CLI for hosted apply/deploy: apply `20260509170000_qr_token_generation_rate_limit.sql`, deploy `generate-qr-token`, and verify the table/function exists if possible.
+- If hosted CLI actions fail because of credentials/network, do not fake success. Record the exact blocker in `PROGRESS.md` and keep the migration/function code committed.
+
+## Prompt
+
+Sen OmaLeima QR release follow-up engineer olarak calisiyorsun.
+Hedef: QR rate-limit state'i kullaniciya sakin ve anlasilir gostermek; QR limiter migration'ini hosted Supabase'e uygulamak; `generate-qr-token` Edge Function'i deploy etmek veya uygulanamayan adimlari acik handoff olarak belgelemek.
+Mimari: focused mobile error mapper + Supabase CLI hosted migration apply + Edge Function deploy + validation/handoff.
+Kapsam: `apps/mobile/src/app/student/active-event.tsx`, QR migration deploy, `generate-qr-token` deploy, REVIEW/PLAN/TODOS/PROGRESS. Apple/Sentry/business-role redesign yok.
+Cikti: localized UX patch, hosted apply/deploy evidence or blocker note, validation, focused commit.
+Yasaklar: raw provider secrets loglamak yok, false deploy success yok, unrelated refactor yok, destructive DB operation yok.
+Standartlar: AGENTS.md explicit errors, strict typing, zero-trust backend, focused changes.
+
 ## Current Plan (QR Generation Rate-Limit Tuning)
 
 - **Date:** 2026-05-09
