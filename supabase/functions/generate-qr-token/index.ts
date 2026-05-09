@@ -58,6 +58,10 @@ type RateLimitResult =
       limit?: number;
     };
 
+const qrGenerationWindowSeconds = 20;
+const qrGenerationWindowMaxRequests = 12;
+const qrGenerationDayMaxRequests = 4000;
+
 const parseRequestBody = (body: Record<string, unknown>): GenerateQrTokenRequest => {
   if (!isUuid(body.eventId)) {
     throw new Error("eventId must be a valid UUID.");
@@ -115,12 +119,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
-    const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc("check_dashboard_mutation_rate_limit", {
+    const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc("check_generate_qr_token_rate_limit", {
       p_actor_user_id: user.id,
-      p_scope: `generate-qr-token:${body.eventId}`,
-      p_window_seconds: 60,
-      p_window_max_requests: 12,
-      p_day_max_requests: 1000,
+      p_event_id: body.eventId,
+      p_window_seconds: qrGenerationWindowSeconds,
+      p_window_max_requests: qrGenerationWindowMaxRequests,
+      p_day_max_requests: qrGenerationDayMaxRequests,
     });
 
     if (rateLimitError !== null) {

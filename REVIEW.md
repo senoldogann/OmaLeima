@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (QR Generation Rate-Limit Tuning)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Revisit the newly added QR token rate limit so it matches the real product flow, then replace the generic dashboard mutation limiter with a dedicated Supabase-backed QR burst limiter that does not break normal student QR refresh behavior.
+
+## QR Generation Rate-Limit Tuning Findings
+
+- The current mobile QR screen uses `useGenerateQrTokenQuery` with `refetchOnMount: "always"`, `refetchOnReconnect: "always"`, and a token-driven interval that refetches when the current token expires. In `_shared/qrJwt.ts`, QR TTL is 45 seconds and `qrRefreshAfterSeconds` is 30 seconds, so normal use already expects regular regeneration.
+- The last change reused `check_dashboard_mutation_rate_limit`, which is semantically correct for abuse protection but too generic for QR generation. The user wants a QR-specific Supabase policy that reflects product cadence and does not accidentally throttle legitimate QR refreshes.
+- A dedicated QR limiter should focus on **burst protection**, not low steady-state throttling. Normal student usage is one request roughly every 30-45 seconds while the QR screen is active; the real risk is a tight retry loop, duplicated clients, or abuse scripts calling the Edge Function many times in a few seconds.
+- A dedicated table/function pair under Supabase keeps the control explicit and auditable without coupling QR flow to admin dashboard mutation scopes.
+
 ## Current Review (Production Gap Report + Git Cleanup)
 
 - **Date:** 2026-05-09

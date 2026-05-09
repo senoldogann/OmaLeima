@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (QR Generation Rate-Limit Tuning)
+
+- [x] Re-read required project docs and inspect the real QR refresh cadence.
+- [x] Add focused REVIEW/PLAN/TODOS context for the QR tuning slice.
+- [x] Replace the generic dashboard limiter with a QR-specific Supabase burst limiter.
+- [x] Run targeted Deno/Supabase validation and diff checks.
+- [ ] Commit the QR tuning slice with a focused message.
+
 ## Current Todos (Production Gap Report + Git Cleanup)
 
 - [x] Re-read required project docs and inspect current git/dirty state.

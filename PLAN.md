@@ -2,6 +2,30 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (QR Generation Rate-Limit Tuning)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Replace the generic QR token limiter with a dedicated Supabase QR-generation policy that protects against burst abuse without affecting the normal student refresh loop.
+
+## QR Generation Rate-Limit Tuning Architectural Decisions
+
+- Keep QR protection in Supabase, but separate it from dashboard mutation limits. Add a dedicated rate-event table and a `check_generate_qr_token_rate_limit` function.
+- Tune the limiter for burst protection: allow normal 30-45 second refresh behavior plus remount/reconnect wiggle room, but block very fast repeated calls that only happen in buggy loops or abuse scenarios.
+- Keep the rate limit scoped to `actor_user_id + event_id` so one active event does not block another and normal event switching is unaffected.
+- Reuse the same zero-trust pattern as other RPC-backed protections: `SECURITY DEFINER`, explicit grants only to `service_role`, row-level cleanup inside the function, and structured JSON responses.
+- Return the same `QR_RATE_LIMITED` error shape from the Edge Function if the dedicated function reports a block, but choose generous thresholds so normal users should never hit it.
+
+## Prompt
+
+Sen OmaLeima Supabase QR security engineer olarak calisiyorsun.
+Hedef: Student QR token uretim akisini bozmadan, dashboard mutation limiter'dan ayri, QR'ye ozel bir Supabase burst-rate-limit politikasi kur ve Edge Function'i buna bagla.
+Mimari: forward-only SQL migration + dedicated `qr_token_generation_rate_events` table + `check_generate_qr_token_rate_limit` security-definer RPC + minimal `generate-qr-token` TypeScript update.
+Kapsam: QR TTL/refresh ritmine uyumlu limitler, per-user/per-event scope, working-doc updates, validation, focused commit. Mobile UX copy degisikligi veya broader auth/push logic yok.
+Cikti: SQL + TypeScript minimal patch, validation evidence, clean focused commit.
+Yasaklar: dashboard limiter'i yeniden kullanmak yok, normal QR screen refresh akisini bozmak yok, historical migration rewrite yok, unrelated revert yok.
+Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, focused changes.
+
 ## Current Plan (Production Gap Report + Git Cleanup)
 
 - **Date:** 2026-05-09
