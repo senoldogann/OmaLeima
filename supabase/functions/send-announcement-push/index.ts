@@ -60,12 +60,6 @@ type AnnouncementPreferenceRow = {
   user_id: string;
 };
 
-type ExistingNotificationRow = {
-  payload: Record<string, unknown>;
-  status: "FAILED" | "READ" | "SENT";
-  user_id: string | null;
-};
-
 type PushTarget = {
   expoPushTokens: string[];
   userId: string;
@@ -74,6 +68,7 @@ type PushTarget = {
 type NotificationInsertRow = {
   body: string;
   channel: "PUSH";
+  delivery_attempt_id: string;
   event_id: string | null;
   payload: Record<string, unknown>;
   sent_at: string | null;
@@ -81,6 +76,46 @@ type NotificationInsertRow = {
   title: string;
   type: "ANNOUNCEMENT";
   user_id: string;
+};
+
+type DeliveryAttemptStatus = "FAILED" | "NO_TARGETS" | "PARTIAL" | "PENDING" | "SENT";
+
+type DeliveryAttemptRow = {
+  id: string;
+};
+
+type DeliveryAttemptUpdate = {
+  completed_at?: string;
+  error_code?: string;
+  error_message?: string;
+  expo_ticket_results?: Record<string, unknown>[];
+  notifications_created?: number;
+  notifications_failed?: number;
+  notifications_sent?: number;
+  status: DeliveryAttemptStatus;
+};
+
+type CreateDeliveryAttemptParams = {
+  announcement: AnnouncementRow;
+  createdBy: string;
+  recipientCount: number;
+  recipientsSkippedNoDeviceToken: number;
+  recipientsSkippedPreferenceDisabled: number;
+  targetTokenCount: number;
+  targetUserCount: number;
+};
+
+type NoTargetResponseParams = {
+  activeRecipientCountBeforePreferenceFilter: number;
+  announcement: AnnouncementRow;
+  createdBy: string;
+  message: string;
+  noTargetReason: string;
+  recipientCountAfterPreferenceFilter: number;
+  recipientCountBeforePreferenceFilter: number;
+  recipientsSkippedNoDeviceToken: number;
+  recipientsSkippedPreferenceDisabled: number;
+  supabase: SupabaseClient;
 };
 
 const parseRequestBody = (body: Record<string, unknown>): SendAnnouncementPushRequest => {
@@ -114,58 +149,6 @@ const isAnnouncementActiveNow = (announcement: AnnouncementRow): boolean => {
   return true;
 };
 
-const readAnnouncementId = (payload: Record<string, unknown>): string | null => {
-  const value = payload.announcementId;
-
-  return typeof value === "string" ? value : null;
-};
-
-const buildPreviousDeliveryState = (
-  rows: ExistingNotificationRow[],
-  announcementId: string
-): {
-  hasAnyAttempt: boolean;
-  hasUntargetableAttempt: boolean;
-  successfulUserIds: Set<string>;
-  unresolvedFailedUserIds: Set<string>;
-} => {
-  const failedUserIds = new Set<string>();
-  const successfulUserIds = new Set<string>();
-  let hasAnyAttempt = false;
-  let hasUntargetableAttempt = false;
-
-  for (const row of rows) {
-    if (readAnnouncementId(row.payload) !== announcementId) {
-      continue;
-    }
-
-    hasAnyAttempt = true;
-
-    if (row.user_id === null) {
-      hasUntargetableAttempt = true;
-      continue;
-    }
-
-    if (row.status === "SENT" || row.status === "READ") {
-      successfulUserIds.add(row.user_id);
-      continue;
-    }
-
-    failedUserIds.add(row.user_id);
-  }
-
-  const unresolvedFailedUserIds = new Set<string>(
-    Array.from(failedUserIds).filter((userId) => !successfulUserIds.has(userId))
-  );
-
-  return {
-    hasAnyAttempt,
-    hasUntargetableAttempt,
-    successfulUserIds,
-    unresolvedFailedUserIds,
-  };
-};
-
 const groupTokensByUser = (rows: DeviceTokenRow[]): Map<string, string[]> => {
   const grouped = new Map<string, string[]>();
 
@@ -190,6 +173,41 @@ const serializeTokenResults = (results: ExpoPushSendResult[]): Record<string, un
           error: result.message,
         }
   );
+
+const serializeAttemptTicketResults = (
+  pushResults: ExpoPushSendResult[],
+  pushMessageOwners: string[]
+): Record<string, unknown>[] =>
+  pushResults.map((result, index): Record<string, unknown> => {
+    const userId = pushMessageOwners[index] ?? null;
+
+    return result.ok
+      ? {
+          ok: true,
+          ticketId: result.ticketId,
+          userId,
+        }
+      : {
+          ok: false,
+          error: result.message,
+          userId,
+        };
+  });
+
+const getDeliveryAttemptStatus = (
+  notificationsSent: number,
+  notificationsFailed: number
+): DeliveryAttemptStatus => {
+  if (notificationsSent === 0 && notificationsFailed > 0) {
+    return "FAILED";
+  }
+
+  if (notificationsFailed > 0) {
+    return "PARTIAL";
+  }
+
+  return "SENT";
+};
 
 const unique = (values: string[]): string[] => Array.from(new Set(values));
 
@@ -337,6 +355,145 @@ const fetchDeviceTokensAsync = async (
   return deviceTokens;
 };
 
+const createDeliveryAttemptAsync = async (
+  supabase: SupabaseClient,
+  params: CreateDeliveryAttemptParams
+): Promise<Response | string> => {
+  const { data, error } = await supabase
+    .from("announcement_push_delivery_attempts")
+    .insert({
+      announcement_id: params.announcement.id,
+      created_by: params.createdBy,
+      metadata: {
+        announcementAudience: params.announcement.audience,
+        announcementClubId: params.announcement.club_id,
+        announcementEventId: params.announcement.event_id,
+      },
+      recipient_count: params.recipientCount,
+      recipients_skipped_no_device_token: params.recipientsSkippedNoDeviceToken,
+      recipients_skipped_preference_disabled: params.recipientsSkippedPreferenceDisabled,
+      status: "PENDING",
+      target_token_count: params.targetTokenCount,
+      target_user_count: params.targetUserCount,
+    })
+    .select("id")
+    .single<DeliveryAttemptRow>();
+
+  if (error !== null || data === null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to create announcement push delivery attempt.", {
+      announcementId: params.announcement.id,
+      deliveryAttemptError: error?.message,
+      deliveryAttemptErrorCode: error?.code,
+      targetTokenCount: params.targetTokenCount,
+      targetUserCount: params.targetUserCount,
+    });
+  }
+
+  return data.id;
+};
+
+const updateDeliveryAttemptAsync = async (
+  supabase: SupabaseClient,
+  deliveryAttemptId: string,
+  update: DeliveryAttemptUpdate,
+  announcementId: string
+): Promise<Response | null> => {
+  const { error } = await supabase
+    .from("announcement_push_delivery_attempts")
+    .update(update)
+    .eq("id", deliveryAttemptId);
+
+  if (error !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to update announcement push delivery attempt.", {
+      announcementId,
+      deliveryAttemptError: error.message,
+      deliveryAttemptErrorCode: error.code,
+      deliveryAttemptId,
+      deliveryAttemptStatus: update.status,
+    });
+  }
+
+  return null;
+};
+
+const completeNoTargetAttemptAsync = async (params: NoTargetResponseParams): Promise<Response> => {
+  const deliveryAttemptId = await createDeliveryAttemptAsync(params.supabase, {
+    announcement: params.announcement,
+    createdBy: params.createdBy,
+    recipientCount: params.recipientCountBeforePreferenceFilter,
+    recipientsSkippedNoDeviceToken: params.recipientsSkippedNoDeviceToken,
+    recipientsSkippedPreferenceDisabled: params.recipientsSkippedPreferenceDisabled,
+    targetTokenCount: 0,
+    targetUserCount: 0,
+  });
+
+  if (deliveryAttemptId instanceof Response) {
+    return deliveryAttemptId;
+  }
+
+  const updateAttemptError = await updateDeliveryAttemptAsync(
+    params.supabase,
+    deliveryAttemptId,
+    {
+      completed_at: new Date().toISOString(),
+      notifications_created: 0,
+      notifications_failed: 0,
+      notifications_sent: 0,
+      status: "NO_TARGETS",
+    },
+    params.announcement.id
+  );
+
+  if (updateAttemptError !== null) {
+    return updateAttemptError;
+  }
+
+  const { error: auditLogError } = await params.supabase
+    .from("audit_logs")
+    .insert({
+      action: "ANNOUNCEMENT_PUSH_SENT",
+      actor_user_id: params.createdBy,
+      metadata: {
+        activeRecipientCountBeforePreferenceFilter: params.activeRecipientCountBeforePreferenceFilter,
+        announcementAudience: params.announcement.audience,
+        announcementClubId: params.announcement.club_id,
+        deliveryAttemptId,
+        noTargetReason: params.noTargetReason,
+        notificationsCreated: 0,
+        notificationsFailed: 0,
+        notificationsSent: 0,
+        recipientCountAfterPreferenceFilter: params.recipientCountAfterPreferenceFilter,
+        recipientCountBeforePreferenceFilter: params.recipientCountBeforePreferenceFilter,
+        recipientsSkippedNoDeviceToken: params.recipientsSkippedNoDeviceToken,
+        recipientsSkippedPreferenceDisabled: params.recipientsSkippedPreferenceDisabled,
+      },
+      resource_id: params.announcement.id,
+      resource_type: "announcement",
+    });
+
+  if (auditLogError !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to write announcement push audit log.", {
+      announcementId: params.announcement.id,
+      auditLogError: auditLogError.message,
+      auditLogErrorCode: auditLogError.code,
+      deliveryAttemptId,
+    });
+  }
+
+  return jsonResponse({
+    announcementId: params.announcement.id,
+    deliveryAttemptId,
+    message: params.message,
+    notificationsCreated: 0,
+    notificationsFailed: 0,
+    notificationsSent: 0,
+    recipientsSkippedNoDeviceToken: params.recipientsSkippedNoDeviceToken,
+    recipientsSkippedPreferenceDisabled: params.recipientsSkippedPreferenceDisabled,
+    status: "SUCCESS",
+    type: "ANNOUNCEMENT",
+  }, 200);
+};
+
 Deno.serve(async (request: Request): Promise<Response> => {
   const methodResponse = assertPostRequest(request);
 
@@ -456,24 +613,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
         });
       }
     }
-
-    const { data: existingNotifications, error: existingNotificationsError } = await supabase
-      .from("notifications")
-      .select("payload,status,user_id")
-      .eq("type", "ANNOUNCEMENT")
-      .in("status", ["FAILED", "SENT", "READ"])
-      .contains("payload", { announcementId: announcement.id })
-      .returns<ExistingNotificationRow[]>();
-
-    if (existingNotificationsError !== null) {
-      return errorResponse(500, "INTERNAL_ERROR", "Failed to read existing announcement notifications.", {
-        announcementId: announcement.id,
-        existingNotificationsError: existingNotificationsError.message,
-        existingNotificationsErrorCode: existingNotificationsError.code,
-      });
-    }
-
-    const previousDeliveryState = buildPreviousDeliveryState(existingNotifications, announcement.id);
 
     let recipientUserIds: string[] = [];
 
@@ -621,34 +760,20 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     recipientUserIds = unique(recipientUserIds);
 
-    if (previousDeliveryState.hasAnyAttempt) {
-      if (previousDeliveryState.hasUntargetableAttempt) {
-        return errorResponse(409, "ANNOUNCEMENT_ALREADY_SENT", "Announcement push has previous delivery records that cannot be safely retried.", {
-          announcementId: announcement.id,
-        });
-      }
-
-      if (previousDeliveryState.unresolvedFailedUserIds.size === 0) {
-        return errorResponse(409, "ANNOUNCEMENT_ALREADY_SENT", "Announcement push was already sent.", {
-          announcementId: announcement.id,
-        });
-      }
-
-      recipientUserIds = recipientUserIds.filter((recipientUserId) =>
-        previousDeliveryState.unresolvedFailedUserIds.has(recipientUserId)
-      );
-
-      if (recipientUserIds.length === 0) {
-        return errorResponse(404, "NOTIFICATION_RECIPIENTS_NOT_FOUND", "No unresolved failed announcement recipients were found for retry.", {
-          announcementId: announcement.id,
-          unresolvedFailedRecipients: previousDeliveryState.unresolvedFailedUserIds.size,
-        });
-      }
-    }
+    const recipientCountBeforePreferenceFilter = recipientUserIds.length;
 
     if (recipientUserIds.length === 0) {
-      return errorResponse(404, "NOTIFICATION_RECIPIENTS_NOT_FOUND", "No announcement recipients were found.", {
-        announcementId: announcement.id,
+      return completeNoTargetAttemptAsync({
+        activeRecipientCountBeforePreferenceFilter: 0,
+        announcement,
+        createdBy: user.id,
+        message: "Announcement push completed. No announcement recipients were found.",
+        noTargetReason: "NO_RECIPIENTS",
+        recipientCountAfterPreferenceFilter: 0,
+        recipientCountBeforePreferenceFilter,
+        recipientsSkippedNoDeviceToken: 0,
+        recipientsSkippedPreferenceDisabled: 0,
+        supabase,
       });
     }
 
@@ -683,10 +808,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     if (recipientUserIds.length === 0) {
-      return errorResponse(404, "NOTIFICATION_RECIPIENTS_NOT_FOUND", "No push was sent because every resolved active recipient has disabled notifications for this announcement source. Ask users to enable announcement notifications in the mobile app, or choose a different audience.", {
+      return completeNoTargetAttemptAsync({
         activeRecipientCountBeforePreferenceFilter,
-        announcementId: announcement.id,
+        announcement,
+        createdBy: user.id,
+        message: "Announcement push completed. Every resolved active recipient has disabled notifications for this announcement source.",
+        noTargetReason: "PREFERENCES_DISABLED",
+        recipientCountAfterPreferenceFilter: 0,
+        recipientCountBeforePreferenceFilter,
+        recipientsSkippedNoDeviceToken: 0,
         recipientsSkippedPreferenceDisabled,
+        supabase,
       });
     }
 
@@ -715,10 +847,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     if (pushTargets.length === 0) {
-      return errorResponse(404, "NOTIFICATION_RECIPIENTS_NOT_FOUND", "No push was sent because the resolved recipients do not have enabled mobile device tokens. They may need to open the mobile app and allow notifications before receiving pushes.", {
-        announcementId: announcement.id,
+      return completeNoTargetAttemptAsync({
+        activeRecipientCountBeforePreferenceFilter,
+        announcement,
+        createdBy: user.id,
+        message: "Announcement push completed. No currently enabled mobile device tokens were available.",
+        noTargetReason: "NO_DEVICE_TOKENS",
         recipientCountAfterPreferenceFilter: recipientUserIds.length,
+        recipientCountBeforePreferenceFilter,
         recipientsSkippedNoDeviceToken,
+        recipientsSkippedPreferenceDisabled,
+        supabase,
       });
     }
 
@@ -744,11 +883,57 @@ Deno.serve(async (request: Request): Promise<Response> => {
       }
     }
 
-    const pushResults = await sendExpoPushMessages(
-      env.expoPushApiUrl,
-      env.expoPushAccessToken,
-      pushMessages,
-    );
+    const deliveryAttemptId = await createDeliveryAttemptAsync(supabase, {
+      announcement,
+      createdBy: user.id,
+      recipientCount: recipientUserIds.length,
+      recipientsSkippedNoDeviceToken,
+      recipientsSkippedPreferenceDisabled,
+      targetTokenCount: pushMessages.length,
+      targetUserCount: pushTargets.length,
+    });
+
+    if (deliveryAttemptId instanceof Response) {
+      return deliveryAttemptId;
+    }
+
+    let pushResults: ExpoPushSendResult[];
+
+    try {
+      pushResults = await sendExpoPushMessages(
+        env.expoPushApiUrl,
+        env.expoPushAccessToken,
+        pushMessages,
+      );
+    } catch (error) {
+      const updateAttemptError = await updateDeliveryAttemptAsync(
+        supabase,
+        deliveryAttemptId,
+        {
+          completed_at: new Date().toISOString(),
+          error_code: "EXPO_PUSH_SEND_FAILED",
+          error_message: error instanceof Error ? error.message : "unknown error",
+          notifications_created: 0,
+          notifications_failed: 0,
+          notifications_sent: 0,
+          status: "FAILED",
+        },
+        announcement.id
+      );
+
+      if (updateAttemptError !== null) {
+        return updateAttemptError;
+      }
+
+      return errorResponse(502, "PUSH_SEND_FAILED", "Expo Push API send failed.", {
+        announcementId: announcement.id,
+        deliveryAttemptId,
+        error: error instanceof Error ? error.message : "unknown error",
+        targetTokenCount: pushMessages.length,
+        targetUserCount: pushTargets.length,
+      });
+    }
+
     const resultsByUser = new Map<string, ExpoPushSendResult[]>();
 
     pushResults.forEach((pushResult, index) => {
@@ -780,6 +965,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
           deviceTokenCount: pushTarget.expoPushTokens.length,
           eventId: announcement.event_id,
         },
+        delivery_attempt_id: deliveryAttemptId,
         sent_at: hasSuccessfulDelivery ? new Date().toISOString() : null,
         status: hasSuccessfulDelivery ? "SENT" : "FAILED",
         title: announcement.title,
@@ -793,8 +979,29 @@ Deno.serve(async (request: Request): Promise<Response> => {
       .insert(notificationRows);
 
     if (insertNotificationsError !== null) {
+      const updateAttemptError = await updateDeliveryAttemptAsync(
+        supabase,
+        deliveryAttemptId,
+        {
+          completed_at: new Date().toISOString(),
+          error_code: "NOTIFICATION_RECORDING_FAILED",
+          error_message: insertNotificationsError.message,
+          expo_ticket_results: serializeAttemptTicketResults(pushResults, pushMessageOwners),
+          notifications_created: 0,
+          notifications_failed: 0,
+          notifications_sent: 0,
+          status: "FAILED",
+        },
+        announcement.id
+      );
+
+      if (updateAttemptError !== null) {
+        return updateAttemptError;
+      }
+
       return errorResponse(500, "INTERNAL_ERROR", "Failed to record announcement notifications.", {
         announcementId: announcement.id,
+        deliveryAttemptId,
         insertNotificationsError: insertNotificationsError.message,
         insertNotificationsErrorCode: insertNotificationsError.code,
       });
@@ -802,6 +1009,25 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     const notificationsSent = notificationRows.filter((row) => row.status === "SENT").length;
     const notificationsFailed = notificationRows.length - notificationsSent;
+    const completedAt = new Date().toISOString();
+    const deliveryAttemptStatus = getDeliveryAttemptStatus(notificationsSent, notificationsFailed);
+    const updateAttemptError = await updateDeliveryAttemptAsync(
+      supabase,
+      deliveryAttemptId,
+      {
+        completed_at: completedAt,
+        expo_ticket_results: serializeAttemptTicketResults(pushResults, pushMessageOwners),
+        notifications_created: notificationRows.length,
+        notifications_failed: notificationsFailed,
+        notifications_sent: notificationsSent,
+        status: deliveryAttemptStatus,
+      },
+      announcement.id
+    );
+
+    if (updateAttemptError !== null) {
+      return updateAttemptError;
+    }
 
     const { error: auditLogError } = await supabase
       .from("audit_logs")
@@ -811,12 +1037,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
         metadata: {
           announcementAudience: announcement.audience,
           announcementClubId: announcement.club_id,
+          deliveryAttemptId,
           notificationsCreated: notificationRows.length,
           notificationsFailed,
           notificationsSent,
-          recipientsSkippedAlreadyDelivered: previousDeliveryState.hasAnyAttempt
-            ? previousDeliveryState.successfulUserIds.size
-            : 0,
           recipientsSkippedPreferenceDisabled,
           recipientsSkippedNoDeviceToken,
         },
@@ -829,11 +1053,13 @@ Deno.serve(async (request: Request): Promise<Response> => {
         announcementId: announcement.id,
         auditLogError: auditLogError.message,
         auditLogErrorCode: auditLogError.code,
+        deliveryAttemptId,
       });
     }
 
     return jsonResponse({
       announcementId: announcement.id,
+      deliveryAttemptId,
       message: notificationsFailed > 0
         ? "Announcement push sent with partial delivery failures."
         : "Announcement push sent successfully.",

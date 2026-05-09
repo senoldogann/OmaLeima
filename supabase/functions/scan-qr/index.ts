@@ -12,6 +12,10 @@ import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.t
 import { verifyQrToken } from "../_shared/qrJwt.ts";
 import { isOptionalLatitude, isOptionalLongitude, isOptionalUuid, isString } from "../_shared/validation.ts";
 
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<void>) => void;
+};
+
 type ScannerLocation = {
   latitude: number | null;
   longitude: number | null;

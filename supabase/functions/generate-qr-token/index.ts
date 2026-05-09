@@ -45,6 +45,19 @@ type RegisterEventAtomicResult = {
   currentRegistrations?: number;
 };
 
+type RateLimitResult =
+  | {
+      status: "ALLOWED";
+      remainingInWindow?: number;
+      remainingToday?: number;
+    }
+  | {
+      status: "RATE_LIMITED";
+      retryAfterSeconds?: number;
+      windowSeconds?: number;
+      limit?: number;
+    };
+
 const parseRequestBody = (body: Record<string, unknown>): GenerateQrTokenRequest => {
   if (!isUuid(body.eventId)) {
     throw new Error("eventId must be a valid UUID.");
@@ -99,6 +112,42 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return errorResponse(403, "PROFILE_NOT_ACTIVE", "User profile is not active.", {
         userId: user.id,
         profileStatus: profile.status,
+      });
+    }
+
+    const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc("check_dashboard_mutation_rate_limit", {
+      p_actor_user_id: user.id,
+      p_scope: `generate-qr-token:${body.eventId}`,
+      p_window_seconds: 60,
+      p_window_max_requests: 12,
+      p_day_max_requests: 1000,
+    });
+
+    if (rateLimitError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to check QR generation rate limit.", {
+        userId: user.id,
+        eventId: body.eventId,
+        rateLimitError: rateLimitError.message,
+        rateLimitErrorCode: rateLimitError.code,
+      });
+    }
+
+    const parsedRateLimitResult = rateLimitResult as RateLimitResult | null;
+
+    if (parsedRateLimitResult === null) {
+      return errorResponse(500, "INTERNAL_ERROR", "QR generation rate limit returned no data.", {
+        userId: user.id,
+        eventId: body.eventId,
+      });
+    }
+
+    if (parsedRateLimitResult.status === "RATE_LIMITED") {
+      return errorResponse(429, "QR_RATE_LIMITED", "QR generation is temporarily rate limited.", {
+        userId: user.id,
+        eventId: body.eventId,
+        retryAfterSeconds: parsedRateLimitResult.retryAfterSeconds,
+        windowSeconds: parsedRateLimitResult.windowSeconds,
+        limit: parsedRateLimitResult.limit,
       });
     }
 
