@@ -2,6 +2,16 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Store Release Prep + Apple Sign-In)
+
+- [x] Re-read required project docs and inspect current production gaps / git state.
+- [x] Mark owner-confirmed physical QR scanning as tested without closing unrelated push/TestFlight proof.
+- [x] Review and tidy the uncommitted notification setup card change.
+- [x] Run mobile validation and diff checks for the cleanup.
+- [x] Commit the cleanup slice.
+- [ ] Create a clean Apple Sign in feature branch for store release work.
+- [ ] Open App Store Connect / Apple Developer path with user login and record the exact external setup state.
+
 ## Current Todos (Notification Completion)
 
 - [x] Re-read required project docs and inspect notification registration/routing/reminder/reward flows.

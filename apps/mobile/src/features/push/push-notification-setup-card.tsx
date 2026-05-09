@@ -21,11 +21,9 @@ const createSummary = (
   context: PushNotificationSetupCardProps["context"],
   pushState: PushDeviceRegistrationResult | null,
   permissionState: string
-): string => {
+): string | null => {
   if (pushState?.state === "registered") {
-    return language === "fi"
-      ? "Tämä laite vastaanottaa taustailmoitukset."
-      : "This device is ready for background notifications.";
+    return null;
   }
 
   if (permissionState === "denied") {
@@ -154,7 +152,7 @@ export const PushNotificationSetupCard = ({ context }: PushNotificationSetupCard
         </View>
         <View style={styles.copy}>
           <Text style={styles.title}>{language === "fi" ? "Ilmoitukset" : "Notifications"}</Text>
-          <Text style={styles.summary}>{summary}</Text>
+          {summary !== null ? <Text style={styles.summary}>{summary}</Text> : null}
           {detail !== null ? (
             <Text style={pushState?.state === "error" ? styles.errorText : styles.summary}>{detail}</Text>
           ) : null}

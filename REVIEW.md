@@ -2,6 +2,18 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Store Release Prep + Apple Sign-In)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Scope:** Mark the owner-confirmed physical QR scan proof, clean the remaining uncommitted notification-card polish, then prepare a clean Apple Sign in store-release branch.
+
+## Store Release Prep + Apple Sign-In Findings
+
+- The user confirmed QR scanning was tested on physical devices. This closes the QR/camera proof wording in `docs/PRODUCTION_REMAINING_GAPS.md`, but it does not automatically prove Android push token registration, APNs/FCM delivery, notification tap routing, or store-signed TestFlight behavior.
+- The only current uncommitted code change is `apps/mobile/src/features/push/push-notification-setup-card.tsx`, where the registered state hides redundant summary copy and keeps the ready pill as the success signal. This is small enough to validate and commit before starting Apple login work.
+- Public store release is now the active goal. Because student login uses Google, Apple App Store submission requires Sign in with Apple or an equivalent privacy-focused option; the next feature branch should focus on Supabase Apple provider setup, native Expo config, auth UI, and account/profile mapping.
+
 ## Current Review (Notification Completion)
 
 - **Date:** 2026-05-09

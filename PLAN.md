@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Store Release Prep + Apple Sign-In)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/code-review-refactor-sweep`
+- **Goal:** Clean the current release branch state, mark physical QR scanning as externally tested, then start a focused Apple Sign in branch for App Store readiness.
+
+## Store Release Prep + Apple Sign-In Architectural Decisions
+
+- Do not mix QR proof with push proof. Update the production gap wording only for physical QR/camera scanning, while keeping Android/iOS notification delivery and store-signed behavior as separate open evidence.
+- Keep the notification-card uncommitted change if validation passes: after successful registration, the ready pill is enough feedback and redundant summary copy can be hidden.
+- Start Apple login from a clean branch after committing the current workspace state. The Apple slice should include provider/config setup, mobile UI, auth callback/session handling, and validation, but should not fake external App Store Connect or Apple Developer actions that require owner login.
+
+## Prompt
+
+Sen OmaLeima store-release engineer olarak calisiyorsun.
+Hedef: Fiziksel cihaz QR scan kanitini remaining gaps dosyasinda kapat; mevcut uncommitted notification-card polish'i dogrulayip commit'le; ardindan App Store yayin hedefi icin Apple Sign in entegrasyonuna temiz branch'ten basla.
+Mimari: docs/progress handoff update + mobile validation + focused commit + yeni feature branch + Apple Developer/App Store Connect owner-login destekli setup + Expo/Supabase auth entegrasyonu.
+Kapsam: `docs/PRODUCTION_REMAINING_GAPS.md`, working docs, `apps/mobile/src/features/push/push-notification-setup-card.tsx`, git cleanup ve Apple login hazirligi. Sentry, custom domain, store submission final publish ve push proof bu slice'ta yok.
+Cikti: temiz git state, QR proof documentation, committed notification polish, Apple login branch ready.
+Yasaklar: fiziksel push/testflight kanitini QR kaniti gibi gostermek yok, destructive git reset yok, Apple hesabinda kullanici onayi olmadan externally visible/paid/destructive aksiyon yok, false provider setup success yok.
+Standartlar: AGENTS.md focused changes, strict typing, explicit limitations, non-interactive git diff, validation before commit.
+
 ## Current Plan (Notification Completion)
 
 - **Date:** 2026-05-09
