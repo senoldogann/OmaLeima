@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Edge CORS + JSON-LD Hardening)
+
+- [x] Verify Edge shared HTTP helper still used wildcard CORS.
+- [x] Verify landing JSON-LD uses `dangerouslySetInnerHTML` only for code-owned schema data.
+- [x] Restrict Edge CORS default origin and reject mismatched browser origins.
+- [x] Add shared JSON-LD renderer with script-breaking character escaping.
+- [ ] Run validation, deploy changed surfaces, merge to main, and update handoff.
+
 ## Current Todos (Admin CSP Unsafe Inline)
 
 - [x] Inspect `/Users/dogan/Downloads/omaleima-csp.patch` against current `apps/admin/next.config.ts`.

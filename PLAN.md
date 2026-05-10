@@ -2,6 +2,41 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Edge CORS + JSON-LD Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/edge-cors-jsonld-hardening`
+- **Goal:** Reduce Edge Function browser abuse surface and harden landing JSON-LD serialization without changing product behavior.
+
+## Architectural Decisions
+
+- Replace shared Edge CORS wildcard with a single allowed origin defaulting to `https://omaleima.fi`.
+- Keep native/server compatibility by allowing requests with no `Origin` header.
+- Add `OMALEIMA_EDGE_CORS_ALLOW_ORIGIN` as the explicit hosted override for environments that need a different single browser origin.
+- Reject browser requests with a mismatched `Origin` inside `assertPostRequest`, before endpoint-specific authorization logic.
+- Keep JSON-LD `dangerouslySetInnerHTML` because it is the correct way to emit schema.org scripts in React/Next, but centralize rendering through an escaping helper.
+- Escape `<`, `>`, `&`, U+2028, and U+2029 in JSON-LD output to prevent script-tag breakouts.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes deno check supabase/functions/*/index.ts`
+- `git --no-pager diff --check`
+
+## Prompt
+
+Sen OmaLeima security hardening engineer olarak calisiyorsun.
+Hedef: review raporundaki Edge CORS wildcard ve JSON-LD serialization guard bulgularini davranis bozmayacak sekilde kapat.
+Mimari: Supabase Edge shared HTTP helper + Next.js public landing JSON-LD helper.
+Kapsam: CORS header/origin guard, JSON-LD escaping, docs/handoff, validation/deploy.
+Cikti: wildcard CORS yok, code-owned JSON-LD script escaping var, Edge Functions yeniden deploy ediliyor.
+Yasaklar: native mobil/server Origin'siz cagrilari kirmak, user content'i JSON-LD helper'a sokmak, genis refactor, secrets commit etmek.
+Standartlar: explicit env override, fail-closed browser origins, structured error code, minimal diff.
+
 ## Current Plan (Admin CSP Unsafe Inline Removal)
 
 - **Date:** 2026-05-10

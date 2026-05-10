@@ -49,6 +49,7 @@ export type ErrorCode =
   | "QR_INVALID"
   | "QR_NOT_FOUND"
   | "RATE_LIMITED"
+  | "CORS_ORIGIN_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
 export type ErrorResponse = {
@@ -75,10 +76,25 @@ type EdgeRateLimitRpcResponse = {
   windowSeconds?: unknown;
 };
 
+const defaultEdgeCorsAllowOrigin = "https://omaleima.fi";
+
+const readEdgeCorsAllowOrigin = (): string => {
+  const configuredOrigin = Deno.env.get("OMALEIMA_EDGE_CORS_ALLOW_ORIGIN")?.trim();
+
+  if (typeof configuredOrigin === "string" && configuredOrigin.length > 0) {
+    return configuredOrigin;
+  }
+
+  return defaultEdgeCorsAllowOrigin;
+};
+
+const edgeCorsAllowOrigin = readEdgeCorsAllowOrigin();
+
 export const corsHeaders: HeadersInit = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": edgeCorsAllowOrigin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
 
 export const jsonResponse = (body: JsonObject, status: number): Response =>
@@ -204,7 +220,25 @@ export const enforceEdgeActorRateLimitAsync = async (
 
 export const optionsResponse = (): Response => new Response("ok", { headers: corsHeaders });
 
+const validateEdgeCorsOrigin = (request: Request): Response | null => {
+  const origin = request.headers.get("origin");
+
+  if (origin === null || origin === edgeCorsAllowOrigin) {
+    return null;
+  }
+
+  return errorResponse(403, "CORS_ORIGIN_NOT_ALLOWED", "Request origin is not allowed.", {
+    origin,
+  });
+};
+
 export const assertPostRequest = (request: Request): Response | null => {
+  const corsOriginResponse = validateEdgeCorsOrigin(request);
+
+  if (corsOriginResponse !== null) {
+    return corsOriginResponse;
+  }
+
   if (request.method === "OPTIONS") {
     return optionsResponse();
   }

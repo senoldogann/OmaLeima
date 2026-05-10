@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { getPublicLandingContent, publicSiteUrl } from "@/features/public-site/content";
+import { renderJsonLd } from "@/features/public-site/json-ld";
 import { PublicLandingPage } from "@/features/public-site/landing-page";
 
 const locale = "fi";
@@ -75,10 +76,6 @@ const faqJsonLd = {
     name: item.question,
   })),
 };
-
-const renderJsonLd = (value: Record<string, unknown>) => ({
-  __html: JSON.stringify(value),
-});
 
 export const metadata: Metadata = {
   alternates: {
