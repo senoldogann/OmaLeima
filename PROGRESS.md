@@ -5,11 +5,11 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
-- **Branch:** `fix/finland-location-fields`
+- **Branch:** `main`
 - **Yapılan iş:** Finlandiya-only launch icin country/city inputlari standardize edildi. Admin manual business ve organization account formlarinda city artik Finlandiya sehir secimi, country ise read-only `Finland`; public business application formu ayni davranisa alindi. Ilgili admin route validation'lari `country = Finland` literal ve shared city option enum'u ile hizalandi, crafted payload ile baska ulke/serbest sehir gonderimi reddediliyor. Club event create formunda country artik sabit `Finland`; event city mevcut kural geregi selected club membership city'den kilitli kalmaya devam ediyor. Mobil business profile city alani free-text yerine mevcut dependency eklemeden modal sehir seciciye cevrildi; legacy city degeri listede yoksa mevcut deger secilebilir olarak korunuyor.
 - **Neden yapıldı:** Kullanici country sorulan tum inputlarda Finlandiya'nin default ve degistirilemez olmasini, city icin de Finlandiya icindeki sehirlerin otomatik gelmesini ve yanlis yazim riskinin azaltilmasini istedi.
-- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `git --no-pager diff --check` ve hedef country/city input aramalari gecti.
-- **Sıradaki önerilen adım:** Branch main'e merge/push edildikten sonra temiz worktree deployment ile Vercel production'a alinmali; canli `/apply` ve admin manual account forms smoke edilebilir.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `git --no-pager diff --check`, hedef country/city input aramalari, GitHub Actions `Static Build Checks` run `25635136786`, temiz temporary worktree ile `npx --yes vercel@latest deploy --cwd <clean>/apps/admin --prod --yes` ve `curl -fsSI https://omaleima.fi` gecti. Vercel `omaleima-admin` production URL'i `https://omaleima.fi` olarak guncellendi.
+- **Sıradaki önerilen adım:** Canli `/apply` ve admin manual account forms authenticated/browser smoke edilebilir.
 - **Açık risk/blokaj:** Finland city listesi launch icin standard sehir/municipality secenekleri icerir; daha kucuk belediye ihtiyaci cikarsa ayni constant listesine eklenmelidir. Supabase schema/RLS degisikligi gerekmedi.
 
 - **Tarih:** 2026-05-10
