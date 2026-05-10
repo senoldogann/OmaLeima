@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Support History Density)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-density`
+- **Scope:** Increase visible support history card density so at least three items fit in the modal viewport.
+
+## Support History Density Findings
+
+- Scroll now works, but each history card can still expand too much because message preview uses three lines and admin reply preview is uncapped.
+- The fastest safe fix is to compact the card layout: cap message/reply lines, keep meta on one line, slightly reduce padding/gaps, and give the modal viewport a bit more height.
+
 ## Current Review (Support History Scroll Hardening)
 
 - **Date:** 2026-05-10

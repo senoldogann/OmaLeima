@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-05-10
 - **Branch:** `main`
+- **Yapılan iş:** Support history modal kart yogunlugu arttirildi. Mobil `SupportRequestSheet` history kartlari artik daha kompakt: subject tek satir, message iki satir, meta tek satir ve admin reply preview iki satir ile sinirli. Kart padding/gap kucultuldu ve modal viewport yuksekligi bir miktar buyutuldu; boylece history modal ayni anda daha fazla kayit gosteriyor ve hedef olarak en az uc oge gorunur hale geliyor.
+- **Neden yapıldı:** Kullanici scroll duzeldikten sonra history modalin bir kerede yalnizca tek bir mesaji gosterdigini ve ayni anda en az uc mesajin gorunmesini istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Gercek cihazda uzun reply iceren support history listesini acip ayni anda en az uc kartin gorundugu son UI smoke'u yapilabilir.
+- **Açık risk/blokaj:** Bu degisiklik repo tarafinda merge edildi ancak native kullanicilara ulasmasi yine normal mobile release surecine bagli; bu turda yeni native/store deploy tetiklenmedi.
+
+- **Tarih:** 2026-05-10
+- **Branch:** `main`
 - **Yapılan iş:** Support history modal scroll hotfix'i tamamlandi. Ortak mobil `SupportRequestSheet` icindeki history modal artik noop `Pressable` yerine pasif `View` kart shell'i kullaniyor; scroll alanina ayri bir `historyScrollViewport` eklendi ve ic `ScrollView` net `flex: 1` viewport'u icinde calisiyor. Modal kart `minHeight` + `overflow: hidden` ile sertlestirildi; uzun destek gecmisi ve uzun admin reply listesi modalin kendi icinde daha tutarli kayiyor.
 - **Neden yapıldı:** Kullanici support/history alaninda scroll'un hala calismadigini bildirdi ve daha guclu bir cozum istedi.
 - **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
