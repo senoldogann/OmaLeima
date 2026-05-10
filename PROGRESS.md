@@ -5,12 +5,12 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
-- **Branch:** `fix/web-org-profile-announcement-validation`
-- **Yapılan iş:** Web organizasyon tarafinda iki production validation hotfix'i tamamlandi. Club profile update route'u `websiteUrl` icin eksik protocol girilen degerleri guvenli `https://` ile normalize ediyor; `instagramUrl` icin `@handle`, `handle`, `instagram.com/...` ve absolute URL formatlarini absolute `http(s)` URL'ye ceviriyor ve gercek URL parse kontrolu uyguluyor. Club profile panel'i route'un `fieldErrors` cevabini okuyup generic `Club profile payload validation failed.` yerine ilk hatali alani ve sebebi gosteriyor. Announcement compose formunda Supabase private staging signed preview URL'i artik submit edilen `imageUrl` alanina yazilmiyor; preview sadece UI state'inde tutuluyor, API payload'i kalici is icin `imageStagingPath` gonderiyor ve public/manual `imageUrl` ayri kaliyor.
+- **Branch:** `main`
+- **Yapılan iş:** Web organizasyon tarafinda iki production validation hotfix'i tamamlandi, main'e merge/push edildi ve Vercel production deploy alindi. Club profile update route'u `websiteUrl` icin eksik protocol girilen degerleri guvenli `https://` ile normalize ediyor; `instagramUrl` icin `@handle`, `handle`, `instagram.com/...` ve absolute URL formatlarini absolute `http(s)` URL'ye ceviriyor ve gercek URL parse kontrolu uyguluyor. Club profile panel'i route'un `fieldErrors` cevabini okuyup generic `Club profile payload validation failed.` yerine ilk hatali alani ve sebebi gosteriyor. Announcement compose formunda Supabase private staging signed preview URL'i artik submit edilen `imageUrl` alanina yazilmiyor; preview sadece UI state'inde tutuluyor, API payload'i kalici is icin `imageStagingPath` gonderiyor ve public/manual `imageUrl` ayri kaliyor.
 - **Neden yapıldı:** Kullanici web organizasyon profil guncellemede generic payload validation hatasi ve anons olusturmada upload edilen gorsel icin `imageUrl must be 500 characters or shorter` hatasi aldigini bildirdi. Kok sebep profile URL input/mesaj UX uyumsuzlugu ve expiring signed staging URL'in kalici `imageUrl` gibi validate edilmesiydi.
-- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build` ve `git --no-pager diff --check` gecti.
-- **Sıradaki önerilen adım:** Hotfix main'e merge/push edilip Vercel production deploy alinmali; deploy sonrasinda organizasyon profile save ve announcement image upload/create akisi browser uzerinden tekrar denenmeli.
-- **Açık risk/blokaj:** Bu patch Supabase schema/RLS degisikligi gerektirmiyor. Production'daki hata Vercel deploy alinana kadar devam eder.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `git --no-pager diff --check`, `npx --yes vercel@latest deploy apps/admin --prod --yes` ve `curl -fsSI https://omaleima.fi` gecti. Vercel deploy URL'i `https://omaleima-admin-r8xcomvyx-senol-dogans-projects.vercel.app`; production alias `https://omaleima.fi`.
+- **Sıradaki önerilen adım:** Organizasyon profile save ve announcement image upload/create akisi canli browser oturumunda tekrar denenebilir.
+- **Açık risk/blokaj:** Supabase schema/RLS degisikligi gerekmedi. Known remaining external risk yok; yalnizca authenticated browser smoke kullanici oturumu gerektirir.
 
 - **Tarih:** 2026-05-10
 - **Branch:** `review/production-ready-20260510`
