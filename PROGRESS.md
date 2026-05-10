@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
+- **Branch:** `fix/store-audit-ci-portability`
+- **Yapılan iş:** Review hardening merge sonrasinda GitHub Actions `Static Build Checks` store readiness adiminda kirmizi oldu. Kok sebep mobil store audit script'inin PNG boyutlarini macOS-only `sips` ile okumasiydi; Ubuntu Actions runner'da store iconlari missing/unreadable gorunuyordu. Script Node core ile PNG IHDR header'ini okuyacak sekilde cross-platform yapildi. CI local Supabase placeholder env'i kullandigi icin hosted login slide live check'i yalnizca explicit `OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES=1` workflow override'i ile offline gecilebilir hale getirildi; normal release ortaminda hosted check fail-closed kalir.
+- **Neden yapıldı:** Yeni eklenen CI gate'in Linux runner'da false negative vermesini engellemek ve main push check'ini gercek repo-portability problemi cozulerek yesile almak icin.
+- **Doğrulama:** `OMALEIMA_NATIVE_RELEASE_MODE=local OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES=1 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-local-publishable-key npm --prefix apps/mobile run audit:store-release-readiness`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Main push sonrasi GitHub Actions `Static Build Checks` tekrar izlenmeli.
+- **Açık risk/blokaj:** CI offline override'i hosted login slide live verisini dogrulamaz; real release/hosted smoke icin override kullanilmadan audit veya hosted checklist calistirilmali.
+
+- **Tarih:** 2026-05-10
 - **Branch:** `fix/review-hardening`
 - **Yapılan iş:** Indirilen `omaleima-hardening-fixes.patch` mevcut `main` uzerine port edildi. Patch'in eski context nedeniyle uygulanmayan business application ve `scan-qr` hunks'lari elle tasindi. Mobile release gate artik release build'de eksik `mobile_release_requirements` satirini `UNVERIFIED` sayiyor ve retry ekrani gosteriyor. Invalid refresh-token cleanup explicit/current/legacy Supabase auth storage key listesini temizliyor. Admin CSRF cookie decode malformed degerde null donuyor, Turnstile action/hostname kontrolleri fail-closed hale geldi. Public business application endpoint'ine service-role-only `public_form_rate_limits` migration'i ve IP-hash recent/daily rate-limit eklendi. `claim-reward` notes trim/max 500 kontrolu, `scan-qr` guard'li background scheduler ve CI Deno/mobile audit gate'leri eklendi.
 - **Neden yapıldı:** Statik review'da repo-owned P1/P2 hardening riskleri ve verilen patch'in mevcut repoya uygulanmamis oldugu goruldu; public form abuse, stale mobile build fail-open, Edge runtime crash ve CI coverage risklerini azaltmak icin.

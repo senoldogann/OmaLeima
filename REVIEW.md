@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Store Audit CI Portability)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/store-audit-ci-portability`
+- **Scope:** Fix the newly added CI store readiness gate so it runs deterministically on Ubuntu Actions runners.
+
+## Store Audit CI Findings
+
+- `audit:store-release-readiness` used macOS `sips` to read PNG dimensions. That works locally on Darwin but returns missing/unreadable icon failures on Ubuntu CI.
+- CI intentionally uses local placeholder Supabase env values, so the audit needs an explicit offline hosted-login-slides mode for static CI runs while preserving hosted checks for real release environments.
+
 ## Current Review (Review Hardening Patch)
 
 - **Date:** 2026-05-10

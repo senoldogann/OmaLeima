@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { existsSync, readFileSync, promises as fs } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,7 @@ const requiredEasEnvNames = [
 const requiredEasEnvironments = ["development", "preview", "production"];
 const nativeReleaseMode = (process.env.OMALEIMA_NATIVE_RELEASE_MODE ?? "eas").trim().toLowerCase();
 const localNativeReleaseMode = nativeReleaseMode === "local";
+const allowOfflineHostedLoginSlidesAudit = process.env.OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES === "1";
 const storeAssetPaths = [
   "assets/images/icon.png",
   "assets/images/android-icon-foreground.png",
@@ -182,6 +183,13 @@ const hasPlaceholderCopy = (value) =>
 
 const readHostedLoginSlidesAsync = async (mobilePublicEnv) => {
   if (!mobilePublicEnv.supabaseUrl.startsWith("https://") || mobilePublicEnv.publishableKey.length === 0) {
+    if (allowOfflineHostedLoginSlidesAudit) {
+      return {
+        details: ["offline-hosted-login-slides-skipped"],
+        ready: true,
+      };
+    }
+
     return {
       details: ["missing-public-supabase-env"],
       ready: false,
@@ -267,27 +275,21 @@ const parseEasEnvNames = (output) =>
     .filter((line) => typeof line === "string" && line.length > 0);
 
 const readPngDimensions = (relativePath) => {
-  const command = spawnSync(
-    "sips",
-    ["-g", "pixelWidth", "-g", "pixelHeight", path.join(mobileRoot, relativePath)],
-    {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    }
-  );
+  const pngPath = path.join(mobileRoot, relativePath);
 
-  if (command.status !== 0) {
+  if (!existsSync(pngPath)) {
     return null;
   }
 
-  const widthMatch = command.stdout.match(/pixelWidth:\s*(\d+)/);
-  const heightMatch = command.stdout.match(/pixelHeight:\s*(\d+)/);
+  const header = readFileSync(pngPath).subarray(0, 24);
+  const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const hasPngSignature = pngSignature.every((byte, index) => header[index] === byte);
 
-  if (widthMatch === null || heightMatch === null) {
+  if (header.length < 24 || !hasPngSignature || header.toString("ascii", 12, 16) !== "IHDR") {
     return null;
   }
 
-  return [Number(widthMatch[1]), Number(heightMatch[1])];
+  return [header.readUInt32BE(16), header.readUInt32BE(20)];
 };
 
 const readRemoteEasEnvState = () => {

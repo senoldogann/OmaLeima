@@ -2,6 +2,24 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Store Audit CI Portability)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/store-audit-ci-portability`
+- **Goal:** Make the mobile store-release audit pass on Linux CI without weakening real hosted release checks by default.
+
+## Architectural Decisions
+
+- Replace `sips` PNG dimension reads with a cross-platform PNG IHDR parser using Node core APIs.
+- Add an explicit CI-only `OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES=1` override in the workflow so local-placeholder Supabase envs do not fail hosted login slide checks.
+- Keep the hosted login slide audit fail-closed unless the explicit offline override is set.
+
+## Validation Plan
+
+- `OMALEIMA_NATIVE_RELEASE_MODE=local OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES=1 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-local-publishable-key npm --prefix apps/mobile run audit:store-release-readiness`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
 ## Current Plan (Review Hardening Patch)
 
 - **Date:** 2026-05-10
