@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-05-10
 - **Branch:** `main`
+- **Yapılan iş:** Support history modal bu kez yalnizca kart yogunluguyla degil, dogrudan viewport boyutlandirmasiyla sertlestirildi. `SupportRequestSheet` artik `useWindowDimensions` ile cihaz yuksekligine gore history modal max-height ve history liste viewport yuksekligi hesapliyor; modal merkez yerine alt sheet gibi daha buyuk alan kullanıyor. History kart spacing/padding ve baslik boyutu bir adim daha kucultuldu, boylece listede ayni anda daha fazla oge fiziksel olarak gorunur hale geldi.
+- **Neden yapıldı:** Onceki density hotfix'ine ragmen kullanici gercek cihazda history modalda hala tek bir kart gordugunu bildirdi; flex tabanli yerlesim yetmedigi icin explicit viewport sizing eklendi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Gercek cihazda support/history modal tekrar acilip en az uc kartin ayni anda gorundugu hizli smoke ile teyit edilebilir.
+- **Açık risk/blokaj:** Bu iyilestirme native UI katmaninda oldugu icin son kullaniciya ulasmasi normal mobile release surecine bagli; bu turda store/native deploy yapilmadi.
+
+- **Tarih:** 2026-05-10
+- **Branch:** `main`
 - **Yapılan iş:** Support history modal kart yogunlugu arttirildi. Mobil `SupportRequestSheet` history kartlari artik daha kompakt: subject tek satir, message iki satir, meta tek satir ve admin reply preview iki satir ile sinirli. Kart padding/gap kucultuldu ve modal viewport yuksekligi bir miktar buyutuldu; boylece history modal ayni anda daha fazla kayit gosteriyor ve hedef olarak en az uc oge gorunur hale geliyor.
 - **Neden yapıldı:** Kullanici scroll duzeldikten sonra history modalin bir kerede yalnizca tek bir mesaji gosterdigini ve ayni anda en az uc mesajin gorunmesini istedi.
 - **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.

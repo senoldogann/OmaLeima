@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Support History Viewport)
+
+- [x] Confirm that the density-only fix still leaves too little visible history on device.
+- [x] Record the explicit viewport-sizing approach in working docs.
+- [x] Give the history list a larger dedicated viewport and tighten supporting spacing.
+- [x] Run mobile validation, merge to main, push, and update handoff.
+
 ## Current Todos (Support History Density)
 
 - [x] Confirm that scroll works but card density is too low.

@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Support History Viewport)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-viewport`
+- **Goal:** Guarantee more visible support history items by allocating a larger explicit list viewport inside the modal.
+
+## Architectural Decisions
+
+- Keep the compact history cards from the previous fix, but stop relying on flex-only sizing for the list area.
+- Compute modal max height and history viewport height from `useWindowDimensions`, then apply them directly to the history modal container and viewport.
+- Move the history modal presentation toward a bottom-sheet posture to reclaim more vertical space on device.
+
+## Prompt
+
+Sen OmaLeima mobile UI hotfix engineer olarak calisiyorsun.
+Hedef: support history modalda yalnizca kartlari kucultmek yetmedigi icin, listeye cihaz yuksekligine gore dogrudan daha buyuk gorunur viewport ver ve ayni anda daha fazla kayit goster.
+Mimari: React Native `SupportRequestSheet`, `useWindowDimensions` ile modal/list viewport boyutlandirma; Supabase/API degisikligi yok.
+Kapsam: history modal container, viewport sizing, kucuk spacing duzeltmeleri ve handoff.
+Cikti: Daha buyuk ve sabit history viewport, korunan scroll davranisi, mobile validation kaniti.
+Yasaklar: data model degisikligi, yeni dependency, history arama/filtreyi geri alma, `any` tipi.
+Standartlar: odakli diff, mobile-first, okunabilir kart yogunlugu.
+
 ## Current Plan (Support History Density)
 
 - **Date:** 2026-05-10
