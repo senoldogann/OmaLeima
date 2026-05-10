@@ -53,7 +53,7 @@ The first dedicated mobile Realtime slice is now shipped:
 - the same module also subscribes to `stamps` and the current student’s `reward_claims` for progress freshness
 - the same module also watches `reward_tiers` so shared inventory and out-of-stock state stay fresh on rewards, active-event, and event-detail views
 - leaderboard and rewards still keep their existing typed React Query fetchers; Realtime only invalidates the right keys
-- local foreground reward notifications are driven by the existing reward overview plus Realtime invalidation; remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
+- local foreground reward celebrations and stock notifications are driven by the existing reward overview plus Realtime invalidation; reward unlocks use the in-app celebration flow, stock changes use local foreground notifications, and remote reward-unlocked push delivery now ships from the `scan-qr` backend while remote stock-change push is still deferred
 - native push diagnostics remain provider-owned diagnostics capture so the student profile stays clean for pilots
 - local foreground notifications can still appear in captured diagnostics, but only entries marked from a remote source prove APNs or FCM-backed delivery
 - the active student event screen still exposes the live QR scene used in hosted scanner smoke, while the business scanner stays camera-based and QR-only for production staff use

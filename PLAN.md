@@ -2,6 +2,39 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Release Gate Drift + CSP Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/release-gate-drift-and-csp`
+- **Goal:** Clear repo-fixable release-readiness drift by fixing the failing mobile reward audit and reducing admin CSP risk without misrepresenting external launch blockers.
+
+## Architectural Decisions
+
+- Treat the current reward UX as source of truth: foreground unlock/new-stamp feedback is an in-app celebration; local foreground notifications are only for reward stock-change alerts; remote reward-unlocked push remains backend-owned.
+- Update the audit script to check durable source markers (`triggerRewardCelebration`, `createRewardCelebrationCandidates`, `REWARD_STOCK_CHANGED_LOCAL`) rather than the removed local unlock notification marker.
+- Remove `unsafe-eval` from production CSP while preserving `unsafe-inline` until nonce/hash support is implemented for Next.js runtime inline assets and Turnstile-compatible pages.
+- Keep external public-launch blockers explicit in docs/checklists; do not mark device/store/operator/secret gates as complete from repo-only validation.
+
+## Prompt
+
+Sen OmaLeima release-readiness ve security hotfix engineer olarak calisiyorsun.
+Hedef: Repo-owned launch gate drift'ini kapat: reward notification audit'i mevcut UX ile hizala, dokumanlari duzelt, admin production CSP'deki gereksiz `unsafe-eval` riskini kaldir.
+Mimari: Mobile audit script + mobile/master/testing docs + Next.js static security headers. Supabase schema, RLS ve Edge Function degisikligi yok.
+Kapsam: audit/docs/CSP ve working docs; external launch checklist maddelerini yanlis sekilde kapatma.
+Cikti: Green `audit:reward-notification-bridge`, admin build/lint/typecheck kaniti, net private-pilot/public-launch handoff.
+Yasaklar: unlock icin eski local notification davranisini geri getirme, external store/device/secret gate'lerini repo icinden tamamlanmis gibi isaretleme, production CSP'yi build/runtime'i bozacak sekilde nonce'siz tamamen strict yapma.
+Standartlar: AGENTS.md, security-review CSP guidance, no false release claims, focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run audit:reward-notification-bridge`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+
 ## Current Plan (Web Organization Validation Hotfix)
 
 - **Date:** 2026-05-10

@@ -37,7 +37,8 @@ const main = async () => {
     bridgeSource.includes("useStudentRewardOverviewQuery") &&
     bridgeSource.includes("useStudentRewardOverviewRealtime") &&
     bridgeSource.includes("useStudentRewardOverviewInventoryRealtime") &&
-    bridgeSource.includes('type: "REWARD_UNLOCKED_LOCAL"') &&
+    bridgeSource.includes("triggerRewardCelebration") &&
+    bridgeSource.includes("createRewardCelebrationCandidates") &&
     bridgeSource.includes('type: "REWARD_STOCK_CHANGED_LOCAL"') &&
     bridgeSource.includes("presentLocalNotificationAsync");
   const rewardsScreenTrimmed =
@@ -46,8 +47,8 @@ const main = async () => {
   const normalizedReadmeSource = readmeSource.toLowerCase();
   const normalizedMasterPlanSource = masterPlanSource.toLowerCase();
   const docsAligned =
-    normalizedReadmeSource.includes("local foreground reward notifications") &&
-    normalizedMasterPlanSource.includes("local foreground reward notifications are shipped") &&
+    normalizedReadmeSource.includes("local foreground reward celebrations and stock notifications") &&
+    normalizedMasterPlanSource.includes("local foreground reward celebrations and stock notifications are shipped") &&
     normalizedReadmeSource.includes("remote reward-unlocked push delivery now ships") &&
     normalizedMasterPlanSource.includes("remote reward-unlocked push delivery now ships");
 
@@ -63,7 +64,7 @@ const main = async () => {
   console.log(
     [
       "student-reward-notification-bridge:present",
-      "notification-mode:local-foreground",
+      "notification-mode:celebration-plus-stock-local",
       "remote-reward-push:backend-shipped",
       "reward-screen-ownership:provider-bridge",
       "docs:aligned",

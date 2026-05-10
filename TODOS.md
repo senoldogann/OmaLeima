@@ -2,6 +2,15 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Release Gate Drift + CSP Hardening)
+
+- [x] Re-read required docs and inspect reward notification audit, docs, and admin CSP.
+- [x] Align `audit:reward-notification-bridge` with celebration unlock + stock-change local notification behavior.
+- [x] Update mobile/master/testing docs so they no longer claim unlock local notifications.
+- [x] Remove production `unsafe-eval` from admin CSP while keeping the currently required inline allowance.
+- [x] Mark only repo-verified release checklist items while leaving external public-launch gates open.
+- [ ] Re-run release gate validation and update handoff.
+
 ## Current Todos (Web Organization Validation Hotfix)
 
 - [x] Re-read required docs and inspect profile/announcement validation paths.
@@ -113,7 +122,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Enforce organizer announcements as event-scoped and event-city scoped only.
 - [x] Diagnose mobile EAS Android bundle failure and include production fallback PNG assets in the EAS archive.
 - [x] Restart Android production build after the archive fix.
-- [ ] Complete iOS production build after interactive Apple distribution certificate validation.
+- [ ] [EXTERNAL] Complete iOS production build after interactive Apple distribution certificate validation.
 
 ## Current Todos (Organizer Reward Claim Visibility)
 
