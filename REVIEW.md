@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Empty State Icon Badge)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/empty-state-icon-badge`
+- **Scope:** Restore only the empty-state SVG icon badge background while keeping the panel surface and borders removed.
+
+## Empty State Icon Badge Findings
+
+- The shared `EmptyStateCard` cleanup removed both the outer panel chrome and the inner icon badge tint at the same time.
+- User feedback is to keep the icon badge background color, so the follow-up fix is a one-line shared style adjustment in the same component.
+
 ## Current Review (Empty State Surface Cleanup)
 
 - **Date:** 2026-05-10

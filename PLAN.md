@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Empty State Icon Badge)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/empty-state-icon-badge`
+- **Goal:** Bring back the tinted icon badge background in shared no-data states without reintroducing the removed black panel or borders.
+
+## Architectural Decisions
+
+- Keep the transparent `EmptyStateCard` container from the previous cleanup.
+- Restore only `iconBadge` background color in the shared component; do not add border chrome back.
+- Leave all call sites unchanged so the tweak propagates everywhere automatically.
+
+## Prompt
+
+Sen OmaLeima mobile shared UI hotfix engineer olarak calisiyorsun.
+Hedef: ortak bos durum bileşeninde siyah panel kapali kalsin ama svg ikon rozeti icin arka plan tint geri gelsin.
+Mimari: tek noktadan `apps/mobile/src/components/empty-state-card.tsx` stil ayari.
+Kapsam: sadece icon badge background; border ve panel surface geri gelmeyecek; docs/validation eklenecek.
+Cikti: tum mobile empty state yuzeylerinde ikon arka plan tint'i geri gelmis temiz tasarim.
+Yasaklar: ekran bazli patch, border geri getirmek, yeni dependency, `any` tipi.
+Standartlar: focused diff, mevcut layout korunacak.
+
 ## Current Plan (Empty State Surface Cleanup)
 
 - **Date:** 2026-05-10

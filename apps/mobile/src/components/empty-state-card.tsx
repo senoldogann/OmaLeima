@@ -69,6 +69,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     iconBadge: {
       alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
       borderRadius: 999,
       height: 64,
       justifyContent: "center",
