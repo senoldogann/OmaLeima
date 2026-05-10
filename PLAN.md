@@ -2,6 +2,37 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Admin Organization Lists + Users Performance)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/admin-org-users-performance`
+- **Goal:** Make admin organization state visible, improve user table readability, and remove the most noticeable full-route refreshes from business-applications/users mutations.
+
+## Architectural Decisions
+
+- Extend the existing business-applications server read model to include a bounded existing organization list from `clubs` plus active owner metadata. Keep reads server-side through the current admin page rather than adding client-side service-role access.
+- Keep manual account creation APIs unchanged. In the client, update organization list state from the successful create response and avoid `router.refresh()` for manual creation success.
+- For admin users, keep the server snapshot but make post-mutation status changes local in client state; recompute counts from local users so status clicks feel immediate.
+- Avoid editing already-dirty shared CSS. Use a targeted inline `minWidth` on the users table for the requested extra width.
+- Treat broader server-side auth/read-model/RPC consolidation as follow-up; this pass fixes the hot admin surfaces without adding dependencies or schema changes.
+
+## Prompt
+
+Sen OmaLeima admin web performance ve UX hotfix engineer olarak calisiyorsun.
+Hedef: `/admin/business-applications` sayfasinda mevcut/olusturulan organizasyonlari listele, `/admin/users` tablosunda ogrenciler icin okunabilir ad goster ve tablo genisligini artir, touched mutationlarda full `router.refresh()` maliyetini azalt.
+Mimari: Next.js server read-model + client local state updates + mevcut Supabase RLS/service boundaries. Schema/RLS degisikligi yok.
+Kapsam: business-applications read model/types/panel/manual forms, admin-users panel read/use-state rendering, working docs, validation ve deploy. Uncommitted user-owned dashboard/CSS/mobile files'e dokunma.
+Cikti: Strict TS/TSX patch, organization list table, local mutation updates, admin validation kaniti, main deploy handoff.
+Yasaklar: service_role'u client'a tasimak, global refactor veya React Query dependency eklemek, dirty user dosyalarini stage etmek, broad auth gate rewrite, `any` tipi.
+Standartlar: AGENTS.md, Supabase zero-trust, frontend-patterns local state patterns, focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+
 ## Current Plan (Finland Location Fields)
 
 - **Date:** 2026-05-10

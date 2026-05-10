@@ -38,9 +38,24 @@ export type BusinessApplicationSummary = {
 };
 
 export type BusinessApplicationsReviewQueue = {
+  organizations: OrganizationAccountRecord[];
   pendingApplications: BusinessApplicationRecord[];
   recentlyReviewedApplications: BusinessApplicationRecord[];
   summary: BusinessApplicationSummary;
+};
+
+export type OrganizationAccountRecord = {
+  city: string | null;
+  country: string;
+  createdAt: string;
+  id: string;
+  name: string;
+  ownerEmail: string | null;
+  ownerName: string | null;
+  slug: string;
+  status: string;
+  universityName: string | null;
+  updatedAt: string;
 };
 
 export type ReviewActionState = {

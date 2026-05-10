@@ -4,6 +4,7 @@ import type {
   BusinessApplicationRecord,
   BusinessApplicationsReviewQueue,
   BusinessApplicationStatus,
+  OrganizationAccountRecord,
 } from "@/features/business-applications/types";
 import { normalizeExternalReviewUrl } from "@/features/business-applications/validation";
 
@@ -41,6 +42,27 @@ type BusinessOwnerRow = {
 };
 
 type OwnerAccessSummary = BusinessApplicationRecord["ownerAccess"];
+
+type ClubRow = {
+  city: string | null;
+  country: string;
+  created_at: string;
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  university_name: string | null;
+  updated_at: string;
+};
+
+type ClubOwnerRow = {
+  club_id: string;
+  owner_profile: {
+    display_name: string | null;
+    email: string;
+  } | null;
+  user_id: string;
+};
 
 const mapBusinessApplicationRecord = (
   row: BusinessApplicationRow,
@@ -246,14 +268,76 @@ const fetchOldestPendingApplicationCreatedAtAsync = async (supabase: SupabaseCli
   return data?.created_at ?? null;
 };
 
+const fetchOwnersByClubIdsAsync = async (
+  supabase: SupabaseClient,
+  clubIds: string[]
+): Promise<Map<string, ClubOwnerRow>> => {
+  if (clubIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("club_members")
+    .select("club_id,user_id,owner_profile:profiles!club_members_user_id_fkey(email,display_name)")
+    .in("club_id", clubIds)
+    .eq("role", "OWNER")
+    .eq("status", "ACTIVE")
+    .returns<ClubOwnerRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load organization owners: ${error.message}`);
+  }
+
+  return new Map(data.map((owner) => [owner.club_id, owner]));
+};
+
+const fetchOrganizationsAsync = async (supabase: SupabaseClient): Promise<OrganizationAccountRecord[]> => {
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("id,name,slug,university_name,city,country,status,created_at,updated_at")
+    .order("created_at", {
+      ascending: false,
+    })
+    .limit(60)
+    .returns<ClubRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load organizations: ${error.message}`);
+  }
+
+  const ownerByClubId = await fetchOwnersByClubIdsAsync(
+    supabase,
+    data.map((club) => club.id)
+  );
+
+  return data.map((club) => {
+    const owner = ownerByClubId.get(club.id) ?? null;
+
+    return {
+      city: club.city,
+      country: club.country,
+      createdAt: club.created_at,
+      id: club.id,
+      name: club.name,
+      ownerEmail: owner?.owner_profile?.email ?? null,
+      ownerName: owner?.owner_profile?.display_name ?? null,
+      slug: club.slug,
+      status: club.status,
+      universityName: club.university_name,
+      updatedAt: club.updated_at,
+    };
+  });
+};
+
 export const fetchBusinessApplicationsReviewQueueAsync = async (
   supabase: SupabaseClient,
   requestedPageNumber: number
 ): Promise<BusinessApplicationsReviewQueue> => {
-  const [oldestPendingCreatedAt, pendingCount, recentlyReviewedApplications] = await Promise.all([
+  const [oldestPendingCreatedAt, pendingCount, recentlyReviewedApplications, organizations] = await Promise.all([
     fetchOldestPendingApplicationCreatedAtAsync(supabase),
     fetchPendingApplicationCountAsync(supabase),
     fetchRecentlyReviewedApplicationsAsync(supabase),
+    fetchOrganizationsAsync(supabase),
   ]);
   const pendingPageCount = pendingCount === 0 ? 1 : Math.ceil(pendingCount / pendingPageSize);
   const currentPage = Math.min(Math.max(requestedPageNumber, 1), pendingPageCount);
@@ -263,6 +347,7 @@ export const fetchBusinessApplicationsReviewQueueAsync = async (
     pendingApplications.length === 0 ? 0 : pendingVisibleStart + pendingApplications.length - 1;
 
   return {
+    organizations,
     pendingApplications,
     recentlyReviewedApplications,
     summary: {

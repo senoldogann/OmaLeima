@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
@@ -101,7 +100,6 @@ const postBusinessAccountAsync = async (formData: FormData): Promise<CreateBusin
 };
 
 export const ManualBusinessAccountForm = ({ locale }: ManualBusinessAccountFormProps) => {
-  const router = useRouter();
   const copy = copyByLocale[locale];
   const [isPending, setIsPending] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -125,7 +123,6 @@ export const ManualBusinessAccountForm = ({ locale }: ManualBusinessAccountFormP
 
       formElement.reset();
       setSuccessMessage(`${baseMessage}${ownerLabel}${businessLabel}`);
-      router.refresh();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown business account creation error.");
     } finally {

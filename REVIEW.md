@@ -2,6 +2,20 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Admin Organization Lists + Users Performance)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/admin-org-users-performance`
+- **Scope:** Improve admin business-applications/users surfaces and reduce high-impact full refresh behavior without touching unrelated user-owned dirty files.
+
+## Admin Organization/User/Performance Findings
+
+- `/admin/business-applications` currently shows pending/reviewed business applications and manual create forms, but it does not list existing `clubs`/organizations. Add a read-only organization table fed by the existing server-side admin read model.
+- Manual organization and business account forms call `router.refresh()` after successful creation. This refetches the full dashboard route and makes creation feel slow. For this page, the safer fast path is local state update for organization creation and no full refetch for business creation success copy.
+- `/admin/users` already loads `display_name`, but the table falls back directly to email when display name is null. Student rows therefore can look like raw identifiers/emails. Add a deterministic display label that prefers display name and otherwise derives a readable name from email before showing the email as secondary metadata.
+- `/admin/users` status mutation calls `router.refresh()` after each action. This refetches the whole large snapshot; update the client-side user row status locally and recompute metrics instead.
+- The users table is horizontally dense. Increase table min width in the component without editing the already-dirty global CSS file.
+
 ## Current Review (Finland Location Fields)
 
 - **Date:** 2026-05-10
