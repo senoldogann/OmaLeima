@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import type { EventVenueSummary } from "@/features/events/types";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
@@ -161,14 +162,15 @@ export const StudentEventVenueMap = ({ venues }: StudentEventVenueMapProps) => {
 
     if (venues.length === 0) {
         return (
-            <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>{language === "fi" ? "Pisteitä ei ole vielä" : "No venues yet"}</Text>
-                <Text style={styles.bodyText}>
-                    {language === "fi"
+            <EmptyStateCard
+                body={
+                    language === "fi"
                         ? "Kun järjestäjä lisää tapahtuman pisteet, ne näkyvät tässä kartassa."
-                        : "When the organizer adds venues, they will appear on this map."}
-                </Text>
-            </View>
+                        : "When the organizer adds venues, they will appear on this map."
+                }
+                iconName="map-pin"
+                title={language === "fi" ? "Pisteitä ei ole vielä" : "No venues yet"}
+            />
         );
     }
 

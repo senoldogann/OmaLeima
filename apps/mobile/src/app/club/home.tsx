@@ -14,6 +14,7 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
@@ -302,9 +303,7 @@ export default function ClubHomeScreen() {
       ) : null}
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && dashboardQuery.data?.memberships.length === 0 ? (
-        <InfoCard eyebrow="Club" title={labels.emptyTitle}>
-          <Text style={styles.bodyText}>{labels.emptyBody}</Text>
-        </InfoCard>
+        <EmptyStateCard body={labels.emptyBody} eyebrow="Club" iconName="business" title={labels.emptyTitle} />
       ) : null}
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && dashboardQuery.data ? (
@@ -415,9 +414,7 @@ export default function ClubHomeScreen() {
               ))}
             </ScrollView>
           ) : (
-            <InfoCard eyebrow={labels.focusEyebrow} title={labels.focusEmptyTitle}>
-              <Text style={styles.bodyText}>{labels.focusEmptyBody}</Text>
-            </InfoCard>
+            <EmptyStateCard body={labels.focusEmptyBody} eyebrow={labels.focusEyebrow} iconName="calendar" title={labels.focusEmptyTitle} />
           )}
 
           <View style={styles.eventsSection}>
@@ -438,7 +435,7 @@ export default function ClubHomeScreen() {
               </Pressable>
             </View>
             {nextEvents.length === 0 ? (
-              <Text style={styles.bodyText}>{labels.eventsEmptyBody}</Text>
+              <EmptyStateCard body={labels.eventsEmptyBody} iconName="calendar" />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventRail}>
                 {nextEvents.map((event) => {

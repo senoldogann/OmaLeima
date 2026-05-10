@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import {
@@ -678,12 +679,13 @@ export const SupportRequestSheet = ({
               ) : null}
               {supportQuery.error ? <Text style={styles.errorText}>{supportQuery.error.message}</Text> : null}
               {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length === 0 ? (
-                <Text style={styles.metaText}>{createEmptyHistory(area, language)}</Text>
+                <EmptyStateCard body={createEmptyHistory(area, language)} iconName="support" />
               ) : null}
               {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length > 0 && filteredHistoryRequests.length === 0 ? (
-                <Text style={styles.metaText}>
-                  {language === "fi" ? "Hakuehdoilla ei löytynyt tukipyyntöjä." : "No support requests match this search."}
-                </Text>
+                <EmptyStateCard
+                  body={language === "fi" ? "Hakuehdoilla ei löytynyt tukipyyntöjä." : "No support requests match this search."}
+                  iconName="search"
+                />
               ) : null}
               {!supportQuery.isLoading && !supportQuery.error ? (
                 <View style={styles.historyStack}>

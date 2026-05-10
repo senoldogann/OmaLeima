@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import {
   useAnnouncementFeedQuery,
@@ -308,7 +309,7 @@ export const AnnouncementFeedSection = ({
       ) : null}
 
       {!feedQuery.isLoading && !feedQuery.error && visibleItems.length === 0 ? (
-        <Text style={styles.bodyText}>{labels.emptyBody}</Text>
+        <EmptyStateCard body={labels.emptyBody} iconName="bell" />
       ) : null}
 
       {!feedQuery.isLoading && !feedQuery.error && visibleItems.length > 0 ? (

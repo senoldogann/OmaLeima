@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
@@ -948,16 +949,16 @@ export default function ClubEventsScreen() {
           ) : null}
 
           {sortedEvents.length === 0 && hasCreateAccess ? (
-            <InfoCard eyebrow={language === "fi" ? "Tapahtumat" : "Events"} title={language === "fi" ? "Ei tapahtumia vielä" : "No events yet"}>
-              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-                <AppIcon color={theme.colors.textMuted} name="calendar" size={16} />
-                <Text style={[styles.bodyText, { flex: 1 }]}>
-                  {language === "fi"
-                    ? "Luo ensimmäinen tapahtuma + -painikkeella."
-                    : "Create your first event with the + button."}
-                </Text>
-              </View>
-            </InfoCard>
+            <EmptyStateCard
+              body={
+                language === "fi"
+                  ? "Luo ensimmäinen tapahtuma + -painikkeella."
+                  : "Create your first event with the + button."
+              }
+              eyebrow={language === "fi" ? "Tapahtumat" : "Events"}
+              iconName="calendar"
+              title={language === "fi" ? "Ei tapahtumia vielä" : "No events yet"}
+            />
           ) : null}
 
           {sortedEvents.length > 0 ? (
@@ -976,9 +977,10 @@ export default function ClubEventsScreen() {
               />
               <View style={styles.listStack}>
                 {filteredEvents.length === 0 ? (
-                  <Text style={styles.bodyText}>
-                    {language === "fi" ? "Ei hakutuloksia." : "No results found."}
-                  </Text>
+                  <EmptyStateCard
+                    body={language === "fi" ? "Muuta hakua nähdäksesi tapahtumia." : "Adjust the search to see matching events."}
+                    iconName="search"
+                  />
                 ) : null}
                 {filteredEvents.map((event) => (
                   <Pressable

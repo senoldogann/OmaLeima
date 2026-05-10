@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
@@ -221,12 +221,7 @@ export default function ClubUpcomingScreen() {
       ) : null}
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && events.length === 0 ? (
-        <InfoCard eyebrow="Club" title={labels.title}>
-          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-            <AppIcon color={theme.colors.textMuted} name="clock" size={16} />
-            <Text style={[styles.bodyText, { flex: 1 }]}>{labels.empty}</Text>
-          </View>
-        </InfoCard>
+        <EmptyStateCard body={labels.empty} eyebrow="Club" iconName="calendar" title={labels.title} />
       ) : null}
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && overlappingEvents.length > 1 ? (
