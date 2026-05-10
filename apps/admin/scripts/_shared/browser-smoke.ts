@@ -87,7 +87,7 @@ export const signInWithPasswordAsync = async (
   await setDashboardLocaleCookieAsync(page, appBaseUrl);
 
   await page.goto(`${appBaseUrl}/login`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   });
 
   await page.getByRole("heading", {
@@ -172,7 +172,7 @@ export const openRouteFromSidebarAsync = async (
     );
   } catch {
     await page.goto(new URL(routeHref, page.url()).toString(), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
     });
   }
 
