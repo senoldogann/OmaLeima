@@ -2,6 +2,20 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Admin CSP Unsafe Inline)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/admin-csp-hardening`
+- **Scope:** Evaluate `/Users/dogan/Downloads/omaleima-csp.patch` and prepare a safe path to remove admin CSP `unsafe-inline`.
+
+## Admin CSP Findings
+
+- The supplied patch removes `script-src 'unsafe-inline'` and `style-src 'unsafe-inline'`, and adds `strict-dynamic` without adding a runtime nonce or hashes.
+- Current admin/public code still depends on inline scripts: the public landing pages render multiple JSON-LD `<script dangerouslySetInnerHTML={...}>` blocks.
+- Current admin/public code still depends heavily on inline React style attributes for tab visibility, preview background images, layout sizing, and animation surfaces across admin dashboard modules.
+- `strict-dynamic` is not a drop-in replacement without a nonce/hash trust root. Enforcing the supplied patch as-is would likely block Next runtime scripts, JSON-LD, Turnstile-related script loading, and React inline style attributes in modern browsers.
+- The safe next step is not to deploy this patch directly. The correct hardening path is a phased nonce/hash migration with runtime verification, followed by removing `unsafe-inline` one directive at a time.
+
 ## Current Review (Store Audit CI Portability)
 
 - **Date:** 2026-05-10

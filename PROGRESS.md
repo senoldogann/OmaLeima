@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
+- **Branch:** `fix/admin-csp-hardening`
+- **Yapılan iş:** `/Users/dogan/Downloads/omaleima-csp.patch` incelendi ve mevcut admin/public Next.js runtime'a dogrudan uygulanmamasi kararlastirildi. Patch `unsafe-inline` script/style izinlerini nonce/hash altyapisi olmadan kaldiriyor ve `strict-dynamic` ekliyor. Mevcut kodda public landing JSON-LD inline scriptleri ve admin/public React inline style kullanimlari yogun oldugu icin bu patch build gecse bile tarayicida Next runtime, JSON-LD, Turnstile veya admin UI davranisini bozabilir. `REVIEW.md`, `PLAN.md` ve `TODOS.md` icine guvenli report-only -> script nonce -> Turnstile smoke -> inline style inventory -> style enforcement fazlari kaydedildi.
+- **Neden yapıldı:** CSP `unsafe-inline` acigini kapatma hedefi dogru, ancak verilen patch production icin yeterli nonce/hash migration'i icermedigi icin riskliydi.
+- **Doğrulama:** Kod degisikligi/deploy yapilmadi. Statik arama ile inline script (`dangerouslySetInnerHTML` JSON-LD) ve cok sayida inline React `style={...}` yuzeyi dogrulandi.
+- **Sıradaki önerilen adım:** Ayrı bir branch'te once `Content-Security-Policy-Report-Only` ve Next nonce altyapisi kurulup staging/browser smoke ile ihlaller izlenmeli; ardindan `script-src 'unsafe-inline'` ve daha sonra `style-src 'unsafe-inline'` kademeli kaldirilmali.
+- **Açık risk/blokaj:** DMARC DNS kaydi kod disi is olarak kalir. Admin user deletion icin PENDING_DELETE/retryable job tasarimi ayri migration/job calismasi gerektirir.
+
+- **Tarih:** 2026-05-10
 - **Branch:** `fix/store-audit-ci-portability`
 - **Yapılan iş:** Review hardening merge sonrasinda GitHub Actions `Static Build Checks` store readiness adiminda kirmizi oldu. Kok sebep mobil store audit script'inin PNG boyutlarini macOS-only `sips` ile okumasiydi; Ubuntu Actions runner'da store iconlari missing/unreadable gorunuyordu. Script Node core ile PNG IHDR header'ini okuyacak sekilde cross-platform yapildi. CI local Supabase placeholder env'i kullandigi icin hosted login slide live check'i yalnizca explicit `OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES=1` workflow override'i ile offline gecilebilir hale getirildi; normal release ortaminda hosted check fail-closed kalir.
 - **Neden yapıldı:** Yeni eklenen CI gate'in Linux runner'da false negative vermesini engellemek ve main push check'ini gercek repo-portability problemi cozulerek yesile almak icin.

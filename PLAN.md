@@ -2,6 +2,47 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Admin CSP Unsafe Inline Removal)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/admin-csp-hardening`
+- **Goal:** Remove admin CSP `unsafe-inline` safely without breaking Next.js runtime, Turnstile, JSON-LD, or existing admin UI inline style behavior.
+
+## Decision on Downloaded Patch
+
+- Do not apply `/Users/dogan/Downloads/omaleima-csp.patch` as-is.
+- Reason: it removes both script and style inline allowances before the app has nonce/hash support and before inline style usage has been refactored or explicitly hashed.
+- This would be a production-risky CSP enforcement change even if TypeScript/build passes, because CSP failures happen in the browser at runtime.
+
+## Safe Phased Approach
+
+1. **Add CSP observability first.** Add a `Content-Security-Policy-Report-Only` header for the stricter target policy and collect/report violations in staging/preview before enforcing.
+2. **Script nonce phase.** Generate a per-request nonce in Next proxy/middleware, include it in `script-src 'nonce-...'`, pass it through request headers, and apply it to JSON-LD scripts and any explicit script surfaces. Confirm Next framework scripts receive the nonce in rendered HTML.
+3. **Turnstile phase.** Verify Cloudflare Turnstile works under the nonce-based policy with only required hosts (`https://challenges.cloudflare.com`) and no broad `https:` script allowance.
+4. **Inline script removal.** Remove `script-src 'unsafe-inline'` only after browser smoke confirms login, public apply/contact, admin dashboard, and Turnstile flows work under nonce enforcement.
+5. **Inline style inventory.** Replace repeated React `style={...}` usages where feasible with CSS classes/data attributes. Keep dynamic background-image previews and animation styles either refactored or covered by a deliberate CSP exception strategy.
+6. **Style enforcement phase.** Remove `style-src 'unsafe-inline'` only after inline style inventory is resolved or a nonce/hash-compatible styling approach is proven.
+7. **Host allowlist tightening.** After nonce/style work, reduce `connect-src`, `img-src`, and other broad `https:` allowances to explicit Supabase, Turnstile, Vercel, and media hosts.
+
+## Validation Plan for Future Implementation
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- Browser smoke for `/`, `/en`, `/apply`, `/contact`, `/login`, `/admin`, and representative club/admin pages.
+- Header check: `curl -fsSI https://omaleima.fi | grep -i content-security-policy`
+- Browser console check for CSP violations in staging before production deploy.
+
+## Prompt
+
+Sen OmaLeima admin CSP hardening engineer olarak calisiyorsun.
+Hedef: `unsafe-inline` kaldirma patch'ini dogrudan uygulamak yerine, Next.js nonce/hash mimarisiyle guvenli asamali CSP gecisi tasarla.
+Mimari: Next.js proxy/middleware nonce, JSON-LD nonce, Turnstile compatibility, inline style inventory, report-only rollout.
+Kapsam: admin Next.js CSP ve ona bagli public/admin browser runtime yuzeyleri.
+Cikti: production'u kirmadan uygulanabilir nonce/hash CSP migration plani.
+Yasaklar: `unsafe-inline`'i nonce/hash olmadan kaldirmak, runtime browser smoke yapmadan deploy etmek, Turnstile/login/apply/contact formlarini riske atmak.
+Standartlar: phased rollout, fail-safe deploy, explicit host allowlist, browser-observed validation.
+
 ## Current Plan (Store Audit CI Portability)
 
 - **Date:** 2026-05-10
