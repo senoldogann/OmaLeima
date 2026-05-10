@@ -17,6 +17,13 @@ permissions:
 jobs:
   web-and-mobile:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-local-publishable-key
+      EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-local-publishable-key
+      EXPO_PUBLIC_EAS_PROJECT_ID: 00000000-0000-0000-0000-000000000000
+      OMALEIMA_NATIVE_RELEASE_MODE: local
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
