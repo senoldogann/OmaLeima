@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Support History Scroll Hardening)
+
+- [x] Re-read support history modal code and confirm scroll root cause.
+- [x] Record the responder/layout fix in working docs.
+- [x] Harden the history modal container and inner viewport scroll behavior.
+- [x] Run mobile validation, merge to main, push, and update handoff.
+
 ## Current Todos (Support Message Scroll, Filter and Search)
 
 - [x] Re-read required docs and inspect admin/mobile support surfaces.

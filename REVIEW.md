@@ -2,6 +2,18 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Support History Scroll Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-scroll`
+- **Scope:** Strengthen the mobile support history modal so long sent-message history reliably scrolls inside the modal.
+
+## Support History Scroll Findings
+
+- The shared mobile support history modal still wraps the scroll region inside a pressable card container. That makes responder behavior fragile and can block vertical scrolling on some devices.
+- The history area relies on `maxHeight` and `flexShrink` only. A stronger setup is a dedicated inner viewport with `flex: 1`, `minHeight: 0`, and `overflow: hidden`, plus a non-pressable modal card shell.
+- This is a layout/responder hotfix only; support query/filter/search behavior added earlier remains valid.
+
 ## Current Review (Support Message Scroll, Filter and Search)
 
 - **Date:** 2026-05-10

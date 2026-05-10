@@ -605,7 +605,7 @@ export const SupportRequestSheet = ({
       <Modal animationType="fade" onRequestClose={() => setIsHistoryVisible(false)} transparent visible={isHistoryVisible}>
         <View style={styles.historyModalRoot}>
           <Pressable onPress={() => setIsHistoryVisible(false)} style={styles.modalBackdrop} />
-          <Pressable onPress={() => {}} style={styles.historyModalCard}>
+          <View style={styles.historyModalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Historia" : "History"}</Text>
@@ -668,56 +668,60 @@ export const SupportRequestSheet = ({
                 {language === "fi" ? `${filteredHistoryRequests.length} tulosta` : `${filteredHistoryRequests.length} result(s)`}
               </Text>
             </View>
-            <ScrollView
-              contentContainerStyle={styles.historyModalContent}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              style={styles.historyModalScroll}
-            >
-              {supportQuery.isLoading ? (
-                <Text style={styles.metaText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
-              ) : null}
-              {supportQuery.error ? <Text style={styles.errorText}>{supportQuery.error.message}</Text> : null}
-              {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length === 0 ? (
-                <EmptyStateCard body={createEmptyHistory(area, language)} iconName="support" />
-              ) : null}
-              {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length > 0 && filteredHistoryRequests.length === 0 ? (
-                <EmptyStateCard
-                  body={language === "fi" ? "Hakuehdoilla ei löytynyt tukipyyntöjä." : "No support requests match this search."}
-                  iconName="search"
-                />
-              ) : null}
-              {!supportQuery.isLoading && !supportQuery.error ? (
-                <View style={styles.historyStack}>
-                  {filteredHistoryRequests.map((request) => (
-                    <View key={request.id} style={styles.historyCard}>
-                      <View style={styles.historyHeader}>
-                        <Text numberOfLines={1} style={styles.historyTitle}>
-                          {request.subject}
+            <View style={styles.historyScrollViewport}>
+              <ScrollView
+                bounces={false}
+                contentContainerStyle={styles.historyModalContent}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+                style={styles.historyModalScroll}
+              >
+                {supportQuery.isLoading ? (
+                  <Text style={styles.metaText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
+                ) : null}
+                {supportQuery.error ? <Text style={styles.errorText}>{supportQuery.error.message}</Text> : null}
+                {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length === 0 ? (
+                  <EmptyStateCard body={createEmptyHistory(area, language)} iconName="support" />
+                ) : null}
+                {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length > 0 && filteredHistoryRequests.length === 0 ? (
+                  <EmptyStateCard
+                    body={language === "fi" ? "Hakuehdoilla ei löytynyt tukipyyntöjä." : "No support requests match this search."}
+                    iconName="search"
+                  />
+                ) : null}
+                {!supportQuery.isLoading && !supportQuery.error ? (
+                  <View style={styles.historyStack}>
+                    {filteredHistoryRequests.map((request) => (
+                      <View key={request.id} style={styles.historyCard}>
+                        <View style={styles.historyHeader}>
+                          <Text numberOfLines={1} style={styles.historyTitle}>
+                            {request.subject}
+                          </Text>
+                          <Text style={styles.historyStatus}>
+                            {createStatusLabel(language, request.status)}
+                          </Text>
+                        </View>
+                        <Text numberOfLines={3} style={styles.historyMessage}>
+                          {request.message}
                         </Text>
-                        <Text style={styles.historyStatus}>
-                          {createStatusLabel(language, request.status)}
+                        <Text style={styles.historyMeta}>
+                          {formatDateTime(localeTag, request.createdAt)}
+                          {request.businessName ? ` · ${request.businessName}` : ""}
+                          {request.clubName ? ` · ${request.clubName}` : ""}
                         </Text>
+                        {request.adminReply ? (
+                          <Text style={styles.historyReply}>
+                            {language === "fi" ? "Tuki:" : "Support:"} {request.adminReply}
+                          </Text>
+                        ) : null}
                       </View>
-                      <Text numberOfLines={3} style={styles.historyMessage}>
-                        {request.message}
-                      </Text>
-                      <Text style={styles.historyMeta}>
-                        {formatDateTime(localeTag, request.createdAt)}
-                        {request.businessName ? ` · ${request.businessName}` : ""}
-                        {request.clubName ? ` · ${request.clubName}` : ""}
-                      </Text>
-                      {request.adminReply ? (
-                        <Text style={styles.historyReply}>
-                          {language === "fi" ? "Tuki:" : "Support:"} {request.adminReply}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </ScrollView>
-          </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </ScrollView>
+            </View>
+          </View>
         </View>
       </Modal>
     </Modal>
@@ -806,22 +810,28 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: theme.radius.card,
       borderWidth: theme.mode === "light" ? 1 : 0,
       gap: 16,
+      minHeight: 360,
       marginHorizontal: 20,
       maxHeight: "82%",
+      overflow: "hidden",
       padding: 18,
     },
     historyModalContent: {
       gap: 10,
-      paddingBottom: 8,
+      paddingBottom: 12,
     },
     historyModalRoot: {
       flex: 1,
       justifyContent: "center",
       paddingVertical: 24,
     },
+    historyScrollViewport: {
+      flex: 1,
+      minHeight: 0,
+      overflow: "hidden",
+    },
     historyModalScroll: {
-      flexShrink: 1,
-      maxHeight: "62%",
+      flex: 1,
     },
     historyResultMeta: {
       color: theme.colors.textMuted,
