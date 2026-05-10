@@ -8,7 +8,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Verify landing JSON-LD uses `dangerouslySetInnerHTML` only for code-owned schema data.
 - [x] Restrict Edge CORS default origin and reject mismatched browser origins.
 - [x] Add shared JSON-LD renderer with script-breaking character escaping.
-- [ ] Run validation, deploy changed surfaces, merge to main, and update handoff.
+- [x] Run validation, deploy changed surfaces, merge to main, and update handoff.
 
 ## Current Todos (Admin CSP Unsafe Inline)
 
