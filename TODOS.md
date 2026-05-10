@@ -7,10 +7,10 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Re-read required docs and inspect git/release script state.
 - [x] Clarify Sentry as optional and document the low-cost observability baseline.
 - [x] Add local native release mode for store readiness when EAS is unavailable.
-- [ ] Run final validation with local native release mode.
-- [ ] Commit the feature branch with the required trailer.
-- [ ] Merge to `main`, push GitHub, and inspect triggered release/deploy checks.
-- [ ] Delete safe merged local branches and update final handoff.
+- [x] Run final validation with local native release mode.
+- [x] Commit the feature branch with the required trailer.
+- [x] Merge to `main`, push GitHub, and inspect triggered release/deploy checks.
+- [x] Delete safe merged local branches and update final handoff.
 
 ## Current Todos (Production Ready Final Sweep)
 
