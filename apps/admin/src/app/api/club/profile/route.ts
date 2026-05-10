@@ -13,13 +13,60 @@ import { validateDashboardMutationRequest } from "@/features/security/dashboard-
 import type { ClubProfileUpdateResponse } from "@/features/club-profile/types";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
-const optionalUrlSchema = z
+const isHttpUrl = (value: string): boolean => {
+  if (value.length === 0) {
+    return true;
+  }
+
+  try {
+    const parsedUrl = new URL(value);
+
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const absoluteUrlSchema = z
   .string()
   .trim()
   .max(500)
-  .refine((value) => value.length === 0 || /^https?:\/\/.+/i.test(value), {
+  .refine(isHttpUrl, {
     message: "Use an absolute http or https URL.",
   });
+
+const normalizeWebsiteUrlInput = (value: string): string => {
+  const normalized = value.trim();
+
+  if (normalized.length === 0 || /^[a-z][a-z0-9+.-]*:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  return `https://${normalized}`;
+};
+
+const instagramHandlePattern = /^@?[a-z0-9._]{1,30}$/i;
+
+const normalizeInstagramUrlInput = (value: string): string => {
+  const normalized = value.trim();
+
+  if (normalized.length === 0 || /^[a-z][a-z0-9+.-]*:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  if (/^(www\.)?instagram\.com\//i.test(normalized)) {
+    return `https://${normalized}`;
+  }
+
+  if (instagramHandlePattern.test(normalized)) {
+    return `https://www.instagram.com/${normalized.replace(/^@/, "")}`;
+  }
+
+  return `https://${normalized}`;
+};
+
+const websiteUrlSchema = z.string().transform(normalizeWebsiteUrlInput).pipe(absoluteUrlSchema);
+const instagramUrlSchema = z.string().transform(normalizeInstagramUrlInput).pipe(absoluteUrlSchema);
 
 const clubProfileUpdateSchema = z.object({
   address: z.string().trim().max(240),
@@ -32,9 +79,9 @@ const clubProfileUpdateSchema = z.object({
     .refine((value) => value.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
       message: "Use a valid email address or leave the field empty.",
     }),
-  instagramUrl: optionalUrlSchema,
+  instagramUrl: instagramUrlSchema,
   phone: z.string().trim().max(80),
-  websiteUrl: optionalUrlSchema,
+  websiteUrl: websiteUrlSchema,
 });
 
 const normalizeOptionalText = (value: string): string | null => {

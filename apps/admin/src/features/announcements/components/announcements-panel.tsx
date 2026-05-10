@@ -26,6 +26,10 @@ type AnnouncementsPanelProps = {
   snapshot: AnnouncementSnapshot;
 };
 
+type AnnouncementFormPayload = AnnouncementCreatePayload & {
+  imagePreviewUrl: string;
+};
+
 type AnnouncementAudienceOption =
   | "ALL"
   | "BUSINESSES"
@@ -282,7 +286,7 @@ const toLocalDateTimeInput = (value: Date): string => {
 
 const announcementClockRefreshMs = 30_000;
 
-const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreatePayload => {
+const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementFormPayload => {
   const startsAt = toLocalDateTimeInput(new Date());
   const initialClubId = snapshot.scope === "CLUB" ? snapshot.clubOptions[0]?.clubId ?? "" : "";
   const initialClubEvent =
@@ -300,6 +304,7 @@ const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreat
     eventId: initialClubEvent?.eventId ?? "",
     imageStagingPath: "",
     imageUrl: "",
+    imagePreviewUrl: "",
     priority: "0",
     startsAt,
     status: "PUBLISHED",
@@ -310,7 +315,7 @@ const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreat
 
 const createPayloadFromAnnouncement = (
   announcement: AnnouncementRecord
-): AnnouncementCreatePayload => ({
+): AnnouncementFormPayload => ({
   audience: announcement.audience,
   body: announcement.body,
   clubId: announcement.clubId ?? "",
@@ -319,7 +324,8 @@ const createPayloadFromAnnouncement = (
   endsAt: announcement.endsAt === null ? "" : toLocalDateTimeInput(new Date(announcement.endsAt)),
   eventId: announcement.eventId ?? "",
   imageStagingPath: announcement.imageStagingPath,
-  imageUrl: announcement.imageUrl ?? "",
+  imageUrl: announcement.imageStagingPath.length > 0 ? "" : announcement.imageUrl ?? "",
+  imagePreviewUrl: announcement.imageUrl ?? "",
   priority: String(announcement.priority),
   startsAt: toLocalDateTimeInput(new Date(announcement.startsAt)),
   status: announcement.status === "ARCHIVED" ? "DRAFT" : announcement.status,
@@ -330,8 +336,25 @@ const createPayloadFromAnnouncement = (
 const isEventScopedPayload = (payload: AnnouncementCreatePayload): boolean =>
   payload.eventId.trim().length > 0;
 
+const toAnnouncementCreatePayload = (payload: AnnouncementFormPayload): AnnouncementCreatePayload => ({
+  audience: payload.audience,
+  body: payload.body,
+  clubId: payload.clubId,
+  ctaLabel: payload.ctaLabel,
+  ctaUrl: payload.ctaUrl,
+  endsAt: payload.endsAt,
+  eventId: payload.eventId,
+  imageStagingPath: payload.imageStagingPath,
+  imageUrl: payload.imageStagingPath.trim().length > 0 ? "" : payload.imageUrl,
+  priority: payload.priority,
+  startsAt: payload.startsAt,
+  status: payload.status,
+  targetCity: payload.targetCity,
+  title: payload.title,
+});
+
 const createSubmitPayload = (
-  payload: AnnouncementCreatePayload,
+  payload: AnnouncementFormPayload,
   snapshot: AnnouncementSnapshot
 ): AnnouncementCreatePayload => {
   const eventId = payload.eventId.trim();
@@ -348,12 +371,14 @@ const createSubmitPayload = (
         targetCity: matchedEvent.city,
       };
 
-  return matchedEvent === null || eventScopedPayload.audience !== "CLUBS"
+  const normalizedPayload: AnnouncementFormPayload = matchedEvent === null || eventScopedPayload.audience !== "CLUBS"
     ? eventScopedPayload
     : {
       ...eventScopedPayload,
       audience: "STUDENTS",
     };
+
+  return toAnnouncementCreatePayload(normalizedPayload);
 };
 
 const formatDate = (locale: DashboardLocale, value: string): string =>
@@ -419,7 +444,7 @@ const getAnnouncementSenderLabel = (
 export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps) => {
   const router = useRouter();
   const copy = copyByLocale[locale];
-  const [payload, setPayload] = useState<AnnouncementCreatePayload>(createInitialPayload(snapshot));
+  const [payload, setPayload] = useState<AnnouncementFormPayload>(createInitialPayload(snapshot));
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
@@ -530,8 +555,9 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
 
       setPayload((current) => ({
         ...current,
+        imagePreviewUrl: uploadedImage.previewUrl,
         imageStagingPath: uploadedImage.stagingPath,
-        imageUrl: uploadedImage.previewUrl,
+        imageUrl: "",
       }));
       setActionState({
         code: "IMAGE_STAGED",
@@ -1011,18 +1037,25 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
               />
               <span>{isImageUploading ? copy.uploadingImage : copy.uploadAnnouncementImage}</span>
             </label>
-            {payload.imageUrl.trim().length > 0 ? (
+            {(payload.imagePreviewUrl.trim().length > 0 || payload.imageUrl.trim().length > 0) ? (
               <div
                 aria-label={copy.imagePreview}
                 className="announcement-image-preview"
-                style={{ backgroundImage: `url(${payload.imageUrl})` }}
+                style={{ backgroundImage: `url(${payload.imagePreviewUrl.trim().length > 0 ? payload.imagePreviewUrl : payload.imageUrl})` }}
               />
             ) : null}
             <label className="field-stack">
               <span className="field-label">{copy.imageUrl}</span>
               <input
                 disabled={isFormDisabled}
-                onChange={(event) => setPayload((current) => ({ ...current, imageUrl: event.target.value }))}
+                onChange={(event) =>
+                  setPayload((current) => ({
+                    ...current,
+                    imagePreviewUrl: event.target.value,
+                    imageStagingPath: "",
+                    imageUrl: event.target.value,
+                  }))
+                }
                 placeholder={copy.placeholderImageUrl}
                 value={payload.imageUrl}
               />

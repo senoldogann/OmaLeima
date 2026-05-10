@@ -2,6 +2,36 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Web Organization Validation Hotfix)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/web-org-profile-announcement-validation`
+- **Goal:** Remove production blockers in organization profile update and announcement image upload validation without weakening backend validation or storing expiring signed URLs.
+
+## Architectural Decisions
+
+- Keep validation server-side and strict, but normalize common profile URL inputs before validation so organizers are not blocked by missing protocol or Instagram handle format.
+- Surface route field errors in the profile panel instead of collapsing all validation failures into a generic message.
+- Split announcement uploaded image preview state from the submitted `imageUrl`: use the signed staging URL only for UI preview, submit `imageStagingPath` for draft/publish, and keep public `imageUrl` for manually provided or already-published URLs.
+- Do not increase `imageUrl` max length to accept signed staging URLs because those URLs expire and are not valid durable announcement content.
+
+## Prompt
+
+Sen OmaLeima admin web validation hotfix engineer olarak calisiyorsun.
+Hedef: Organizasyon profil guncelleme ve anons gorsel upload validation hatalarini production-safe sekilde duzelt.
+Mimari: Next.js route validation + React client payload state + mevcut Supabase storage staging/publish helper'lari. Yeni dependency veya schema degisikligi yok.
+Kapsam: `apps/admin` profile route/panel ve announcement payload/preview validation akisi; dokuman/handoff guncellemesi ve admin validation.
+Cikti: Strict TypeScript patch, kullaniciya alan bazli profile validation mesaji, staging signed URL'i persistence payload'undan ayiran announcement fix'i, admin type/lint/build kaniti.
+Yasaklar: `imageUrl` limitini signed URL saklayacak sekilde gevsetme, expiring signed URL persist etme, RLS/storage policy degistirme, unrelated UI redesign, `any` tipi.
+Standartlar: AGENTS.md, Supabase staged media discipline, no silent failures, explicit validation errors, focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+
 ## Current Plan (Production Review Deploy + Merge)
 
 - **Date:** 2026-05-10

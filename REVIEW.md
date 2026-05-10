@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Web Organization Validation Hotfix)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/web-org-profile-announcement-validation`
+- **Scope:** Fix two production web organization validation failures: club profile update returning generic payload validation errors and announcement creation rejecting uploaded staging image previews because signed URLs exceed the stored `imageUrl` limit.
+
+## Web Organization Validation Findings
+
+- Club profile API validates `websiteUrl` and `instagramUrl` as absolute `http(s)` URLs and returns field errors, but the panel only shows the generic response message. Operators therefore see `Club profile payload validation failed.` without knowing which field is invalid.
+- Organization profile URL inputs should be normalized at the route boundary for common safe entries (`example.fi`, `instagram.com/org`, `@org`) while still storing absolute `http(s)` URLs and preserving length limits.
+- Announcement image upload currently writes the signed private staging preview URL into the same `imageUrl` field submitted to the create/update APIs. Supabase signed URLs include a long JWT query string, so validation rejects them with `imageUrl must be 500 characters or shorter.`
+- The signed staging preview URL is display-only and expiring; it must not be persisted or validated as the public `image_url`. The durable payload should keep `imageStagingPath` for staged uploads and leave `imageUrl` empty until publishing copies the staged media to the public bucket.
+
 ## Current Review (Subagent Production Code Review)
 
 - **Date:** 2026-05-10
