@@ -138,6 +138,14 @@ const createExpoConfig = (_context: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    [
+      "expo-build-properties",
+      {
+        ios: {
+          buildReactNativeFromSource: true,
+        },
+      },
+    ],
     "expo-apple-authentication",
     "expo-asset",
     [

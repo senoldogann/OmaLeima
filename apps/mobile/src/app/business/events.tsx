@@ -540,11 +540,11 @@ export default function BusinessEventsScreen() {
           title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
           variant="subtle"
         >
-          <Text style={styles.bodyText}>
-            {language === "fi"
-              ? "Kun samaan aikaan on useita tapahtumia, valitse skannerissa aina oikea tapahtumapiste ennen leiman antamista. QR ja skannaus sidotaan tapahtumaan."
-              : "When multiple events overlap, choose the correct event venue in the scanner before stamping. QR scans stay tied to the event."}
-          </Text>
+      <Text style={styles.overlappingNoticeText}>
+        {language === "fi"
+          ? "Kun samaan aikaan on useita tapahtumia, valitse skannerissa aina oikea tapahtumapiste ennen leiman antamista. QR ja skannaus sidotaan tapahtumaan."
+          : "When multiple events overlap, choose the correct event venue in the scanner before stamping. QR scans stay tied to the event."}
+      </Text>
         </InfoCard>
       ) : null}
 
@@ -676,7 +676,14 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow={copy.business.history} title={labels.pastJoinedTitle}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <AppIcon color={theme.colors.textMuted} name="history" size={14} />
+              <Text style={styles.sectionTitle}>{labels.pastJoinedTitle}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{filteredCompletedJoinedEvents.length}</Text>
+          </View>
           {filteredCompletedJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.pastJoinedEmptyBody}</Text>
           ) : (
@@ -690,7 +697,7 @@ export default function BusinessEventsScreen() {
               </View>
             </ScrollView>
           )}
-        </InfoCard>
+        </View>
       ) : null}
     </AppScreen>
   );
@@ -712,6 +719,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     cardTitle: {
       color: theme.colors.textPrimary,
@@ -902,9 +915,9 @@ const createStyles = (theme: MobileTheme) =>
       padding: 14,
     },
     railCard: {
-      backgroundColor: theme.colors.surfaceL2,
+      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
+      borderRadius: theme.radius.card,
       borderWidth: 1,
       gap: 10,
       height: 302,
@@ -941,12 +954,10 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     sectionCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
       gap: 14,
-      padding: 18,
+      marginHorizontal: 2,
+      paddingHorizontal: 2,
+      paddingVertical: 4,
     },
     sectionCount: {
       color: theme.colors.textMuted,

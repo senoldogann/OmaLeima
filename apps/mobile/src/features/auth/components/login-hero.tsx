@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
@@ -20,7 +20,7 @@ type OnboardingSlide = {
 export const LoginHero = () => {
   const { width } = useWindowDimensions();
   const theme = useAppTheme();
-  const { copy, language } = useUiPreferences();
+  const { copy, language, setLanguage } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const [remoteSlides, setRemoteSlides] = useState<MobileLoginSlideRecord[] | null>(null);
   const [slideErrorMessage, setSlideErrorMessage] = useState<string | null>(null);
@@ -83,12 +83,6 @@ export const LoginHero = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.brandRow}>
-        <Text style={styles.kicker}>OmaLeima</Text>
-        <Text style={styles.brandHint}>{copy.auth.brandHint}</Text>
-        {slideErrorMessage !== null ? <Text style={styles.slideErrorText}>{slideErrorMessage}</Text> : null}
-      </View>
-
       <AutoAdvancingRail
         contentContainerStyle={styles.railContent}
         intervalMs={3200}
@@ -105,6 +99,26 @@ export const LoginHero = () => {
             style={styles.slide}
           >
             <View style={styles.slideOverlay} />
+            <View style={styles.languageToggle}>
+              {(["fi", "en"] as const).map((option) => {
+                const isActive = language === option;
+
+                return (
+                  <Pressable
+                    accessibilityLabel={option === "fi" ? "Suomi" : "English"}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    key={option}
+                    onPress={() => setLanguage(option)}
+                    style={[styles.languageOption, isActive ? styles.languageOptionActive : null]}
+                  >
+                    <Text style={[styles.languageOptionText, isActive ? styles.languageOptionTextActive : null]}>
+                      {option.toUpperCase()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             <View style={styles.slideContent}>
               <Text style={styles.slideEyebrow}>{slide.eyebrow}</Text>
               <Text style={styles.title}>{slide.title}</Text>
@@ -118,31 +132,48 @@ export const LoginHero = () => {
         )}
         showsIndicators={false}
       />
+      {slideErrorMessage !== null ? <Text style={styles.slideErrorText}>{slideErrorMessage}</Text> : null}
     </View>
   );
 };
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    brandHint: {
-      color: theme.colors.textMuted,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-    },
-    brandRow: {
-      gap: 4,
-    },
     container: {
-      gap: 14,
+      gap: 8,
     },
-    kicker: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.2,
-      lineHeight: theme.typography.lineHeights.eyebrow,
-      textTransform: "uppercase",
+    languageOption: {
+      alignItems: "center",
+      borderRadius: 999,
+      height: 30,
+      justifyContent: "center",
+      minWidth: 38,
+      paddingHorizontal: 8,
+    },
+    languageOptionActive: {
+      backgroundColor: theme.colors.lime,
+    },
+    languageOptionText: {
+      color: "rgba(248, 250, 245, 0.82)",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    languageOptionTextActive: {
+      color: theme.colors.actionPrimaryText,
+    },
+    languageToggle: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0, 0, 0, 0.34)" : "rgba(7, 10, 7, 0.42)",
+      borderColor: "rgba(248, 250, 245, 0.18)",
+      borderRadius: 999,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 2,
+      padding: 3,
+      position: "absolute",
+      right: 12,
+      top: 8,
+      zIndex: 2,
     },
     rail: {
       minHeight: 218,
@@ -208,7 +239,7 @@ const createStyles = (theme: MobileTheme) =>
       color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
       fontSize: 28,
-      letterSpacing: -0.7,
+      letterSpacing: 0,
       lineHeight: 34,
     },
   });

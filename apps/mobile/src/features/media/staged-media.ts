@@ -114,7 +114,7 @@ export const publishStagedMediaAsync = async ({
   const { error: uploadError } = await supabase.storage
     .from(destinationBucketId)
     .upload(destinationPath, uploadBody, {
-      cacheControl: "3600",
+      cacheControl: "31536000",
       contentType: contentTypeByExtension[extension],
       upsert: false,
     });

@@ -34,7 +34,6 @@ import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useStudentRewardCelebration } from "@/features/notifications/student-reward-celebration";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import {
   selectStudentQrEvents,
   useActiveAppState,
@@ -249,6 +248,14 @@ const createProgressHeadline = (event: StudentRewardEventProgress, language: "fi
     : "Collect leimas to unlock the next reward.";
 };
 
+const getHighestRewardRequirement = (event: StudentRewardEventProgress | null): number => {
+  if (event === null || event.tiers.length === 0) {
+    return 0;
+  }
+
+  return Math.max(...event.tiers.map((tier) => tier.requiredStampCount));
+};
+
 export default function StudentActiveEventScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -395,6 +402,16 @@ export default function StudentActiveEventScreen() {
   }, [countdownSeconds, isQrLive]);
   const canRenderQrSvg = shouldProtectQrScreen && activePassSide === "QR" && isFocused && isAppActive;
   const showProtectionNotice = protection.status === "ERROR";
+  const selectedDetailMinimumStampsRequired = selectedEventDetailQuery.data?.minimumStampsRequired ?? 0;
+  const selectedPassMinimumStampsRequired = Math.max(
+    selectedDetailMinimumStampsRequired,
+    selectedRewardEvent?.minimumStampsRequired ?? 0,
+    selectedEvent?.minimumStampsRequired ?? 0
+  );
+  const selectedPassTargetStampCount = Math.max(
+    selectedPassMinimumStampsRequired,
+    getHighestRewardRequirement(selectedRewardEvent)
+  );
   const qrFaceAnimatedStyle = useMemo(
     () => ({
       opacity: passFlipProgress.interpolate({
@@ -750,12 +767,6 @@ export default function StudentActiveEventScreen() {
 
   return (
     <AppScreen>
-      {selectedEvent === null || qrEventCandidates.length === 0 ? (
-        <View style={styles.profileFallbackBar}>
-          <StudentProfileHeaderAction />
-        </View>
-      ) : null}
-
       {qrContextQuery.error ? (
         <InfoCard eyebrow={copy.common.error} motionIndex={0} title={language === "fi" ? "QR-tilannetta ei voitu ladata" : "Could not load QR context"}>
           <Text style={styles.bodyText}>{createUserSafeErrorMessage(qrContextQuery.error, language, "qrContext")}</Text>
@@ -776,9 +787,6 @@ export default function StudentActiveEventScreen() {
 
       {selectedEvent !== null && qrEventCandidates.length > 0 ? (
         <View style={styles.eventHeroRail}>
-          <View pointerEvents="box-none" style={styles.profileHeroOverlay}>
-            <StudentProfileHeaderAction />
-          </View>
           <ScrollView
             decelerationRate="fast"
             horizontal
@@ -946,6 +954,9 @@ export default function StudentActiveEventScreen() {
                       <View style={styles.qrPlaceholder}>
                         <Text style={styles.qrErrorText}>{language === "fi" ? "QR päivittyy" : "QR is catching up"}</Text>
                         <Text selectable style={styles.qrErrorDetailText}>{resolveQrTokenErrorMessage(qrTokenQuery.error, language)}</Text>
+                        <Pressable onPress={() => void qrTokenQuery.refetch()} style={styles.ghostButton}>
+                          <Text style={styles.ghostButtonText}>{copy.common.retry}</Text>
+                        </Pressable>
                       </View>
                     ) : null}
                   </View>
@@ -1019,7 +1030,8 @@ export default function StudentActiveEventScreen() {
                 </Text>
 
                 <StudentLeimaPassCard
-                  minimumStampsRequired={selectedRewardEvent?.minimumStampsRequired ?? selectedEvent.minimumStampsRequired}
+                  minimumStampsRequired={selectedPassMinimumStampsRequired}
+                  targetStampCount={selectedPassTargetStampCount}
                   venues={selectedEventDetailQuery.data?.venues ?? []}
                 />
 
@@ -1095,7 +1107,8 @@ export default function StudentActiveEventScreen() {
                 : "Digital leima pass · shared without QR code"}
             </Text>
             <StudentLeimaPassCard
-              minimumStampsRequired={selectedRewardEvent?.minimumStampsRequired ?? selectedEvent.minimumStampsRequired}
+              minimumStampsRequired={selectedPassMinimumStampsRequired}
+              targetStampCount={selectedPassTargetStampCount}
               venues={selectedEventDetailQuery.data?.venues ?? []}
             />
             <Text style={styles.shareCardFooter}>
@@ -1434,18 +1447,6 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       textAlign: "center",
-    },
-    profileHeroOverlay: {
-      position: "absolute",
-      right: theme.spacing.screenHorizontal,
-      top: 14,
-      zIndex: 5,
-    },
-    profileFallbackBar: {
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      marginBottom: 8,
     },
     progressHeadline: {
       color: theme.colors.textPrimary,

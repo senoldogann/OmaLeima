@@ -20,10 +20,10 @@ const getTabIconName = (routeName: string) => {
       return { ios: "qrcode.viewfinder", android: "qr-code-scanner", web: "qr-code-scanner" } as const;
     case "leaderboard":
       return { ios: "medal.fill", android: "leaderboard", web: "leaderboard" } as const;
-    case "rewards":
-      return { ios: "gift.fill", android: "redeem", web: "redeem" } as const;
     case "updates":
       return { ios: "person.3.fill", android: "groups", web: "groups" } as const;
+    case "profile":
+      return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
     default:
       return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
   }
@@ -162,9 +162,9 @@ export default function StudentTabsLayout() {
           },
         }}
       />
-      <Tabs.Screen name="rewards" options={{ title: copy.common.rewards }} />
       <Tabs.Screen name="updates" options={{ title: copy.common.community }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ title: copy.common.profile }} />
+      <Tabs.Screen name="rewards" options={{ href: null }} />
       <Tabs.Screen name="announcement-detail" options={{ href: null }} />
     </Tabs>
   );

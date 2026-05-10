@@ -1526,8 +1526,8 @@ const createStyles = (theme: MobileTheme) =>
     preferenceValueText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     primaryButton: {
       alignItems: "center",

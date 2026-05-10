@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { FunctionsHttpError, FunctionsRelayError } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
 
@@ -13,6 +14,7 @@ export type ClubClaimEventRecord = {
   eventId: string;
   eventStatus: "ACTIVE" | "COMPLETED";
   name: string;
+  progressCandidateCount: number;
   recentClaimCount: number;
   startAt: string;
 };
@@ -44,17 +46,35 @@ export type ClubRecentRewardClaimRecord = {
   studentLabel: string;
 };
 
+export type ClubClaimProgressRecord = {
+  eventId: string;
+  eventName: string;
+  inventoryRemaining: number | null;
+  inventoryTotal: number | null;
+  missingStampCount: number;
+  rewardTierId: string;
+  rewardTitle: string;
+  rewardType: "COUPON" | "ENTRY" | "HAALARIMERKKI" | "OTHER" | "PATCH" | "PRODUCT";
+  requiredStampCount: number;
+  stampCount: number;
+  studentId: string;
+  studentLabel: string;
+};
+
 export type ClubClaimsSummary = {
   claimableCandidateCount: number;
   operationalEventCount: number;
+  progressCandidateCount: number;
   recentClaimCount: number;
   visibleCandidateCount: number;
   visibleClaimCount: number;
+  visibleProgressCount: number;
 };
 
 export type ClubClaimsSnapshot = {
   candidates: ClubClaimCandidateRecord[];
   events: ClubClaimEventRecord[];
+  progress: ClubClaimProgressRecord[];
   recentClaims: ClubRecentRewardClaimRecord[];
   summary: ClubClaimsSummary;
 };
@@ -117,9 +137,20 @@ type StampRow = {
   student_id: string;
 };
 
+type StudentLabelRow = {
+  display_name: string | null;
+  event_id: string;
+  student_id: string;
+};
+
 type ClaimRewardFunctionResponse = {
   message?: unknown;
   rewardClaimId?: unknown;
+  status?: unknown;
+};
+
+type ClaimRewardFunctionErrorBody = {
+  message?: unknown;
   status?: unknown;
 };
 
@@ -134,6 +165,14 @@ const createCandidateKey = (eventId: string, rewardTierId: string, studentId: st
   `${eventId}:${rewardTierId}:${studentId}`;
 
 const createMaskedStudentLabel = (studentId: string): string => `Student ...${studentId.slice(-8)}`;
+
+const createStudentLabelKey = (eventId: string, studentId: string): string => `${eventId}:${studentId}`;
+
+const createStudentLabel = (
+  labelsByStudentEvent: Map<string, string>,
+  eventId: string,
+  studentId: string
+): string => labelsByStudentEvent.get(createStudentLabelKey(eventId, studentId)) ?? createMaskedStudentLabel(studentId);
 
 const fetchClubMembershipsAsync = async (userId: string): Promise<ClubMembershipRow[]> => {
   const { data, error } = await supabase
@@ -256,6 +295,24 @@ const fetchRewardClaimsAsync = async (eventIds: string[]): Promise<RewardClaimRo
   return data;
 };
 
+const fetchStudentLabelsAsync = async (eventIds: string[]): Promise<StudentLabelRow[]> => {
+  if (eventIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .rpc("get_club_claim_student_labels", {
+      p_event_ids: eventIds,
+    })
+    .returns<StudentLabelRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load student labels for club claims: ${error.message}`);
+  }
+
+  return (data ?? []) as unknown as StudentLabelRow[];
+};
+
 const buildStampCounts = (rows: StampRow[]): Map<string, number> => {
   const counts = new Map<string, number>();
 
@@ -299,6 +356,15 @@ const buildRegistrationsByEvent = (rows: RegistrationRow[]): Map<string, Registr
   return rowsByEvent;
 };
 
+const buildStudentLabelsByEvent = (rows: StudentLabelRow[]): Map<string, string> =>
+  new Map(
+    rows.flatMap((row) => {
+      const label = row.display_name?.trim() ?? "";
+
+      return label.length > 0 ? [[createStudentLabelKey(row.event_id, row.student_id), label] as const] : [];
+    })
+  );
+
 const compareCandidates = (left: ClubClaimCandidateRecord, right: ClubClaimCandidateRecord): number => {
   if (left.eventName !== right.eventName) {
     return left.eventName.localeCompare(right.eventName);
@@ -315,12 +381,29 @@ const compareCandidates = (left: ClubClaimCandidateRecord, right: ClubClaimCandi
   return left.studentLabel.localeCompare(right.studentLabel);
 };
 
+const compareProgress = (left: ClubClaimProgressRecord, right: ClubClaimProgressRecord): number => {
+  if (left.eventName !== right.eventName) {
+    return left.eventName.localeCompare(right.eventName);
+  }
+
+  if (left.missingStampCount !== right.missingStampCount) {
+    return left.missingStampCount - right.missingStampCount;
+  }
+
+  if (left.stampCount !== right.stampCount) {
+    return right.stampCount - left.stampCount;
+  }
+
+  return left.studentLabel.localeCompare(right.studentLabel);
+};
+
 const createClaimableCandidates = (
   events: EventRow[],
   rewardTiersByEvent: Map<string, RewardTierRow[]>,
   registrationsByEvent: Map<string, RegistrationRow[]>,
   stampCounts: Map<string, number>,
-  existingClaims: Map<string, RewardClaimRow>
+  existingClaims: Map<string, RewardClaimRow>,
+  labelsByStudentEvent: Map<string, string>
 ): ClubClaimCandidateRecord[] =>
   events
     .flatMap((event) => {
@@ -362,7 +445,7 @@ const createClaimableCandidates = (
               requiredStampCount: rewardTier.required_stamp_count,
               stampCount,
               studentId: registration.student_id,
-              studentLabel: createMaskedStudentLabel(registration.student_id),
+              studentLabel: createStudentLabel(labelsByStudentEvent, event.id, registration.student_id),
             },
           ];
         });
@@ -370,10 +453,64 @@ const createClaimableCandidates = (
     })
     .sort(compareCandidates);
 
+const createProgressRecords = (
+  events: EventRow[],
+  rewardTiersByEvent: Map<string, RewardTierRow[]>,
+  registrationsByEvent: Map<string, RegistrationRow[]>,
+  stampCounts: Map<string, number>,
+  existingClaims: Map<string, RewardClaimRow>,
+  labelsByStudentEvent: Map<string, string>
+): ClubClaimProgressRecord[] =>
+  events
+    .flatMap((event) => {
+      const rewardTiers = rewardTiersByEvent.get(event.id) ?? [];
+      const registrations = registrationsByEvent.get(event.id) ?? [];
+
+      return registrations.flatMap((registration) => {
+        const stampCount = stampCounts.get(`${event.id}:${registration.student_id}`) ?? 0;
+
+        return rewardTiers.flatMap((rewardTier) => {
+          const claimKey = createCandidateKey(event.id, rewardTier.id, registration.student_id);
+          const existingClaim = existingClaims.get(claimKey) ?? null;
+          const inventoryRemaining =
+            rewardTier.inventory_total === null
+              ? null
+              : Math.max(rewardTier.inventory_total - rewardTier.inventory_claimed, 0);
+
+          if (existingClaim !== null) {
+            return [];
+          }
+
+          if (stampCount >= rewardTier.required_stamp_count) {
+            return [];
+          }
+
+          return [
+            {
+              eventId: event.id,
+              eventName: event.name,
+              inventoryRemaining,
+              inventoryTotal: rewardTier.inventory_total,
+              missingStampCount: rewardTier.required_stamp_count - stampCount,
+              rewardTierId: rewardTier.id,
+              rewardTitle: rewardTier.title,
+              rewardType: rewardTier.reward_type,
+              requiredStampCount: rewardTier.required_stamp_count,
+              stampCount,
+              studentId: registration.student_id,
+              studentLabel: createStudentLabel(labelsByStudentEvent, event.id, registration.student_id),
+            },
+          ];
+        });
+      });
+    })
+    .sort(compareProgress);
+
 const createRecentClaims = (
   claims: RewardClaimRow[],
   eventById: Map<string, EventRow>,
-  rewardTierById: Map<string, RewardTierRow>
+  rewardTierById: Map<string, RewardTierRow>,
+  labelsByStudentEvent: Map<string, string>
 ): ClubRecentRewardClaimRecord[] =>
   claims
     .map((claim) => {
@@ -390,7 +527,7 @@ const createRecentClaims = (
         rewardTitle: rewardTier?.title ?? `Reward ...${claim.reward_tier_id.slice(-4)}`,
         status: claim.status,
         studentId: claim.student_id,
-        studentLabel: createMaskedStudentLabel(claim.student_id),
+        studentLabel: createStudentLabel(labelsByStudentEvent, claim.event_id, claim.student_id),
       };
     })
     .sort((left, right) => new Date(right.claimedAt).getTime() - new Date(left.claimedAt).getTime())
@@ -408,35 +545,77 @@ const normalizeClaimFunctionResponse = (value: ClaimRewardFunctionResponse | nul
   };
 };
 
+const readClaimRewardFunctionErrorAsync = async (error: unknown): Promise<string> => {
+  if (error instanceof FunctionsHttpError || error instanceof FunctionsRelayError) {
+    const context = error.context as unknown;
+
+    if (context instanceof Response) {
+      try {
+        const body = (await context.clone().json()) as ClaimRewardFunctionErrorBody;
+        const status = typeof body.status === "string" ? body.status : `HTTP_${context.status}`;
+        const message = typeof body.message === "string" ? body.message : error.message;
+
+        return `${status}: ${message}`;
+      } catch {
+        return `HTTP_${context.status}: ${error.message}`;
+      }
+    }
+  }
+
+  return error instanceof Error ? error.message : String(error);
+};
+
 export const fetchClubClaimsSnapshotAsync = async (userId: string): Promise<ClubClaimsSnapshot> => {
   const memberships = await fetchClubMembershipsAsync(userId);
   const clubIds = memberships.map((membership) => membership.club_id);
   const events = await fetchOperationalEventsAsync(clubIds);
   const eventIds = events.map((event) => event.id);
-  const [registrations, rewardTiers, stamps, rewardClaims] = await Promise.all([
+  const [registrations, rewardTiers, stamps, rewardClaims, studentLabels] = await Promise.all([
     fetchRegisteredStudentsAsync(eventIds),
     fetchActiveRewardTiersAsync(eventIds),
     fetchValidStampsAsync(eventIds),
     fetchRewardClaimsAsync(eventIds),
+    fetchStudentLabelsAsync(eventIds),
   ]);
   const rewardTiersByEvent = buildRewardTiersByEvent(rewardTiers);
+  const registrationsByEvent = buildRegistrationsByEvent(registrations);
+  const stampCounts = buildStampCounts(stamps);
+  const existingClaims = buildExistingClaims(rewardClaims);
+  const labelsByStudentEvent = buildStudentLabelsByEvent(studentLabels);
   const candidates = createClaimableCandidates(
     events,
     rewardTiersByEvent,
-    buildRegistrationsByEvent(registrations),
-    buildStampCounts(stamps),
-    buildExistingClaims(rewardClaims)
+    registrationsByEvent,
+    stampCounts,
+    existingClaims,
+    labelsByStudentEvent
+  );
+  const progress = createProgressRecords(
+    events,
+    rewardTiersByEvent,
+    registrationsByEvent,
+    stampCounts,
+    existingClaims,
+    labelsByStudentEvent
   );
   const eventById = new Map(events.map((event) => [event.id, event] as const));
   const rewardTierById = buildRewardTierById(rewardTiers);
-  const recentClaims = createRecentClaims(rewardClaims, eventById, rewardTierById);
+  const recentClaims = createRecentClaims(rewardClaims, eventById, rewardTierById, labelsByStudentEvent);
   const claimableCandidateCountByEvent = new Map<string, number>();
+  const progressCandidateCountByEvent = new Map<string, number>();
   const recentClaimCountByEvent = new Map<string, number>();
 
   candidates.forEach((candidate) => {
     claimableCandidateCountByEvent.set(
       candidate.eventId,
       (claimableCandidateCountByEvent.get(candidate.eventId) ?? 0) + 1
+    );
+  });
+
+  progress.forEach((record) => {
+    progressCandidateCountByEvent.set(
+      record.eventId,
+      (progressCandidateCountByEvent.get(record.eventId) ?? 0) + 1
     );
   });
 
@@ -453,16 +632,20 @@ export const fetchClubClaimsSnapshotAsync = async (userId: string): Promise<Club
       eventId: event.id,
       eventStatus: event.status,
       name: event.name,
+      progressCandidateCount: progressCandidateCountByEvent.get(event.id) ?? 0,
       recentClaimCount: recentClaimCountByEvent.get(event.id) ?? 0,
       startAt: event.start_at,
     })),
+    progress,
     recentClaims,
     summary: {
       claimableCandidateCount: candidates.length,
       operationalEventCount: events.length,
+      progressCandidateCount: progress.length,
       recentClaimCount: rewardClaims.length,
       visibleCandidateCount: candidates.length,
       visibleClaimCount: recentClaims.length,
+      visibleProgressCount: progress.length,
     },
   };
 };
@@ -483,7 +666,9 @@ export const confirmClubRewardClaimAsync = async ({
   });
 
   if (error !== null) {
-    throw new Error(`Reward claim function failed for event ${eventId} and student ${studentId}: ${error.message}`);
+    const message = await readClaimRewardFunctionErrorAsync(error);
+
+    throw new Error(`Reward claim function failed for event ${eventId} and student ${studentId}: ${message}`);
   }
 
   return normalizeClaimFunctionResponse(data as ClaimRewardFunctionResponse | null);

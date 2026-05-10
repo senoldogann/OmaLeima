@@ -103,6 +103,9 @@ const isKnownScanResponse = (value: unknown): value is ScanQrResponse => {
   );
 };
 
+const describeResponseBodyForError = (responseText: string): "empty body" | "non-JSON or unexpected body" =>
+  responseText.length === 0 ? "empty body" : "non-JSON or unexpected body";
+
 export const requestScanQrAsync = async ({
   supabaseUrl,
   publishableKey,
@@ -137,9 +140,7 @@ export const requestScanQrAsync = async ({
   });
 
   const responseText = await response.text();
-  // Ag gecidi/Edge runtime bazen JSON yerine HTML hata govdesi dondurur; ham SyntaxError
-  // operatore anlamsiz gozukur. JSON parse'i guvenli hale getirip body'i null kabul ediyoruz;
-  // sonraki dogrulayici "invalid body" mesaji status koduyla birlikte gercek nedeni iletir.
+  // Gateways and edge runtimes can return non-JSON bodies; never surface raw bodies to users.
   let responseBody: unknown = null;
   if (responseText.length > 0) {
     try {
@@ -154,14 +155,12 @@ export const requestScanQrAsync = async ({
       return mapScanResponse(responseBody);
     }
 
-    throw new Error(
-      `Scan request failed with status ${response.status}: ${responseText.length === 0 ? "empty body" : responseText}`
-    );
+    throw new Error(`Scan request failed with status ${response.status}: ${describeResponseBodyForError(responseText)}`);
   }
 
   if (!isKnownScanResponse(responseBody)) {
     throw new Error(
-      `Scan request returned an invalid body with status ${response.status}: ${responseText.length === 0 ? "empty body" : responseText}`
+      `Scan request returned an invalid body with status ${response.status}: ${describeResponseBodyForError(responseText)}`
     );
   }
 

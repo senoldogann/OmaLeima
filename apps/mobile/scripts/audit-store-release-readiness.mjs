@@ -63,6 +63,8 @@ const requiredEasEnvNames = [
   "EXPO_PUBLIC_SUPABASE_URL",
 ];
 const requiredEasEnvironments = ["development", "preview", "production"];
+const nativeReleaseMode = (process.env.OMALEIMA_NATIVE_RELEASE_MODE ?? "eas").trim().toLowerCase();
+const localNativeReleaseMode = nativeReleaseMode === "local";
 const storeAssetPaths = [
   "assets/images/icon.png",
   "assets/images/android-icon-foreground.png",
@@ -386,7 +388,9 @@ const main = async () => {
   const easJson = JSON.parse(easJsonSource);
   const mobilePublicEnv = await readMobilePublicEnvAsync();
   const hostedLoginSlidesState = await readHostedLoginSlidesAsync(mobilePublicEnv);
-  const remoteEasEnvState = readRemoteEasEnvState();
+  const remoteEasEnvState = localNativeReleaseMode
+    ? Object.fromEntries(requiredEasEnvironments.map((environmentName) => [environmentName, requiredEasEnvNames]))
+    : readRemoteEasEnvState();
   const storeAssetExists = await Promise.all(storeAssetPaths.map((relativePath) => pathExistsAsync(path.join(mobileRoot, relativePath))));
   const storeIconDimensionFailures = Object.entries(requiredStoreIconDimensions).flatMap(([relativePath, dimensions]) => {
     const actualDimensions = readPngDimensions(relativePath);
@@ -497,7 +501,8 @@ const main = async () => {
     authLibSource.includes('provider: "apple"') &&
     authLibSource.includes("signInWithIdToken") &&
     authLibSource.includes("AppleAuthentication.signInAsync") &&
-    appleSignInButtonSource.includes("AppleAuthenticationButton") &&
+    appleSignInButtonSource.includes("copy.auth.appleButton") &&
+    appleSignInButtonSource.includes("signInWithAppleAsync") &&
     appleSignInButtonSource.includes("Platform.OS !== \"ios\"") &&
     loginScreenSource.includes("<AppleSignInButton />");
   const iosLocationAlwaysPermissionHygieneReady =
@@ -606,6 +611,7 @@ const main = async () => {
     easJson.build?.preview?.distribution === "internal" &&
     easJson.build?.production?.environment === "production" &&
     easJson.build?.production?.autoIncrement === true;
+  const nativeReleasePathReady = localNativeReleaseMode || easCliReady;
   const remoteEasEnvReady = requiredEasEnvironments.every((environmentName) => {
     const envNames = Array.isArray(remoteEasEnvState[environmentName]) ? remoteEasEnvState[environmentName] : [];
 
@@ -623,7 +629,7 @@ const main = async () => {
 
   const docsAligned =
     normalizedMobileReadme.includes("audit:store-release-readiness") &&
-    normalizedMobileReadme.includes("expo eas cli auth") &&
+    (normalizedMobileReadme.includes("expo eas cli auth") || normalizedMobileReadme.includes("local xcode/gradle native release")) &&
     normalizedTestingDoc.includes("mobile store/public-launch readiness") &&
     normalizedTestingDoc.includes("hosted active mobile login slides") &&
     normalizedTestingDoc.includes("app store connect") &&
@@ -633,7 +639,7 @@ const main = async () => {
     normalizedLaunchRunbook.includes("app store connect") &&
     normalizedLaunchRunbook.includes("google play console") &&
     normalizedLaunchRunbook.includes("hosted active mobile login slides") &&
-    normalizedLaunchRunbook.includes("expo eas environment variables") &&
+    (normalizedLaunchRunbook.includes("expo eas environment variables") || normalizedLaunchRunbook.includes("local xcode/gradle release build")) &&
     normalizedLaunchRunbook.includes("sign in with apple") &&
     normalizedRootReadme.includes("qa:mobile-store-release-readiness");
 
@@ -685,7 +691,7 @@ const main = async () => {
     !iosPrivacyManifestReady ||
     !generatedNativeShareModulesAligned ||
     !generatedNativeFeedbackModulesAligned ||
-    !easCliReady ||
+    !nativeReleasePathReady ||
     !remoteEasEnvReady ||
     !mobilePrivacyCoverageReady ||
     !inAppLegalLinksReady ||
@@ -718,6 +724,8 @@ const main = async () => {
       `generatedNativeShareModulesAligned=${generatedNativeShareModulesAligned}`,
       `generatedNativeFeedbackModulesAligned=${generatedNativeFeedbackModulesAligned}`,
       `iosPrivacyManifestReady=${iosPrivacyManifestReady}`,
+      `nativeReleaseMode=${nativeReleaseMode}`,
+      `nativeReleasePathReady=${nativeReleasePathReady}`,
       `easCliReady=${easCliReady}`,
       `remoteEasEnvReady=${remoteEasEnvReady}`,
       `mobilePrivacyCoverageReady=${mobilePrivacyCoverageReady}`,
@@ -758,8 +766,8 @@ const main = async () => {
       "web-deletion-resource:present",
       "mobile-edge-security-boundary:documented",
       "hosted-login-slides:clean",
-      "eas-build-environments:explicit",
-      "eas-remote-envs:present",
+      localNativeReleaseMode ? "native-release-mode:local" : "eas-build-environments:explicit",
+      localNativeReleaseMode ? "eas-remote-envs:skipped-local-native-release" : "eas-remote-envs:present",
       "owner-store-tasks:documented",
       "next:prepare-app-store-connect-and-google-play-listings-when-broader-launch-starts",
     ].join("|")

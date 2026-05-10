@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -17,7 +17,7 @@ import { useJoinEventMutation, useStudentEventDetailQuery } from "@/features/eve
 import { rehydrateStudentEventsBuckets, useStudentEventsQuery } from "@/features/events/student-events";
 import type { JoinEventResultStatus, StudentEventSummary } from "@/features/events/types";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
+import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
 import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
@@ -176,7 +176,17 @@ export default function StudentEventsScreen() {
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
   });
-  const manualRefresh = useManualRefresh(eventsQuery.refetch);
+  const rewardOverviewQuery = useStudentRewardOverviewQuery({
+    studentId: studentId ?? "",
+    isEnabled: studentId !== null,
+  });
+  const refetchEventSurfaceAsync = useCallback(
+    async (): Promise<void> => {
+      await Promise.all([eventsQuery.refetch(), rewardOverviewQuery.refetch()]);
+    },
+    [eventsQuery, rewardOverviewQuery]
+  );
+  const manualRefresh = useManualRefresh(refetchEventSurfaceAsync);
   const joinMutation = useJoinEventMutation();
   const venueMapQuery = useStudentEventDetailQuery({
     eventId: mapPreviewEvent?.id ?? "",
@@ -199,6 +209,10 @@ export default function StudentEventsScreen() {
   const visibleEvents = useMemo(
     () => [...activeEvents, ...upcomingEvents],
     [activeEvents, upcomingEvents]
+  );
+  const rewardEventsById = useMemo(
+    () => new Map((rewardOverviewQuery.data?.events ?? []).map((event) => [event.id, event] as const)),
+    [rewardOverviewQuery.data?.events]
   );
   const hasEvents = activeEvents.length > 0 || upcomingEvents.length > 0;
   const overlappingEvents = useMemo(
@@ -294,20 +308,24 @@ export default function StudentEventsScreen() {
         />
       }
     >
-      {/* App header bar */}
       <View style={styles.appHeader}>
-        <StudentProfileHeaderAction />
-        <Text style={styles.brandTitle}>OmaLeima</Text>
-        <Pressable
-          accessibilityLabel={language === "fi" ? "Ilmoitukset" : "Notifications"}
-          onPress={() => router.push("/student/updates")}
-          style={styles.headerIconButton}
-        >
-          <AppIcon color={theme.colors.textPrimary} name="bell" size={20} />
-        </Pressable>
+        <View style={styles.headerCopy}>
+          <Text style={styles.screenTitle}>Approt</Text>
+          <Text style={styles.screenSubtitle}>
+            {language === "fi" ? "Tapahtumat ja oikea QR samassa paikassa." : "Events and the right QR in one place."}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityLabel={language === "fi" ? "Ilmoitukset" : "Notifications"}
+            onPress={() => router.push("/student/updates")}
+            style={styles.headerIconButton}
+          >
+            <AppIcon color={theme.colors.textPrimary} name="bell" size={20} />
+          </Pressable>
+        </View>
       </View>
 
-      {/* Search bar */}
       <View style={styles.searchBar}>
         <AppIcon color={theme.colors.textMuted} name="search" size={16} />
         <TextInput
@@ -324,7 +342,6 @@ export default function StudentEventsScreen() {
         ) : null}
       </View>
 
-      {/* Filter chips */}
       <ScrollView
         horizontal
         contentContainerStyle={styles.chipsContent}
@@ -384,7 +401,7 @@ export default function StudentEventsScreen() {
           title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
           variant="subtle"
         >
-          <Text style={styles.bodyText}>
+          <Text style={styles.overlappingNoticeText}>
             {language === "fi"
               ? "Jos osallistut useaan tapahtumaan samaan aikaan, avaa oikean tapahtuman QR ennen skannausta. QR kertoo skannerille aina oikean tapahtuman."
               : "If you join overlapping events, open the correct event QR before scanning. The QR always tells the scanner which event to use."}
@@ -437,12 +454,13 @@ export default function StudentEventsScreen() {
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
-               isJoinPending={pendingJoinEventId === event.id}
+              isJoinPending={pendingJoinEventId === event.id}
               key={event.id}
               motionIndex={index + 1}
               onJoinPress={canShowJoinAction(event) ? () => void joinEventFromCard(event.id) : undefined}
               onMapPress={() => openVenueMapPreview(event)}
               onPress={() => openEventDetail(event.id)}
+              rewardProgress={rewardEventsById.get(event.id) ?? null}
             />
           ))}
         </View>
@@ -461,12 +479,13 @@ export default function StudentEventsScreen() {
             <EventCard
               countdownLabel={createCountdownLabel(event, now, language)}
               event={event}
-               isJoinPending={pendingJoinEventId === event.id}
+              isJoinPending={pendingJoinEventId === event.id}
               key={event.id}
               motionIndex={filteredActive.length + index + 1}
               onJoinPress={() => void joinEventFromCard(event.id)}
               onMapPress={() => openVenueMapPreview(event)}
               onPress={() => openEventDetail(event.id)}
+              rewardProgress={rewardEventsById.get(event.id) ?? null}
             />
           ))}
         </View>
@@ -534,21 +553,22 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     appHeader: {
-      alignItems: "center",
+      alignItems: "flex-start",
       flexDirection: "row",
+      gap: 12,
       justifyContent: "space-between",
     },
-    brandTitle: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: 22,
-      left: 0,
-      letterSpacing: -0.5,
-      lineHeight: 28,
-      position: "absolute",
-      right: 0,
-      textAlign: "center",
+    headerCopy: {
+      flex: 1,
+      gap: 4,
+      minWidth: 0,
     },
     chip: {
       alignItems: "center",
@@ -596,6 +616,12 @@ const createStyles = (theme: MobileTheme) =>
       justifyContent: "center",
       width: 42,
     },
+    headerActions: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      paddingTop: 2,
+    },
     liveDot: {
       backgroundColor: theme.colors.lime,
       borderRadius: 999,
@@ -626,6 +652,18 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
       paddingVertical: 0,
+    },
+    screenSubtitle: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    screenTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
     },
     messageCard: {
       backgroundColor: theme.colors.surfaceL1,

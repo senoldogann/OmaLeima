@@ -3,8 +3,16 @@ export type AnnouncementAudience = "ALL" | "BUSINESSES" | "CLUBS" | "STUDENTS";
 export type AnnouncementStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 export type AnnouncementClubOption = {
+  city: string | null;
   clubId: string;
   clubName: string;
+};
+
+export type AnnouncementEventOption = {
+  city: string;
+  clubId: string;
+  eventId: string;
+  eventName: string;
 };
 
 export type AnnouncementRecord = {
@@ -25,12 +33,15 @@ export type AnnouncementRecord = {
   pushDeliveryStatus: "FAILED" | "NOT_SENT" | "PARTIAL" | "SENT";
   startsAt: string;
   status: AnnouncementStatus;
+  targetCity: string | null;
   title: string;
 };
 
 export type AnnouncementSnapshot = {
   announcements: AnnouncementRecord[];
   clubOptions: AnnouncementClubOption[];
+  cityOptions: string[];
+  eventOptions: AnnouncementEventOption[];
   scope: "ADMIN" | "CLUB";
 };
 
@@ -47,6 +58,7 @@ export type AnnouncementCreatePayload = {
   priority: string;
   startsAt: string;
   status: AnnouncementStatus;
+  targetCity: string;
   title: string;
 };
 

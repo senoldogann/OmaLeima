@@ -14,7 +14,7 @@ const absoluteDateTimePattern =
 export class ClubEventValidationError extends Error {}
 
 const defaultPerBusinessLimit = 1;
-const maximumPerBusinessLimit = 1;
+const maximumPerBusinessLimit = 5;
 
 export const isUuid = (value: string): boolean => uuidPattern.test(value);
 
@@ -120,7 +120,7 @@ export const parseRulesJsonOrThrow = (value: string): EventRules => {
       normalizedPerBusinessLimit < defaultPerBusinessLimit ||
       normalizedPerBusinessLimit > maximumPerBusinessLimit
     ) {
-      throw new ClubEventValidationError("stampPolicy.perBusinessLimit must be 1.");
+      throw new ClubEventValidationError("stampPolicy.perBusinessLimit must be an integer between 1 and 5.");
     }
 
     rules.stampPolicy = {

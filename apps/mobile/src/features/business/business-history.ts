@@ -7,18 +7,14 @@ import type { BusinessScanHistoryEntry } from "@/features/business/types";
 export const RECENT_SCAN_LIMIT = 120;
 
 type StampRow = {
-  id: string;
+  stamp_id: string;
   event_id: string;
+  event_name: string;
   business_id: string;
+  business_name: string;
   student_id: string;
   scanned_at: string;
   validation_status: "VALID" | "MANUAL_REVIEW" | "REVOKED";
-  event: {
-    name: string;
-  } | null;
-  business: {
-    name: string;
-  } | null;
 };
 
 type UseBusinessScanHistoryQueryParams = {
@@ -30,48 +26,39 @@ export const businessScanHistoryQueryKey = (userId: string) => ["business-scan-h
 
 const formatStudentLabel = (studentId: string): string => `Student ...${studentId.slice(-4)}`;
 
-const fetchRecentScansAsync = async (userId: string): Promise<StampRow[]> => {
+const fetchRecentScansAsync = async (): Promise<StampRow[]> => {
   const { data, error } = await supabase
-    .from("stamps")
-    .select(
-      `
-      id,
-      event_id,
-      business_id,
-      student_id,
-      scanned_at,
-      validation_status,
-      event:events(name),
-      business:businesses(name)
-    `
-    )
-    .eq("scanner_user_id", userId)
-    .order("scanned_at", { ascending: false })
-    .limit(RECENT_SCAN_LIMIT)
+    .rpc("get_business_scan_history", {
+      p_limit: RECENT_SCAN_LIMIT,
+    })
     .returns<StampRow[]>();
 
   if (error !== null) {
     throw new Error("Failed to load scan history.", { cause: error });
   }
 
-  return data;
+  if (!Array.isArray(data)) {
+    throw new Error("Business scan history RPC returned an invalid row set.");
+  }
+
+  return data as StampRow[];
 };
 
 const mapHistoryEntries = (rows: StampRow[]): BusinessScanHistoryEntry[] =>
   rows.map((row) => ({
-    stampId: row.id,
+    stampId: row.stamp_id,
     eventId: row.event_id,
-    eventName: row.event?.name ?? "",
+    eventName: row.event_name ?? "",
     businessId: row.business_id,
-    businessName: row.business?.name ?? "",
+    businessName: row.business_name ?? "",
     studentId: row.student_id,
     studentLabel: formatStudentLabel(row.student_id),
     scannedAt: row.scanned_at,
     validationStatus: row.validation_status,
   }));
 
-export const fetchBusinessScanHistoryAsync = async (userId: string): Promise<BusinessScanHistoryEntry[]> => {
-  const rows = await fetchRecentScansAsync(userId);
+export const fetchBusinessScanHistoryAsync = async (_userId: string): Promise<BusinessScanHistoryEntry[]> => {
+  const rows = await fetchRecentScansAsync();
   return mapHistoryEntries(rows);
 };
 

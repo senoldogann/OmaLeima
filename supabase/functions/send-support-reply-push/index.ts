@@ -1,6 +1,13 @@
 import { readRuntimeEnv } from "../_shared/env.ts";
 import { type ExpoPushMessage, type ExpoPushSendResult, sendExpoPushMessages } from "../_shared/expoPush.ts";
-import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
+import {
+  assertPostRequest,
+  enforceEdgeActorRateLimitAsync,
+  errorResponse,
+  getBearerToken,
+  jsonResponse,
+  readJsonBody,
+} from "../_shared/http.ts";
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
 import { isUuid } from "../_shared/validation.ts";
 
@@ -38,6 +45,12 @@ type NotificationInsertRow = {
   title: string;
   type: "SUPPORT_REPLY";
   user_id: string;
+};
+
+const supportReplyPushRateLimitOptions = {
+  dayMaxRequests: 120,
+  windowMaxRequests: 10,
+  windowSeconds: 60,
 };
 
 const parseRequestBody = (body: Record<string, unknown>): SendSupportReplyPushRequest => {
@@ -129,6 +142,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     if (adminProfile === null || !isActivePlatformAdmin(adminProfile)) {
       return errorResponse(403, "FORBIDDEN", "Only active platform admins can send support reply push notifications.", {});
+    }
+
+    const rateLimitResponse = await enforceEdgeActorRateLimitAsync(
+      supabase,
+      adminProfile.id,
+      "edge-send-support-reply-push",
+      supportReplyPushRateLimitOptions,
+    );
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const { data: supportRequest, error: supportRequestError } = await supabase

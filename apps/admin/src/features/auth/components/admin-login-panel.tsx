@@ -9,6 +9,10 @@ import { useEffect, useRef, useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { getLoginSlideLocalizedCopy, type LoginSlideRecord } from "@/features/login-slides/types";
+import {
+  dashboardCsrfCookieName,
+  dashboardCsrfHeaderName,
+} from "@/features/security/dashboard-mutation-request";
 
 type PasswordSessionResponseBody =
   | {
@@ -23,6 +27,20 @@ const isPasswordSessionResponseBody = (value: unknown): value is PasswordSession
   value !== null &&
   (("homeHref" in value && typeof value.homeHref === "string") ||
     ("error" in value && typeof value.error === "string"));
+
+const readCookie = (name: string): string | null => {
+  const cookiePrefix = `${name}=`;
+  const cookieValue = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(cookiePrefix));
+
+  if (typeof cookieValue !== "string") {
+    return null;
+  }
+
+  return decodeURIComponent(cookieValue.slice(cookiePrefix.length));
+};
 
 type TurnstileApi = {
   reset: () => void;
@@ -143,15 +161,22 @@ export const AdminLoginPanel = ({ isProtectionRequired, locale, slides, turnstil
       return;
     }
 
+    const csrfToken = readCookie(dashboardCsrfCookieName);
+    const sessionHeaders = new Headers({
+      "content-type": "application/json",
+    });
+
+    if (csrfToken !== null) {
+      sessionHeaders.set(dashboardCsrfHeaderName, csrfToken);
+    }
+
     const sessionResponse = await fetch("/auth/password-session", {
       body: JSON.stringify({
         email,
         password,
         turnstileToken,
       }),
-      headers: {
-        "content-type": "application/json",
-      },
+      headers: sessionHeaders,
       method: "POST",
     });
     const responseBody: unknown = await sessionResponse.json();

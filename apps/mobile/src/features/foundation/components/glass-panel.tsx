@@ -20,6 +20,7 @@ type GlassPanelProps = PropsWithChildren<{
   contentStyle?: StyleProp<ViewStyle>;
   motionIndex?: number;
   variant?: GlassPanelVariant;
+  showBorder?: boolean;
   /** Ignored — kept for API compat with old GlassPanel consumers */
   glowColor?: string;
 }>;
@@ -38,8 +39,8 @@ type VariantConfig = {
 const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, VariantConfig> => ({
   scene: {
     bg: theme.mode === "light" ? theme.colors.surfaceL1 : theme.colors.surfaceL2,
-    borderColor: theme.mode === "light" ? theme.colors.borderDefault : theme.colors.borderSubtle,
-    borderWidth: theme.mode === "light" ? 1 : 0,
+    borderColor: theme.mode === "light" ? theme.colors.cardBorderStrong : theme.colors.cardBorderStrong,
+    borderWidth: 1,
     radius: theme.radius.scene,
     topAccentColor: theme.colors.lime,
     contentPadding: theme.spacing.scenePadding,
@@ -48,8 +49,8 @@ const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, Vari
   },
   card: {
     bg: theme.colors.surfaceL1,
-    borderColor: theme.colors.borderDefault,
-    borderWidth: theme.mode === "light" ? 1 : 0,
+    borderColor: theme.colors.cardBorderStrong,
+    borderWidth: 1,
     radius: theme.radius.card,
     topAccentColor: null,
     contentPadding: theme.spacing.cardPadding,
@@ -58,8 +59,8 @@ const createVariantConfig = (theme: MobileTheme): Record<GlassPanelVariant, Vari
   },
   subtle: {
     bg: theme.mode === "light" ? theme.colors.surfaceL1 : theme.colors.screenBase,
-    borderColor: theme.mode === "light" ? theme.colors.borderDefault : theme.colors.borderSubtle,
-    borderWidth: theme.mode === "light" ? 1 : 0,
+    borderColor: theme.colors.cardBorder,
+    borderWidth: 1,
     radius: theme.radius.inner,
     topAccentColor: null,
     contentPadding: 16,
@@ -74,10 +75,12 @@ export const GlassPanel = ({
   contentStyle,
   motionIndex,
   variant = "card",
+  showBorder,
 }: GlassPanelProps) => {
   const theme = useAppTheme();
   const translateY = useRef(new Animated.Value(12)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const shouldShowBorder = typeof showBorder === "boolean" ? showBorder : true;
 
   const cfg = createVariantConfig(theme)[variant];
 
@@ -120,7 +123,7 @@ export const GlassPanel = ({
       <View
         style={{
           borderRadius: cfg.radius,
-          borderWidth: cfg.borderWidth,
+          borderWidth: shouldShowBorder ? cfg.borderWidth : 0,
           borderColor: cfg.borderColor,
           backgroundColor: cfg.bg,
           overflow: "hidden",

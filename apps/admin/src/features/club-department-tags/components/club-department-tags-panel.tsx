@@ -6,12 +6,15 @@ import { useRouter } from "next/navigation";
 import {
   clubDepartmentTagRefreshableStatuses,
   submitClubDepartmentTagCreateRequestAsync,
+  submitClubDepartmentTagDeleteRequestAsync,
+  submitClubDepartmentTagUpdateRequestAsync,
 } from "@/features/club-department-tags/department-tag-client";
 import { formatManageableDepartmentTagClubMeta, formatOfficialDepartmentTagMeta } from "@/features/club-department-tags/format";
 import type {
   ClubDepartmentTagActionState,
   ClubDepartmentTagCreatePayload,
   ClubDepartmentTagsSnapshot,
+  ClubOfficialDepartmentTagRecord,
 } from "@/features/club-department-tags/types";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
@@ -25,6 +28,11 @@ const createInitialPayload = (clubId: string): ClubDepartmentTagCreatePayload =>
   clubId,
   title: "",
 });
+
+type EditingDepartmentTag = {
+  departmentTagId: string;
+  title: string;
+};
 
 const renderActionState = (state: ClubDepartmentTagActionState) => {
   if (state.message === null) {
@@ -52,6 +60,8 @@ export const ClubDepartmentTagsPanel = ({ locale, snapshot }: ClubDepartmentTags
     successNoticeDurationMs
   );
   const [isPending, setIsPending] = useState<boolean>(false);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const [editingTag, setEditingTag] = useState<EditingDepartmentTag | null>(null);
   const [activeTab, setActiveTab] = useState<"community-catalog" | "publish-tag" | "tag-catalog">("community-catalog");
   const selectedClub = useMemo(
     () => snapshot.clubs.find((club) => club.clubId === payload.clubId) ?? null,
@@ -87,6 +97,86 @@ export const ClubDepartmentTagsPanel = ({ locale, snapshot }: ClubDepartmentTags
       });
     } finally {
       setIsPending(false);
+    }
+  };
+
+  const handleUpdateAsync = async (): Promise<void> => {
+    if (editingTag === null) {
+      return;
+    }
+
+    setPendingActionId(`update-${editingTag.departmentTagId}`);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitClubDepartmentTagUpdateRequestAsync(editingTag);
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status !== null && clubDepartmentTagRefreshableStatuses.has(response.status)) {
+        setEditingTag(null);
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown department tag update error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingActionId(null);
+    }
+  };
+
+  const handleDeleteAsync = async (tag: ClubOfficialDepartmentTagRecord): Promise<void> => {
+    const confirmed = window.confirm(
+      isFinnish
+        ? `Poistetaanko virallinen tunniste "${tag.title}"?`
+        : `Delete official department tag "${tag.title}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingActionId(`delete-${tag.departmentTagId}`);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitClubDepartmentTagDeleteRequestAsync({
+        departmentTagId: tag.departmentTagId,
+      });
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status !== null && clubDepartmentTagRefreshableStatuses.has(response.status)) {
+        if (editingTag?.departmentTagId === tag.departmentTagId) {
+          setEditingTag(null);
+        }
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown department tag delete error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingActionId(null);
     }
   };
 
@@ -290,21 +380,81 @@ export const ClubDepartmentTagsPanel = ({ locale, snapshot }: ClubDepartmentTags
                   <th>{isFinnish ? "Meta" : "Details"}</th>
                   <th>Slug</th>
                   <th>{isFinnish ? "Tila" : "Status"}</th>
+                  <th>{isFinnish ? "Toiminnot" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody>
-                {snapshot.officialTags.map((tag) => (
-                  <tr key={tag.departmentTagId}>
-                    <td>{tag.title}</td>
-                    <td className="record-meta">{formatOfficialDepartmentTagMeta(tag)}</td>
-                    <td className="record-meta">{tag.slug}</td>
-                    <td><span className="status-pill status-pill-success">{isFinnish ? "Virallinen" : "Official"}</span></td>
-                  </tr>
-                ))}
+                {snapshot.officialTags.map((tag) => {
+                  const isEditing = editingTag?.departmentTagId === tag.departmentTagId;
+                  const isUpdating = pendingActionId === `update-${tag.departmentTagId}`;
+                  const isDeleting = pendingActionId === `delete-${tag.departmentTagId}`;
+
+                  return (
+                    <tr key={tag.departmentTagId}>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            className="field-input"
+                            disabled={isUpdating || isDeleting}
+                            onChange={(event) =>
+                              setEditingTag({
+                                departmentTagId: tag.departmentTagId,
+                                title: event.target.value,
+                              })
+                            }
+                            value={editingTag.title}
+                          />
+                        ) : (
+                          tag.title
+                        )}
+                      </td>
+                      <td className="record-meta">{formatOfficialDepartmentTagMeta(tag)}</td>
+                      <td className="record-meta">{tag.slug}</td>
+                      <td><span className="status-pill status-pill-success">{isFinnish ? "Virallinen" : "Official"}</span></td>
+                      <td>
+                        <div className="action-row">
+                          {isEditing ? (
+                            <>
+                              <button className="button button-primary" disabled={isUpdating || isDeleting} onClick={() => void handleUpdateAsync()} type="button">
+                                {isUpdating ? isFinnish ? "Tallennetaan..." : "Saving..." : isFinnish ? "Tallenna" : "Save"}
+                              </button>
+                              <button className="button button-secondary" disabled={isUpdating || isDeleting} onClick={() => setEditingTag(null)} type="button">
+                                {isFinnish ? "Peruuta" : "Cancel"}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="button button-secondary"
+                              disabled={pendingActionId !== null}
+                              onClick={() =>
+                                setEditingTag({
+                                  departmentTagId: tag.departmentTagId,
+                                  title: tag.title,
+                                })
+                              }
+                              type="button"
+                            >
+                              {isFinnish ? "Muokkaa" : "Edit"}
+                            </button>
+                          )}
+                          <button
+                            className="button button-danger"
+                            disabled={pendingActionId !== null}
+                            onClick={() => void handleDeleteAsync(tag)}
+                            type="button"
+                          >
+                            {isDeleting ? isFinnish ? "Poistetaan..." : "Deleting..." : isFinnish ? "Poista" : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
+        {renderActionState(actionState)}
       </section>
     </div>
   );

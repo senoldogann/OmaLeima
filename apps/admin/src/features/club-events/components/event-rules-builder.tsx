@@ -17,7 +17,8 @@ type ParsedRulesState = {
 type EventRulesBuilderCopy = {
   invalidJson: string;
   limitLabel: string;
-  optionLabel: string;
+  optionLabelMultiple: string;
+  optionLabelSingle: string;
   savedAs: string;
   status: string;
   title: string;
@@ -25,22 +26,24 @@ type EventRulesBuilderCopy = {
 };
 
 const defaultPerBusinessLimit = 1;
-const maximumPerBusinessLimit = 1;
+const maximumPerBusinessLimit = 5;
 const copyByLocale: Record<DashboardLocale, EventRulesBuilderCopy> = {
   en: {
-    body: "One student can collect one valid leima from the same business during this event.",
+    body: "A student can collect up to 5 valid leimas from the same business during this event.",
     invalidJson: "Existing rules JSON is invalid. Choose a limit to rebuild it.",
     limitLabel: "Same venue total stamp limit",
-    optionLabel: "1 total leima from the same business",
+    optionLabelMultiple: "leimas from the same business",
+    optionLabelSingle: "leima from the same business",
     savedAs: "Saved as",
     status: "Typed rules",
     title: "Stamp policy",
   },
   fi: {
-    body: "Yksi opiskelija voi kerätä yhden kelvollisen leiman samalta yritykseltä tämän tapahtuman aikana.",
+    body: "Yksi opiskelija voi kerätä enintään 5 kelvollista leimaa samalta yritykseltä tämän tapahtuman aikana.",
     invalidJson: "Nykyinen sääntöjen JSON on virheellinen. Valitse raja, niin se rakennetaan uudelleen.",
     limitLabel: "Saman yrityksen leimojen kokonaisraja",
-    optionLabel: "1 leima yhteensä samalta yritykseltä",
+    optionLabelMultiple: "leimaa yhteensä samalta yritykseltä",
+    optionLabelSingle: "leima yhteensä samalta yritykseltä",
     savedAs: "Tallennetaan kenttään",
     status: "Säännöt",
     title: "Leimapolitiikka",
@@ -150,7 +153,17 @@ export const EventRulesBuilder = ({ disabled, locale, onChange, value }: EventRu
             onChange={(event) => onChange(buildRulesJson(value, Number.parseInt(event.target.value, 10)))}
             value={String(rulesState.perBusinessLimit)}
           >
-            <option value="1">{copy.optionLabel}</option>
+            {Array.from({ length: maximumPerBusinessLimit }, (_, index) => {
+              const limit = index + 1;
+
+              return (
+                <option key={limit} value={String(limit)}>
+                  {limit === 1
+                    ? `${limit} ${copy.optionLabelSingle}`
+                    : `${limit} ${copy.optionLabelMultiple}`}
+                </option>
+              );
+            })}
           </select>
         </label>
 

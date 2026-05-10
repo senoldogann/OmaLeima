@@ -76,7 +76,8 @@ type QrProtectionState = {
   status: QrProtectionStatus;
 };
 
-const minimumQrRefetchIntervalMs = 250;
+const minimumQrRefetchIntervalMs = 5_000;
+const qrRefreshSafetyBufferMs = 5_000;
 const qrDarkModuleColor = "#111827";
 const qrGradientId = "omaLeimaQrGradient";
 const qrGradientMarkup = `<defs><linearGradient id="${qrGradientId}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5b21b6"/><stop offset="52%" stop-color="#b91c1c"/><stop offset="100%" stop-color="#a16207"/></linearGradient></defs>`;
@@ -289,6 +290,10 @@ export const useStudentQrContextQuery = ({
     queryKey: studentQrContextQueryKey(studentId),
     queryFn: async () => fetchStudentQrContextAsync(studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
 export const useStudentEventStampCountQuery = ({
@@ -340,7 +345,10 @@ export const useGenerateQrTokenQuery = ({
         return minimumQrRefetchIntervalMs;
       }
 
-      return Math.max(remainingMs, minimumQrRefetchIntervalMs);
+      const backendRefreshMs = Math.max(result.refreshAfterSeconds * 1000, minimumQrRefetchIntervalMs);
+      const latestSafeRefreshMs = Math.max(remainingMs - qrRefreshSafetyBufferMs, minimumQrRefetchIntervalMs);
+
+      return Math.max(Math.min(backendRefreshMs, latestSafeRefreshMs), minimumQrRefetchIntervalMs);
     },
   });
 

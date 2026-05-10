@@ -19,6 +19,8 @@ type RateLimitScope =
   | "announcement-send-push"
   | "announcement-update"
   | "club-department-tag-create"
+  | "club-department-tag-delete"
+  | "club-department-tag-update"
   | "club-event-cancel"
   | "club-event-create"
   | "club-event-update"

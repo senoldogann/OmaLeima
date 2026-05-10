@@ -28,6 +28,28 @@ const buildRewardClaimMessage = (status: string | null): string => {
   return status === null ? "Reward handoff request completed." : messages[status] ?? "Reward handoff request completed.";
 };
 
+const getRewardClaimHttpStatus = (status: string | null): number => {
+  switch (status) {
+    case "SUCCESS":
+      return 200;
+    case "AUTH_REQUIRED":
+      return 401;
+    case "CLAIMER_NOT_ALLOWED":
+    case "CLUB_NOT_ALLOWED":
+      return 403;
+    case "REWARD_TIER_NOT_FOUND":
+      return 404;
+    case "NOT_ENOUGH_STAMPS":
+    case "REWARD_ALREADY_CLAIMED":
+    case "REWARD_OUT_OF_STOCK":
+      return 409;
+    case "FUNCTION_ERROR":
+      return 502;
+    default:
+      return 500;
+  }
+};
+
 export const requireClubRewardClaimAccessAsync = async (
   supabase: SupabaseClient
 ): Promise<ClubRewardClaimTransportResult | null> => {
@@ -92,6 +114,6 @@ export const invokeRewardClaimRpcAsync = async (
       message: buildRewardClaimMessage(status),
       status,
     },
-    status: 200,
+    status: getRewardClaimHttpStatus(status),
   };
 };

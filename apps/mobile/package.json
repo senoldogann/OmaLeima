@@ -17,6 +17,7 @@
     "audit:native-push-device-readiness": "node scripts/audit-native-push-device-readiness.mjs",
     "audit:store-release-readiness": "node scripts/audit-store-release-readiness.mjs",
     "audit:web-bundle-budget": "node scripts/audit-web-bundle-budget.mjs",
+    "smoke:club-event-rpc": "node scripts/smoke-club-event-rpc.mjs",
     "smoke:native-simulators": "node scripts/smoke-native-simulators.mjs"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "expo-asset": "~55.0.17",
     "expo-audio": "~55.0.14",
     "expo-auth-session": "~55.0.15",
+    "expo-build-properties": "~55.0.13",
     "expo-camera": "~55.0.18",
     "expo-constants": "~55.0.16",
     "expo-crypto": "~55.0.14",

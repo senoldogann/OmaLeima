@@ -1,4 +1,11 @@
-import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
+import {
+  assertPostRequest,
+  enforceEdgeActorRateLimitAsync,
+  errorResponse,
+  getBearerToken,
+  jsonResponse,
+  readJsonBody,
+} from "../_shared/http.ts";
 import { readRuntimeEnv } from "../_shared/env.ts";
 import { type ExpoPushMessage, type ExpoPushSendResult, sendExpoPushMessages } from "../_shared/expoPush.ts";
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
@@ -48,8 +55,10 @@ type DeviceTokenRow = {
   expo_push_token: string;
 };
 
-type ExistingPromotionNotificationRow = {
-  payload: Record<string, unknown>;
+type PromotionPushReservationResult = {
+  attemptId?: string;
+  sentPromotionCount?: number;
+  status: "PROMOTION_ALREADY_SENT" | "PROMOTION_LIMIT_REACHED" | "RESERVED";
 };
 
 type PushTarget = {
@@ -68,6 +77,12 @@ type NotificationInsertRow = {
   channel: "PUSH";
   status: "SENT" | "FAILED";
   sent_at: string | null;
+};
+
+const promotionPushRateLimitOptions = {
+  dayMaxRequests: 80,
+  windowMaxRequests: 6,
+  windowSeconds: 60,
 };
 
 const isRequestType = (value: unknown): value is "PROMOTION" => value === "PROMOTION";
@@ -120,12 +135,6 @@ const groupTokensByUser = (rows: DeviceTokenRow[]): Map<string, string[]> => {
   return grouped;
 };
 
-const readPromotionId = (payload: Record<string, unknown>): string | null => {
-  const value = payload.promotionId;
-
-  return typeof value === "string" ? value : null;
-};
-
 const buildPromotionBody = (promotion: PromotionRow): string =>
   promotion.description ?? "A new event promotion is available.";
 
@@ -141,6 +150,30 @@ const serializeTokenResults = (results: ExpoPushSendResult[]): Record<string, un
           error: result.message,
         }
   );
+
+const completePromotionPushAttemptAsync = async (
+  supabase: ReturnType<typeof createServiceClient>,
+  attemptId: string,
+  status: "FAILED" | "SENT",
+  promotionId: string
+): Promise<Response | null> => {
+  const { error } = await supabase.rpc("complete_promotion_push_send_attempt", {
+    p_attempt_id: attemptId,
+    p_status: status,
+  });
+
+  if (error !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to complete promotion push attempt.", {
+      attemptId,
+      promotionId,
+      attemptStatus: status,
+      completionError: error.message,
+      completionErrorCode: error.code,
+    });
+  }
+
+  return null;
+};
 
 Deno.serve(async (request: Request): Promise<Response> => {
   const methodResponse = assertPostRequest(request);
@@ -196,6 +229,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
         userId: user.id,
         profileStatus: profile.status,
       });
+    }
+
+    const rateLimitResponse = await enforceEdgeActorRateLimitAsync(
+      supabase,
+      user.id,
+      "edge-send-promotion-push",
+      promotionPushRateLimitOptions,
+    );
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const { data: promotion, error: promotionError } = await supabase
@@ -282,50 +326,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
         promotionId: promotion.id,
         eventId: promotion.event_id,
         businessId: promotion.business_id,
-      });
-    }
-
-    const { data: successfulPromotionNotifications, error: promotionNotificationsError } = await supabase
-      .from("notifications")
-      .select("payload")
-      .eq("type", "PROMOTION")
-      .eq("event_id", promotion.event_id)
-      .eq("business_id", promotion.business_id)
-      .in("status", ["SENT", "READ"])
-      .returns<ExistingPromotionNotificationRow[]>();
-
-    if (promotionNotificationsError !== null) {
-      return errorResponse(500, "INTERNAL_ERROR", "Failed to read existing promotion notifications.", {
-        promotionId: promotion.id,
-        promotionNotificationsError: promotionNotificationsError.message,
-        promotionNotificationsErrorCode: promotionNotificationsError.code,
-      });
-    }
-
-    const sentPromotionIds = new Set<string>();
-
-    for (const row of successfulPromotionNotifications) {
-      const promotionId = readPromotionId(row.payload);
-
-      if (promotionId !== null) {
-        sentPromotionIds.add(promotionId);
-      }
-    }
-
-    if (sentPromotionIds.has(promotion.id)) {
-      return errorResponse(409, "PROMOTION_ALREADY_SENT", "Promotion push was already sent for this promotion.", {
-        promotionId: promotion.id,
-        eventId: promotion.event_id,
-        businessId: promotion.business_id,
-      });
-    }
-
-    if (sentPromotionIds.size >= 2) {
-      return errorResponse(409, "PROMOTION_LIMIT_REACHED", "Promotion push limit reached for this event and business.", {
-        promotionId: promotion.id,
-        eventId: promotion.event_id,
-        businessId: promotion.business_id,
-        sentPromotionCount: sentPromotionIds.size,
       });
     }
 
@@ -436,17 +436,82 @@ Deno.serve(async (request: Request): Promise<Response> => {
             promotionId: promotion.id,
             eventId: promotion.event_id,
             businessId: promotion.business_id,
+            recipientUserId: pushTarget.userId,
           },
         });
         pushMessageOwners.push(pushTarget.userId);
       }
     }
 
-    const pushResults = await sendExpoPushMessages(
-      env.expoPushApiUrl,
-      env.expoPushAccessToken,
-      pushMessages,
-    );
+    const { data: reservationData, error: reservationError } = await supabase
+      .rpc("reserve_promotion_push_send", {
+        p_business_id: promotion.business_id,
+        p_event_id: promotion.event_id,
+        p_max_sent: 2,
+        p_promotion_id: promotion.id,
+        p_requested_by: user.id,
+      });
+
+    if (reservationError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to reserve promotion push send.", {
+        promotionId: promotion.id,
+        reservationError: reservationError.message,
+        reservationErrorCode: reservationError.code,
+      });
+    }
+
+    const reservation = reservationData as PromotionPushReservationResult | null;
+
+    if (reservation?.status === "PROMOTION_ALREADY_SENT") {
+      return errorResponse(409, "PROMOTION_ALREADY_SENT", "Promotion push was already sent for this promotion.", {
+        promotionId: promotion.id,
+        eventId: promotion.event_id,
+        businessId: promotion.business_id,
+      });
+    }
+
+    if (reservation?.status === "PROMOTION_LIMIT_REACHED") {
+      return errorResponse(409, "PROMOTION_LIMIT_REACHED", "Promotion push limit reached for this event and business.", {
+        promotionId: promotion.id,
+        eventId: promotion.event_id,
+        businessId: promotion.business_id,
+        sentPromotionCount: reservation.sentPromotionCount,
+      });
+    }
+
+    if (reservation?.status !== "RESERVED" || typeof reservation.attemptId !== "string") {
+      return errorResponse(500, "INTERNAL_ERROR", "Promotion push reservation returned an invalid result.", {
+        promotionId: promotion.id,
+        reservationStatus: reservation?.status,
+      });
+    }
+
+    const promotionPushAttemptId = reservation.attemptId;
+    let pushResults: ExpoPushSendResult[];
+
+    try {
+      pushResults = await sendExpoPushMessages(
+        env.expoPushApiUrl,
+        env.expoPushAccessToken,
+        pushMessages,
+      );
+    } catch (error) {
+      const completionError = await completePromotionPushAttemptAsync(
+        supabase,
+        promotionPushAttemptId,
+        "FAILED",
+        promotion.id
+      );
+
+      if (completionError !== null) {
+        return completionError;
+      }
+
+      return errorResponse(502, "PUSH_SEND_FAILED", "Expo Push API send failed.", {
+        promotionId: promotion.id,
+        error: error instanceof Error ? error.message : "unknown error",
+      });
+    }
 
     const resultsByUser = new Map<string, ExpoPushSendResult[]>();
 
@@ -485,12 +550,25 @@ Deno.serve(async (request: Request): Promise<Response> => {
         sent_at: hasSuccessfulDelivery ? new Date().toISOString() : null,
       };
     });
+    const notificationsSent = notificationRows.filter((row) => row.status === "SENT").length;
+    const notificationsFailed = notificationRows.length - notificationsSent;
 
     const { error: insertNotificationsError } = await supabase
       .from("notifications")
       .insert(notificationRows);
 
     if (insertNotificationsError !== null) {
+      const completionError = await completePromotionPushAttemptAsync(
+        supabase,
+        promotionPushAttemptId,
+        notificationsSent > 0 ? "SENT" : "FAILED",
+        promotion.id
+      );
+
+      if (completionError !== null) {
+        return completionError;
+      }
+
       return errorResponse(500, "INTERNAL_ERROR", "Failed to record promotion notifications.", {
         promotionId: promotion.id,
         insertNotificationsError: insertNotificationsError.message,
@@ -498,8 +576,16 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
-    const notificationsSent = notificationRows.filter((row) => row.status === "SENT").length;
-    const notificationsFailed = notificationRows.length - notificationsSent;
+    const completionError = await completePromotionPushAttemptAsync(
+      supabase,
+      promotionPushAttemptId,
+      notificationsSent > 0 ? "SENT" : "FAILED",
+      promotion.id
+    );
+
+    if (completionError !== null) {
+      return completionError;
+    }
 
     const { error: auditLogError } = await supabase
       .from("audit_logs")

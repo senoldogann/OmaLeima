@@ -2,6 +2,8 @@
 
 Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretlenecek son test listesidir. Her madde gercek hesaplarla, mumkunse iki fiziksel telefonla, production veya production-benzeri hosted Supabase uzerinde yapilmalidir.
 
+`[EXTERNAL]` ile isaretlenen maddeler repo icinden tamamlanamaz; cihaz, store console, Apple/Google/Supabase/Vercel hesap ayari veya owner credential islemi gerektirir. Isaretlenmeyen maddeler repo komutlari, hosted smoke veya mevcut fixture'larla dogrulanabilir.
+
 ## 0. Release Gate
 
 - [ ] Temiz release branch/commit/tag hazir.
@@ -14,10 +16,11 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] `npm --prefix apps/mobile run typecheck` gecti.
 - [ ] `npm --prefix apps/mobile run lint` gecti.
 - [ ] `npm --prefix apps/mobile run export:web` gecti.
+- [ ] `npm --prefix apps/mobile run smoke:club-event-rpc` organizer event create/edit-save RPC smoke gecti.
 - [ ] `npm --prefix apps/mobile run audit:web-bundle-budget` gecti.
 - [ ] `npm --prefix apps/mobile run audit:store-release-readiness` gecti.
-- [ ] `npm run qa:mobile-native-simulator-smoke` Android emulator ve iOS simulator executable launch-smoke dahil gecti.
-- [ ] `npm --prefix apps/mobile run smoke:native-simulators` direct repeat gerekirse Android emulator ve iOS simulator icin gecti.
+- [ ] [EXTERNAL] `npm run qa:mobile-native-simulator-smoke` Android emulator ve iOS simulator executable launch-smoke dahil gecti.
+- [ ] [EXTERNAL] `npm --prefix apps/mobile run smoke:native-simulators` direct repeat gerekirse Android emulator ve iOS simulator icin gecti.
 - [ ] Native simulator smoke icin root entrypoint `npm run qa:mobile-native-simulator-smoke`; prefix komut ayni gate'i dogrudan tekrar calistirmak icindir.
 - [ ] `npm --prefix apps/mobile run audit:hosted-business-scan-readiness` gecti.
 - [ ] `npm --prefix apps/mobile run audit:native-push-device-readiness` gecti.
@@ -25,8 +28,8 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] `npm --prefix apps/mobile run audit:reward-notification-bridge` gecti.
 - [ ] Hosted `mobile_release_requirements` minimum supported version/build rows kontrol edildi.
 - [ ] Eski/stale build testinde update-required ekranı uygulamayı blokluyor.
-- [ ] iOS dev/preview/store build yeni native dependency graph ile yeniden alindi.
-- [ ] Android dev/preview/store build yeni native dependency graph ile yeniden alindi.
+- [ ] [EXTERNAL] iOS dev/preview/store build yeni native dependency graph ile yeniden alindi.
+- [ ] [EXTERNAL] Android dev/preview/store build yeni native dependency graph ile yeniden alindi.
 - [ ] Mobile edge security boundary kontrol edildi: Cloudflare web WAF sadece web domainini koruyor; mobil direkt Supabase Auth/RLS/Edge Functions/Storage kontrolleri production'da aktif.
 - [ ] Private `media-staging` bucket production'da private, event/announcement draft gorselleri staging path + signed URL ile gorunuyor, publish sonrasi public copy olusuyor ve staging temizleniyor.
 - [ ] Supabase Pro plan + Custom Domain add-on final launch asamasinda aktif edildi; bu maliyet App Store/Google Play/production web submission hazir olana kadar ertelendi.
@@ -124,6 +127,7 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] Events ekraninda evente tiklayinca edit, cancel ve delete aksiyonlari gorunuyor.
 - [ ] Upcoming -> edit dogru event formunu acar, sadece events sayfasina bos yonlendirme yapmaz.
 - [ ] Event create/update/delete gorsel upload ve eski image cleanup ile calisiyor.
+- [ ] Organizer event edit/save icin repo RPC smoke gecti; fiziksel staging build ile UI tap-through ayrica dogrulandi.
 - [ ] Announcements create/update/delete gorsel cleanup ile calisiyor.
 - [ ] Reports ekrani business ROI kalitesinde ve localized.
 - [ ] Claims/reward handoff mobile organizer tarafinda dogru.

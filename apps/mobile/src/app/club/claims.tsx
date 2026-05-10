@@ -16,6 +16,7 @@ import {
   useClubClaimsQuery,
   useConfirmClubRewardClaimMutation,
   type ClubClaimCandidateRecord,
+  type ClubClaimProgressRecord,
   type ClubRecentRewardClaimRecord,
 } from "@/features/club/club-claims";
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
@@ -77,6 +78,7 @@ export default function ClubClaimsScreen() {
   const manualRefresh = useManualRefresh(claimsQuery.refetch);
   const [notesByCandidateKey, setNotesByCandidateKey] = useState<Record<string, string>>({});
   const [processingCandidateKey, setProcessingCandidateKey] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<ActionState>({
     message: null,
     tone: "idle",
@@ -101,6 +103,7 @@ export default function ClubClaimsScreen() {
           : "Students appear here after collecting enough valid leimas.",
       emptyTitle: language === "fi" ? "Ei valmiita luovutuksia" : "No handoffs ready",
       errorTitle: language === "fi" ? "Palkintojono ei latautunut" : "Reward queue unavailable",
+      events: language === "fi" ? "Tapahtumat" : "Events",
       loadingBody:
         language === "fi"
           ? "Haetaan opiskelijat, leimat ja palkintotasot."
@@ -108,12 +111,52 @@ export default function ClubClaimsScreen() {
       loadingTitle: language === "fi" ? "Haetaan palkintojonoa" : "Loading reward queue",
       notes: language === "fi" ? "Luovutushuomiot" : "Handoff notes",
       recent: language === "fi" ? "Viimeisimmät luovutukset" : "Recent handoffs",
+      progress: language === "fi" ? "Seurannassa" : "In progress",
       retry: language === "fi" ? "Yritä uudelleen" : "Retry",
       submit: language === "fi" ? "Vahvista luovutus" : "Confirm handoff",
       submitting: language === "fi" ? "Vahvistetaan..." : "Confirming...",
       title: language === "fi" ? "Palkintojen luovutus" : "Reward handoff",
     }),
     [language]
+  );
+
+  const effectiveSelectedEventId = useMemo(() => {
+    const events = claimsQuery.data?.events ?? [];
+
+    if (events.length === 0) {
+      return null;
+    }
+
+    return events.some((event) => event.eventId === selectedEventId) ? selectedEventId : events[0].eventId;
+  }, [claimsQuery.data?.events, selectedEventId]);
+
+  const selectedEvent = useMemo(
+    () => claimsQuery.data?.events.find((event) => event.eventId === effectiveSelectedEventId) ?? null,
+    [claimsQuery.data?.events, effectiveSelectedEventId]
+  );
+
+  const filteredCandidates = useMemo(
+    () =>
+      effectiveSelectedEventId === null
+        ? []
+        : claimsQuery.data?.candidates.filter((candidate) => candidate.eventId === effectiveSelectedEventId) ?? [],
+    [claimsQuery.data?.candidates, effectiveSelectedEventId]
+  );
+
+  const filteredProgress = useMemo(
+    () =>
+      effectiveSelectedEventId === null
+        ? []
+        : claimsQuery.data?.progress.filter((record) => record.eventId === effectiveSelectedEventId) ?? [],
+    [claimsQuery.data?.progress, effectiveSelectedEventId]
+  );
+
+  const filteredRecentClaims = useMemo(
+    () =>
+      effectiveSelectedEventId === null
+        ? []
+        : claimsQuery.data?.recentClaims.filter((claim) => claim.eventId === effectiveSelectedEventId) ?? [],
+    [claimsQuery.data?.recentClaims, effectiveSelectedEventId]
   );
 
   const formatter = useMemo(
@@ -240,6 +283,25 @@ export default function ClubClaimsScreen() {
     </View>
   );
 
+  const renderProgressRecord = (record: ClubClaimProgressRecord) => (
+    <View key={`${record.eventId}:${record.rewardTierId}:${record.studentId}`} style={styles.progressRow}>
+      <View style={styles.recentCopy}>
+        <Text style={styles.recentTitle}>{record.studentLabel}</Text>
+        <Text style={styles.recentMeta}>
+          {record.rewardTitle} · {record.eventName}
+        </Text>
+        <Text style={styles.recentMeta}>
+          {record.stampCount}/{record.requiredStampCount} {language === "fi" ? "leimaa" : "leimas"} ·{" "}
+          {formatRewardType(record.rewardType, language)} · {formatInventory(record, language)}
+        </Text>
+      </View>
+      <StatusBadge
+        label={language === "fi" ? `${record.missingStampCount} puuttuu` : `${record.missingStampCount} missing`}
+        state="warning"
+      />
+    </View>
+  );
+
   return (
     <AppScreen
       refreshControl={
@@ -281,12 +343,58 @@ export default function ClubClaimsScreen() {
         </InfoCard>
       ) : null}
 
-      {claimsQuery.data?.candidates.map(renderCandidate)}
+      {claimsQuery.data !== undefined && claimsQuery.data.events.length > 0 ? (
+        <View style={styles.eventFilterSection}>
+          <Text style={styles.sectionTitle}>{labels.events}</Text>
+          <View style={styles.eventFilterList}>
+            {claimsQuery.data.events.map((event) => {
+              const isSelected = event.eventId === effectiveSelectedEventId;
 
-      {claimsQuery.data !== undefined && claimsQuery.data.recentClaims.length > 0 ? (
+              return (
+                <Pressable
+                  key={event.eventId}
+                  onPress={() => setSelectedEventId(event.eventId)}
+                  style={[styles.eventFilterChip, isSelected ? styles.eventFilterChipActive : null]}
+                >
+                  <Text style={isSelected ? styles.eventFilterChipTextActive : styles.eventFilterChipText}>
+                    {event.name}
+                  </Text>
+                  <Text style={styles.eventFilterMeta}>
+                    {event.claimableCandidateCount} {language === "fi" ? "valmis" : "ready"} ·{" "}
+                    {event.progressCandidateCount} {language === "fi" ? "kesken" : "progress"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {selectedEvent !== null ? (
+            <Text style={styles.bodyText}>
+              {language === "fi"
+                ? `Näytetään tapahtuman ${selectedEvent.name} palkintojono.`
+                : `Showing reward handoff rows for ${selectedEvent.name}.`}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {filteredCandidates.map(renderCandidate)}
+
+      {claimsQuery.data !== undefined && filteredProgress.length > 0 ? (
+        <View style={styles.recentSection}>
+          <Text style={styles.sectionTitle}>{labels.progress}</Text>
+          <Text style={styles.bodyText}>
+            {language === "fi"
+              ? "Nämä opiskelijat näkyvät seurannassa, mutta luovutus avautuu vasta kun vaaditut leimat täyttyvät."
+              : "These students are visible for tracking, but handoff stays locked until the required leimas are collected."}
+          </Text>
+          {filteredProgress.map(renderProgressRecord)}
+        </View>
+      ) : null}
+
+      {claimsQuery.data !== undefined && filteredRecentClaims.length > 0 ? (
         <View style={styles.recentSection}>
           <Text style={styles.sectionTitle}>{labels.recent}</Text>
-          {claimsQuery.data.recentClaims.map(renderRecentClaim)}
+          {filteredRecentClaims.map(renderRecentClaim)}
         </View>
       ) : null}
     </AppScreen>
@@ -348,6 +456,43 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.eyebrow,
       textTransform: "uppercase",
     },
+    eventFilterChip: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+    },
+    eventFilterChipActive: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.lime,
+    },
+    eventFilterChipText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventFilterChipTextActive: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    eventFilterList: {
+      gap: 8,
+    },
+    eventFilterMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    eventFilterSection: {
+      gap: 10,
+    },
     field: {
       gap: 7,
     },
@@ -404,6 +549,17 @@ const createStyles = (theme: MobileTheme) =>
       borderRadius: theme.radius.card,
       flexDirection: "row",
       gap: 12,
+      padding: 14,
+    },
+    progressRow: {
+      alignItems: "flex-start",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
       padding: 14,
     },
     recentSection: {

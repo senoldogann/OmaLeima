@@ -10,6 +10,7 @@ import {
   useActiveAnnouncementsQuery,
   useAnnouncementRealtimeInvalidation,
 } from "@/features/announcements/announcements";
+import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
@@ -171,13 +172,11 @@ export const AnnouncementPopupBridge = () => {
             <View style={styles.iconBubble}>
               <AppIcon color={theme.colors.lime} name="bell" size={24} />
             </View>
-            {announcement.imageUrl !== null ? (
-              <CoverImageSurface
-                fallbackSource={null}
-                source={{ uri: announcement.imageUrl }}
-                style={styles.heroImage}
-              />
-            ) : null}
+            <CoverImageSurface
+              fallbackSource={getFallbackCoverSource("eventDiscovery")}
+              source={announcement.imageUrl === null ? null : { uri: announcement.imageUrl }}
+              style={styles.heroImage}
+            />
             <View style={styles.copyStack}>
               <Text style={styles.eyebrow}>{announcement.clubName ?? labels.platformSender}</Text>
               <Text style={styles.title}>{announcement.title}</Text>

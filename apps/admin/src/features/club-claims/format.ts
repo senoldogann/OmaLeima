@@ -2,6 +2,7 @@ import type { DashboardLocale } from "@/features/dashboard/i18n";
 import type {
   ClubClaimCandidateRecord,
   ClubClaimEventRecord,
+  ClubClaimProgressRecord,
   ClubRecentRewardClaimRecord,
 } from "@/features/club-claims/types";
 
@@ -41,7 +42,9 @@ export const formatClubClaimRewardType = (
   value: ClubClaimCandidateRecord["rewardType"]
 ): string => rewardTypeLabelsByLocale[locale][value];
 
-export const formatClubClaimInventory = (locale: DashboardLocale, candidate: ClubClaimCandidateRecord): string => {
+type ClubClaimRewardProgressRecord = ClubClaimCandidateRecord | ClubClaimProgressRecord;
+
+export const formatClubClaimInventory = (locale: DashboardLocale, candidate: ClubClaimRewardProgressRecord): string => {
   if (candidate.inventoryTotal === null) {
     return locale === "fi" ? "Rajaton varasto" : "Unlimited stock";
   }
@@ -57,7 +60,7 @@ export const formatClubClaimInventory = (locale: DashboardLocale, candidate: Clu
     : `${candidate.inventoryRemaining}/${candidate.inventoryTotal} left`;
 };
 
-export const formatClubClaimProgress = (locale: DashboardLocale, candidate: ClubClaimCandidateRecord): string =>
+export const formatClubClaimProgress = (locale: DashboardLocale, candidate: ClubClaimRewardProgressRecord): string =>
   locale === "fi"
     ? `${candidate.stampCount}/${candidate.requiredStampCount} leimaa`
     : `${candidate.stampCount}/${candidate.requiredStampCount} stamps`;

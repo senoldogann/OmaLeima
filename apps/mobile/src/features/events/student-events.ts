@@ -285,4 +285,8 @@ export const useStudentEventsQuery = ({
     queryKey: studentEventsQueryKey(studentId),
     queryFn: async () => fetchStudentEventsAsync(studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });

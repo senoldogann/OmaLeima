@@ -2,7 +2,11 @@
 .playwright-mcp/
 tmp/
 outputs/
-omaleima-*.png
+/omaleima-*.png
+
+*-pilot-operator-credentials.txt
+*-credentials.txt
+*.credentials
 
 *.log
 *.tsbuildinfo

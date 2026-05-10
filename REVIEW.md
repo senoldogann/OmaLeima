@@ -2,6 +2,232 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Production Ready Final Sweep)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Final production-ready review after organization hardening, covering admin web, student mobile, business mobile, Supabase/RLS/Edge Functions, and release infrastructure.
+
+## Production Ready Final Sweep Findings
+
+- Admin web was broadly shippable, but production hardening still needed safer generic error surfaces, a CSP baseline, sanitized club profile route failures, and CSRF protection for the password-session mutation path that sits outside the dashboard fetch guard.
+- Student mobile had no P0 blocker in the reviewed code. Concrete fixes were stale remote push payload binding after account switches and a user-visible retry path when active-event QR token generation fails.
+- Business mobile had no P0 blocker in the reviewed code. Concrete fixes were scanner-only route matching for nested scanner/history paths, pre-scan active event context refresh to avoid stale selected event usage, clearer PIN lockout copy, and bounded joinable opportunity reads.
+- Supabase QR replay and business media scanner-upload findings were verified as protected by existing DB constraints/RLS: `qr_token_uses(jti primary key)` plus `scan_stamp_atomic` duplicate handling, and `business-media` policies gated by active OWNER/MANAGER business staff.
+- Shared Edge error sanitization needed one more pass for camelCase/lowercase `*id` fields, and reward/reminder/promotion push payloads needed recipient user binding so mobile can reject stale OS notifications across session changes.
+- Release infrastructure was missing repo-enforced production readiness CI, observability env placeholders, sensitive credential ignore patterns, and clearer external checklist/runbook gates for native/device/store-console work.
+
+## Current Review (Organization Release Rollout + Mobile Smoke)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Continue after organization hardening by closing the release-side risk: mobile organizer event edit/save was not directly smoke-tested, hosted Supabase push/deploy steps must be run, and QA/release notes need the production-facing changelog entry.
+
+## Organization Release Rollout Findings
+
+- Existing mobile native simulator smoke verifies native launch health, not authenticated organizer event edit/save. To cover the specific risk without relying on a physical staging device, add a focused mobile-owned Supabase smoke that uses the same organizer RPC contract (`create_club_event_atomic` -> `update_club_event_atomic` -> `cancel_club_event_atomic`) against the configured Supabase project and cleans up created rows.
+- Current organization hardening changed only database RPCs plus admin/mobile clients. No new Edge Function was added for this slice, but prior dirty P1/P2 Edge Function changes still require a deploy review so bundled `_shared` changes reach production functions.
+- Hosted Supabase migration history was recently reconciled, so `supabase migration list` and `supabase db push --linked --include-all` should be safe to run again before function deploys.
+- Release docs already have `docs/PRODUCTION_TEST_CHECKLIST.md` and `docs/LAUNCH_RUNBOOK.md`; add a narrow organization hardening line instead of creating a new changelog file.
+
+## Current Review (Organization Operations Parity + RLS Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Deep-review organization/club web, mobile and Supabase boundaries before moving to admin/student/business reviews.
+
+## Organization Operations Findings
+
+- Web and mobile both expose organizer event creation/edit/cancel flows, but event update and cancel still perform direct `events` table writes after UI/route checks. RLS exists, yet this is less consistent than event create/reward operations that use SECURITY DEFINER RPCs with audit rows and central state validation.
+- Club department tags are create-only on the web organization surface. The route and RPC support only `create_club_department_tag_atomic`, so organizers cannot correct a typo or remove an obsolete official tag without admin intervention.
+- Department tag direct inserts are intentionally blocked by RLS after `20260429030600_restrict_club_department_tag_writes.sql`; update/delete must therefore be implemented through scoped RPCs rather than re-opening table write policies.
+- Mobile organization UI already has richer event/claim visual systems, while web has more management CRUD. For this pass, parity is safest when it closes missing operations and backend invariants first; broad UI redesign can stay out of this security/operations slice.
+- Existing smoke scripts cover event create and department tag create/RLS blocks, but not event update/cancel or department tag update/delete. Add direct coverage for those operations so organizer create/edit/archive-like cancel/delete paths are verified.
+
+## Current Review (Per-business Venue Limit + Session Bootstrap Stabilization)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Close per-business leima limit read/write inconsistency and reduce session bootstrap crash risk.
+- `events.rules` içinde `stampPolicy.perBusinessLimit` alanı bazı migration geçmişlerinde yanlışlıkla sabit `1` ile geri yazılan davranışa düşmüş durumdaydı; uygulama tarafında limit zaten 1..5 desteklendiği için bu farklılık prod davranışını yanlış yönlendirebilirdi.
+- Admin event rules builder/validation ve mobil organizer düzenleme ekranları daha önce `1` odaklıydı; bu kullanıcı akışını yanlış kalıba sokuyor ve UI ile backend davranışını uyuşmaz hale getiriyordu.
+- Mobil `SessionProvider` bootstrap akışı, `getSession`/token temizleme yolunda hata durumlarında catch-dışı patlama riski taşıyordu; bu da uygulama açılış güvenilirliğini etkileyebilirdi.
+- Uygulanan düzeltme sonrası migration dosyası ile fonksiyon davranışı geri açıldı, UI tarafında 1..5 desteklendi ve bootstrap hata akışı kullanıcıya kontrollü döndürüldü.
+
+## P1/P2 Core Security Findings
+
+- QR and business scanner login JWT helpers now include `iss` and `aud` in signing and verification; keep this invariant and validate it through Deno checks rather than adding a second token format.
+- Dashboard mutations already have same-origin plus double-submit CSRF wiring via the dashboard cookie/header guard; the remaining risk is to ensure all same-origin dashboard mutation routes keep using the shared guard and rate limiter.
+- `scan-qr` already maps typed business-rule failures to non-200 HTTP status codes. Preserve typed mobile payloads while avoiding success-shaped responses for blocked scans.
+- Reward claim gating is handled by the new forward `claim_reward_atomic` migration, which must enforce active event window, active registered student, active reward tier, active claimer role, and duplicate/inventory rules inside the RPC.
+- Push Edge Functions still expose too much internal detail through shared error response `details`, and endpoint-layer throttling is uneven before recipient expansion. Fix this centrally in `_shared/http.ts` and with push-specific per-actor rate checks before expensive fan-out.
+- Mobile session cleanup is safer after local sign-out, but scanner event submission can still depend on mutable selection during async reads. Capture an immutable selected event snapshot at scan start.
+- Mobile QR refresh currently falls back to sub-second polling before a token exists. Use a conservative first retry and backend-provided refresh cadence to reduce battery/network/backend load.
+
+## Current Review (Ignored Local Artifact Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Remove only the repo-ignored local artifact directories and preview files that are no longer wired into the workspace.
+
+## Ignored Local Artifact Cleanup Findings
+
+- Root `.gitignore` explicitly ignores `tmp/` and `outputs/`, so these paths are treated as local/generated artifacts rather than source-of-truth project files.
+- The current `outputs/` subtree contains QA screenshot evidence such as `outputs/qa-production-hardening/*.png`; `outputs/verification-sweep` is currently empty.
+- The current `tmp/` subtree contains preview screenshots and empty preview directories (`partner-preview`, `presentation-preview`, `public-landing-smoke`) created during local browser/presentation checks.
+- Repo reference scans found historical mentions for some individual screenshot names in `PROGRESS.md`, but no package script, source import, config file, or runtime path depends on `tmp/` or `outputs/` existing.
+- `REVIEW_RESULT.md` and `RAPOR.md` are not cleanup candidates for this slice because they are still referenced by the working docs and project handoff history.
+
+## Current Review (City/Event Scoped Announcements + Business History)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Complete the partially implemented business scan history and city/event/organization-scoped announcement work.
+
+## City/Event Scoped Announcements + Business History Findings
+
+- Business history was previously operator-scoped through `scanner_user_id`, so scans from another staff/scanner on the same business and joined event context could be hidden. The safer product model is business-scoped history guarded by active business staff membership.
+- The new announcement migration started adding `target_city`, but admin validation, transport, read-model, compose form, edit form, and push recipient resolution did not carry the field end-to-end.
+- Existing event-scoped announcement validation still forced `STUDENTS`, which blocked event-based business announcements. Event scope should support `ALL`, `STUDENTS`, and `BUSINESSES`; `CLUBS` remains excluded because event participation is not modeled through club recipient rows.
+- City-scoped visibility must be enforced in the database helper, not just in the UI. Push recipient expansion also needs to respect `target_city` to avoid oversending notifications that RLS would later hide in-app.
+- Organization announcements should remain private to the organizer's own club, registered students, joined businesses, and matching city. Platform admins can create broader platform/city announcements.
+
+## Current Review (Organizer Reward Claim Visibility)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Verify whether organizer/club reward claim screens expose enough student progress information on web and mobile, especially for students who do not yet have enough leimas.
+
+## Organizer Reward Claim Visibility Findings
+
+- Web `club-claims` and mobile `club-claims` both intentionally build `candidates` only when `stampCount >= required_stamp_count`, no existing claimed reward exists, and inventory remains. That protects the handoff action, but it also means students below the reward threshold are invisible in the organizer claim UI.
+- Because under-threshold students are filtered out before rendering, the normal UI cannot be used to manually attempt a `NOT_ENOUGH_STAMPS` claim. That backend status must be smoke-tested through the Edge Function/API/RPC boundary, while the UI should explain progress instead of hiding all students.
+- Web and mobile are almost aligned, but web currently treats every reward claim row as blocking, including `REVOKED`, while mobile blocks only `CLAIMED`. Reclaimed-after-revocation behavior should be consistent.
+- The safest product fix is to keep handoff confirmation available only for eligible candidates, and add a read-only in-progress list showing registered students, current leimas, required leimas, and missing leimas.
+- Student labels still come from masked UUIDs. Organizer handoff is an in-person operational flow, so the UI should show the student's `profiles.display_name` when the organizer is authorized for that event. Direct `profiles` reads are not allowed by current RLS, so this needs a small scoped SECURITY DEFINER RPC rather than broadening profile SELECT policy.
+- Web has event selection in the claims table, but mobile currently renders every claim/progress/recent row together. Mobile needs a selected-event filter so multiple simultaneous/completed events do not mix their handoff queues.
+
+## Current Review (Security Findings Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Verify and fix the reported announcement push, reward claim, promotion limit, RLS active-profile, mobile notification session, invalid refresh-token, and scanner log findings.
+
+## Security Findings
+
+- `send-announcement-push` expands club-scoped, eventless announcements through all events for the club. The query currently does not filter event lifecycle, so old closed events can widen student/business recipients.
+- `claim-reward` calls `claim_reward_atomic` and always returns HTTP 200 for typed business statuses. The hosted/admin direct RPC transport has the same semantic weakness at the transport boundary.
+- `send-push-notification` checks existing promotion notification count before inserting new rows. The check is not protected by an advisory lock or unique constraint, so parallel sends can race.
+- `is_club_event_editor_for`, the registered event read policy, and the latest `can_read_announcement` business branch rely on membership/staff status but not consistently on `profiles.status = 'ACTIVE'`.
+- `send-announcement-push` records success/no-target audit rows, but many authenticated validation/access/service failure branches return before writing an audit row.
+- Mobile push routing now clears stale queued payloads on session changes, but remote notification payloads do not carry a recipient binding, so a stale OS notification can still be routed after a user switch if the app receives it later.
+- Invalid refresh-token bootstrap cleanup deletes the storage key directly instead of first using Supabase local sign-out, which leaves client auth state cleanup less explicit.
+- `scan-qr` background warning logs include raw student/event UUIDs. These are useful for debugging but should be reduced in warning context.
+
+## Current Review (Reward Path + Tiedotteet Ticket Polish)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Tighten the student event detail reward path card and align Yhteisö announcement rail cards with the Approt ticket visual language.
+
+## Reward Path + Tiedotteet Findings
+
+- Student event detail already shows reward progress inline, but `rewardPathCard`, tier rows, icon, progress track, and instruction box use more padding than the surrounding event detail cards.
+- `AnnouncementFeedSection` powers the Yhteisö `Tiedotteet/Updates` rail. It was still mostly a vertical image-card design, while Approt event cards now use a compact horizontal ticket with left image, middle copy, and right perforated action strip.
+- The safest change is presentational only: keep announcement queries, realtime invalidation, preferences, detail routing, mark-read, and CTA behavior unchanged.
+
+## Current Review (Event-Centered Student Rewards Navigation)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Move student reward discovery/claim context into Approt event cards and event detail, then restore Profile as a visible bottom tab.
+
+## Event-Centered Reward Findings
+
+- Supabase already has the right backend model for this product shape: `event_registrations`, `stamps`, `reward_tiers`, and `reward_claims` are RLS-protected and enough to derive per-event reward progress without a schema migration.
+- The current mobile IA splits reward progress into a separate `Palkinnot/Rewards` tab, while event detail already loads reward tiers and Approt cards already own the student's event decision moment.
+- Event detail currently shows reward tiers behind a modal and only derives unlocked state from stamp count; it does not show claim state from `reward_claims`.
+- Approt cards do not visually distinguish events with claimable or claimed rewards, so users must discover that state from the separate Rewards tab.
+- Profile is hidden from the student bottom tabs and duplicated as a header action on several pages, which makes global settings feel less stable than the event/reward flow.
+
+## Current Review (Push Payload Session Boundary + Scanner Error Sanitization)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Verify and fix the reported medium findings around stale notification tap payloads across session changes and raw non-JSON scanner error bodies.
+
+## Push Payload + Scanner Error Findings
+
+- `AnnouncementPushRouterBridge` keeps `pendingPayload` independent from the authenticated user id. If a notification tap is queued and the user logs out or a different user signs in before routing completes, the old payload can be processed under the new role/session context.
+- The same router returns without clearing the payload when an announcement/support route cannot be resolved for the current role, which can leave a stale payload pending for a later session transition.
+- `requestScanQrAsync` safely catches JSON parse failures, but still includes raw `responseText` in thrown errors for non-OK or invalid-body responses. Non-JSON gateway/runtime bodies could therefore leak technical HTML/text into UI or logs through `error.message`.
+
+## Current Review (Business Announcement Push Delivery)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Fix business-side instant announcement handling when organizer/admin sends push, while keeping student delivery behavior intact.
+
+## Business Announcement Push Findings
+
+- `send-announcement-push` resolves platform `BUSINESSES` recipients from `business_staff`, but club-scoped non-student announcements fall through to student registrations and optional club staff. Joined businesses for that club's events are not targeted.
+- `can_read_announcement` allows platform `BUSINESSES`, but club-scoped `BUSINESSES` announcements are only visible to club staff, not event-joined business staff.
+- Mobile `AnnouncementPushRouterBridge` handles notification tap responses, but foreground notification receipt does not invalidate announcement feed/popup queries. If realtime does not fire for a send-push-only action, business UI can stay stale until polling/manual refresh.
+
+## Current Review (Announcement Realtime Regression + Profile Panel Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Fix the mobile realtime subscription crash seen after organizer send-push, show popup announcement fallback imagery when no custom image exists, and remove the duplicate organizer profile intro panel from the hosted organizer profile page.
+
+## Announcement Realtime Regression Findings
+
+- `useAnnouncementRealtimeInvalidation` can be mounted more than once for the same signed-in user, for example the global popup bridge and an on-screen announcement feed. Reusing the same channel topic (`announcement-feed-${userId}`) can hit Supabase-js' subscribed-channel guard and throw before render completes.
+- `AnnouncementFeedSection` always renders `CoverImageSurface` with an event-discovery fallback, but `AnnouncementPopupBridge` only rendered an image when `imageUrl` existed.
+- `ClubProfilePanel` repeated the route-level `Organizer profile` title/subtitle in a second accent panel immediately below the page header.
+
+## Current Review (Hosted Event + Realtime Refresh Fixes)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Fix hosted admin event ticket URL persistence, user-facing announcement mutation messages, post-event follow-up timing/realtime delivery, and shared mobile pull-to-refresh completion.
+
+## Hosted Event + Realtime Refresh Findings
+
+- `apps/admin/src/features/club-events/event-transport.ts`: create flow trims optional ticket URL before post-RPC update, but update flow wrote the raw payload value when non-empty. Whitespace-padded URLs can still violate `events_ticket_url_http_check`.
+- `apps/admin/src/features/announcements/transport.ts`: admin announcement success responses exposed DB UUIDs in user-facing messages.
+- `apps/admin/src/features/club-reports/components/club-reports-panel.tsx`: post-event follow-up creates a published announcement with `startsAt` 30 minutes in the future, so mobile feeds do not receive it immediately.
+- `apps/mobile/src/features/announcements/announcements.ts`: realtime invalidation had only interval polling despite the realtime publication migration already existing.
+- `apps/mobile/src/features/foundation/use-manual-refresh.ts`: pull-to-refresh can stay spinning forever if a refetch promise never settles.
+
+## Current Review (Store Polish, Localized Apple Login, Live Leima Consistency)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Improve the mobile login and student community surfaces for store readiness, force Apple sign-in UI copy to follow the app language, fix stale leima-card slot counts after organizer event updates, and triage startup logs from the physical iOS build.
+
+## Store Polish, Localized Apple Login, Live Leima Consistency Findings
+
+- The current login screen keeps the slider but places language, mode switching, legal consent, and sign-in actions in a plain stacked card. It works, but the hierarchy feels busy and not store-polished.
+- `AppleAuthenticationButton` localizes itself from the iOS system locale, not OmaLeima's in-app language preference. On a Turkish device it can display Turkish even when the app language is English or Finnish. A custom Apple-styled Pressable can still call the same native Apple auth flow while using `copy.auth.appleButton`.
+- Student `Yhteisö / Community` is a simple top bar plus announcement rail plus club directory card. The club directory itself is functional, but it looks heavier and less intentional than the newer event/reward surfaces.
+- The leima card slot count currently trusts `selectedRewardEvent?.minimumStampsRequired` before the freshly loaded event detail. If organizer updates the event's leima requirement and the reward/QR overview cache is stale, the card can keep rendering the old slot count. Student event, reward, QR, and detail queries also lack explicit always-refetch behavior on mount/reconnect.
+- Startup logs are mostly expected for a Debug dev-client/device run: empty dSYM, future `UIScene` warning, Metro `8081` connection attempts, Bonjour `NoAuth`, Expo module registration, React/Fabric informational events, and keyboard/session warnings. The actionable app-side log is stale Supabase refresh token cleanup; it should clear local auth storage without surfacing a noisy invalid-refresh-token object.
+
+## Current Review (Physical iOS Xcode Build Fix)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Diagnose and fix the Xcode build failure that prevents installing the current iOS build on a physical phone after the Apple Sign-In/native-module changes.
+
+## Physical iOS Xcode Build Fix Findings
+
+- The native project already has `DEVELOPMENT_TEAM = 79DZ4AA4DW`, bundle id `fi.omaleima.mobile`, and the `com.apple.developer.applesignin` entitlement. The first local blocker is not the team id.
+- `xcodebuild -workspace OmaLeima.xcworkspace -scheme OmaLeima -configuration Debug -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build` fails before signing/install with an app dylib linker error.
+- The linker error is for React Native new-architecture debug symbols such as `facebook::react::DebugStringConvertible`, `BaseViewProps::getDebugProps`, and `Sealable::ensureUnsealed`. This points to the Debug iPhoneOS build using prebuilt RN core while dependent native pods reference debug-only renderer symbols that the prebuilt device framework does not export.
+- The focused fix is to make the iOS native project build React Native core from source via `ios.buildReactNativeFromSource = true`, regenerate pods, and re-run the physical-device class build. Apple provider/TestFlight smoke remains a separate post-build proof.
+- `expo-build-properties` now writes `ios.buildReactNativeFromSource = true` from `app.config.ts`, and local CocoaPods regenerated with React Native core built from source. Both signing-disabled and signing-enabled generic iOS Debug builds now pass, so the local Xcode build blocker is resolved.
+
 ## Current Review (Store Release Prep + Apple Sign-In)
 
 - **Date:** 2026-05-09
@@ -3173,3 +3399,143 @@ Build two editable PPTX files with Presentations artifact-tool: `docs/presentati
 - A malicious or stale client could point published event or announcement media at a third-party URL, bypassing the private staging lifecycle.
 - If a publish copy succeeds and the DB update fails, the newly public object can become orphaned.
 - DB-level validation must be forward-only; historical migrations are migration history and must not be edited.
+
+# Current Review (Event Create Constraint + Mobile UI Polish)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Admin event create ticket URL persistence, same-venue stamp limit explanation, student Approt card/header layout, Yhteisö announcement/club card tap targets, and login screen text density.
+
+## Findings
+
+- Admin event creation validates `ticketUrl` as optional, but after `create_club_event_atomic` succeeds it updates `events.ticket_url` with the trimmed string. When a cover staging path exists and ticket URL is empty, this writes `""`, violating `events_ticket_url_http_check`.
+- Admin and mobile event forms now intentionally constrain `stampPolicy.perBusinessLimit` to `1`; this matches the current fraud invariant of one student earning one leima per event venue.
+- Student Approt cards reserve a separate date column and keep the join action aligned with the card center, which leaves less room for city/country text on narrow screens.
+- The Approt header profile button competes with the centered absolute title. Moving profile access to the right action cluster avoids the left-side dead-feeling tap zone.
+- Yhteisö rail announcement cards are fixed at `392px`, making the section feel taller than nearby content.
+- Student club cards show a footer row for email/details, but that row is a plain view instead of an actionable press target.
+- Login moved language selection into the auth panel, which can squeeze title/helper text on small devices and produce awkward wrapping.
+
+## Risks
+
+- Ticket URL fix must keep invalid non-http URLs rejected while storing truly empty optional values as `null`.
+- Approt card layout changes must preserve map, join, detail, and countdown actions without nested press conflicts.
+- Club email action should open `mailto:` when available, and still open the info sheet when no email exists.
+- Login language switch must remain reachable before authentication and not hide legal consent or sign-in controls.
+
+# Current Review (Cached Egress + Approt Ticket Cards)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Supabase cached egress quota explanation/mitigation and student Approt event card/header ticket polish.
+
+## Findings
+
+- Supabase Dashboard shows `Cached Egress 33.341 / 5 GB`. This is served-from-CDN bandwidth, typically public Storage/Smart CDN traffic rather than database size.
+- Project media uploads currently use `cacheControl: "3600"` for public media objects. Event, announcement, club, business and login-slide media paths are timestamp/UUID-style immutable paths, so future uploads can safely use longer browser cache headers.
+- Existing public objects keep their current metadata unless replaced/re-uploaded; changing upload code improves future media and newly published replacements.
+- Approt card design can move toward a ticket metaphor without changing event detail, map, join, or countdown behavior.
+- The current Approt header still uses centered `OmaLeima` branding, while other student pages use screen-specific title/subtitle hierarchy.
+
+## Risks
+
+- Longer cache headers should only be applied to immutable public media paths; mutable objects would risk stale images.
+- Reducing egress does not retroactively clear the current billing-cycle usage or grace-period banner.
+- Ticket card perforation must not create dead tap zones or hide action buttons on narrow devices.
+
+# Current Review (Login Role Selector Polish)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Login screen student/business role selector icon clarity and slider language toggle positioning.
+
+## Findings
+
+- The student role selector currently uses the Google icon even though the selected student mode now exposes both Google and Apple sign-in actions. This makes the role selector look like a provider selector.
+- The language toggle sits inside the slide image at `top: 12`, close enough to slide text that it can visually compete with the onboarding copy.
+- The business role selector already uses a role-oriented building icon and does not duplicate a provider brand.
+
+## Risks
+
+- Replacing the student icon must keep the role selector semantically clear without implying a specific auth provider.
+- Moving the language toggle upward should stay within the image safe area and remain tappable.
+
+# Current Review (Community Ticket Cards + Business Notification Icon)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Student Yhteisö card visual consistency with Approt ticket cards, and business profile notification icon alignment.
+
+## Findings
+
+- Yhteisö still uses a hero-style framed header and club cards with custom dark/lime-tinted backgrounds, while the newer Approt card language uses neutral `surfaceL1`, default borders, and a ticket-like action edge.
+- Student club cards are still image-heavy vertical cards. They work, but they feel visually separate from the polished Approt card system.
+- Announcement rail cards use `surfaceL2` and an inner radius, making them read like a different component family from Approt cards.
+- The business profile `PushNotificationSetupCard` renders its bell icon in a colored bubble with `alignItems: "flex-start"`, unlike the plain, centered preference row icons below it.
+
+## Risks
+
+- Club email/detail actions must remain tappable after moving to a ticket-style action strip.
+- Narrow Finnish labels such as `Sähköposti` must not overflow the ticket action strip.
+- Notification setup must preserve copy, registration button, and ready state while only changing icon treatment and alignment.
+
+# Current Review (Business Surfaces + History Filter Sheet)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Business Approt/events surface cleanup, business ROI redesign, student club summary/action simplification, and business history filter consolidation.
+
+## Findings
+
+- Business events uses framed section cards containing framed rail cards, so the page reads as card-inside-card.
+- Business events rail cards also use `surfaceL2` while sitting on `surfaceL1` section cards, adding extra background blocks that compete with event cover imagery.
+- Student club summary currently shows a separate `yhteystiedot mukana/contact-ready` pill and a labeled active club count. The contact pill is redundant because each club card exposes email/detail actions.
+- Student club ticket action uses text for `Sähköposti`, which can feel cramped on the narrow ticket strip.
+- Business history exposes all date and event filter chips directly on the page, creating visual noise before the actual scan list.
+- ROI page is functional but card-heavy: hero, metrics, event cards, and metric pills all use bordered/card surfaces, so it lacks a clear dashboard hierarchy.
+
+## Risks
+
+- Removing business section frames must keep horizontal rails readable and not make empty states look detached.
+- History filter sheet must preserve date/event filtering logic, selected-state clarity, and scanner-only navigation behavior.
+- Replacing email text with an icon must remain accessible through labels.
+- ROI redesign should not imply monetary ROI; the copy must still say only verified impact is shown.
+
+# Current Review (Final Mobile UI Micro Polish)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Student Yhteisö club count/mail icon, business Approt/event card spacing, ROI bottom whitespace, and student reward handoff identity card.
+
+## Findings
+
+- Student club count currently appears as a separate summary row under the section body; moving it to the card header/right side reduces vertical noise.
+- The student club email action still uses the lime button surface, while the adjacent info icon is neutral. This makes the action strip visually uneven.
+- Business events rail cards sit edge-to-edge in their unframed sections after the previous nested-card cleanup; they need small section-side breathing room to feel like the business home cards.
+- Business ROI `ScrollView` keeps `paddingBottom: 112`, which is too much now that the dashboard was simplified.
+- Student reward handoff ticket shows `Student ...id` under `Näytä henkilökunnalle`; staff recognition is clearer with the user's display name when auth metadata provides it.
+- Claimable reward row uses a very bright lime surface, so the handoff block reads too bright inside another ready state.
+
+## Risks
+
+- Club count should stay visible without reintroducing extra copy.
+- Icon-only email action must keep a descriptive accessibility label.
+- Reward handoff must keep a safe fallback when display name is unavailable.
+
+# Current Review (Profile Typography + Collapsible Scanner)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Scope:** Business profile notification row alignment, app typography token consistency, and business scanner event selector collapse behavior.
+
+## Findings
+
+- `PushNotificationSetupCard` uses a 32px icon column while business profile preference rows use a 22px icon column. This pushes `Ilmoitukset` text to the right compared with the other profile labels.
+- The app already has global typography tokens in `features/foundation/theme.ts`; the safer release fix is to keep screen text on those tokens rather than flattening every text element into one size and breaking hierarchy.
+- Business scanner renders the multi-event selector fully expanded whenever more than one live joined event exists. This consumes vertical space before the camera/scanner area.
+
+## Risks
+
+- Notification setup copy/action must keep its registration behavior intact while matching profile row alignment.
+- Collapsing the scanner event selector must keep the selected event visible and not hide event switching when multiple live events exist.
+- App-wide text-size normalization should avoid one-off hardcoded sizes; broader typography cleanup should be token-based.

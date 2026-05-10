@@ -1,6 +1,7 @@
 import { Svg, Circle, Path, Rect } from "react-native-svg";
 
 type AppIconName =
+  | "apple"
   | "google"
   | "business"
   | "user"
@@ -29,6 +30,7 @@ type AppIconName =
   | "chevron-down"
   | "id-card"
   | "search"
+  | "filter"
   | "zap";
 
 type AppIconProps = {
@@ -39,6 +41,19 @@ type AppIconProps = {
 
 export const AppIcon = ({ name, color, size }: AppIconProps) => {
   switch (name) {
+    case "apple":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M16.2 12.35c-.03-2.18 1.78-3.25 1.86-3.3-1.03-1.5-2.62-1.7-3.17-1.72-1.34-.14-2.64.8-3.32.8-.7 0-1.75-.78-2.88-.75-1.47.02-2.84.87-3.6 2.2-1.55 2.7-.4 6.66 1.1 8.84.75 1.07 1.62 2.27 2.76 2.22 1.1-.05 1.52-.71 2.86-.71 1.33 0 1.72.71 2.88.69 1.2-.03 1.95-1.08 2.67-2.16.86-1.22 1.2-2.42 1.21-2.48-.03-.01-2.34-.9-2.37-3.63Z"
+            fill={color}
+          />
+          <Path
+            d="M14.02 5.9c.6-.73 1-1.74.9-2.75-.86.04-1.93.6-2.55 1.32-.56.64-1.05 1.69-.92 2.67.97.08 1.95-.5 2.57-1.24Z"
+            fill={color}
+          />
+        </Svg>
+      );
     case "google":
       return (
         <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -546,6 +561,19 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
         <Svg height={size} viewBox="0 0 24 24" width={size}>
           <Circle cx="11" cy="11" fill="none" r="7" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
           <Path d="M16.5 16.5L21 21" fill="none" stroke={color} strokeLinecap="round" strokeWidth="1.8" />
+        </Svg>
+      );
+    case "filter":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M4.5 7h15M7.5 12h9M10 17h4"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.9"
+          />
         </Svg>
       );
     case "zap":

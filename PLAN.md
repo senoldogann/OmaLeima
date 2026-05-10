@@ -2,6 +2,586 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Production Ready Final Sweep)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Close the final repo-fixable production readiness findings across admin web, student mobile, business mobile, Supabase Edge/RLS, and release infrastructure.
+
+## Architectural Decisions
+
+- Treat subagent findings as hypotheses until verified in code; patch only concrete repo-fixable P0/P1/P2 issues.
+- Keep admin protection layered: route auth, existing origin/referer checks, dashboard double-submit CSRF, and a new password-session CSRF check for the login mutation.
+- Keep mobile notification session safety data-driven by binding server push payloads to recipient user ids and dropping mismatches in the router.
+- Keep scanner correctness event-id based by refreshing the active business overview before submitting a scan and rejecting stale selected-event context.
+- Keep Supabase DB state unchanged where existing constraints/RLS already prove protection; document false positives instead of adding redundant migrations.
+- Deploy all Edge Functions importing changed shared helpers after validation so production bundles include the sanitization and payload-binding changes.
+
+## Prompt
+
+Sen OmaLeima final production readiness release engineer olarak calisiyorsun.
+Hedef: Admin web, student mobile, business mobile, Supabase Edge/RLS ve release infrastructure icin derin subagent review bulgularini dogrula; repo-fixable production blockers ve shippability risklerini kapat; validation ve deploy evidence ile final handoff yaz.
+Mimari: mevcut Next.js route guards/CSRF, Expo typed routers/state, Supabase Edge shared helpers, existing RLS/RPC constraints, GitHub Actions CI ve release docs. Yeni runtime dependency yok.
+Kapsam: final production-ready sweep patchleri, validation, Edge Function redeploy, REVIEW/PLAN/TODOS/PROGRESS handoff. Store console, physical device proof, Apple certificate validation ve real observability project setup external gate olarak kalir.
+Cikti: strict TS/TSX/Deno TS/docs patch, validation evidence, Supabase function deploy evidence, final handoff.
+Yasaklar: RLS gevsetmek yok, eski migration rewrite yok, service_role/secret loglamak yok, false-positive icin gereksiz migration yok, broad redesign/refactor yok.
+Standartlar: AGENTS.md, zero-trust, explicit errors, no raw IDs in user/API error details, minimal diff.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes deno check supabase/functions/_shared/http.ts supabase/functions/scan-qr/index.ts supabase/functions/scheduled-event-reminders/index.ts supabase/functions/send-push-notification/index.ts`
+- `git --no-pager diff --check`
+- `npx --yes supabase@2.98.2 functions deploy <shared-helper-importing-functions>`
+- `npx --yes supabase@2.98.2 functions list`
+
+## Current Plan (Main Release Merge + Low-cost Release Policy)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Clarify that Sentry and EAS are not mandatory blockers, then finish the feature branch by validating, committing, merging to `main`, pushing GitHub, and cleaning safe merged branches.
+
+## Architectural Decisions
+
+- Keep Sentry as optional observability, not a required runtime dependency. Private pilot can use Vercel logs, Supabase logs/advisors, GitHub Actions, and store crash reports manually.
+- Keep EAS as the default convenient Expo path, but support local Xcode/Gradle release builds and manual store upload when EAS quota/subscription is unavailable.
+- Do not disable Expo Notifications or project-id wiring; local native builds can still use the same public Expo/Supabase env values.
+- Follow the branch completion rule: validate before commit, merge into `main`, push `main`, then delete only branches that are merged/safe.
+
+## Prompt
+
+Sen OmaLeima release completion engineer olarak calisiyorsun.
+Hedef: Sentry ve EAS maliyet/limit sorularini kod ve dokumanlarda netlestir; mevcut feature branch'i validation sonrasi commit edip main'e merge/push et; gereksiz local branch'leri sadece guvenliyse sil.
+Mimari: optional observability docs + local native release mode for store audit + existing GitHub/Vercel/Supabase release gates. Yeni paid service zorunlulugu yok.
+Kapsam: master plan, launch/testing docs, mobile store audit script, validation, git commit/merge/push/branch cleanup. Store console ve fiziksel cihaz kaniti external kalir.
+Yasaklar: failing validation ile merge yok, unmerged branch force delete yok, secret loglamak yok, destructive reset yok, direct main edit yok.
+Standartlar: AGENTS.md git workflow, required commit trailer, minimal policy/code changes.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `OMALEIMA_NATIVE_RELEASE_MODE=local npm --prefix apps/mobile run audit:store-release-readiness`
+- `npx --yes deno check supabase/functions/_shared/http.ts supabase/functions/scan-qr/index.ts supabase/functions/scheduled-event-reminders/index.ts supabase/functions/send-push-notification/index.ts`
+- `git --no-pager diff --check`
+
+## Current Plan (Organization Release Rollout + Mobile Smoke)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Finish the next release steps after organization hardening: run a mobile organizer edit/save smoke, push Supabase migrations, deploy changed Edge Functions when needed, and record the QA/release note.
+
+## Architectural Decisions
+
+- Add a mobile-side smoke script rather than relying only on admin route smoke, because the reported gap is specifically mobile organizer event edit/save.
+- Keep the smoke non-destructive: create a future draft event with the seeded organizer, update it through the hardened RPC, cancel it, then clean up the event and audit rows through local DB SQL.
+- Use existing Supabase CLI commands discovered from `--help`: `migration list`, `db push --linked --include-all`, `functions list`, and `functions deploy <name>`.
+- Deploy only functions affected by changed Edge/shared code. Database-only organization RPC changes do not require Edge redeploy, but existing modified Edge functions from the P1/P2 slice do.
+- Update existing release docs (`PRODUCTION_TEST_CHECKLIST.md` / launch notes) and `PROGRESS.md`; do not create a new planning markdown file.
+
+## Prompt
+
+Sen OmaLeima release stabilization engineer olarak calisiyorsun.
+Hedef: Organizasyon RPC hardening sonrasi mobile organizer event edit/save smoke riskini kapat, Supabase hosted migration push ve gerekiyorsa Edge Function deploy adimlarini calistir, QA/release notunu guncelle.
+Mimari: mevcut mobile Supabase client env + focused smoke script + Supabase CLI linked project deploy + existing release docs. Yeni runtime dependency yok.
+Kapsam: mobile organizer event RPC smoke, Supabase migration/function deployment, QA/release notes, working docs. Admin/student/business genel review fazlarina henuz gecme.
+Cikti: smoke/CLI validation evidence, release note patch, PROGRESS handoff.
+Yasaklar: service_role/public secret loglamak yok, production data kalintisi birakmak yok, destructive reset yok, unrelated UI refactor yok.
+Standartlar: AGENTS.md, Supabase zero-trust/RLS, explicit cleanup, minimal diff.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run smoke:club-event-rpc`
+- `npm --prefix apps/mobile run audit:native-simulator-smoke`
+- `npx --yes supabase@2.98.2 migration list`
+- `npx --yes supabase@2.98.2 db push --linked --include-all`
+- `npx --yes supabase@2.98.2 functions list`
+- `npx --yes supabase@2.98.2 functions deploy <changed-function>`
+- `git --no-pager diff --check`
+
+## Current Plan (Organization Operations Parity + RLS Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Close the organization/club operation gaps found by the web/mobile/RLS/test review before moving on to admin, student mobile, or business mobile reviews.
+
+## Architectural Decisions
+
+- Add forward Supabase RPCs for organization operations that currently rely on direct table writes: `update_club_event_atomic`, `cancel_club_event_atomic`, `update_club_department_tag_atomic`, and `delete_club_department_tag_atomic`.
+- Keep event media publishing/cleanup in the existing web/mobile transports, but move the final event state write and audit log into RPCs.
+- Keep department tag writes route-mediated on web and RPC-mediated in the database; do not reintroduce direct organizer table write policies.
+- Add web department tag edit/delete controls in the existing club department tag panel instead of adding a new page.
+- Extend existing smoke scripts instead of creating a parallel test framework: event smoke covers update/cancel RPC path; department tag smoke covers update/delete route and RLS direct-write blocks.
+- Limit this slice to organization operations. Announcement RPC migration and club profile RPC migration are valid follow-ups but are not mixed into this patch unless required by the tests touched here.
+
+## Prompt
+
+Sen OmaLeima organization/club operations security engineer olarak calisiyorsun.
+Hedef: Organizasyon web/mobil operasyonlarinda create/edit/cancel/delete parity aciklarini kapat; Supabase RLS/RPC sinirlarini guclendir; mevcut smoke testlerle create, edit, cancel/archive-benzeri durum ve delete akisini dogrula.
+Mimari: forward SQL migration + SECURITY DEFINER RPC + mevcut Next.js route guard/rate-limit/CSRF + Expo mutation transport + mevcut smoke script genisletmesi. Yeni dependency yok.
+Kapsam: club events update/cancel, club department tags update/delete, ilgili web UI/API client/validation, mobile event mutation RPC wiring, smoke tests ve working docs. Admin, student mobile ve business mobile genel reviewlari bu slice disinda.
+Cikti: strict TS/TSX/SQL patch, Supabase/admin/mobile validation evidence, PROGRESS handoff.
+Yasaklar: RLS policy'leri gevsetmek yok, direct organizer table write policy eklemek yok, `any` yok, eski migration rewrite yok, unrelated revert yok, broad UI redesign yok.
+Standartlar: AGENTS.md, Supabase zero-trust/RLS, atomic RPC, explicit typed statuses, minimal diff.
+
+## Validation Plan
+
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db lint --local`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run smoke:club-events`
+- `npm --prefix apps/admin run smoke:club-department-tags`
+- `git --no-pager diff --check`
+
+## Current Plan (Per-business Venue Limit + Session Bootstrap Stabilization)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Re-assert event `perBusinessLimit` dynamic behavior and make mobile auth bootstrap resilient, then deploy DB fix and prepare production rollout notes.
+
+## Architectural Decisions
+
+- Apply a forward-only SQL migration that overrides `public.get_event_per_business_stamp_limit` to parse `stampPolicy.perBusinessLimit` from numeric JSON values and clamp to 1..5, with fallback 1.
+- Keep all mobile fixes in existing session provider context and mutation/validation pipeline; no new external service introduction.
+- Prefer direct DB query execution on linked hosted DB for now because migration history table is currently diverged between local and remote; align history in a separate reconciliation step.
+- Keep UI changes minimal and limited to existing event creation/edit screens (admin and club organizer mobile).
+- Do not modify unrelated claim/reward, QR, push, or auth provider setup slices.
+
+## Prompt
+
+Sen OmaLeima production stabilization engineer olarak calisiyorsun.
+Hedef: Geçerli riskleri kalıcı olarak kapatmak ve üretime güvenli geçiş için gerekli deploy adımlarını tamamlamak.
+Mimari: tek bir SQL forward migration + mevcut provider event-edit/mutation akışlarında küçük normalize+validasyon güncellemeleri.
+Kapsam: `get_event_per_business_stamp_limit` fonksiyonu, admin event rules builder/validation, mobile organizer event limit UI ve `SessionProvider`.
+Yasaklar: eski migrationların silinmesi yok, güvenlik sınırlarını gevşetmek yok, geniş UI redesign yok.
+Standartlar: AGENTS.md, minimal diff, explicit hata mesajı ve typed state.
+
+## Validation Plan
+
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db query --linked "select public.get_event_per_business_stamp_limit('{\"stampPolicy\":{\"perBusinessLimit\":3}}'::jsonb) as limit"`
+- `npx --yes supabase@2.98.2 migration list` (remote/local farkının kapatılması planlanacak)
+- `git --no-pager diff --check`
+## Current Plan (P1/P2 Core Security Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Close the reported P1/P2 security and production reliability gaps that are still repo-fixable in the current branch.
+
+## Architectural Decisions
+
+- Keep JWT hardening in the existing helpers: HS256 remains the V1 algorithm, but issuer and audience are mandatory signed claims and verification constraints.
+- Keep dashboard mutation CSRF as a double-submit cookie/header pattern layered on top of Origin/Referer checks and route-level auth.
+- Keep `scan-qr` and `claim-reward` response bodies typed, but use HTTP 4xx/409/423/429 for business-rule failures and blocked operations.
+- Do not rewrite old migrations. Add or adjust forward migrations/functions only when DB invariants need hardening.
+- Add low-cost push endpoint throttling before recipient expansion to avoid expensive fan-out for abusive retries. Reuse a SECURITY DEFINER RPC rather than adding Redis.
+- Sanitize externally returned Edge error details centrally so logs/audit can keep internal context while API responses do not leak user/resource UUIDs or provider/database messages.
+- Make mobile scanner submission event-id/event-venue-id based at the moment a barcode is accepted, not based on a later mutable index/selection.
+- Reduce QR polling to backend refresh guidance and a sane first retry rather than aggressive sub-second loops.
+
+## Prompt
+
+Sen OmaLeima Supabase Edge Function + Next.js Admin + Expo mobile security hardening engineer olarak calisiyorsun.
+Hedef: P1/P2 bulgularindaki token claim dogrulama, dashboard CSRF, scan/reward HTTP semantigi, reward event gate, QR rate-limit sirasi, push throttling/detail leakage, mobile session/scanner state ve QR refresh risklerini repo-fixable kisimlarda kapat.
+Mimari: mevcut shared JWT/http helpers + Edge Function typed response mapping + forward Supabase migration/RPC + dashboard double-submit CSRF + mobile event-id based scanner snapshot + backend-driven QR refresh cadence. Yeni dependency yok.
+Kapsam: yalnizca raporlanan dosyalar, gerekli migration ve working docs. Hosted provider ayarlari, Apple credential validation, native store release ve unrelated UI polish bu slice disinda kalir.
+Cikti: strict TS/Deno TS/SQL patch, admin/mobile/Supabase/Deno validation evidence, PROGRESS handoff.
+Yasaklar: `any` yok, RLS bypass yok, eski migration rewrite yok, HTTP 200 ile is kural hatasi dondurmek yok, ham UUID/provider/DB hata detaylarini API response `details` icinde gostermek yok, unrelated revert yok.
+Standartlar: AGENTS.md, security-review checklist, api-design HTTP semantics, explicit errors, minimal diff.
+
+## Validation Plan
+
+- `npx --yes deno check supabase/functions/_shared/http.ts supabase/functions/_shared/qrJwt.ts supabase/functions/_shared/businessScannerLoginJwt.ts supabase/functions/scan-qr/index.ts supabase/functions/claim-reward/index.ts supabase/functions/generate-qr-token/index.ts supabase/functions/send-announcement-push/index.ts supabase/functions/send-push-notification/index.ts supabase/functions/send-support-reply-push/index.ts`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db lint --local`
+- `git --no-pager diff --check`
+
+## Current Plan (Ignored Local Artifact Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Remove only the repo-ignored local artifact folders under `outputs/` and `tmp/` that are not part of the application/runtime source tree.
+
+## Architectural Decisions
+
+- Treat `outputs/` and `tmp/` as disposable local artifacts because root `.gitignore` excludes both directories.
+- Keep cleanup narrow: do not touch tracked docs, source files, config, or historical report markdown files even if they look review-related.
+- Delete the artifact directories as a local workspace cleanup, not as a product behavior change.
+- Validate with targeted git/rg checks instead of broad app builds, because no runtime code path changes in this slice.
+
+## Prompt
+
+Sen OmaLeima repo hygiene engineer olarak calisiyorsun.
+Hedef: Kullanimda olmayan ve repo tarafindan zaten ignore edilen lokal artefakt klasorlerini guvenli sekilde temizle.
+Mimari: Referans taramasi + `.gitignore` kaniti + dar kapsamli dosya/klasor silme + git/rg dogrulamasi. Yeni dependency yok.
+Kapsam: `outputs/` ve `tmp/` altindaki lokal preview/QA artefaktlari ile working docs guncellemesi. Kaynak kod, tracked rapor markdown'lari, config veya runtime dosyalari degismeyecek.
+Cikti: Minimal doc patch, lokal artefakt temizligi, dar validation ve handoff notu.
+Yasaklar: Tracked source dosyalarini tahmine dayali silmek yok, `RAPOR.md` veya `REVIEW_RESULT.md` gibi referansli raporlari silmek yok, unrelated revert yok.
+Standartlar: AGENTS.md, minimal diff, kanita dayali silme, explicit validation.
+
+## Validation Plan
+
+- `git status --short --ignored outputs tmp`
+- `rg -n --hidden --glob '!node_modules' --glob '!.git' 'qa-production-hardening|verification-sweep|partner-preview|presentation-preview|public-landing-smoke'`
+- `git --no-pager diff --check -- REVIEW.md PLAN.md TODOS.md PROGRESS.md`
+
+## Current Plan (City/Event Scoped Announcements + Business History)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Finish business-owned scan history and make announcements safely scopeable by city, event, and organizer-owned audience.
+
+## Architectural Decisions
+
+- Keep business history behind a SECURITY DEFINER RPC that returns rows only for businesses where the current user is active staff.
+- Add `target_city` as a nullable announcement scope field and enforce it in `can_read_announcement`.
+- Replace the event-scope trigger logic so event announcements can target `ALL`, `STUDENTS`, or `BUSINESSES`, while still requiring the event to belong to the selected club.
+- Carry `targetCity` through admin types, validation, transport, create/update routes, read-model, compose/edit UI, and list state.
+- Push recipient expansion respects city and event filters so notification delivery does not exceed the same audience shape that in-app RLS allows.
+- Mobile business history copy now reflects business-wide history instead of operator-only rows.
+
+## Prompt
+
+Sen OmaLeima Supabase + Next.js + Expo release engineer olarak calisiyorsun.
+Hedef: Isletme historia ekraninda joined event scan gecmisi isletme bazli gorunsun; admin/organizer announcements sehir, event ve organizasyon kapsamiyla guvenli sekilde olusturulup gonderilebilsin.
+Mimari: SECURITY DEFINER business history RPC + nullable `announcements.target_city` + RLS helper hardening + admin form/read-model/transport wiring + push recipient resolver filtering. Yeni dependency yok.
+Kapsam: business scan history, announcement city/event/audience scope, admin announcement compose/edit/list, push recipient expansion, working docs. Mobil announcement UI mevcut RLS feed okumaya devam eder.
+Cikti: SQL migration, strict TS/TSX/Deno TS patch, docs handoff.
+Yasaklar: RLS bypass yok, event-scoped `CLUBS` audience yok, baska organizasyonun announcementlarini gosterme yok, ham UUID'leri user-facing copy'ye donusturme yok, unrelated revert yok.
+Standartlar: AGENTS.md, city-ready multi-tenant model, explicit errors, minimal diff.
+
+## Validation Plan
+
+- `npx --yes deno check supabase/functions/send-announcement-push/index.ts`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db lint --local`
+
+## Current Plan (Organizer Reward Claim Visibility)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make organizer reward claim screens operationally complete by showing under-threshold student reward progress without allowing invalid reward handoff.
+
+## Architectural Decisions
+
+- Keep `candidates` as the authoritative claimable handoff queue. Do not enable a button for students below the required leima count.
+- Add `progress` rows derived from the same registrations, active reward tiers, valid stamps, and claimed rewards used by the claim queue.
+- Exclude already `CLAIMED` rewards from both claimable and progress lists, but do not let `REVOKED` history permanently hide a student/tier.
+- Update both web and mobile read models so organizer behavior stays consistent across surfaces.
+- Keep backend/RPC/Edge Function behavior unchanged; the backend already rejects not-enough-stamps claims.
+- Add a scoped `get_club_claim_student_labels` RPC that returns display names only for students registered to events managed by the current active club staff user.
+- Use display names in claimable/progress/recent claim rows, with masked id as a last-resort fallback only when no name exists.
+- Add mobile event filter chips and filter claimable/progress/recent rows by the selected event.
+
+## Prompt
+
+Sen OmaLeima organizer reward-flow engineer olarak calisiyorsun.
+Hedef: Club/organizer claim ekranlarinda yeterli leimasi olmayan ogrenciler de ilerleme olarak gorunsun; ogrenciler UUID yerine ad-soyad/display name ile gorunsun; mobilde birden fazla etkinlik icin claim/progress/history listeleri secili etkinlige gore filtrelensin; odul teslim aksiyonu sadece yeterli leimasi olan claimable adaylarda aktif kalsin.
+Mimari: mevcut `event_registrations`, `reward_tiers`, `stamps`, `reward_claims` read-model composition + scoped student-label RPC + web/mobile UI read-only progress bolumu + mobile event filter. Yeni tablo yok.
+Kapsam: admin/mobile club claims read model, types, claim screen UI, scoped Supabase migration, working docs ve validation. Reward claim RPC, unrelated organizer pages degismeyecek.
+Cikti: strict typed TS/TSX patch, web/mobile validation evidence.
+Yasaklar: client tarafinda invalid claim enable etmek yok, RLS bypass yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, minimal diff, explicit typed data, operation-safe UX.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `git --no-pager diff --check`
+
+## Current Plan (Security Findings Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Close the verified security review findings without broadening product behavior or weakening existing RLS/RPC boundaries.
+
+## Architectural Decisions
+
+- Add a forward Supabase migration for RLS/helper fixes and promotion push atomicity. Do not rewrite old migrations.
+- For club-scoped eventless announcements, target only operational events (`PUBLISHED`/`ACTIVE`) so past/completed/archived event relationships do not widen recipients.
+- Map typed reward claim statuses to HTTP status codes in the Edge Function and admin transport. Keep `REWARD_ALREADY_CLAIMED` idempotent-success for mobile UI, but do not return 200 for authorization/eligibility failures.
+- Add a DB-side advisory-lock-backed promotion push limiter and call it before push delivery.
+- Add recipient user binding to remote announcement push payloads and reject mismatched payloads in the mobile router.
+- Use local Supabase sign-out for invalid refresh-token cleanup, then delete the local auth key as a final cleanup step.
+- Reduce scanner warning context to counts/error class rather than raw student/event IDs.
+
+## Prompt
+
+Sen OmaLeima Supabase Edge Function + Expo security hardening engineer olarak calisiyorsun.
+Hedef: Sub-agent review ile dogrulanan announcement recipient widening, reward claim HTTP semantics, promotion push race, active-profile RLS consistency, announcement push audit gaps, mobile notification session binding, invalid refresh-token cleanup ve scanner PII-ish warning log bulgularini minimal patch ile kapat.
+Mimari: forward SQL migration + focused Edge Function changes + mobile router/session cleanup + existing validation commands. Yeni dependency yok.
+Kapsam: `send-announcement-push`, `claim-reward`, `send-push-notification`, RLS/helper migration, mobile push router/session provider, scan-qr warning context, working docs ve validation. Product audience modelini veya reward RPC invariantlerini genisletmek yok.
+Cikti: strict TS/Deno TS/SQL patch, validation evidence, handoff.
+Yasaklar: RLS bypass yok, old migration rewrite yok, ham user/event IDs warning log'a koymak yok, typed reward failurelari HTTP 200 dondurmek yok, unrelated revert yok.
+Standartlar: AGENTS.md, Codex Security fix-finding workflow, explicit errors, minimal diff, no `any`.
+
+## Validation Plan
+
+- `npx --yes deno check supabase/functions/send-announcement-push/index.ts supabase/functions/send-push-notification/index.ts supabase/functions/claim-reward/index.ts supabase/functions/scan-qr/index.ts`
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db lint --local`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Reward Path + Tiedotteet Ticket Polish)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make the event detail reward path feel more compact and make Yhteisö announcement cards visually match the Approt ticket card system.
+
+## Architectural Decisions
+
+- Keep this as a mobile UI-only slice; no Supabase, routing, or announcement data model changes.
+- Compact reward path by reducing card padding, group gaps, icon size, tier row padding, instruction box padding, and progress track height.
+- Reuse the existing `AnnouncementFeedSection` rail presentation for Yhteisö instead of adding a separate announcement card component.
+- Apply Approt-inspired ticket structure only when `presentation="rail"` so business/club stack usages keep their current layout.
+
+## Prompt
+
+Sen OmaLeima Expo mobile UI polish engineer olarak calisiyorsun.
+Hedef: Event detail icindeki `Palkintopolku/Reward path` kartini daha kompakt hale getir; Yhteisö `Tiedotteet/Updates` rail kartlarini Approt kartlarina benzeyen ticket tasarimina yaklastir.
+Mimari: mevcut style tokenlari + `AnnouncementFeedSection` rail variant + event detail reward path style tightening. Yeni component veya dependency yok.
+Kapsam: mobile student event detail reward path, announcement feed rail card presentation, working docs ve validation. Data fetching, realtime, mark-read, push preference, CTA ve detail routing davranisi degismeyecek.
+Cikti: strict TS/TSX patch, mobile typecheck/lint/diff-check evidence.
+Yasaklar: backend/schema degisikligi yok, announcement actionlarini kaldirmak yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, existing Approt ticket visual language, minimal diff, accessible controls.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Event-Centered Student Rewards Navigation)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make rewards part of the Approt/event flow, remove Rewards from the visible student tab bar, restore Profile as a real bottom tab, and remove duplicated header profile buttons.
+
+## Architectural Decisions
+
+- Do not add a Supabase migration for this slice. The current schema and RLS policies already expose the needed student-owned reward state through existing tables.
+- Use the existing `useStudentRewardOverviewQuery` on Approt to decorate event cards with claimable/claimed/progress states.
+- Use `useStudentRewardEventQuery` on event detail so reward tiers include claim status, missing stamps, inventory, and staff handoff instructions directly in the event page.
+- Hide the legacy Rewards tab from bottom navigation but leave the route available as an internal compatibility screen during this transition.
+- Show Profile as a bottom tab and remove `StudentProfileHeaderAction` from student content headers.
+- Update reward push tap routing to open the relevant event detail when an event id exists, otherwise Approt.
+
+## Prompt
+
+Sen OmaLeima Expo + Supabase urun mimarisi engineer olarak calisiyorsun.
+Hedef: Ogrenci odul deneyimini ayri `Palkinnot` tab'indan event/Approt baglamina tasi; claimable/claimed reward state Approt kartinda farkli gorunsun; event detail icinde tum reward tier, progress, claim/handoff bilgisi gorunsun; alt menude Profile geri gelsin ve sag ust profil butonlari kaldirilsin.
+Mimari: mevcut Supabase tablolarindan client query composition (`reward_tiers`, `reward_claims`, `stamps`, `event_registrations`) + Expo tab navigation sadeleştirme + existing reward query hooks. Yeni tablo/RPC yok.
+Kapsam: mobile student tabs, Approt card/detail, reward push routing, header profile buttons, working docs ve validation. Organizer reward handoff/RPC, DB RLS, admin panel ve native auth degismeyecek.
+Cikti: strict typed TS/TSX patch, no schema migration, mobile validation.
+Yasaklar: RLS bypass yok, reward claim'i client tarafinda yazmak yok, `any` yok, unrelated revert yok, Palkinnot route'unu deep-link compatibility bozulacak sekilde silmek yok.
+Standartlar: AGENTS.md, event-centered UX, minimal diff, accessible controls, existing visual system.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Push Payload Session Boundary + Scanner Error Sanitization)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Prevent old notification tap payloads from crossing authentication sessions and stop scanner transport from surfacing raw non-JSON backend/gateway response bodies.
+
+## Architectural Decisions
+
+- Treat `userId` as part of the notification routing boundary. When it changes, clear any queued tap payload and duplicate-response key before updating the current user ref.
+- Keep push tap routing behavior unchanged for valid role/payload combinations, but clear unrouteable payloads instead of leaving them pending.
+- Preserve known scanner API responses as-is, because those are already product-safe typed responses. For unknown or non-JSON bodies, throw status plus a generic body classification only.
+
+## Prompt
+
+Sen Expo notification ve scanner transport hardening engineer olarak calisiyorsun.
+Hedef: Notification tap payload'lari logout/login veya kullanici degisiminde eski oturumdan yeni oturuma tasinmasin; scan-qr transport non-JSON backend/gateway hata govdelerini kullanici/log hata mesajina ham olarak koymasin.
+Mimari: `AnnouncementPushRouterBridge` icinde userId session boundary cleanup + unrouteable payload cleanup; `scan-transport.ts` icinde typed scan response korunarak unknown body sanitization. Yeni dependency yok.
+Kapsam: yalnizca mobile notification router, scanner transport, working docs ve validation. Push provider, backend RPC, UI redesign veya unrelated role flow yok.
+Cikti: strict TS/TSX patch, mobile typecheck/lint/diff-check evidence.
+Yasaklar: ham non-JSON response body gostermek yok, stale payload'i beklemede birakmak yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, explicit errors, minimal diff, English comments.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+## Current Plan (Business Announcement Push Delivery)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make business-side announcement push delivery and in-app refresh work instantly for organizer/admin sent pushes, without regressing student delivery.
+
+## Architectural Decisions
+
+- For club-scoped `BUSINESSES` announcements, resolve recipients from `business_staff` linked to businesses that are `JOINED` to the club's events.
+- For club-scoped `ALL`, include student registrations, club staff, and joined business staff.
+- Keep event-scoped announcements constrained to `STUDENTS`; do not loosen that DB invariant.
+- Extend `can_read_announcement` so joined business staff can read club-scoped `BUSINESSES` announcements.
+- On mobile foreground push receipt, invalidate announcement active/feed/detail queries for the current user so popup/feed can refresh even when only a push delivery attempt changes.
+
+## Prompt
+
+Sen Supabase Edge Function + Expo notification release engineer olarak calisiyorsun.
+Hedef: Organizer/admin panelinden business tarafi icin send push yapildiginda isletme kullanicilari hem push recipient olarak cozulmeli hem de foreground app acikken announcement popup/feed aninda yenilenmeli.
+Mimari: `send-announcement-push` recipient resolver + `can_read_announcement` RLS helper migration + mobile foreground notification listener query invalidation. Yeni dependency yok.
+Kapsam: business announcement push delivery, club-scoped business visibility, mobile foreground invalidation, docs and validation. Student event-scoped behavior korunacak.
+Cikti: strict TS/Deno TS + SQL migration + mobile validation + Supabase deploy proof.
+Yasaklar: event-scoped announcement audience invariantini gevsetmek yok, RLS bypass yok, realtime payloadina guvenme yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, explicit error context, minimal diff, production deploy.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes supabase@2.98.2 db push --linked`
+- `npx --yes supabase@2.98.2 functions deploy send-announcement-push --project-ref jwhdlcnfhrwdxptmoret`
+- `git --no-pager diff --check`
+
+## Current Plan (Announcement Realtime Regression + Profile Panel Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Stop the mobile announcement realtime subscription crash, make popup announcement imagery consistent with the full feed fallback, and remove duplicated organizer profile header content.
+
+## Architectural Decisions
+
+- Keep realtime invalidation behavior intact, but use a unique channel topic per hook instance so concurrent feed/popup subscribers do not mutate an already subscribed channel.
+- Keep using query invalidation rather than trusting realtime payload content.
+- Use the same `eventDiscovery` fallback image in popup announcements that the announcement feed already uses.
+- Remove only the duplicated intro panel from the web organizer profile form; keep selected-club and edit surfaces unchanged.
+
+## Prompt
+
+Sen Expo + Next.js release regression engineer olarak calisiyorsun.
+Hedef: Send push sonrasi business/organizer mobile screen'de dusen `cannot add postgres_changes callbacks ... after subscribe()` hatasini kokten duzelt; announcement popup'ta custom image yoksa feed ile ayni default gorseli goster; hosted organizer profile sayfasinda route header'i tekrar eden ikinci profile intro panelini kaldir.
+Mimari: Supabase realtime channel instance topic izolasyonu + mevcut `CoverImageSurface` fallback + focused Next.js panel cleanup. Yeni dependency yok.
+Kapsam: `announcements.ts`, `announcement-popup-bridge.tsx`, `club-profile-panel.tsx`, docs, validation, web deploy. Push sending backend davranisini veya RLS'i degistirmek yok.
+Cikti: strict typed TS/TSX patch, validation results, deployed admin URL if web changed.
+Yasaklar: realtime payloadina guvenme, duplicate subscription cleanup'i sessizce yutma, default image'i hardcoded remote URL yapma, unrelated revert yok.
+Standartlar: AGENTS.md, minimal diff, accessible existing UI, no `any`.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- Vercel production deploy for the admin profile cleanup
+
+## Current Plan (Hosted Event + Realtime Refresh Fixes)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Fix hosted admin event ticket URL persistence, remove DB IDs from announcement success/error-facing UI copy, make post-event follow-up announcements visible immediately through realtime invalidation, and prevent pull-to-refresh from hanging indefinitely.
+
+## Hosted Event + Realtime Refresh Architectural Decisions
+
+- Normalize optional `ticketUrl` once in the event update transport and write only the trimmed value or `null`.
+- Keep announcement mutation statuses machine-readable while replacing success messages with generic user-safe copy.
+- Keep post-event follow-up event-scoped, but set `startsAt` to the current time so mobile feed/popup queries can see it immediately.
+- Add a Supabase realtime `postgres_changes` subscription for announcement invalidation and preserve the existing interval as a resilience layer.
+- Add a bounded timeout to the shared manual refresh hook so all screens using it stop the native refresh animation even when a refetch hangs.
+
+## Prompt
+
+Sen release odakli Next.js + Expo + Supabase engineer olarak calisiyorsun.
+Hedef: Web event create/update akisini `events_ticket_url_http_check` icin guvenli hale getir; announcement mutation mesajlarindan UUID gosterimini kaldir; post-event follow-up duyurusunu anlik gorunur ve realtime invalidation destekli hale getir; mobil pull-to-refresh spinner'inin sonsuz kalmasini ortak hook seviyesinde engelle; ardindan admin app'i Vercel production'a deploy et.
+Mimari: mevcut transport katmani, Supabase realtime channel invalidation, shared `useManualRefresh`, Vercel admin deployment. Yeni dependency yok.
+Kapsam: admin event/announcement/report transport UI, mobile announcements/manual refresh hook, working docs, validation, Vercel deploy. DB constraint'i gevsetmek veya RLS'i bypass etmek yok.
+Cikti: strict typed TS/TSX patch, validation results, deployed Vercel URL.
+Yasaklar: kullaniciya DB UUID gosterme, ham untrimmed URL yazma, realtime payloadina guvenme, `any` kullanma, unrelated revert yok.
+Standartlar: AGENTS.md, structured errors/logs, minimal diff, production release validation.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/admin run build`
+- `git --no-pager diff --check`
+- Vercel production deploy for `apps/admin`
+
+## Current Plan (Store Polish, Localized Apple Login, Live Leima Consistency)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make the first-run mobile experience feel store-ready, keep Sign in with Apple copy in Finnish/English only, harden student leima-pass metadata refresh, and quiet the actionable invalid refresh-token startup path.
+
+## Store Polish Architectural Decisions
+
+- Keep the login slider as the primary visual anchor, but make the sign-in surface more intentional: compact language control, segmented role selection, clearer student/business action grouping, and tighter spacing.
+- Replace the native rendered Apple button with an app-rendered Apple-styled button that uses OmaLeima localization while preserving the existing `signInWithAppleAsync` native credential flow.
+- Upgrade the student community page with a stronger contextual header and a redesigned club directory presentation using the existing data model and modal behavior.
+- Compute leima pass capacity from the freshest available sources: event detail minimum, reward overview minimum, QR context minimum, venue count, and actual collected stamp count. Add always-refetch options to student metadata queries so organizer-side event changes do not linger in mobile caches.
+- Treat Debug-only startup logs as non-blocking unless they reveal app state corruption. Fix invalid refresh-token cleanup at the Supabase storage boundary; leave framework/device warnings documented.
+
+## Prompt
+
+Sen OmaLeima mobile store-polish engineer olarak calisiyorsun.
+Hedef: Login ekranini slider korunarak daha kaliteli hale getir; Apple ile giris copy'sini uygulama diline bagla; student Yhteisö sayfasini modernize et; event leima sayisi guncellenince leima karti dahil ogrenci yuzeylerinde eski cache kalmasini engelle; startup loglarindaki gercek app hatasini duzelt.
+Mimari: Expo React Native mevcut component sistemi + localized copy + React Query refetch hardening + focused UI component updates + Supabase local auth storage cleanup.
+Kapsam: mobile auth/login, Apple/Google auth button components, public club directory/community screen, student event/reward/QR query freshness, session bootstrap cleanup, working docs ve validation. Supabase provider credentials, store submission, unrelated role flows yok.
+Cikti: strict TS/TSX patch, app-language Apple button, daha iyi login/community UI, leima slot consistency fix, startup log triage, validation evidence.
+Yasaklar: yeni global UI framework eklemek yok, Turkish Apple/login copy yok, stale cache'i gizleyen fallback yok, Apple auth flow'u geri almak yok, destructive git reset yok.
+Standartlar: AGENTS.md focused changes, frontend-design/frontend-patterns, Expo native UI rules, strict typing, explicit errors.
+
+## Current Plan (Physical iOS Xcode Build Fix)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make the local Xcode Debug iPhoneOS build installable on a physical phone by fixing the native linker failure without changing app auth behavior.
+
+## Physical iOS Xcode Build Fix Architectural Decisions
+
+- Keep the Apple Sign-In implementation and entitlements unchanged; the native module is present in Pods and is not the compile/link failure.
+- Fix the device Debug linker failure at the native build configuration layer by building React Native core from source instead of using the prebuilt core framework for iPhoneOS.
+- Regenerate CocoaPods after changing `Podfile.properties.json` so Xcode and CLI builds use the same source-of-truth configuration.
+- Validate with TypeScript, store readiness audit, and `xcodebuild` for generic iOS with code signing disabled. Then run a signing-enabled build if possible to reveal remaining provisioning-only issues separately.
+- Result: source-built React Native core is now persisted through `expo-build-properties`; local pods are regenerated; both generic iOS Debug build paths pass.
+
+## Prompt
+
+Sen OmaLeima iOS release build engineer olarak calisiyorsun.
+Hedef: Xcode'dan fiziksel iPhone'a kurulumdan once dusen native build hatalarini bul ve repo tarafinda duzelt.
+Mimari: mevcut Expo prebuild iOS projesi + CocoaPods config + React Native new architecture linker diagnosis + source-of-truth Podfile properties update + reproducible xcodebuild validation.
+Kapsam: `apps/mobile/ios/Podfile.properties.json`, CocoaPods generated state, working docs ve build validation. Apple/Supabase provider ayarlarini veya auth UI davranisini degistirmek yok.
+Cikti: physical-device class Debug iPhoneOS build'in compile/link asamasini gecmesi, varsa kalan signing/provisioning hatasinin ayri raporlanmasi.
+Yasaklar: Apple Sign-In kodunu geri almak yok, destructive git reset yok, generated olmayan dosyalari gereksiz refactor etmek yok, signing hatasini compile hatasi gibi saklamak yok.
+Standartlar: AGENTS.md focused changes, explicit errors, no silent fallback, non-interactive xcodebuild validation.
+
 ## Current Plan (Store Release Prep + Apple Sign-In)
 
 - **Date:** 2026-05-09
@@ -5601,3 +6181,224 @@ Kapsam: admin event/announcement transport, media cleanup helper if needed, Supa
 Cikti: Strict TS/SQL patch, admin typecheck/lint or targeted TS validation, local migration validation if feasible.
 Yasaklar: caller URL fallback yok, applied migration rewrite yok, silent cleanup failure yok, unrelated revert yok, broad UI redesign yok.
 Standartlar: AGENTS.md zero-trust, explicit errors, strict typing, focused minimal diff, no silent failures.
+
+# Current Plan (Event Create Constraint + Mobile UI Polish)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Fix the admin event create ticket URL constraint error and polish the reported mobile Approt, Yhteisö, and login layout regressions.
+
+## Architectural Decisions
+
+- Keep `ticketUrl` optional at validation time and persist an absent value as `null`, never as an empty string.
+- Leave same-venue stamp limit at `1` for this slice because current admin/mobile validation and product safety rules enforce one leima per student per event venue.
+- Move Approt date metadata into the image thumbnail overlay and move profile access into the right header action cluster so text gets more horizontal space.
+- Make student event card actions compact and center-aligned while preserving separate join, map, and card-detail tap behavior.
+- Reduce Yhteisö announcement rail card height by lowering image/body density instead of hiding actions.
+- Convert the student club card footer into an explicit press target that opens email directly when a contact email exists.
+- Simplify login by moving the FI/EN selector onto the slider, removing the separate hero brand text, and using shorter panel copy.
+
+## Prompt
+
+Sen OmaLeima release polish full-stack engineer olarak calisiyorsun.
+Hedef: Admin event create akisinda bos ticket URL'nin DB check constraint hatasina dusmesini engelle; mobil Approt/Yhteisö/Login ekranlarinda kullanicinin raporladigi sikisma ve tiklanabilirlik sorunlarini duzelt.
+Mimari: Next.js server transport null-normalization + Expo React Native focused component layout updates + existing preference/i18n/theme APIs. Yeni dependency yok.
+Kapsam: event create transport, student event card/header, announcement rail card density, public club directory footer tap target, login hero/auth panel density, working docs and validation. Same-venue limit davranisi bu slice'ta degismeyecek; sadece mevcut neden aciklanacak.
+Cikti: strict typed TS/TSX patch, admin/mobile typecheck/lint/export validation, updated handoff.
+Yasaklar: DB invariant'i UI-only bypass etmek yok, `any` yok, fallback URL kabul etmek yok, unrelated revert yok, store console publish/submit yok.
+Standartlar: AGENTS.md, explicit errors, minimal focused diff, accessible tappable controls, Finnish/English localization, existing visual system.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run export:web`
+- `npm --prefix apps/mobile run audit:store-release-readiness`
+- `git --no-pager diff --check`
+
+# Current Plan (Login Role Selector Polish)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Make the login role selector read as role choice, not provider choice, and slightly lift the language toggle away from slide copy.
+
+## Architectural Decisions
+
+- Replace the student role selector Google icon with the neutral `id-card` icon already available in the local icon set.
+- Keep Google and Apple branding only on the actual student sign-in buttons.
+- Leave the business role selector as a business/building icon and keep the existing business password sign-in flow intact.
+- Move the slider language toggle a few pixels upward without changing its size or interaction model.
+
+## Prompt
+
+Sen Expo login UX polish engineer olarak calisiyorsun.
+Hedef: Login rol secicisinde `Opiskelija/Student` butonundaki Google ikonunu provider olmayan ogrenci/kimlik ikonuyla degistir; Google ve Apple branding sadece gercek giris butonlarinda kalsin; slider dil secimini biraz yukari al ve business role yuzeyinde bariz bir tasarim tutarsizligi varsa ayni minimal diff icinde toparla.
+Mimari: mevcut `AppIcon`, login screen styles ve login hero styles. Yeni dependency yok.
+Kapsam: `apps/mobile/src/app/auth/login.tsx`, `LoginHero`, working docs and validation. Auth semantics, Supabase provider config ve native Apple integration degismeyecek.
+Cikti: strict typed TSX style patch and mobile validation.
+Yasaklar: provider flow degistirmek yok, yeni icon library eklemek yok, unrelated mobile screens yok, `any` yok.
+Standartlar: AGENTS.md, accessible role buttons, minimal focused diff, existing visual language.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run export:web`
+- `npm --prefix apps/mobile run audit:store-release-readiness`
+- `git --no-pager diff --check`
+
+# Current Plan (Cached Egress + Approt Ticket Cards)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Explain and reduce future Supabase cached egress pressure, and refine Approt event cards into a more polished ticket-style layout.
+
+## Architectural Decisions
+
+- Treat cached egress as Supabase Storage/CDN bandwidth, not a stale app-cache bug.
+- Extend `cacheControl` for immutable public media uploads to one year so browsers/native image caches can avoid repeat CDN hits where supported.
+- Leave existing public objects untouched in this slice; replacing/re-uploading high-traffic assets can refresh metadata later.
+- Keep the Approt screen focused on event discovery with a page title/subtitle instead of global `OmaLeima` branding.
+- Build ticket styling in React Native views only: right-side action strip, subtle perforation cues, image date text without a background pill, and aligned map/join buttons.
+
+## Prompt
+
+Sen Supabase maliyet farkindaligi olan Expo UI polish engineer olarak calisiyorsun.
+Hedef: Cached Egress quota uyarisi icin teknik nedeni netlestir ve repo tarafinda future public media cache headers'i iyilestir; student Approt event kartlarini ticket gorunumune getir, date textini gorselin sol altinda backgroundsuz goster, `OmaLeima` header'i sayfa basligi/subtitle ile degistir, `Kartta` ve `Liity` aksiyonlarini ayni sag action aksinda hizala.
+Mimari: immutable public media upload cache-control update + focused React Native component styles. Yeni dependency yok.
+Kapsam: public media upload helpers, `EventCard`, student events header, working docs and validation. Supabase billing plan upgrade veya destructive storage cleanup yok.
+Cikti: strict typed TS/TSX patch, Supabase quota explanation, validation results.
+Yasaklar: mevcut objectleri silmek yok, user media URLlerini kiracak migration yok, publish/store submit yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, minimal focused diff, accessible buttons, existing mobile visual system, explicit explanation of remaining external billing risk.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run export:web`
+- `npm --prefix apps/mobile run audit:store-release-readiness`
+- `git --no-pager diff --check`
+
+# Current Plan (Community Ticket Cards + Business Notification Icon)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Bring Yhteisö cards into the same neutral ticket-style visual system as Approt and align the business profile notification icon with the rest of the profile settings rows.
+
+## Architectural Decisions
+
+- Replace the framed Yhteisö hero with the same page-title/subtitle hierarchy used by Approt.
+- Keep announcement card behavior intact and only align surface, radius, border, and rail density with Approt cards.
+- Redesign student club cards as compact horizontal ticket cards: image on the left, club copy in the middle, and detail/email actions in a right-side ticket strip.
+- Keep modal details and `mailto:` behavior unchanged.
+- Update `PushNotificationSetupCard` layout globally for business/club setup cards by removing the icon background and centering it like profile preference icons.
+
+## Prompt
+
+Sen Expo React Native UI polish engineer olarak calisiyorsun.
+Hedef: Student Yhteisö sayfasindaki Tiedotteet ve Opiskelijaklubit kartlarini Approt ticket kartlariyla ayni yuzey/radius/border diline yaklastir; kulüp kartlarini yatay ticket tasarimina cevir; business profilindeki Ilmoitukset ikonunu diger preference ikonlariyla hizala ve arka plan rengini kaldir.
+Mimari: mevcut theme tokenlari, `CoverImageSurface`, `AppIcon`, `InfoCard`, `PushNotificationSetupCard`. Yeni dependency yok.
+Kapsam: `updates.tsx`, `announcement-feed-section.tsx`, `public-club-directory-section.tsx`, `push-notification-setup-card.tsx`, working docs and validation. Auth, push registration behavior, data fetching ve modal contact akislarina dokunma.
+Cikti: strict typed TSX style/layout patch and mobile validation.
+Yasaklar: email/detail tap targetlarini kaybetmek yok, `any` yok, yeni UI library yok, unrelated revert yok.
+Standartlar: AGENTS.md, accessible press targets, Finnish/English text safety, minimal focused diff, existing Approt visual language.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+# Current Plan (Business Surfaces + History Filter Sheet)
+
+- **Date:** 2026-05-09
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Remove nested-card visual clutter from business event surfaces, redesign ROI as a cleaner impact dashboard, simplify student club summary/actions, and move business history filters into one sheet.
+
+## Architectural Decisions
+
+- Keep business event sections unframed and let the actual event rail cards be the primary surfaces.
+- Use neutral `surfaceL1` cards and default borders instead of stacked `surfaceL2` panels inside framed sections.
+- Simplify student club summary to a small numeric count only and replace the email text action with a mail icon.
+- Implement the history filter panel locally with React Native `Modal`, using existing date/event state and no new dependency.
+- Redesign ROI by making the hero unframed, metrics more dashboard-like, and event rows cleaner with less nested pill background noise.
+
+## Prompt
+
+Sen Expo React Native release UI engineer olarak calisiyorsun.
+Hedef: Business Approt/events sayfasindaki kart-icinde-kart arka planlarini kaldir; ROI ekranini verified impact dashboard olarak yeniden duzenle; student Yhteisö Opiskelijaklubit ozetindeki gereksiz contact-ready metnini kaldir ve email aksiyonunu ikon yap; business Historia filtrelerini tek acilir panelde topla.
+Mimari: mevcut theme tokenlari, `AppScreen`, `InfoCard`, `Modal`, local component state. Yeni dependency yok.
+Kapsam: `business/events.tsx`, `business/reports.tsx`, `business/history.tsx`, `public-club-directory-section.tsx`, working docs and validation. Data queries, Supabase logic, route semantics degismeyecek.
+Cikti: strict typed TSX style/layout patch and mobile validation.
+Yasaklar: para/ciro ROI tahmini eklemek yok, filter logic'i bozmak yok, inaccessible icon-only button yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, frontend-design skill, accessible press targets, Finnish/English localization, minimal focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+# Current Plan (Final Mobile UI Micro Polish)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Apply small visual acceptance fixes across student community, business events/ROI, and student rewards handoff surfaces.
+
+## Architectural Decisions
+
+- Move the student club count into the `InfoCard` title as a compact right-side count; no extra text.
+- Keep both club action buttons icon-only and neutral, with lime icon color and accessibility labels.
+- Add small horizontal padding to business event rails/sections without restoring nested section card backgrounds.
+- Reduce ROI bottom padding to match other production surfaces.
+- Pass an auth metadata display name into `RewardProgressCard`, falling back to the short student ID only when no name exists.
+- Use a neutral handoff ticket background with lime accent border/text instead of a full lime surface.
+
+## Prompt
+
+Sen Expo React Native release UI polish engineer olarak calisiyorsun.
+Hedef: Student Yhteisö Opiskelijaklubit sayisini sag ustte kompakt goster; e-posta icon butonunu bilgi ikonu gibi arka plansiz yap; business Approt/event kart rail'lerine home kartlari gibi nefes payi ver; ROI sayfasinin gereksiz alt padding'ini azalt; student Palkinnot claimable handoff alaninda student id yerine kullanici ad-soyad goster ve arka plani daha dengeli yap.
+Mimari: mevcut theme tokenlari, auth user metadata display name extraction, focused component prop extension. Yeni dependency yok.
+Kapsam: `public-club-directory-section.tsx`, `business/events.tsx`, `business/reports.tsx`, `student/rewards.tsx`, `reward-progress-card.tsx`, working docs and validation.
+Cikti: strict typed TSX patch and mobile validation.
+Yasaklar: reward claim logic veya DB query degistirmek yok, inaccessible icon-only button yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, frontend-design skill, accessible press targets, Finnish/English safe fallbacks, minimal focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
+# Current Plan (Profile Typography + Collapsible Scanner)
+
+- **Date:** 2026-05-10
+- **Branch:** `feature/apple-sign-in-store-release`
+- **Goal:** Align business profile notification text with other profile rows, keep typography on shared app tokens, and make the business scanner event selector collapsible.
+
+## Architectural Decisions
+
+- Adjust `PushNotificationSetupCard` icon column to match the existing profile preference icon width.
+- Do not flatten every screen text to one literal size; preserve hierarchy through the existing global theme typography tokens (`body`, `bodySmall`, `caption`, etc.).
+- For scanner, add local expanded/collapsed state around the multi-event selector. Show selected event summary while collapsed and keep the rail available on expand.
+- Keep scanner selection, locking, PIN, scan submit, and route behavior unchanged.
+
+## Prompt
+
+Sen Expo React Native release UI engineer olarak calisiyorsun.
+Hedef: Business profilinde Ilmoitukset satirinin text hizasini diger preference satirlariyla esitle; profil textlerini mevcut global typography tokenlarina hizala; business scanner'daki coklu event seciciyi acilir/kapanir hale getir.
+Mimari: mevcut `PushNotificationSetupCard`, `business/scanner.tsx`, theme typography tokenlari. Yeni dependency yok.
+Kapsam: notification setup layout, scanner event selector UI, working docs and validation. Auth/push/scanner submit logic degismeyecek.
+Cikti: strict typed TSX style/layout patch and mobile validation.
+Yasaklar: tek literal font-size ile tum uygulama hiyerarsisini bozmak yok, scanner event switching'i gizlemek yok, `any` yok, unrelated revert yok.
+Standartlar: AGENTS.md, frontend-design skill, shared typography tokens, accessible toggle controls.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`

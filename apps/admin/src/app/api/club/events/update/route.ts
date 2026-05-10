@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       (await request.json()) as Record<string, string>
     );
     const result = await updateClubEventAsync(supabase, {
+      actorUserId: userId,
       city: body.city,
       coverImageStagingPath: body.coverImageStagingPath,
       coverImageUrl: body.coverImageUrl,

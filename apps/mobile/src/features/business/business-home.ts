@@ -160,6 +160,7 @@ const fetchJoinableOpportunitiesAsync = async (): Promise<EventRow[]> => {
     .gt("join_deadline_at", nowIso)
     .gt("start_at", nowIso)
     .order("start_at", { ascending: true })
+    .limit(50)
     .returns<EventRow[]>();
 
   if (error !== null) {

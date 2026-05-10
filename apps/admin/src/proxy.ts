@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const allowedCountry = "FI";
+const dashboardCsrfCookieName = "omaleima_dashboard_csrf";
 const modeValues = ["off", "admin", "all"] as const;
 
 type GeofenceMode = (typeof modeValues)[number];
@@ -44,6 +45,30 @@ const isProtectedAdminPath = (pathname: string): boolean =>
   pathname.startsWith("/api/club") ||
   pathname.startsWith("/api/auth");
 
+const isDashboardPath = (pathname: string): boolean =>
+  pathname === "/login" || pathname.startsWith("/admin") || pathname.startsWith("/club");
+
+const attachDashboardCsrfCookie = (request: NextRequest, response: NextResponse): NextResponse => {
+  if (!isDashboardPath(request.nextUrl.pathname)) {
+    return response;
+  }
+
+  const existingToken = request.cookies.get(dashboardCsrfCookieName)?.value;
+
+  if (typeof existingToken === "string" && existingToken.length >= 32) {
+    return response;
+  }
+
+  response.cookies.set(dashboardCsrfCookieName, crypto.randomUUID(), {
+    httpOnly: false,
+    sameSite: "strict",
+    secure: request.nextUrl.protocol === "https:",
+    path: "/",
+  });
+
+  return response;
+};
+
 const shouldApplyGeofence = (mode: GeofenceMode, pathname: string): boolean => {
   if (mode === "off") {
     return false;
@@ -61,13 +86,13 @@ export const proxy = (request: NextRequest): NextResponse => {
   const pathname = request.nextUrl.pathname;
 
   if (!shouldApplyGeofence(mode, pathname)) {
-    return NextResponse.next();
+    return attachDashboardCsrfCookie(request, NextResponse.next());
   }
 
   const country = getCountry(request);
 
   if (country === null || country === allowedCountry) {
-    return NextResponse.next();
+    return attachDashboardCsrfCookie(request, NextResponse.next());
   }
 
   return new NextResponse("OmaLeima is currently available in Finland.", {

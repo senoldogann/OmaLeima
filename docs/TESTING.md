@@ -328,9 +328,10 @@ This gate checks repo-owned broader-launch prerequisites only:
 - in-app account/data deletion request initiation through the mobile support flow
 - public privacy-page web resource for account and associated data deletion requests
 - hosted active mobile login slides through the public Supabase API, including placeholder/test copy, Finnish/English localized copy, and HTTPS image URL hygiene
-- Expo notifications and EAS project wiring
-- explicit EAS build environments for development, preview, and production
-- required remote Expo EAS environment-variable names for development, preview, and production
+- Expo notifications and native project wiring
+- explicit EAS build environments for development, preview, and production when using EAS
+- required remote Expo EAS environment-variable names for development, preview, and production when using EAS
+- local native release mode via `OMALEIMA_NATIVE_RELEASE_MODE=local` when EAS quota/subscription is unavailable
 - owner-facing store/public-launch checklist documentation
 
 For CI or offline script tests where the EAS CLI cannot read remote environment state, set `MOBILE_STORE_EAS_ENV_LIST_JSON` to a JSON array shaped like the EAS environment list output:
@@ -340,7 +341,7 @@ MOBILE_STORE_EAS_ENV_LIST_JSON='[{"name":"production","variables":[{"name":"EXPO
   npm --prefix apps/mobile run audit:store-release-readiness
 ```
 
-Use this override only to simulate deterministic EAS input. For a final store release gate, run the audit against the real EAS project state.
+Use this override only to simulate deterministic EAS input. For a final EAS store release gate, run the audit against the real EAS project state. If the release is intentionally local/manual, run `OMALEIMA_NATIVE_RELEASE_MODE=local npm --prefix apps/mobile run audit:store-release-readiness` and keep App Store Connect / Play Console upload evidence outside the repo.
 
 This gate does **not** prove App Store Connect or Google Play Console state. It also does **not** prove:
 

@@ -101,7 +101,7 @@ export default function BusinessLayout() {
   }
 
   const isBusinessScannerOnly = accessQuery.data.isBusinessScannerOnly;
-  const isScannerOnlyPathAllowed = pathname === "/business/scanner" || pathname === "/business/history";
+  const isScannerOnlyPathAllowed = pathname.startsWith("/business/scanner") || pathname.startsWith("/business/history");
 
   if (isBusinessScannerOnly && !isScannerOnlyPathAllowed) {
     return <Redirect href="/business/scanner" />;

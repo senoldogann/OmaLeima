@@ -2,7 +2,13 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import type * as ExpoNotifications from "expo-notifications";
+import { useQueryClient } from "@tanstack/react-query";
 
+import {
+  activeAnnouncementsQueryKey,
+  announcementDetailQueryKey,
+  announcementFeedQueryKey,
+} from "@/features/announcements/announcements";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { readNotificationsModuleAsync } from "@/lib/push";
@@ -10,17 +16,20 @@ import { useSession } from "@/providers/session-provider";
 
 type AnnouncementPushPayload = {
   announcementId: string;
+  recipientUserId: string | null;
   type: "ANNOUNCEMENT";
 };
 
 type RewardUnlockedPushPayload = {
   eventId: string | null;
+  recipientUserId: string | null;
   rewardTierId: string | null;
   type: "REWARD_STOCK_CHANGED_LOCAL" | "REWARD_UNLOCKED" | "REWARD_UNLOCKED_LOCAL";
 };
 
 type EventReminderPushPayload = {
   eventId: string | null;
+  recipientUserId: string | null;
   type: "EVENT_REMINDER" | "EVENT_REMINDER_LOCAL";
 };
 
@@ -33,6 +42,7 @@ type SupportReplyPushPayload = {
 type PromotionPushPayload = {
   eventId: string | null;
   promotionId: string | null;
+  recipientUserId: string | null;
   type: "PROMOTION";
 };
 
@@ -61,11 +71,7 @@ const readSupportArea = (value: unknown): SupportReplyPushPayload["area"] => {
   return null;
 };
 
-const readRoutedPushPayload = (
-  response: ExpoNotifications.NotificationResponse
-): RoutedPushPayload | null => {
-  const rawData = response.notification.request.content.data;
-
+const readRoutedPushPayloadFromData = (rawData: unknown): RoutedPushPayload | null => {
   if (rawData === null || typeof rawData !== "object" || Array.isArray(rawData)) {
     return null;
   }
@@ -82,6 +88,7 @@ const readRoutedPushPayload = (
 
     return {
       announcementId,
+      recipientUserId: readStringField(record, "recipientUserId"),
       type,
     };
   }
@@ -89,6 +96,7 @@ const readRoutedPushPayload = (
   if (type === "REWARD_UNLOCKED" || type === "REWARD_UNLOCKED_LOCAL" || type === "REWARD_STOCK_CHANGED_LOCAL") {
     return {
       eventId: readStringField(record, "eventId"),
+      recipientUserId: readStringField(record, "recipientUserId") ?? readStringField(record, "studentId"),
       rewardTierId: readStringField(record, "rewardTierId"),
       type,
     };
@@ -97,6 +105,7 @@ const readRoutedPushPayload = (
   if (type === "EVENT_REMINDER" || type === "EVENT_REMINDER_LOCAL") {
     return {
       eventId: readStringField(record, "eventId"),
+      recipientUserId: readStringField(record, "recipientUserId") ?? readStringField(record, "studentId"),
       type,
     };
   }
@@ -113,12 +122,17 @@ const readRoutedPushPayload = (
     return {
       eventId: readStringField(record, "eventId"),
       promotionId: readStringField(record, "promotionId"),
+      recipientUserId: readStringField(record, "recipientUserId") ?? readStringField(record, "studentId"),
       type,
     };
   }
 
   return null;
 };
+
+const readRoutedPushPayload = (
+  response: ExpoNotifications.NotificationResponse
+): RoutedPushPayload | null => readRoutedPushPayloadFromData(response.notification.request.content.data);
 
 const createHandledResponseKey = (
   response: ExpoNotifications.NotificationResponse,
@@ -213,8 +227,11 @@ const resolveProfilePathname = (
 
 export const AnnouncementPushRouterBridge = (): null => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, isLoading } = useSession();
   const userId = session?.user.id ?? null;
+  const userIdRef = useRef<string | null>(userId);
+  const previousUserIdRef = useRef<string | null>(userId);
   const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
     isEnabled: userId !== null && !isScannerProvisioningActive,
@@ -222,6 +239,16 @@ export const AnnouncementPushRouterBridge = (): null => {
   });
   const [pendingPayload, setPendingPayload] = useState<RoutedPushPayload | null>(null);
   const handledResponseKeyRef = useRef<PushResponseKey | null>(null);
+
+  useEffect(() => {
+    if (previousUserIdRef.current !== userId) {
+      setPendingPayload(null);
+      handledResponseKeyRef.current = null;
+      previousUserIdRef.current = userId;
+    }
+
+    userIdRef.current = userId;
+  }, [userId]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -235,6 +262,17 @@ export const AnnouncementPushRouterBridge = (): null => {
       const payload = readRoutedPushPayload(response);
 
       if (payload === null) {
+        return;
+      }
+
+      const currentUserId = userIdRef.current;
+
+      if (
+        payload.type === "ANNOUNCEMENT" &&
+        payload.recipientUserId !== null &&
+        currentUserId !== null &&
+        payload.recipientUserId !== currentUserId
+      ) {
         return;
       }
 
@@ -257,6 +295,20 @@ export const AnnouncementPushRouterBridge = (): null => {
       setPendingPayload(payload);
     };
 
+    const invalidateAnnouncementQueries = (targetUserId: string, announcementId: string): void => {
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: activeAnnouncementsQueryKey(targetUserId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: announcementFeedQueryKey(targetUserId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: announcementDetailQueryKey(targetUserId, announcementId),
+        }),
+      ]);
+    };
+
     void readNotificationsModuleAsync()
       .then((notificationsModule) => {
         if (!isMounted || notificationsModule === null) {
@@ -269,11 +321,21 @@ export const AnnouncementPushRouterBridge = (): null => {
           queuePayload(lastResponse);
         }
 
+        const notificationSubscription = notificationsModule.addNotificationReceivedListener((notification) => {
+          const payload = readRoutedPushPayloadFromData(notification.request.content.data);
+          const currentUserId = userIdRef.current;
+
+          if (payload?.type === "ANNOUNCEMENT" && currentUserId !== null) {
+            invalidateAnnouncementQueries(currentUserId, payload.announcementId);
+          }
+        });
+
         const responseSubscription = notificationsModule.addNotificationResponseReceivedListener((response) => {
           queuePayload(response);
         });
 
         cleanup = () => {
+          notificationSubscription.remove();
           responseSubscription.remove();
         };
       })
@@ -287,7 +349,7 @@ export const AnnouncementPushRouterBridge = (): null => {
       isMounted = false;
       cleanup();
     };
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (pendingPayload === null || isLoading || accessQuery.isLoading || isScannerProvisioningActive) {
@@ -302,10 +364,20 @@ export const AnnouncementPushRouterBridge = (): null => {
     const area = accessQuery.data?.area ?? "unsupported";
 
     if (pendingPayload.type === "ANNOUNCEMENT") {
+      if (
+        pendingPayload.recipientUserId !== null &&
+        userId !== null &&
+        pendingPayload.recipientUserId !== userId
+      ) {
+        setPendingPayload(null);
+        return;
+      }
+
       const pathname = resolveAnnouncementDetailPathname(area);
       const returnTo = resolveAnnouncementReturnTo(area);
 
       if (pathname === null || returnTo === null) {
+        setPendingPayload(null);
         return;
       }
 
@@ -330,13 +402,30 @@ export const AnnouncementPushRouterBridge = (): null => {
         return;
       }
 
-      router.push("/student/rewards");
+      if (pendingPayload.recipientUserId !== null && pendingPayload.recipientUserId !== userId) {
+        setPendingPayload(null);
+        return;
+      }
+
+      if (pendingPayload.eventId !== null) {
+        router.push({
+          pathname: "/student/events/[eventId]",
+          params: { eventId: pendingPayload.eventId },
+        });
+      } else {
+        router.push("/student/events");
+      }
       setPendingPayload(null);
       return;
     }
 
     if (pendingPayload.type === "EVENT_REMINDER" || pendingPayload.type === "EVENT_REMINDER_LOCAL") {
       if (area !== "student") {
+        setPendingPayload(null);
+        return;
+      }
+
+      if (pendingPayload.recipientUserId !== null && pendingPayload.recipientUserId !== userId) {
         setPendingPayload(null);
         return;
       }
@@ -359,6 +448,11 @@ export const AnnouncementPushRouterBridge = (): null => {
         return;
       }
 
+      if (pendingPayload.recipientUserId !== null && pendingPayload.recipientUserId !== userId) {
+        setPendingPayload(null);
+        return;
+      }
+
       if (pendingPayload.eventId !== null) {
         router.push({
           pathname: "/student/events/[eventId]",
@@ -374,6 +468,7 @@ export const AnnouncementPushRouterBridge = (): null => {
     const supportAreaPath = resolveProfilePathname(area);
 
     if (supportAreaPath === null) {
+      setPendingPayload(null);
       return;
     }
 
@@ -387,6 +482,7 @@ export const AnnouncementPushRouterBridge = (): null => {
     isScannerProvisioningActive,
     pendingPayload,
     router,
+    userId,
   ]);
 
   return null;

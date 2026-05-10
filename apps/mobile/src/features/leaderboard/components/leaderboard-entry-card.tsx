@@ -116,7 +116,7 @@ const createStyles = (theme: MobileTheme) =>
     card: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
+      borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.card,
       borderWidth: 1,
       flexDirection: "row",

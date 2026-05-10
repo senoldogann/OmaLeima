@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { GlassPanel, type GlassPanelVariant } from "@/features/foundation/components/glass-panel";
@@ -7,19 +7,23 @@ import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
 type InfoCardProps = PropsWithChildren<{
   title: string;
+  action?: ReactNode;
   eyebrow?: string;
   motionIndex?: number;
   variant?: GlassPanelVariant;
+  showBorder?: boolean;
   /** API compat — ignored in STARK system */
   glowColor?: string;
 }>;
 
 export const InfoCard = ({
+  action,
   children,
   title,
   eyebrow,
   motionIndex,
   variant = "card",
+  showBorder,
 }: InfoCardProps) => {
   const styles = useThemeStyles(createStyles);
 
@@ -28,12 +32,16 @@ export const InfoCard = ({
       contentStyle={styles.cardContent}
       motionIndex={motionIndex}
       variant={variant}
+      showBorder={showBorder}
     >
       <View style={styles.header}>
-        {eyebrow ? (
-          <Text style={styles.eyebrow}>{eyebrow}</Text>
-        ) : null}
-        <Text style={[styles.title, variant === "scene" ? styles.titleScene : null]}>{title}</Text>
+        <View style={styles.headerCopy}>
+          {eyebrow ? (
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+          ) : null}
+          <Text style={[styles.title, variant === "scene" ? styles.titleScene : null]}>{title}</Text>
+        </View>
+        {action !== undefined ? <View style={styles.headerAction}>{action}</View> : null}
       </View>
       <View style={styles.body}>{children}</View>
     </GlassPanel>
@@ -46,7 +54,19 @@ const createStyles = (theme: MobileTheme) =>
       gap: 16,
     },
     header: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    headerAction: {
+      flexShrink: 0,
+      paddingTop: 2,
+    },
+    headerCopy: {
+      flex: 1,
       gap: 6,
+      minWidth: 0,
     },
     eyebrow: {
       color: theme.colors.lime,

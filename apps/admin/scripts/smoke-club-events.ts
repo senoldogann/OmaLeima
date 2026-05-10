@@ -44,6 +44,7 @@ type AuthedClient = {
 
 type CookieBackedClient = {
   email: string;
+  readCsrfToken: () => string;
   supabase: ReturnType<typeof createBrowserClient>;
   syncCookiesFromResponse: (response: Response) => void;
   toCookieHeader: () => string;
@@ -52,6 +53,7 @@ type CookieBackedClient = {
 type ClubEventPayload = {
   city: string;
   clubId: string;
+  coverImageStagingPath: string;
   country: string;
   coverImageUrl: string;
   description: string;
@@ -62,7 +64,13 @@ type ClubEventPayload = {
   name: string;
   rulesJson: string;
   startAt: string;
+  ticketUrl: string;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
+};
+
+type ClubEventUpdatePayload = ClubEventPayload & {
+  eventId: string;
+  status: "ACTIVE" | "DRAFT" | "PUBLISHED";
 };
 
 type ClubStaffFixture = {
@@ -147,8 +155,24 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
     throw new Error(`Failed to sign in ${email} for club event route smoke: ${signInResult.error.message}`);
   }
 
+  const seedCsrfResponse = await fetch(`${appBaseUrl}/club/events`, {
+    headers: {
+      Cookie: Array.from(cookieJar.entries())
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; "),
+    },
+    method: "GET",
+    redirect: "manual",
+  });
+  syncCookiesFromResponse(seedCsrfResponse);
+
+  if (!cookieJar.has("omaleima_dashboard_csrf")) {
+    cookieJar.set("omaleima_dashboard_csrf", randomUUID());
+  }
+
   return {
     email,
+    readCsrfToken: () => cookieJar.get("omaleima_dashboard_csrf") ?? "",
     supabase,
     syncCookiesFromResponse,
     toCookieHeader: () =>
@@ -166,6 +190,7 @@ const createValidPayload = (name: string, offsetMinutes: number): ClubEventPaylo
   return {
     city: "Helsinki",
     clubId: seededClubId,
+    coverImageStagingPath: "",
     country: "Finland",
     coverImageUrl: "",
     description: "Club event smoke route validation.",
@@ -176,6 +201,7 @@ const createValidPayload = (name: string, offsetMinutes: number): ClubEventPaylo
     name,
     rulesJson: '{"dressCode":"overalls","ageLimit":18}',
     startAt: startAt.toISOString(),
+    ticketUrl: "",
     visibility: "PUBLIC",
   };
 };
@@ -305,6 +331,54 @@ const invokeCreateRouteAsync = async (
     headers: {
       Cookie: client.toCookieHeader(),
       "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
+    },
+    method: "POST",
+  });
+  client.syncCookiesFromResponse(response);
+  const responseBody = (await response.json()) as ClubEventMutationResponse;
+
+  return {
+    responseBody,
+    status: response.status,
+  };
+};
+
+const invokeUpdateRouteAsync = async (
+  client: CookieBackedClient,
+  body: Partial<ClubEventUpdatePayload>
+): Promise<{ responseBody: ClubEventMutationResponse; status: number }> => {
+  const response = await fetch(`${appBaseUrl}/api/club/events/update`, {
+    body: JSON.stringify(body),
+    headers: {
+      Cookie: client.toCookieHeader(),
+      "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
+    },
+    method: "POST",
+  });
+  client.syncCookiesFromResponse(response);
+  const responseBody = (await response.json()) as ClubEventMutationResponse;
+
+  return {
+    responseBody,
+    status: response.status,
+  };
+};
+
+const invokeCancelRouteAsync = async (
+  client: CookieBackedClient,
+  eventId: string
+): Promise<{ responseBody: ClubEventMutationResponse; status: number }> => {
+  const response = await fetch(`${appBaseUrl}/api/club/events/cancel`, {
+    body: JSON.stringify({ eventId }),
+    headers: {
+      Cookie: client.toCookieHeader(),
+      "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
     },
     method: "POST",
   });
@@ -480,6 +554,7 @@ const assertClubStaffBlockedAsync = async (
   if (routeResult.status !== 200 || routeResult.responseBody.status !== "CLUB_EVENT_CREATOR_NOT_ALLOWED") {
     throw new Error(
       `Expected club staff route create to return 200 CLUB_EVENT_CREATOR_NOT_ALLOWED, got ${routeResult.status} ${routeResult.responseBody.status ?? "null"}.`
+      + ` Message: ${routeResult.responseBody.message ?? "none"}`
     );
   }
 };
@@ -489,7 +564,7 @@ const run = async (): Promise<void> => {
   const outputs: string[] = [];
   const staffFixture = await seedClubStaffFixtureAsync(suffix);
   const organizerClient = await createAuthedClientAsync("organizer@omaleima.test", "password123");
-  const organizerRouteClient = await createCookieBackedClientAsync("organizer@omaleima.test", "password123");
+  let organizerRouteClient = await createCookieBackedClientAsync("organizer@omaleima.test", "password123");
   const studentClient = await createAuthedClientAsync("student@omaleima.test", "password123");
   const studentRouteClient = await createCookieBackedClientAsync("student@omaleima.test", "password123");
   const staffClient = await createAuthedClientAsync(staffFixture.email, "password123");
@@ -540,6 +615,45 @@ const run = async (): Promise<void> => {
 
     await assertRouteContainsAsync(organizerRouteClient, routeEventName);
     outputs.push("club-events-route:ok");
+
+    const updatedEventName = `Updated Club Smoke Event ${suffix}`;
+    const updateResult = await invokeUpdateRouteAsync(organizerRouteClient, {
+      ...routePayload,
+      eventId: createdRows[0].id,
+      name: updatedEventName,
+      status: "PUBLISHED",
+    });
+
+    if (updateResult.status !== 200 || updateResult.responseBody.status !== "SUCCESS") {
+      throw new Error(
+        `Expected organizer club event update to succeed, got ${updateResult.status} ${updateResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    const updatedRows = await fetchEventsByNameAsync(organizerClient, updatedEventName);
+
+    if (updatedRows.length !== 1 || updatedRows[0]?.id !== createdRows[0].id || updatedRows[0]?.status !== "PUBLISHED") {
+      throw new Error("Expected organizer event update route to persist the edited event name and status.");
+    }
+
+    outputs.push(`update-route:${updateResult.responseBody.status}`);
+
+    const cancelResult = await invokeCancelRouteAsync(organizerRouteClient, createdRows[0].id);
+
+    if (cancelResult.status !== 200 || cancelResult.responseBody.status !== "SUCCESS") {
+      throw new Error(
+        `Expected organizer club event cancel to succeed, got ${cancelResult.status} ${cancelResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    const cancelledRows = await fetchEventsByNameAsync(organizerClient, updatedEventName);
+
+    if (cancelledRows.length !== 1 || cancelledRows[0]?.status !== "CANCELLED") {
+      throw new Error("Expected organizer event cancel route to persist CANCELLED status.");
+    }
+
+    outputs.push(`cancel-route:${cancelResult.responseBody.status}`);
+    organizerRouteClient = await createCookieBackedClientAsync("organizer@omaleima.test", "password123");
 
     const invalidClubIdResult = await invokeCreateRouteAsync(organizerRouteClient, {
       ...createValidPayload(`Invalid Club ${suffix}`, 420),

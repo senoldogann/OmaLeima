@@ -124,8 +124,11 @@ const createStyles = (theme: MobileTheme) =>
     },
     iconBubble: {
       alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 32,
       justifyContent: "center",
-      width: 22,
+      width: 32,
     },
     labelCopy: {
       flex: 1,
@@ -134,7 +137,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     labelText: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
+      fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },

@@ -18,7 +18,7 @@ export default async function LoginPage() {
   const userId = userResult.data.user?.id ?? null;
 
   if (userResult.error !== null && userId !== null) {
-    throw new Error(`Failed to resolve hosted login user ${userId}: ${userResult.error.message}`);
+    throw new Error("Failed to resolve hosted login session.");
   }
 
   if (userId === null) {

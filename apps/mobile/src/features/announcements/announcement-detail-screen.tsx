@@ -7,11 +7,10 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
 import {
-    useAcknowledgeAnnouncementMutation,
-    useAnnouncementDetailQuery,
-    useRecordAnnouncementImpressionsMutation,
+  useAcknowledgeAnnouncementMutation,
+  useAnnouncementDetailQuery,
+  useRecordAnnouncementImpressionsMutation,
 } from "@/features/announcements/announcements";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
@@ -78,9 +77,8 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
         ctaFallback: language === "fi" ? "Avaa linkki" : "Open link",
         detailTitle: language === "fi" ? "Tiedote" : "Update",
         loading: language === "fi" ? "Haetaan tiedotetta." : "Loading update.",
-        markRead: language === "fi" ? "Merkitse luetuksi" : "Mark read",
+        markRead: language === "fi" ? "Merkitse luetuksi" : "Mark as read",
         platform: "OmaLeima Support",
-        read: language === "fi" ? "Luettu" : "Read",
         retry: language === "fi" ? "Yritä uudelleen" : "Retry",
         senderLabel: language === "fi" ? "Lähettäjä" : "Sender",
         unavailableBody:
@@ -88,7 +86,6 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                 ? "Tiedote ei ole enää saatavilla tälle tilille tai se on poistunut näkyvistä."
                 : "This update is no longer available for this account or is no longer visible.",
         unavailableTitle: language === "fi" ? "Tiedotetta ei löytynyt" : "Update not found",
-        unread: language === "fi" ? "Uusi" : "New",
         zoomImage: language === "fi" ? "Avaa kuva" : "Open image",
     };
 
@@ -222,8 +219,6 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                     >
                         <View style={styles.heroOverlay} />
                         <View style={styles.heroContent}>
-                            <StatusBadge label={announcement.isRead ? labels.read : labels.unread} state={announcement.isRead ? "pending" : "ready"} />
-                            <Text style={styles.sourceText}>{announcement.clubName ?? labels.platform}</Text>
                             <Text style={styles.title}>{announcement.title}</Text>
                         </View>
                         {announcement.imageUrl !== null ? (
@@ -250,22 +245,20 @@ export const AnnouncementDetailScreen = ({ announcementId, backHref, returnTo }:
                         <Text selectable style={styles.bodyText}>{announcement.body}</Text>
 
                         <View style={styles.actionRow}>
-                            <Pressable
-                                disabled={announcement.isRead || acknowledgeMutation.isPending}
-                                onPress={() => void handleMarkReadPress()}
-                                style={[styles.secondaryButton, announcement.isRead || acknowledgeMutation.isPending ? styles.disabledButton : null]}
-                            >
-                                <AppIcon
-                                    color={announcement.isRead ? theme.colors.lime : theme.colors.textPrimary}
-                                    name={announcement.isRead ? "check-circle" : "circle"}
-                                    size={15}
-                                />
-                                <Text style={styles.secondaryButtonText}>{announcement.isRead ? labels.read : labels.markRead}</Text>
-                            </Pressable>
+                            {!announcement.isRead ? (
+                                <Pressable
+                                    disabled={acknowledgeMutation.isPending}
+                                    onPress={() => void handleMarkReadPress()}
+                                    style={[styles.secondaryButton, acknowledgeMutation.isPending ? styles.disabledButton : null]}
+                                >
+                                    <AppIcon color={theme.colors.textPrimary} name="circle" size={15} />
+                                    <Text style={styles.secondaryButtonText}>{labels.markRead}</Text>
+                                </Pressable>
+                            ) : null}
                             {announcement.ctaUrl !== null ? (
                                 <Pressable onPress={() => void handleCtaPress()} style={styles.primaryButton}>
                                     <Text style={styles.primaryButtonText}>{announcement.ctaLabel ?? labels.ctaFallback}</Text>
-                                    <AppIcon color={theme.colors.actionPrimaryText} name="chevron-right" size={15} />
+                                    <AppIcon color={theme.colors.lime} name="chevron-right" size={15} />
                                 </Pressable>
                             ) : null}
                         </View>
@@ -342,15 +335,14 @@ const createStyles = (theme: MobileTheme) =>
         },
         detailCard: {
             backgroundColor: theme.colors.surfaceL1,
-            borderColor: theme.colors.borderDefault,
             borderRadius: theme.radius.scene,
-            borderWidth: 1,
-            overflow: "hidden",
+            overflow: "visible",
         },
         dateRow: {
             alignItems: "center",
             flexDirection: "row",
             gap: 6,
+            justifyContent: "space-between",
         },
         disabledButton: {
             opacity: 0.56,
@@ -362,7 +354,9 @@ const createStyles = (theme: MobileTheme) =>
             lineHeight: theme.typography.lineHeights.bodySmall,
         },
         hero: {
-            minHeight: 280,
+            width: "100%",
+            borderRadius: theme.radius.card,
+            height: 280,
             overflow: "hidden",
         },
         heroContent: {
@@ -374,7 +368,7 @@ const createStyles = (theme: MobileTheme) =>
             zIndex: 2,
         },
         heroImage: {
-            borderRadius: 0,
+            borderRadius: theme.radius.card,
         },
         heroOverlay: {
             ...StyleSheet.absoluteFillObject,
@@ -417,8 +411,10 @@ const createStyles = (theme: MobileTheme) =>
         },
         primaryButton: {
             alignItems: "center",
-            backgroundColor: theme.colors.lime,
+            backgroundColor: "transparent",
+            borderColor: theme.colors.limeBorder,
             borderRadius: theme.radius.button,
+            borderWidth: 1,
             flex: 1,
             flexDirection: "row",
             gap: 7,
@@ -428,7 +424,7 @@ const createStyles = (theme: MobileTheme) =>
             paddingVertical: 12,
         },
         primaryButtonText: {
-            color: theme.colors.actionPrimaryText,
+            color: theme.colors.lime,
             fontFamily: theme.typography.families.extrabold,
             fontSize: theme.typography.sizes.bodySmall,
             lineHeight: theme.typography.lineHeights.bodySmall,
@@ -437,7 +433,7 @@ const createStyles = (theme: MobileTheme) =>
         secondaryButton: {
             alignItems: "center",
             backgroundColor: theme.colors.surfaceL2,
-            borderColor: theme.colors.borderDefault,
+            borderColor: theme.colors.borderStrong,
             borderRadius: theme.radius.button,
             borderWidth: 1,
             flexDirection: "row",
@@ -453,12 +449,6 @@ const createStyles = (theme: MobileTheme) =>
             fontSize: theme.typography.sizes.bodySmall,
             lineHeight: theme.typography.lineHeights.bodySmall,
             textAlign: "center",
-        },
-        sourceText: {
-            color: "rgba(248, 250, 245, 0.82)",
-            fontFamily: theme.typography.families.semibold,
-            fontSize: theme.typography.sizes.bodySmall,
-            lineHeight: theme.typography.lineHeights.bodySmall,
         },
         sourceLabel: {
             color: theme.colors.textMuted,

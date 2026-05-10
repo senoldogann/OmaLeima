@@ -235,7 +235,7 @@ export default function ClubUpcomingScreen() {
           title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
           variant="subtle"
         >
-          <Text style={styles.bodyText}>
+          <Text style={styles.overlappingNoticeText}>
             {language === "fi"
               ? "Useampi näkyvä tapahtuma osuu samaan aikaan. Tarkista viestit ja rastit, jotta osallistujat avaavat oikean QR:n."
               : "Multiple visible events overlap. Check messaging and venues so participants open the correct QR."}
@@ -305,6 +305,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     eventBottom: {
       gap: 8,

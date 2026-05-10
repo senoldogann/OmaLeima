@@ -106,6 +106,26 @@ const responseMessages: Record<string, string> = {
   STAMP_CARD_FULL: "Student already has the maximum leimas for this event.",
 };
 
+const responseHttpStatuses: Record<string, number> = {
+  SUCCESS: 200,
+  EVENT_CONTEXT_REQUIRED: 400,
+  EVENT_CONTEXT_MISMATCH: 409,
+  EVENT_NOT_FOUND: 404,
+  EVENT_NOT_ACTIVE: 423,
+  STUDENT_NOT_REGISTERED: 403,
+  VENUE_NOT_IN_EVENT: 403,
+  VENUE_JOINED_TOO_LATE: 409,
+  BUSINESS_STAFF_NOT_ALLOWED: 403,
+  SCANNER_DEVICE_NOT_ALLOWED: 403,
+  SCANNER_DEVICE_REQUIRED: 403,
+  SCANNER_PIN_REQUIRED: 403,
+  SCANNER_PIN_INVALID: 403,
+  SCANNER_PIN_LOCKED: 423,
+  QR_ALREADY_USED_OR_REPLAYED: 409,
+  ALREADY_STAMPED: 409,
+  STAMP_CARD_FULL: 409,
+};
+
 const createResponseMessage = (result: ScanStampResult): string => {
   if (result.status === "ALREADY_STAMPED" && typeof result.perBusinessLimit === "number") {
     if (result.perBusinessLimit <= 1) {
@@ -195,7 +215,7 @@ const persistRewardUnlockNotificationAsync = async (
   }
 
   console.warn("reward_unlock_notification_record_failed", {
-    ...warningContext,
+    unlockedRewardCount: warningContext.unlockedRewardCount,
     notificationError: error.message,
     notificationErrorCode: error.code,
   });
@@ -222,6 +242,7 @@ const sendRewardUnlockPushAsync = async (
     type: "REWARD_UNLOCKED",
     eventId,
     eventName,
+    recipientUserId: studentId,
     rewardTierIds: unlockedRewardTiers.map((rewardTier) => rewardTier.rewardTierId),
     unlockedRewardTiers,
   };
@@ -487,14 +508,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return jsonResponse({
         status: "EVENT_CONTEXT_REQUIRED",
         message: responseMessages.EVENT_CONTEXT_REQUIRED,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_REQUIRED);
     }
 
     if (body.eventId !== verifiedQrToken.payload.eventId) {
       return jsonResponse({
         status: "EVENT_CONTEXT_MISMATCH",
         message: responseMessages.EVENT_CONTEXT_MISMATCH,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_MISMATCH);
     }
 
     const { data: selectedEventVenueRow, error: selectedEventVenueError } = await supabase
@@ -521,14 +542,14 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return jsonResponse({
         status: "EVENT_CONTEXT_MISMATCH",
         message: responseMessages.EVENT_CONTEXT_MISMATCH,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_MISMATCH);
     }
 
     if (body.scannerDeviceId === null) {
       return jsonResponse({
         status: "SCANNER_DEVICE_REQUIRED",
         message: responseMessages.SCANNER_DEVICE_REQUIRED,
-      }, 200);
+      }, responseHttpStatuses.SCANNER_DEVICE_REQUIRED);
     }
 
     const { data: scannerDevice, error: scannerDeviceError } = await supabase
@@ -556,7 +577,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return jsonResponse({
         status: "SCANNER_DEVICE_NOT_ALLOWED",
         message: responseMessages.SCANNER_DEVICE_NOT_ALLOWED,
-      }, 200);
+      }, responseHttpStatuses.SCANNER_DEVICE_NOT_ALLOWED);
     }
 
     const { data: rpcResult, error: rpcError } = await supabase.rpc("scan_stamp_atomic", {
@@ -610,8 +631,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
             );
           } catch (error) {
             console.warn("reward_unlock_push_background_failed", {
-              studentId: verifiedQrToken.payload.sub,
-              eventId: verifiedQrToken.payload.eventId,
               unlockedRewardCount: unlockedRewardTiers.length,
               message: error instanceof Error ? error.message : String(error),
             });
@@ -619,8 +638,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
         })());
       } catch (error) {
         console.warn("reward_unlock_push_schedule_failed", {
-          studentId: verifiedQrToken.payload.sub,
-          eventId: verifiedQrToken.payload.eventId,
           unlockedRewardCount: unlockedRewardTiers.length,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -632,7 +649,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       ...responseResult,
       rewardUnlockPush,
       message: createResponseMessage(responseResult),
-    }, 200);
+    }, responseHttpStatuses[responseResult.status] ?? 500);
   } catch (error) {
     return errorResponse(400, "VALIDATION_ERROR", "Failed to scan QR token.", {
       error: error instanceof Error ? error.message : "unknown error",

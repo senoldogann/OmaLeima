@@ -1,0 +1,49 @@
+name: Production Readiness
+
+on:
+  pull_request:
+    branches:
+      - main
+      - production
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-and-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/admin/package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Install admin dependencies
+        run: npm --prefix apps/admin ci
+
+      - name: Check admin
+        run: |
+          npm --prefix apps/admin run lint
+          npm --prefix apps/admin run typecheck
+          npm --prefix apps/admin run build
+
+      - name: Install mobile dependencies
+        run: npm --prefix apps/mobile ci
+
+      - name: Check mobile
+        run: |
+          npm --prefix apps/mobile run lint
+          npm --prefix apps/mobile run typecheck
+          npm --prefix apps/mobile run export:web

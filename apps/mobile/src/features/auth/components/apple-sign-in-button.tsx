@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 
+import { AppIcon } from "@/components/app-icon";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
+import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
 import type { MobileTheme } from "@/features/foundation/theme";
-import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { signInWithAppleAsync } from "@/lib/auth";
 import type { SocialSignInState } from "@/types/app";
 
 export const AppleSignInButton = () => {
+  const theme = useAppTheme();
   const { copy } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const [state, setState] = useState<SocialSignInState>("idle");
@@ -68,13 +71,24 @@ export const AppleSignInButton = () => {
 
   return (
     <View style={styles.container}>
-      <AppleAuthentication.AppleAuthenticationButton
-        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-        cornerRadius={8}
+      <Pressable
+        accessibilityLabel={copy.auth.appleButton}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isBusy }}
+        disabled={isBusy}
         onPress={() => void handlePress()}
-        style={styles.button}
-      />
+        style={({ pressed }) => [
+          styles.button,
+          isBusy ? styles.buttonDisabled : null,
+          pressed ? styles.buttonPressed : null,
+        ]}
+      >
+        {state === "loading" ? <ActivityIndicator color={theme.colors.screenBase} size="small" /> : null}
+        {state !== "loading" ? <AppIcon color={theme.colors.screenBase} name="apple" size={19} /> : null}
+        <Text style={styles.buttonText}>
+          {state === "loading" ? copy.auth.appleOpening : copy.auth.appleButton}
+        </Text>
+      </Pressable>
       {state === "loading" ? (
         <AuthLoadingPanel
           message={copy.auth.applePreparing}
@@ -95,15 +109,36 @@ export const AppleSignInButton = () => {
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
     button: {
-      height: 46,
-      width: "100%",
+      alignItems: "center",
+      backgroundColor: theme.mode === "dark" ? "#F8FAF5" : "#050705",
+      borderRadius: 10,
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "center",
+      minHeight: 48,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      ...interactiveSurfaceShadowStyle,
+    },
+    buttonDisabled: {
+      opacity: 0.78,
+    },
+    buttonPressed: {
+      transform: [{ translateY: 1 }, { scale: 0.992 }],
+    },
+    buttonText: {
+      color: theme.colors.screenBase,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     container: {
       gap: 8,
     },
     errorText: {
       color: theme.colors.danger,
-      fontSize: 12,
-      lineHeight: 18,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

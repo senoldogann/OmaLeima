@@ -63,7 +63,7 @@ export const uploadLoginSlideImageAsync = async ({
 
   const storagePath = createStoragePath(file, file.type);
   const { error } = await supabase.storage.from(loginSliderMediaBucketId).upload(storagePath, file, {
-    cacheControl: "3600",
+    cacheControl: "31536000",
     contentType: file.type,
     upsert: false,
   });

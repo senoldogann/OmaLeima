@@ -258,8 +258,8 @@ const createScanResultDetails = (
       : "PIN did not match this scanner device. Check the code and try again.",
   SCANNER_PIN_LOCKED:
     language === "fi"
-      ? "Liian monta väärää PIN-yritystä. Tämä skannerilaite on lukittu hetkeksi."
-      : "Too many wrong PIN attempts. This scanner device is temporarily locked.",
+      ? "Liian monta väärää PIN-yritystä. Tämä skannerilaite on lukittu 15 minuutiksi."
+      : "Too many wrong PIN attempts. This scanner device is locked for 15 minutes.",
   NOT_BUSINESS_STAFF:
     language === "fi"
       ? "Nykyinen istunto ei ole enää sidottu aktiiviseen henkilökuntatiliin."
@@ -404,6 +404,8 @@ export default function BusinessScannerScreen() {
         language === "fi"
           ? "Useampi tapahtuma on käynnissä. Valitse oikea ennen QR-lukua."
           : "Multiple events are live. Choose the right one before reading a QR.",
+      eventSelectorCollapsed: language === "fi" ? "Vaihda tapahtumaa" : "Change event",
+      eventSelectorExpanded: language === "fi" ? "Piilota tapahtumat" : "Hide events",
       selectedEventLabel: language === "fi" ? "Valittu" : "Selected",
       scannerAccessRevoked:
         language === "fi"
@@ -434,6 +436,7 @@ export default function BusinessScannerScreen() {
   });
   const [permission, requestPermission] = useCameraPermissions();
   const [selectedEventVenueId, setSelectedEventVenueId] = useState<string | null>(null);
+  const [isEventSelectorExpanded, setIsEventSelectorExpanded] = useState<boolean>(false);
   const [isEventSelectorMoving, setIsEventSelectorMoving] = useState<boolean>(false);
   const [scannerPin, setScannerPin] = useState<string>("");
   const [isScannerLocked, setIsScannerLocked] = useState<boolean>(false);
@@ -746,8 +749,8 @@ export default function BusinessScannerScreen() {
     };
   }, [isSubmitting, lastResult, resetScanner]);
 
-  const submitScanAsync = async (qrToken: string): Promise<void> => {
-    if (scanInFlightRef.current || selectedEvent === null || isScannerLocked || isSubmitting) {
+  const submitScanAsync = async (qrToken: string, scanEvent: typeof selectedEvent): Promise<void> => {
+    if (scanInFlightRef.current || scanEvent === null || isScannerLocked || isSubmitting) {
       return;
     }
 
@@ -768,13 +771,34 @@ export default function BusinessScannerScreen() {
     setLastResult(null);
 
     try {
+      const refreshedOverview = await homeOverviewQuery.refetch();
+
+      if (refreshedOverview.error !== null) {
+        throw refreshedOverview.error;
+      }
+
+      const refreshedScanEvent = refreshedOverview.data?.joinedActiveEvents.find(
+        (event) => event.eventVenueId === scanEvent.eventVenueId
+      ) ?? null;
+
+      if (refreshedScanEvent === null) {
+        setSubmitError(
+          language === "fi"
+            ? "Tapahtumakonteksti vanheni. Valitse käynnissä oleva tapahtuma ja skannaa uusi QR."
+            : "Event context expired. Pick a live joined event and scan a fresh QR."
+        );
+        scanInFlightRef.current = false;
+        setIsScannerLocked(false);
+        return;
+      }
+
       const scannerLocation = await resolveScannerLocationAsync();
       const result = await scanQrWithTimeoutAsync(
         {
           qrToken,
-          businessId: selectedEvent.businessId,
-          eventId: selectedEvent.eventId,
-          eventVenueId: selectedEvent.eventVenueId,
+          businessId: refreshedScanEvent.businessId,
+          eventId: refreshedScanEvent.eventId,
+          eventVenueId: refreshedScanEvent.eventVenueId,
           scannerDeviceId: scannerDeviceState.device.scannerDeviceId,
           scannerPin: scannerDeviceState.device.pinRequired ? scannerPin.trim() : null,
           scannerLocation,
@@ -799,11 +823,13 @@ export default function BusinessScannerScreen() {
   };
 
   const handleBarcodeScanned = (result: BarcodeScanningResult): void => {
-    if (!canReadBarcodes || result.data.trim().length === 0) {
+    const scanEvent = selectedEvent;
+
+    if (!canReadBarcodes || scanEvent === null || result.data.trim().length === 0) {
       return;
     }
 
-    void submitScanAsync(result.data.trim());
+    void submitScanAsync(result.data.trim(), scanEvent);
   };
 
   const handleSignOutPress = async (): Promise<void> => {
@@ -875,74 +901,104 @@ export default function BusinessScannerScreen() {
             <>
               {activeJoinedEvents.length > 1 ? (
                 <View style={styles.eventSelectorStack}>
-                  <ScrollView
-                    decelerationRate="fast"
-                    horizontal
-                    onMomentumScrollEnd={handleEventSelectorScrollEnd}
-                    onScrollBeginDrag={() => setIsEventSelectorMoving(true)}
-                    onScrollEndDrag={handleEventSelectorScrollEnd}
-                    ref={eventSelectorScrollRef}
-                    scrollEnabled={!isScannerLocked && !isSubmitting}
-                    showsHorizontalScrollIndicator={false}
-                    snapToAlignment="start"
-                    snapToInterval={eventSelectorStride}
-                    contentContainerStyle={styles.eventSelectorRailContent}
+                  <Pressable
+                    accessibilityLabel={isEventSelectorExpanded ? labels.eventSelectorExpanded : labels.eventSelectorCollapsed}
+                    accessibilityRole="button"
+                    onPress={() => setIsEventSelectorExpanded((current) => !current)}
+                    style={styles.eventSelectorHeader}
                   >
-                    {activeJoinedEvents.map((event) => {
-                      const isSelected = selectedEventVenueId === event.eventVenueId;
-
-                      return (
-                        <Pressable
-                          accessibilityHint={labels.chooseEventMeta}
-                          accessibilityLabel={`${event.eventName}, ${event.businessName}, ${event.city}. ${isSelected ? labels.selectedEventLabel : labels.chooseEventTitle}`}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: isSelected }}
-                          key={event.eventVenueId}
-                          disabled={isScannerLocked || isSubmitting}
-                          onPress={() => selectEventVenue(event.eventVenueId)}
-                          style={[
-                            styles.eventSelectorCard,
-                            { width: eventSelectorCardWidth },
-                            isSelected ? styles.eventSelectorCardSelected : null,
-                            isScannerLocked || isSubmitting ? styles.disabledButton : null,
-                          ]}
-                        >
-                          <View style={styles.eventSelectorCardHeader}>
-                            <View style={styles.eventSelectorIconBubble}>
-                              <AppIcon color={theme.colors.lime} name="scan" size={18} />
-                            </View>
-                            <View style={styles.eventSelectorTitleGroup}>
-                              <Text numberOfLines={1} style={styles.eventSelectorTitle}>
-                                {event.eventName}
-                              </Text>
-                              <Text numberOfLines={1} style={styles.eventSelectorMeta}>
-                                {event.businessName} · {event.city}
-                              </Text>
-                            </View>
-                            {isSelected ? (
-                              <View style={styles.eventSelectorSelectedPill}>
-                                <Text style={styles.eventSelectorSelectedText}>{labels.selectedEventLabel}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <Text numberOfLines={1} style={styles.eventSelectorMeta}>
-                            {labels.endsLabel} {formatDateTime(formatter, event.endAt)}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                  <View style={styles.eventSelectorDots}>
-                    {activeJoinedEvents.map((event) => (
-                      <View
-                        key={event.eventVenueId}
-                        style={[
-                          styles.eventSelectorDot,
-                          event.eventVenueId === selectedEventVenueId ? styles.eventSelectorDotActive : null,
-                        ]}
+                    <View style={styles.eventSelectorHeaderCopy}>
+                      <Text style={styles.eventSelectorEyebrow}>{labels.selectedEventLabel}</Text>
+                      <Text numberOfLines={1} style={styles.eventSelectorHeading}>
+                        {selectedEvent?.eventName ?? labels.chooseEventTitle}
+                      </Text>
+                      <Text numberOfLines={1} style={styles.eventSelectorHelp}>
+                        {selectedEvent === null ? labels.chooseEventMeta : `${selectedEvent.businessName} · ${selectedEvent.city}`}
+                      </Text>
+                    </View>
+                    <View style={styles.eventSelectorToggle}>
+                      <Text style={styles.eventSelectorToggleText}>
+                        {isEventSelectorExpanded ? labels.eventSelectorExpanded : labels.eventSelectorCollapsed}
+                      </Text>
+                      <AppIcon
+                        color={theme.colors.textPrimary}
+                        name={isEventSelectorExpanded ? "chevron-down" : "chevron-right"}
+                        size={15}
                       />
-                    ))}
-                  </View>
+                    </View>
+                  </Pressable>
+                  {isEventSelectorExpanded ? (
+                    <>
+                      <ScrollView
+                        decelerationRate="fast"
+                        horizontal
+                        onMomentumScrollEnd={handleEventSelectorScrollEnd}
+                        onScrollBeginDrag={() => setIsEventSelectorMoving(true)}
+                        onScrollEndDrag={handleEventSelectorScrollEnd}
+                        ref={eventSelectorScrollRef}
+                        scrollEnabled={!isScannerLocked && !isSubmitting}
+                        showsHorizontalScrollIndicator={false}
+                        snapToAlignment="start"
+                        snapToInterval={eventSelectorStride}
+                        contentContainerStyle={styles.eventSelectorRailContent}
+                      >
+                        {activeJoinedEvents.map((event) => {
+                          const isSelected = selectedEventVenueId === event.eventVenueId;
+
+                          return (
+                            <Pressable
+                              accessibilityHint={labels.chooseEventMeta}
+                              accessibilityLabel={`${event.eventName}, ${event.businessName}, ${event.city}. ${isSelected ? labels.selectedEventLabel : labels.chooseEventTitle}`}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: isSelected }}
+                              key={event.eventVenueId}
+                              disabled={isScannerLocked || isSubmitting}
+                              onPress={() => selectEventVenue(event.eventVenueId)}
+                              style={[
+                                styles.eventSelectorCard,
+                                { width: eventSelectorCardWidth },
+                                isSelected ? styles.eventSelectorCardSelected : null,
+                                isScannerLocked || isSubmitting ? styles.disabledButton : null,
+                              ]}
+                            >
+                              <View style={styles.eventSelectorCardHeader}>
+                                <View style={styles.eventSelectorIconBubble}>
+                                  <AppIcon color={theme.colors.lime} name="scan" size={18} />
+                                </View>
+                                <View style={styles.eventSelectorTitleGroup}>
+                                  <Text numberOfLines={1} style={styles.eventSelectorTitle}>
+                                    {event.eventName}
+                                  </Text>
+                                  <Text numberOfLines={1} style={styles.eventSelectorMeta}>
+                                    {event.businessName} · {event.city}
+                                  </Text>
+                                </View>
+                                {isSelected ? (
+                                  <View style={styles.eventSelectorSelectedPill}>
+                                    <Text style={styles.eventSelectorSelectedText}>{labels.selectedEventLabel}</Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                              <Text numberOfLines={1} style={styles.eventSelectorMeta}>
+                                {labels.endsLabel} {formatDateTime(formatter, event.endAt)}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                      <View style={styles.eventSelectorDots}>
+                        {activeJoinedEvents.map((event) => (
+                          <View
+                            key={event.eventVenueId}
+                            style={[
+                              styles.eventSelectorDot,
+                              event.eventVenueId === selectedEventVenueId ? styles.eventSelectorDotActive : null,
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    </>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -1377,6 +1433,18 @@ const createStyles = (theme: MobileTheme) => {
       flex: 1,
       gap: 2,
       minWidth: 0,
+    },
+    eventSelectorToggle: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexShrink: 0,
+      gap: 5,
+    },
+    eventSelectorToggleText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     deviceCopy: {
       flex: 1,

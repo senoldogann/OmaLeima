@@ -155,6 +155,8 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
   };
 };
 
+const perBusinessLimitOptions = ["1", "2", "3", "4", "5"] as const;
+
 const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDraft => ({
   city: event.city,
   clubId: event.clubId,
@@ -319,8 +321,8 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
     return {
       body:
         language === "fi"
-          ? "Samasta pisteestä voi saada yhden leiman."
-          : "Same-venue stamp limit must be 1.",
+          ? "Samasta pisteestä voi saada enintään viisi leimaa."
+          : "You can get up to 5 stamps from the same venue.",
       title: language === "fi" ? "Tarkista leimaraja" : "Check stamp limit",
     };
   }
@@ -1234,11 +1236,11 @@ export default function ClubEventsScreen() {
                 </Text>
                 <Text style={styles.metaText}>
                   {language === "fi"
-                    ? "Yksi opiskelija voi saada samasta pisteestä yhden leiman tämän tapahtuman aikana."
-                    : "One student can collect one stamp from the same venue during this event."}
+                    ? "Yksi opiskelija voi saada samasta pisteestä enintään viisi leimaa tämän tapahtuman aikana."
+                    : "One student can collect up to five stamps from the same venue during this event."}
                 </Text>
                 <View style={styles.optionRow}>
-                  {(["1"] as const).map((limit) => (
+                  {perBusinessLimitOptions.map((limit) => (
                     <Pressable
                       disabled={isPending || (mode === "edit" && !canEditEvent(selectedEvent))}
                       key={limit}

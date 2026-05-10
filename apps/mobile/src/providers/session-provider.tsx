@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import type { RealtimePostgresChangesPayload, Session } from "@supabase/supabase-js";
 
+import { deviceStorage } from "@/lib/device-storage";
+import { publicEnv } from "@/lib/env";
 import { supabase } from "@/lib/supabase";
 
 type SessionContextValue = {
@@ -37,6 +39,41 @@ const isInvalidRefreshTokenError = (error: unknown): boolean => {
   return error.message.includes("Invalid Refresh Token") || error.message.includes("Refresh Token Not Found");
 };
 
+const getSupabaseAuthStorageKey = (): string | null => {
+  try {
+    const supabaseHost = new URL(publicEnv.EXPO_PUBLIC_SUPABASE_URL).hostname;
+    const projectRef = supabaseHost.split(".")[0];
+
+    if (projectRef.length === 0) {
+      return null;
+    }
+
+    return `sb-${projectRef}-auth-token`;
+  } catch {
+    return null;
+  }
+};
+
+const deleteLocalAuthStorageFallback = async (): Promise<void> => {
+  const storageKey = getSupabaseAuthStorageKey();
+
+  if (storageKey === null) {
+    return;
+  }
+
+  await deviceStorage.deleteItemAsync(storageKey);
+};
+
+const clearInvalidLocalAuthSessionAsync = async (): Promise<void> => {
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+
+  if (error !== null && !isInvalidRefreshTokenError(error)) {
+    throw error;
+  }
+
+  await deleteLocalAuthStorageFallback();
+};
+
 const clearLocalAuthSessionAsync = async (): Promise<void> => {
   const { error } = await supabase.auth.signOut({ scope: "local" });
 
@@ -52,52 +89,76 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
+  const reportBootstrapError = (error: unknown): void => {
+    const message = error instanceof Error
+      ? `Auth bootstrap failed: ${error.message}`
+      : "Auth bootstrap failed: Unknown error.";
+
+    setSession(null);
+    setBootstrapError(message);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
     let isActive = true;
 
-    const bootstrapSessionAsync = async (): Promise<void> => {
-      let sessionResult: Awaited<ReturnType<typeof supabase.auth.getSession>>;
-
+    const clearInvalidLocalSessionAsync = async (): Promise<void> => {
       try {
-        sessionResult = await supabase.auth.getSession();
+        await clearInvalidLocalAuthSessionAsync();
       } catch (error: unknown) {
         if (!isActive) {
           return;
         }
 
-        if (isInvalidRefreshTokenError(error)) {
-          await clearLocalAuthSessionAsync();
-          setSession(null);
-          setBootstrapError(null);
-          setIsLoading(false);
-          return;
-        }
-
-        throw error;
+        reportBootstrapError(error);
+        return;
       }
 
       if (!isActive) {
         return;
       }
 
-      const { data, error } = sessionResult;
+      setSession(null);
+      setBootstrapError(null);
+      setIsLoading(false);
+    };
 
-      if (error !== null) {
-        if (isInvalidRefreshTokenError(error)) {
-          await clearLocalAuthSessionAsync();
-          setSession(null);
-          setBootstrapError(null);
-          setIsLoading(false);
+    const bootstrapSessionAsync = async (): Promise<void> => {
+      try {
+        const sessionResult = await supabase.auth.getSession();
+
+        if (!isActive) {
           return;
         }
 
-        setBootstrapError(error.message);
-        setIsLoading(false);
-        return;
-      }
+        const { data, error } = sessionResult;
 
-      setSession(data.session);
-      setIsLoading(false);
+        if (error !== null) {
+          if (isInvalidRefreshTokenError(error)) {
+            await clearInvalidLocalSessionAsync();
+            return;
+          }
+
+          reportBootstrapError(error);
+          return;
+        }
+
+        setSession(data.session);
+        setIsLoading(false);
+        setBootstrapError(null);
+        return;
+      } catch (error: unknown) {
+        if (!isActive) {
+          return;
+        }
+
+        if (isInvalidRefreshTokenError(error)) {
+          await clearInvalidLocalSessionAsync();
+          return;
+        }
+
+        reportBootstrapError(error);
+      }
     };
 
     void bootstrapSessionAsync();

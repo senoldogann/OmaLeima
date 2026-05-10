@@ -191,12 +191,6 @@ export const ClubProfilePanel = ({ locale, snapshot }: ClubProfilePanelProps) =>
 
   return (
     <section className="stack-xl">
-      <article className="panel panel-accent">
-        <p className="eyebrow">{copy.profile}</p>
-        <h2>{copy.title}</h2>
-        <p className="muted-text">{copy.subtitle}</p>
-      </article>
-
       <article className="panel">
         <div className="panel-heading-row">
           <div>

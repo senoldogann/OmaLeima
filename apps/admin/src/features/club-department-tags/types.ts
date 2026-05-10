@@ -36,6 +36,15 @@ export type ClubDepartmentTagCreatePayload = {
   title: string;
 };
 
+export type ClubDepartmentTagUpdatePayload = {
+  departmentTagId: string;
+  title: string;
+};
+
+export type ClubDepartmentTagDeletePayload = {
+  departmentTagId: string;
+};
+
 export type ClubDepartmentTagMutationResponse = {
   message: string;
   status: string | null;

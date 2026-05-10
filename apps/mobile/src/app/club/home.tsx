@@ -358,7 +358,7 @@ export default function ClubHomeScreen() {
               title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
               variant="subtle"
             >
-              <Text style={styles.bodyText}>
+              <Text style={styles.overlappingNoticeText}>
                 {language === "fi"
                   ? "Jos klubilla on useita tapahtumia samaan aikaan, tarkista rastit ja viestintä ennen julkaisua. QR-skannaus on tapahtumakohtainen."
                   : "If your club has overlapping events, verify venues and messaging before publishing. QR scanning remains event-specific."}
@@ -505,6 +505,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     clubChip: {
       backgroundColor: theme.colors.surfaceL2,

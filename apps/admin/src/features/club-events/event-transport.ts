@@ -19,9 +19,9 @@ type CreateClubEventRpcPayload = {
   status?: string;
 };
 
-type UpdatedEventRow = {
-  id: string;
-  status: string;
+type ClubEventRpcPayload = {
+  eventId?: string;
+  status?: string;
 };
 
 type EventMediaLookupRow = {
@@ -103,8 +103,10 @@ const buildClubEventMessage = (status: string | null): string => {
     EVENT_JOIN_DEADLINE_INVALID: "Join deadline must be before the event start.",
     EVENT_MAX_PARTICIPANTS_INVALID: "Max participants must be a positive number when provided.",
     EVENT_MINIMUM_STAMPS_INVALID: "Minimum stamps must be zero or greater.",
+    EVENT_ACTIVE_NAME_LOCKED: "Active event names cannot be changed after the event goes live.",
     EVENT_NAME_REQUIRED: "Event name is required.",
     EVENT_SLUG_CONFLICT: "Event slug creation collided unexpectedly. Try again.",
+    EVENT_STATUS_INVALID: "Event status must be draft, published, or active.",
     EVENT_VISIBILITY_INVALID: "Visibility must be public, private, or unlisted.",
     FUNCTION_ERROR: "Club event creation failed unexpectedly.",
     PROFILE_NOT_ACTIVE: "Only active organizer accounts can create events.",
@@ -200,15 +202,24 @@ export const invokeCreateClubEventRpcAsync = async (
     const normalizedStagingPath = payload.coverImageStagingPath.trim();
 
     if (normalizedTicketUrl.length > 0 || normalizedStagingPath.length > 0) {
-      const { error: ticketUrlError } = await supabase
-        .from("events")
-        .update({
-          cover_image_staging_path: normalizedStagingPath.length === 0 ? null : normalizedStagingPath,
-          ticket_url: normalizedTicketUrl,
-        })
-        .eq("id", eventId)
-        .select("id")
-        .single();
+      const { data: updateData, error: ticketUrlError } = await supabase.rpc("update_club_event_atomic", {
+        p_actor_user_id: payload.createdBy,
+        p_city: payload.city,
+        p_cover_image_staging_path: normalizedStagingPath.length === 0 ? null : normalizedStagingPath,
+        p_cover_image_url: null,
+        p_description: payload.description,
+        p_end_at: payload.endAtIso,
+        p_event_id: eventId,
+        p_join_deadline_at: payload.joinDeadlineAtIso,
+        p_max_participants: payload.maxParticipants,
+        p_minimum_stamps_required: payload.minimumStampsRequired,
+        p_name: payload.name,
+        p_rules: payload.rules,
+        p_start_at: payload.startAtIso,
+        p_status: "DRAFT",
+        p_ticket_url: normalizedTicketUrl.length === 0 ? null : normalizedTicketUrl,
+        p_visibility: payload.visibility,
+      });
 
       if (ticketUrlError !== null) {
         return {
@@ -217,6 +228,19 @@ export const invokeCreateClubEventRpcAsync = async (
             status: "TICKET_URL_UPDATE_ERROR",
           },
           status: 502,
+        };
+      }
+
+      const updatePayload = updateData as ClubEventRpcPayload | null;
+      const updateStatus = typeof updatePayload?.status === "string" ? updatePayload.status : "FUNCTION_ERROR";
+
+      if (updateStatus !== "SUCCESS") {
+        return {
+          response: {
+            message: buildClubEventMessage(updateStatus),
+            status: updateStatus,
+          },
+          status: updateStatus === "EVENT_UPDATE_NOT_ALLOWED" ? 403 : 200,
         };
       }
     }
@@ -240,6 +264,7 @@ export const updateClubEventAsync = async (
     description: string;
     endAtIso: string;
     eventId: string;
+    actorUserId: string;
     joinDeadlineAtIso: string;
     maxParticipants: number | null;
     minimumStampsRequired: number;
@@ -306,29 +331,26 @@ export const updateClubEventAsync = async (
       });
   const nextCoverImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
   const nextEventName = existingEvent.status === "ACTIVE" ? existingEvent.name : payload.name.trim();
+  const normalizedTicketUrl = payload.ticketUrl.trim();
 
-  const { data, error } = await supabase
-    .from("events")
-    .update({
-      city: payload.city,
-      cover_image_staging_path: nextCoverImageStagingPath,
-      cover_image_url: nextCoverImageUrl,
-      description: payload.description.trim().length === 0 ? null : payload.description,
-      end_at: payload.endAtIso,
-      join_deadline_at: payload.joinDeadlineAtIso,
-      max_participants: payload.maxParticipants,
-      minimum_stamps_required: payload.minimumStampsRequired,
-      name: nextEventName,
-      rules: payload.rules,
-      start_at: payload.startAtIso,
-      status: payload.status,
-      ticket_url: payload.ticketUrl.trim().length === 0 ? null : payload.ticketUrl,
-      visibility: payload.visibility,
-    })
-    .eq("id", payload.eventId)
-    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
-    .select("id,status")
-    .maybeSingle<UpdatedEventRow>();
+  const { data, error } = await supabase.rpc("update_club_event_atomic", {
+    p_actor_user_id: payload.actorUserId,
+    p_city: payload.city,
+    p_cover_image_staging_path: nextCoverImageStagingPath,
+    p_cover_image_url: nextCoverImageUrl,
+    p_description: payload.description,
+    p_end_at: payload.endAtIso,
+    p_event_id: payload.eventId,
+    p_join_deadline_at: payload.joinDeadlineAtIso,
+    p_max_participants: payload.maxParticipants,
+    p_minimum_stamps_required: payload.minimumStampsRequired,
+    p_name: nextEventName,
+    p_rules: payload.rules,
+    p_start_at: payload.startAtIso,
+    p_status: payload.status,
+    p_ticket_url: normalizedTicketUrl.length === 0 ? null : normalizedTicketUrl,
+    p_visibility: payload.visibility,
+  });
 
   if (error !== null) {
     await removePublicStorageObjectByUrlAsync({
@@ -349,7 +371,11 @@ export const updateClubEventAsync = async (
     };
   }
 
-  if (data === null) {
+  const responsePayload = data as ClubEventRpcPayload | null;
+  const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+  const eventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status !== "SUCCESS" || eventId === null) {
     await removePublicStorageObjectByUrlAsync({
       bucketId: eventMediaBucketId,
       context: `not-updated event ${payload.eventId} cover publish rollback`,
@@ -359,10 +385,13 @@ export const updateClubEventAsync = async (
 
     return {
       response: {
-        message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
-        status: "EVENT_UPDATE_NOT_ALLOWED",
+        message:
+          status === "EVENT_UPDATE_NOT_ALLOWED"
+            ? "Event was not updated. It may be completed, cancelled, or outside this organizer account."
+            : buildClubEventMessage(status),
+        status,
       },
-      status: 403,
+      status: status === "EVENT_UPDATE_NOT_ALLOWED" ? 403 : 200,
     };
   }
 
@@ -402,17 +431,13 @@ export const updateClubEventAsync = async (
 
 export const cancelClubEventAsync = async (
   supabase: SupabaseClient,
-  eventId: string
+  eventId: string,
+  actorUserId: string
 ): Promise<ClubEventTransportResult> => {
-  const { data, error } = await supabase
-    .from("events")
-    .update({
-      status: "CANCELLED",
-    })
-    .eq("id", eventId)
-    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
-    .select("id,status")
-    .maybeSingle<UpdatedEventRow>();
+  const { data, error } = await supabase.rpc("cancel_club_event_atomic", {
+    p_actor_user_id: actorUserId,
+    p_event_id: eventId,
+  });
 
   if (error !== null) {
     return {
@@ -424,13 +449,20 @@ export const cancelClubEventAsync = async (
     };
   }
 
-  if (data === null) {
+  const responsePayload = data as ClubEventRpcPayload | null;
+  const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+  const cancelledEventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status !== "SUCCESS" || cancelledEventId === null) {
     return {
       response: {
-        message: "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account.",
-        status: "EVENT_CANCEL_NOT_ALLOWED",
+        message:
+          status === "EVENT_CANCEL_NOT_ALLOWED"
+            ? "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account."
+            : buildClubEventMessage(status),
+        status,
       },
-      status: 403,
+      status: status === "EVENT_CANCEL_NOT_ALLOWED" ? 403 : 200,
     };
   }
 

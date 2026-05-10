@@ -20,10 +20,25 @@ type ClaimRewardRpcResult = {
 const responseMessages: Record<string, string> = {
   SUCCESS: "Reward claim recorded successfully.",
   CLAIMER_NOT_ALLOWED: "Authenticated user is not allowed to claim rewards for this event.",
+  EVENT_NOT_FOUND: "Event was not found.",
+  EVENT_NOT_ACTIVE: "Reward claims are available only while the event is active.",
+  STUDENT_NOT_REGISTERED: "Student is not registered for this event.",
   REWARD_TIER_NOT_FOUND: "Reward tier was not found for this event.",
   NOT_ENOUGH_STAMPS: "Student does not have enough leimas for this reward.",
   REWARD_OUT_OF_STOCK: "Reward is out of stock.",
   REWARD_ALREADY_CLAIMED: "This reward was already claimed for the student.",
+};
+
+const responseHttpStatuses: Record<string, number> = {
+  SUCCESS: 200,
+  CLAIMER_NOT_ALLOWED: 403,
+  EVENT_NOT_FOUND: 404,
+  EVENT_NOT_ACTIVE: 423,
+  STUDENT_NOT_REGISTERED: 403,
+  REWARD_TIER_NOT_FOUND: 404,
+  NOT_ENOUGH_STAMPS: 409,
+  REWARD_OUT_OF_STOCK: 409,
+  REWARD_ALREADY_CLAIMED: 409,
 };
 
 const parseNotes = (value: unknown): string | null => {
@@ -106,11 +121,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const result = rpcResult as ClaimRewardRpcResult;
+    const responseStatus = responseHttpStatuses[result.status] ?? 500;
 
     return jsonResponse({
       ...result,
       message: responseMessages[result.status] ?? "Reward claim completed.",
-    }, 200);
+    }, responseStatus);
   } catch (error) {
     return errorResponse(400, "VALIDATION_ERROR", "Failed to claim reward.", {
       error: error instanceof Error ? error.message : "unknown error",

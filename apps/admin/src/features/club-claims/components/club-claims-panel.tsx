@@ -4,7 +4,14 @@ import { useMemo, useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { RewardClaimCandidateCard } from "@/features/club-claims/components/reward-claim-candidate-card";
-import { formatClubClaimEventMeta, formatClubClaimHistoryMeta, getClubClaimStatusClassName } from "@/features/club-claims/format";
+import {
+  formatClubClaimEventMeta,
+  formatClubClaimHistoryMeta,
+  formatClubClaimInventory,
+  formatClubClaimProgress,
+  formatClubClaimRewardType,
+  getClubClaimStatusClassName,
+} from "@/features/club-claims/format";
 import type { ClubClaimsSnapshot } from "@/features/club-claims/types";
 
 type ClubClaimsPanelProps = {
@@ -26,6 +33,10 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
   const filteredRecentClaims = useMemo(
     () => snapshot.recentClaims.filter((claim) => claim.eventId === effectiveSelectedEventId),
     [effectiveSelectedEventId, snapshot.recentClaims]
+  );
+  const filteredProgress = useMemo(
+    () => snapshot.progress.filter((record) => record.eventId === effectiveSelectedEventId),
+    [effectiveSelectedEventId, snapshot.progress]
   );
   const handleEventSelect = (eventId: string): void => {
     setSelectedEventId(eventId);
@@ -55,6 +66,18 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
           </div>
         </article>
 
+        <article className="panel">
+          <div className="stack-sm">
+            <span className="field-label">{locale === "fi" ? "Kesken" : "In progress"}</span>
+            <strong className="metric-value">{snapshot.summary.progressCandidateCount}</strong>
+            <p className="muted-text">
+              {locale === "fi"
+                ? `Näytetään ${snapshot.summary.visibleProgressCount} opiskelijaa, joilta puuttuu vielä leimoja.`
+                : `Showing ${snapshot.summary.visibleProgressCount} student reward progress row${snapshot.summary.visibleProgressCount === 1 ? "" : "s"} below the handoff threshold.`}
+            </p>
+          </div>
+        </article>
+
         <article className="panel panel-warning">
           <div className="stack-sm">
             <span className="field-label">{locale === "fi" ? "Viimeksi jaetut" : "Recent claims"}</span>
@@ -80,8 +103,8 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
             <h3 className="section-title">{locale === "fi" ? "Käynnissä olevat tapahtumat" : "Operational events"}</h3>
             <p className="muted-text">
               {locale === "fi"
-                ? "Valitse tapahtuma tarkistaaksesi palkintoa odottavat opiskelijat ja viimeksi vahvistetut luovutukset. Opiskelijoiden tunnisteet pysyvät peitettyinä."
-                : "Pick an event to review claimable students and recently confirmed rewards. Student labels stay masked in this panel."}
+                ? "Valitse tapahtuma tarkistaaksesi palkintoa odottavat opiskelijat, kesken olevat palkintopolut ja viimeksi vahvistetut luovutukset."
+                : "Pick an event to review claimable students, in-progress reward paths, and recently confirmed rewards."}
             </p>
           </div>
 
@@ -97,6 +120,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
                     <th>{locale === "fi" ? "Tapahtuma" : "Event"}</th>
                     <th>{locale === "fi" ? "Tila" : "Status"}</th>
                     <th>{locale === "fi" ? "Odottaa" : "Claimable"}</th>
+                    <th>{locale === "fi" ? "Kesken" : "Progress"}</th>
                     <th>{locale === "fi" ? "Jaettu" : "Claimed"}</th>
                     <th>{locale === "fi" ? "Tasot" : "Tiers"}</th>
                     <th>{locale === "fi" ? "Valinta" : "Select"}</th>
@@ -117,6 +141,7 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
                           </span>
                         </td>
                         <td className="record-meta">{event.claimableCandidateCount}</td>
+                        <td className="record-meta">{event.progressCandidateCount}</td>
                         <td className="record-meta">{event.recentClaimCount}</td>
                         <td className="record-meta">{event.activeRewardTierCount}</td>
                         <td>
@@ -177,6 +202,57 @@ export const ClubClaimsPanel = ({ locale, snapshot }: ClubClaimsPanelProps) => {
               ))}
             </div>
           )}
+
+          {selectedEvent !== null ? (
+            <div className="stack-sm">
+              <div className="eyebrow">{locale === "fi" ? "Seuranta" : "Progress"}</div>
+              <h3 className="section-title">{locale === "fi" ? "Ei vielä lunastettavissa" : "Not claimable yet"}</h3>
+              <p className="muted-text">
+                {locale === "fi"
+                  ? "Nämä opiskelijat ovat ilmoittautuneet, mutta heiltä puuttuu vielä leimoja tähän palkintotasoon. Luovutuspainike pysyy piilossa, kunnes raja täyttyy."
+                  : "These registered students are still below this reward threshold. The handoff action stays hidden until the required leimas are collected."}
+              </p>
+              {filteredProgress.length === 0 ? (
+                <article className="panel">
+                  <p className="muted-text">{locale === "fi" ? "Tälle tapahtumalle ei ole kesken olevia palkintopolkuja näkyvissä." : "No in-progress reward rows are visible for this event."}</p>
+                </article>
+              ) : (
+                <div className="panel-table-wrap">
+                  <table className="panel-table">
+                    <thead>
+                      <tr>
+                        <th>{locale === "fi" ? "Opiskelija" : "Student"}</th>
+                        <th>{locale === "fi" ? "Palkinto" : "Reward"}</th>
+                        <th>{locale === "fi" ? "Leimat" : "Leimas"}</th>
+                        <th>{locale === "fi" ? "Puuttuu" : "Missing"}</th>
+                        <th>{locale === "fi" ? "Tiedot" : "Details"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProgress.map((record) => (
+                        <tr key={`${record.eventId}:${record.rewardTierId}:${record.studentId}`}>
+                          <td>{record.studentLabel}</td>
+                          <td>
+                            <span>{record.rewardTitle}</span>
+                            <span className="record-meta">{formatClubClaimRewardType(locale, record.rewardType)}</span>
+                          </td>
+                          <td className="record-meta">{formatClubClaimProgress(locale, record)}</td>
+                          <td>
+                            <span className="status-pill status-pill-warning">
+                              {locale === "fi"
+                                ? `${record.missingStampCount} puuttuu`
+                                : `${record.missingStampCount} missing`}
+                            </span>
+                          </td>
+                          <td className="record-meta">{formatClubClaimInventory(locale, record)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </section>
 

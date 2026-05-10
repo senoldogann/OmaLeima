@@ -23,9 +23,9 @@ type CreateClubEventRpcPayload = {
   status?: string;
 };
 
-type UpdatedEventRow = {
-  id: string;
-  status: string;
+type ClubEventRpcPayload = {
+  eventId?: string;
+  status?: string;
 };
 
 type EventMediaLookupRow = {
@@ -122,19 +122,21 @@ const parseMinimumStampsOrThrow = (value: string): number => {
   return parsedValue;
 };
 
+const defaultPerBusinessLimit = 1;
+const maximumPerBusinessLimit = 5;
+
 const normalizePerBusinessLimit = (value: string): number => {
   const normalizedValue = value.trim();
   const parsedValue = Number.parseInt(normalizedValue, 10);
 
   if (
     !Number.isInteger(parsedValue) ||
-    parsedValue !== 1 ||
     String(parsedValue) !== normalizedValue
   ) {
     return 1;
   }
 
-  return parsedValue;
+  return Math.min(Math.max(parsedValue, defaultPerBusinessLimit), maximumPerBusinessLimit);
 };
 
 const isReachablePublicEventCoverUrlAsync = async (publicUrl: string | null): Promise<boolean> => {
@@ -303,8 +305,10 @@ const buildCreateMessage = (status: string): string => {
     EVENT_JOIN_DEADLINE_INVALID: "Join deadline must be before the event start.",
     EVENT_MAX_PARTICIPANTS_INVALID: "Max participants must be a positive number when provided.",
     EVENT_MINIMUM_STAMPS_INVALID: "Minimum stamps must be zero or greater.",
+    EVENT_ACTIVE_NAME_LOCKED: "Active event names cannot be changed after the event goes live.",
     EVENT_NAME_REQUIRED: "Event name is required.",
     EVENT_SLUG_CONFLICT: "Event slug creation collided unexpectedly. Try again.",
+    EVENT_STATUS_INVALID: "Event status must be draft, published, or active.",
     EVENT_VISIBILITY_INVALID: "Visibility must be public, private, or unlisted.",
     FUNCTION_ERROR: "Club event creation failed unexpectedly.",
     PROFILE_NOT_ACTIVE: "Only active organizer accounts can create events.",
@@ -342,32 +346,58 @@ const createClubEventDatabaseErrorMessage = ({
 };
 
 const updateCreatedEventAfterCreateAsync = async ({
+  city,
   coverImageUrl,
   coverImageStagingPath,
+  description,
+  endAtIso,
   eventId,
+  joinDeadlineAtIso,
+  maxParticipants,
+  minimumStampsRequired,
+  name,
+  rules,
+  startAtIso,
   status,
   ticketUrl,
   userId,
+  visibility,
 }: {
+  city: string;
   coverImageUrl: string | null;
   coverImageStagingPath: string | null;
+  description: string;
+  endAtIso: string;
   eventId: string;
+  joinDeadlineAtIso: string;
+  maxParticipants: number | null;
+  minimumStampsRequired: number;
+  name: string;
+  rules: EventRules;
+  startAtIso: string;
   status: ClubEventFormDraft["status"];
   ticketUrl: string | null;
   userId: string;
+  visibility: ClubEventFormDraft["visibility"];
 }): Promise<void> => {
-  const { data, error } = await supabase
-    .from("events")
-    .update({
-      cover_image_staging_path: coverImageStagingPath,
-      cover_image_url: coverImageUrl,
-      status,
-      ticket_url: ticketUrl,
-    })
-    .eq("id", eventId)
-    .eq("status", "DRAFT")
-    .select("id,status")
-    .maybeSingle<UpdatedEventRow>();
+  const { data, error } = await supabase.rpc("update_club_event_atomic", {
+    p_actor_user_id: userId,
+    p_city: city,
+    p_cover_image_staging_path: coverImageStagingPath,
+    p_cover_image_url: coverImageUrl,
+    p_description: description,
+    p_end_at: endAtIso,
+    p_event_id: eventId,
+    p_join_deadline_at: joinDeadlineAtIso,
+    p_max_participants: maxParticipants,
+    p_minimum_stamps_required: minimumStampsRequired,
+    p_name: name,
+    p_rules: rules,
+    p_start_at: startAtIso,
+    p_status: status,
+    p_ticket_url: ticketUrl,
+    p_visibility: visibility,
+  });
 
   if (error !== null) {
     throw new Error(
@@ -380,8 +410,11 @@ const updateCreatedEventAfterCreateAsync = async ({
     );
   }
 
-  if (data === null) {
-    throw new Error(`Created club event ${eventId} status could not be updated for ${userId}.`);
+  const responsePayload = data as ClubEventRpcPayload | null;
+  const rpcStatus = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+
+  if (rpcStatus !== "SUCCESS") {
+    throw new Error(`Created club event ${eventId} status could not be updated for ${userId}: ${buildCreateMessage(rpcStatus)}`);
   }
 };
 
@@ -444,12 +477,22 @@ const createClubEventAsync = async ({
 
     try {
       await updateCreatedEventAfterCreateAsync({
+        city: parsedDraft.city,
         coverImageStagingPath: nextCoverImageStagingPath,
         coverImageUrl: nextCoverImageUrl,
+        description: parsedDraft.description,
+        endAtIso: parsedDraft.endAtIso,
         eventId,
+        joinDeadlineAtIso: parsedDraft.joinDeadlineAtIso,
+        maxParticipants: parsedDraft.maxParticipants,
+        minimumStampsRequired: parsedDraft.minimumStampsRequired,
+        name: parsedDraft.name,
+        rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
+        startAtIso: parsedDraft.startAtIso,
         status: draft.status,
         ticketUrl: parsedDraft.ticketUrl,
         userId,
+        visibility: draft.visibility,
       });
     } catch (error) {
       await removePublicStorageObjectByUrlAsync({
@@ -537,28 +580,24 @@ const updateClubEventAsync = async ({
       : publishedCoverImageUrl ?? verifiedExistingCoverImageUrl;
   const nextCoverImageStagingPath = draft.status === "DRAFT" ? parsedDraft.coverImageStagingPath : null;
 
-  const { data, error } = await supabase
-    .from("events")
-    .update({
-      city: parsedDraft.city,
-      cover_image_staging_path: nextCoverImageStagingPath,
-      cover_image_url: nextCoverImageUrl,
-      description: parsedDraft.description.length === 0 ? null : parsedDraft.description,
-      end_at: parsedDraft.endAtIso,
-      join_deadline_at: parsedDraft.joinDeadlineAtIso,
-      max_participants: parsedDraft.maxParticipants,
-      minimum_stamps_required: parsedDraft.minimumStampsRequired,
-      name: nextEventName,
-      rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
-      start_at: parsedDraft.startAtIso,
-      status: draft.status,
-      ticket_url: parsedDraft.ticketUrl,
-      visibility: draft.visibility,
-    })
-    .eq("id", draft.eventId)
-    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
-    .select("id,status")
-    .maybeSingle<UpdatedEventRow>();
+  const { data, error } = await supabase.rpc("update_club_event_atomic", {
+    p_actor_user_id: userId,
+    p_city: parsedDraft.city,
+    p_cover_image_staging_path: nextCoverImageStagingPath,
+    p_cover_image_url: nextCoverImageUrl,
+    p_description: parsedDraft.description,
+    p_end_at: parsedDraft.endAtIso,
+    p_event_id: draft.eventId,
+    p_join_deadline_at: parsedDraft.joinDeadlineAtIso,
+    p_max_participants: parsedDraft.maxParticipants,
+    p_minimum_stamps_required: parsedDraft.minimumStampsRequired,
+    p_name: nextEventName,
+    p_rules: buildEventRules(draft.rules, parsedDraft.perBusinessLimit),
+    p_start_at: parsedDraft.startAtIso,
+    p_status: draft.status,
+    p_ticket_url: parsedDraft.ticketUrl,
+    p_visibility: draft.visibility,
+  });
 
   if (error !== null) {
     await removePublicStorageObjectByUrlAsync({
@@ -577,7 +616,11 @@ const updateClubEventAsync = async ({
     );
   }
 
-  if (data === null) {
+  const responsePayload = data as ClubEventRpcPayload | null;
+  const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+  const updatedEventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status !== "SUCCESS" || updatedEventId === null) {
     await removePublicStorageObjectByUrlAsync({
       bucketId: eventMediaBucketId,
       context: `not-updated event ${draft.eventId} cover publish rollback`,
@@ -586,8 +629,11 @@ const updateClubEventAsync = async ({
 
     return {
       eventId: null,
-      message: "Event was not updated. It may be completed, cancelled, or outside this organizer account.",
-      status: "EVENT_UPDATE_NOT_ALLOWED",
+      message:
+        status === "EVENT_UPDATE_NOT_ALLOWED"
+          ? "Event was not updated. It may be completed, cancelled, or outside this organizer account."
+          : buildCreateMessage(status),
+      status,
     };
   }
 
@@ -606,7 +652,7 @@ const updateClubEventAsync = async ({
   }
 
   return {
-    eventId: data.id,
+    eventId: updatedEventId,
     message: "Event updated successfully.",
     status: "SUCCESS",
   };
@@ -697,15 +743,10 @@ const cancelClubEventAsync = async ({
   eventId,
   userId,
 }: ClubEventCancelVariables): Promise<ClubEventMutationResult> => {
-  const { data, error } = await supabase
-    .from("events")
-    .update({
-      status: "CANCELLED",
-    })
-    .eq("id", eventId)
-    .in("status", ["DRAFT", "PUBLISHED", "ACTIVE"])
-    .select("id,status")
-    .maybeSingle<UpdatedEventRow>();
+  const { data, error } = await supabase.rpc("cancel_club_event_atomic", {
+    p_actor_user_id: userId,
+    p_event_id: eventId,
+  });
 
   if (error !== null) {
     throw new Error(
@@ -718,16 +759,23 @@ const cancelClubEventAsync = async ({
     );
   }
 
-  if (data === null) {
+  const responsePayload = data as ClubEventRpcPayload | null;
+  const status = typeof responsePayload?.status === "string" ? responsePayload.status : "FUNCTION_ERROR";
+  const cancelledEventId = typeof responsePayload?.eventId === "string" ? responsePayload.eventId : null;
+
+  if (status !== "SUCCESS" || cancelledEventId === null) {
     return {
       eventId: null,
-      message: "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account.",
-      status: "EVENT_CANCEL_NOT_ALLOWED",
+      message:
+        status === "EVENT_CANCEL_NOT_ALLOWED"
+          ? "Event was not cancelled. It may already be completed, cancelled, or outside this organizer account."
+          : buildCreateMessage(status),
+      status,
     };
   }
 
   return {
-    eventId: data.id,
+    eventId: cancelledEventId,
     message: "Event cancelled without deleting operational history.",
     status: "SUCCESS",
   };

@@ -18,7 +18,6 @@ import {
   useStudentLeaderboardOverviewQuery,
 } from "@/features/leaderboard/student-leaderboard";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useStudentEventLeaderboardRealtime } from "@/features/realtime/student-realtime";
 import { useSession } from "@/providers/session-provider";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
@@ -258,7 +257,6 @@ export default function StudentLeaderboardScreen() {
           <Text style={styles.screenTitle}>{copy.common.leaderboard}</Text>
           <Text style={styles.screenMeta}>{screenMeta}</Text>
         </View>
-        <StudentProfileHeaderAction />
       </View>
 
       {overviewState !== "ready" ? (

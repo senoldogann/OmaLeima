@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const body = parseClubEventCancelPayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
-    const result = await cancelClubEventAsync(supabase, body.eventId);
+    const result = await cancelClubEventAsync(supabase, body.eventId, userId);
 
     return NextResponse.json(result.response, {
       status: result.status,

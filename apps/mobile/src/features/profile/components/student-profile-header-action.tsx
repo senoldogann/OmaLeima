@@ -7,10 +7,12 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 
 type StudentProfileHeaderActionProps = {
   route?: "/student/profile";
+  showLabel?: boolean;
 };
 
 export const StudentProfileHeaderAction = ({
   route = "/student/profile",
+  showLabel = true,
 }: StudentProfileHeaderActionProps) => {
   const router = useRouter();
   const { language, theme } = useUiPreferences();
@@ -34,7 +36,7 @@ export const StudentProfileHeaderAction = ({
       style={styles.button}
     >
       <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
-      <Text style={styles.label}>{language === "fi" ? "Profiili" : "Profile"}</Text>
+      {showLabel ? <Text style={styles.label}>{language === "fi" ? "Profiili" : "Profile"}</Text> : null}
     </Pressable>
   );
 };
@@ -51,7 +53,7 @@ const createStyles = (theme: MobileTheme) =>
       gap: 8,
       height: 42,
       justifyContent: "center",
-      minWidth: 104,
+      minWidth: 42,
       paddingHorizontal: 14,
     },
     label: {

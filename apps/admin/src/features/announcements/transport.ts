@@ -40,6 +40,13 @@ type AnnouncementMediaLookupRow = {
 };
 
 const announcementMediaBucketId = "announcement-media";
+const announcementArchiveSuccessMessage = "Announcement archived.";
+const announcementCreateSuccessMessage = "Announcement saved.";
+const announcementDeleteSuccessMessage = "Announcement deleted.";
+const announcementDeleteNotFoundMessage = "Announcement was not deleted. It may already be removed or outside this organizer account.";
+const announcementUpdateNotFoundMessage = "Announcement was not updated. It may already be removed or outside this organizer account.";
+const announcementArchiveNotFoundMessage = "Announcement was not archived. It may already be removed or outside this organizer account.";
+const announcementUpdateSuccessMessage = "Announcement updated.";
 
 const readStorageExtension = (path: string): string => {
   const extension = path.split(".").pop()?.toLowerCase();
@@ -125,7 +132,7 @@ export const deleteAnnouncementAsync = async (
   if (announcement === null) {
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not found for deletion.`,
+        message: announcementDeleteNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
@@ -189,8 +196,8 @@ export const deleteAnnouncementAsync = async (
     response: {
       message:
         announcement.image_url === null
-          ? `Announcement ${data.id} deleted successfully.`
-          : `Announcement ${data.id} and its owned image cleanup completed.`,
+          ? announcementDeleteSuccessMessage
+          : "Announcement deleted and its owned image cleanup completed.",
       status: "SUCCESS",
     },
     status: 200,
@@ -213,6 +220,7 @@ export const createAnnouncementAsync = async (
     priority: number;
     startsAt: string;
     status: AnnouncementStatus;
+    targetCity: string | null;
     title: string;
   }
 ): Promise<AnnouncementTransportResult> => {
@@ -242,7 +250,7 @@ export const createAnnouncementAsync = async (
     payload.status === "DRAFT"
       ? null
       : publishedImageUrl;
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("announcements")
     .insert({
       id: announcementId,
@@ -259,6 +267,7 @@ export const createAnnouncementAsync = async (
       priority: payload.priority,
       starts_at: payload.startsAt,
       status: payload.status,
+      target_city: payload.targetCity,
       title: payload.title,
     })
     .select("id")
@@ -283,7 +292,7 @@ export const createAnnouncementAsync = async (
 
   return {
     response: {
-      message: `Announcement ${data.id} saved successfully.`,
+      message: announcementCreateSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,
@@ -306,6 +315,7 @@ export const updateAnnouncementAsync = async (
     priority: number;
     startsAt: string;
     status: AnnouncementStatus;
+    targetCity: string | null;
     title: string;
   }
 ): Promise<AnnouncementTransportResult> => {
@@ -330,7 +340,7 @@ export const updateAnnouncementAsync = async (
   if (existingAnnouncement === null) {
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not updated.`,
+        message: announcementUpdateNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
@@ -381,6 +391,7 @@ export const updateAnnouncementAsync = async (
       priority: payload.priority,
       starts_at: payload.startsAt,
       status: payload.status,
+      target_city: payload.targetCity,
       title: payload.title,
     })
     .eq("id", payload.announcementId);
@@ -415,7 +426,7 @@ export const updateAnnouncementAsync = async (
 
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not updated.`,
+        message: announcementUpdateNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
@@ -456,7 +467,7 @@ export const updateAnnouncementAsync = async (
 
   return {
     response: {
-      message: `Announcement ${data.id} updated successfully.`,
+      message: announcementUpdateSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,
@@ -493,7 +504,7 @@ export const archiveAnnouncementAsync = async (
   if (data === null) {
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not archived.`,
+        message: announcementArchiveNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
@@ -502,7 +513,7 @@ export const archiveAnnouncementAsync = async (
 
   return {
     response: {
-      message: `Announcement ${data.id} archived successfully.`,
+      message: announcementArchiveSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,

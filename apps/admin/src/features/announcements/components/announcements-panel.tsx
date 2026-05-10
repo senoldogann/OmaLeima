@@ -35,6 +35,7 @@ type AnnouncementAudienceOption =
 type AnnouncementCopy = {
   actionsHintCreate: string;
   actionsHintEdit: string;
+  allCities: string;
   announcementsTab: string;
   archive: string;
   archiving: string;
@@ -53,6 +54,7 @@ type AnnouncementCopy = {
   emptyAnnouncements: string;
   endsAt: string;
   endsAtEmpty: string;
+  eventScope: string;
   image: string;
   imagePreview: string;
   imageUploaded: string;
@@ -61,6 +63,7 @@ type AnnouncementCopy = {
   latestAnnouncements: string;
   message: string;
   noEndDate: string;
+  noEventScope: string;
   pendingRowsSuffix: string;
   placeholderBody: string;
   placeholderCtaLabel: string;
@@ -95,6 +98,7 @@ type AnnouncementCopy = {
   tableAudience: string;
   tablePush: string;
   tableTitle: string;
+  targetCity: string;
   title: string;
   updateAnnouncement: string;
   updating: string;
@@ -112,6 +116,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
   en: {
     actionsHintCreate: "This creates the source announcement. Send push from the announcement card after publishing.",
     actionsHintEdit: "Update the announcement, archive it, or send push from the card after publishing.",
+    allCities: "All cities",
     announcementsTab: "Announcements",
     archive: "Archive",
     archiving: "Archiving...",
@@ -135,6 +140,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     emptyAnnouncements: "No announcements are visible for this scope yet.",
     endsAt: "Ends at",
     endsAtEmpty: "No end date",
+    eventScope: "Event scope",
     image: "Image",
     imagePreview: "Announcement image preview",
     imageUploaded: "Announcement image uploaded successfully.",
@@ -143,6 +149,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     latestAnnouncements: "Latest announcements",
     message: "Message",
     noEndDate: "No end date",
+    noEventScope: "No event scope",
     pendingRowsSuffix: "rows",
     placeholderBody: "Write a short, clear message for your audience.",
     placeholderCtaLabel: "Open event",
@@ -177,6 +184,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     tableAudience: "Audience",
     tablePush: "Push",
     tableTitle: "Title",
+    targetCity: "Target city",
     title: "Title",
     updateAnnouncement: "Update announcement",
     updating: "Updating...",
@@ -187,6 +195,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
   fi: {
     actionsHintCreate: "Luo tiedote ensin luonnoksena. Push-ilmoituksen voi lähettää kortilta julkaisun jälkeen.",
     actionsHintEdit: "Päivitä tiedote, arkistoi se tai lähetä push-ilmoitus kortilta.",
+    allCities: "Kaikki kaupungit",
     announcementsTab: "Tiedotteet",
     archive: "Arkistoi",
     archiving: "Arkistoidaan...",
@@ -210,6 +219,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     emptyAnnouncements: "Tässä näkymässä ei ole vielä tiedotteita.",
     endsAt: "Loppuu",
     endsAtEmpty: "Ei loppuaikaa",
+    eventScope: "Tapahtumarajaus",
     image: "Kuva",
     imagePreview: "Kuvan esikatselu",
     imageUploaded: "Kuva ladattiin onnistuneesti.",
@@ -218,6 +228,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     latestAnnouncements: "Viimeisimmät tiedotteet",
     message: "Viesti",
     noEndDate: "Ei loppuaikaa",
+    noEventScope: "Ei tapahtumarajausta",
     pendingRowsSuffix: "riviä",
     placeholderBody: "Kirjoita lyhyt ja selkeä viesti kohderyhmälle.",
     placeholderCtaLabel: "Avaa approt",
@@ -252,6 +263,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     tableAudience: "Kohderyhmä",
     tablePush: "Push",
     tableTitle: "Otsikko",
+    targetCity: "Kohdekaupunki",
     title: "Otsikko",
     updateAnnouncement: "Päivitä",
     updating: "Päivitetään...",
@@ -272,20 +284,26 @@ const announcementClockRefreshMs = 30_000;
 
 const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreatePayload => {
   const startsAt = toLocalDateTimeInput(new Date());
+  const initialClubId = snapshot.scope === "CLUB" ? snapshot.clubOptions[0]?.clubId ?? "" : "";
+  const initialClubEvent =
+    snapshot.scope === "CLUB"
+      ? snapshot.eventOptions.find((eventOption) => eventOption.clubId === initialClubId) ?? null
+      : null;
 
   return {
     audience: snapshot.scope === "CLUB" ? "STUDENTS" : "ALL",
     body: "",
-    clubId: snapshot.scope === "CLUB" ? snapshot.clubOptions[0]?.clubId ?? "" : "",
+    clubId: initialClubId,
     ctaLabel: "",
     ctaUrl: "",
     endsAt: "",
-    eventId: "",
+    eventId: initialClubEvent?.eventId ?? "",
     imageStagingPath: "",
     imageUrl: "",
     priority: "0",
     startsAt,
     status: "PUBLISHED",
+    targetCity: initialClubEvent?.city ?? "",
     title: "",
   };
 };
@@ -305,21 +323,37 @@ const createPayloadFromAnnouncement = (
   priority: String(announcement.priority),
   startsAt: toLocalDateTimeInput(new Date(announcement.startsAt)),
   status: announcement.status === "ARCHIVED" ? "DRAFT" : announcement.status,
+  targetCity: announcement.targetCity ?? "",
   title: announcement.title,
 });
 
 const isEventScopedPayload = (payload: AnnouncementCreatePayload): boolean =>
   payload.eventId.trim().length > 0;
 
-const createSubmitPayload = (payload: AnnouncementCreatePayload): AnnouncementCreatePayload => {
-  if (!isEventScopedPayload(payload)) {
-    return payload;
-  }
+const createSubmitPayload = (
+  payload: AnnouncementCreatePayload,
+  snapshot: AnnouncementSnapshot
+): AnnouncementCreatePayload => {
+  const eventId = payload.eventId.trim();
+  const matchedEvent =
+    eventId.length === 0
+      ? null
+      : snapshot.eventOptions.find((eventOption) => eventOption.eventId === eventId) ?? null;
+  const eventScopedPayload =
+    matchedEvent === null
+      ? payload
+      : {
+        ...payload,
+        clubId: matchedEvent.clubId,
+        targetCity: matchedEvent.city,
+      };
 
-  return {
-    ...payload,
-    audience: "STUDENTS",
-  };
+  return matchedEvent === null || eventScopedPayload.audience !== "CLUBS"
+    ? eventScopedPayload
+    : {
+      ...eventScopedPayload,
+      audience: "STUDENTS",
+    };
 };
 
 const formatDate = (locale: DashboardLocale, value: string): string =>
@@ -411,10 +445,24 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     () =>
       snapshot.scope === "ADMIN"
         ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"]
-        : ["ALL", "STUDENTS", "CLUBS"],
+        : ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"],
     [snapshot.scope]
   );
-  const renderedAudienceOptions: AnnouncementAudienceOption[] = hasEventScope ? ["STUDENTS"] : audienceOptions;
+  const renderedAudienceOptions: AnnouncementAudienceOption[] = hasEventScope
+    ? ["ALL", "STUDENTS", "BUSINESSES"]
+    : audienceOptions;
+  const selectedClubId = payload.clubId.trim();
+  const eventOptions = useMemo(
+    () =>
+      snapshot.eventOptions.filter((eventOption) => {
+        if (selectedClubId.length === 0) {
+          return snapshot.scope === "ADMIN";
+        }
+
+        return eventOption.clubId === selectedClubId;
+      }),
+    [selectedClubId, snapshot.eventOptions, snapshot.scope]
+  );
   const isEditingAnnouncement = editingAnnouncementId !== null;
   const isFormDisabled =
     !canCreate ||
@@ -511,7 +559,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     });
 
     try {
-      const submitPayload = createSubmitPayload(payload);
+      const submitPayload = createSubmitPayload(payload, snapshot);
       const response =
         editingAnnouncementId === null
           ? await submitAnnouncementCreateRequestAsync(submitPayload)
@@ -766,7 +814,17 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
               <span className="field-label">{copy.club}</span>
               <select
                 disabled={isFormDisabled || isEditingAnnouncement}
-                onChange={(event) => setPayload((current) => ({ ...current, clubId: event.target.value }))}
+                onChange={(event) => {
+                  const clubId = event.target.value;
+                  const nextEvent = snapshot.eventOptions.find((eventOption) => eventOption.clubId === clubId) ?? null;
+
+                  setPayload((current) => ({
+                    ...current,
+                    clubId,
+                    eventId: nextEvent?.eventId ?? "",
+                    targetCity: nextEvent?.city ?? "",
+                  }));
+                }}
                 value={payload.clubId}
               >
                 {snapshot.clubOptions.map((club) => (
@@ -779,16 +837,70 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
           ) : null}
 
           <label className="field-stack">
+            <span className="field-label">{copy.targetCity}</span>
+            <select
+              disabled={isFormDisabled || snapshot.scope === "CLUB"}
+              onChange={(event) =>
+                setPayload((current) => ({
+                  ...current,
+                  eventId:
+                    current.eventId.length === 0 ||
+                    eventOptions.some((eventOption) => eventOption.eventId === current.eventId && eventOption.city === event.target.value) ||
+                    event.target.value.length === 0
+                      ? current.eventId
+                      : "",
+                  targetCity: event.target.value,
+                }))
+              }
+              value={payload.targetCity}
+            >
+              {snapshot.scope === "ADMIN" ? <option value="">{copy.allCities}</option> : null}
+              {snapshot.cityOptions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-stack">
+            <span className="field-label">{copy.eventScope}</span>
+            <select
+              disabled={isFormDisabled || (snapshot.scope === "CLUB" && selectedClubId.length === 0)}
+              onChange={(event) => {
+                const eventId = event.target.value;
+                const selectedEvent = eventOptions.find((eventOption) => eventOption.eventId === eventId) ?? null;
+
+                setPayload((current) => ({
+                  ...current,
+                  audience: current.audience === "CLUBS" && eventId.length > 0 ? "STUDENTS" : current.audience,
+                  clubId: selectedEvent?.clubId ?? current.clubId,
+                  eventId,
+                  targetCity: selectedEvent?.city ?? current.targetCity,
+                }));
+              }}
+              value={payload.eventId}
+            >
+              {snapshot.scope === "ADMIN" ? <option value="">{copy.noEventScope}</option> : null}
+              {eventOptions.map((eventOption) => (
+                <option key={eventOption.eventId} value={eventOption.eventId}>
+                  {eventOption.eventName} · {eventOption.city}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-stack">
             <span className="field-label">{copy.audience}</span>
             <select
-              disabled={isFormDisabled || hasEventScope}
+              disabled={isFormDisabled}
               onChange={(event) =>
                 setPayload((current) => ({
                   ...current,
                   audience: event.target.value as AnnouncementCreatePayload["audience"],
                 }))
               }
-              value={hasEventScope ? "STUDENTS" : payload.audience}
+              value={hasEventScope && payload.audience === "CLUBS" ? "STUDENTS" : payload.audience}
             >
               {renderedAudienceOptions.map((audience) => (
                 <option key={audience} value={audience}>

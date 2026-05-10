@@ -259,10 +259,12 @@ export default function BusinessReportsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <AppIcon color={theme.colors.lime} name="history" size={22} />
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroIcon}>
+              <AppIcon color={theme.colors.lime} name="history" size={22} />
+            </View>
+            <Text style={styles.eyebrow}>{roiCopy.heroEyebrow}</Text>
           </View>
-          <Text style={styles.eyebrow}>{roiCopy.heroEyebrow}</Text>
           <Text style={styles.title}>{roiCopy.heroTitle}</Text>
           <Text style={styles.bodyText}>{roiCopy.heroBody}</Text>
         </View>
@@ -289,10 +291,10 @@ export default function BusinessReportsScreen() {
           <View style={styles.metricGrid}>
             {metricCards.map((metric) => (
               <View key={metric.label} style={styles.metricCard}>
-                <View style={styles.metricIcon}>
+                <View style={styles.metricCardHeader}>
                   <AppIcon color={theme.colors.lime} name={metric.iconName} size={18} />
+                  <Text style={styles.metricLabel}>{metric.label}</Text>
                 </View>
-                <Text style={styles.metricLabel}>{metric.label}</Text>
                 <Text style={styles.metricValue}>{formatNumber(metric.value, localeTag)}</Text>
                 <Text style={styles.metricBody}>{metric.body}</Text>
               </View>
@@ -333,17 +335,17 @@ const createStyles = (theme: MobileTheme) =>
     },
     content: {
       gap: 18,
-      paddingBottom: 112,
+      paddingBottom: 44,
       paddingHorizontal: 20,
       paddingTop: 18,
     },
     eventCard: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderStrong,
-      borderRadius: 24,
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
       borderWidth: 1,
-      gap: 16,
-      padding: 18,
+      gap: 14,
+      padding: 16,
     },
     eventHeader: {
       alignItems: "flex-start",
@@ -369,14 +371,13 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
     },
     eventMetricPill: {
-      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
-      borderRadius: 18,
-      borderWidth: 1,
+      borderRadius: theme.radius.inner,
+      borderTopWidth: 1,
       flexGrow: 1,
       gap: 3,
       minWidth: "46%",
-      paddingHorizontal: 12,
+      paddingHorizontal: 2,
       paddingVertical: 10,
     },
     eventMetricValue: {
@@ -404,22 +405,20 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     hero: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 28,
-      borderWidth: 1,
       gap: 8,
-      overflow: "hidden",
-      padding: 20,
+      paddingTop: 4,
     },
     heroIcon: {
       alignItems: "center",
-      backgroundColor: theme.colors.limeSurface,
       borderRadius: 999,
-      height: 46,
+      height: 34,
       justifyContent: "center",
-      marginBottom: 4,
-      width: 46,
+      width: 34,
+    },
+    heroTopRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
     },
     list: {
       gap: 12,
@@ -431,27 +430,24 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
     },
     metricCard: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderStrong,
-      borderRadius: 22,
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
       borderWidth: 1,
       flex: 1,
       gap: 8,
       minWidth: "45%",
       padding: 16,
     },
+    metricCardHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 7,
+    },
     metricGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 12,
-    },
-    metricIcon: {
-      alignItems: "center",
-      backgroundColor: theme.colors.limeSurface,
-      borderRadius: 999,
-      height: 34,
-      justifyContent: "center",
-      width: 34,
     },
     metricLabel: {
       color: theme.colors.textMuted,
@@ -490,8 +486,8 @@ const createStyles = (theme: MobileTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.bold,
-      fontSize: 34,
-      letterSpacing: -1,
-      lineHeight: 39,
+      fontSize: theme.typography.sizes.titleLarge,
+      letterSpacing: -0.8,
+      lineHeight: theme.typography.lineHeights.titleLarge,
     },
   });

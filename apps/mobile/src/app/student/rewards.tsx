@@ -18,9 +18,27 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { RewardProgressCard } from "@/features/rewards/components/reward-progress-card";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useStudentRewardOverviewQuery } from "@/features/rewards/student-rewards";
 import { useSession } from "@/providers/session-provider";
+
+const getUserMetadataDisplayName = (metadata: unknown): string | null => {
+  if (typeof metadata !== "object" || metadata === null) {
+    return null;
+  }
+
+  const metadataRecord = metadata as Record<string, unknown>;
+  const candidateKeys = ["full_name", "name", "display_name"] as const;
+
+  for (const key of candidateKeys) {
+    const value = metadataRecord[key];
+
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};
 
 export default function StudentRewardsScreen() {
   const router = useRouter();
@@ -30,6 +48,7 @@ export default function StudentRewardsScreen() {
   const theme = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const studentId = session?.user.id ?? null;
+  const studentDisplayName = getUserMetadataDisplayName(session?.user.user_metadata ?? null);
   const rewardOverviewQuery = useStudentRewardOverviewQuery({
     studentId: studentId ?? "",
     isEnabled: studentId !== null,
@@ -87,7 +106,6 @@ export default function StudentRewardsScreen() {
           <Text style={styles.screenTitle}>{copy.common.rewards}</Text>
           <Text style={styles.metaText}>{copy.student.rewardsMeta}</Text>
         </View>
-        <StudentProfileHeaderAction />
       </View>
 
       <CoverImageSurface imageStyle={styles.summaryHeroImage} source={featuredHeroSource} style={styles.summaryHero}>
@@ -180,6 +198,7 @@ export default function StudentRewardsScreen() {
                 <RewardProgressCard
                   event={event}
                   onOpenEvent={(eventId: string) => router.push(`/student/events/${eventId}`)}
+                  studentDisplayName={studentDisplayName}
                   studentId={studentId}
                   visibleTierCount={2}
                 />

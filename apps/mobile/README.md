@@ -102,8 +102,8 @@ npm run audit:store-release-readiness
 
 ## Store/public launch note
 
-- The repo now has a dedicated store/public-launch readiness audit for Expo config, build assets, native policy fields, and explicit EAS build environments.
-- The same gate also expects Expo EAS CLI auth and verifies the required remote EAS environment-variable names for `development`, `preview`, and `production`.
+- The repo now has a dedicated store/public-launch readiness audit for Expo config, build assets, native policy fields, and either explicit EAS build environments or a documented local Xcode/Gradle native release path.
+- EAS is the default automated path. If EAS quota/subscription is unavailable, run the gate with `OMALEIMA_NATIVE_RELEASE_MODE=local`; this keeps repo-owned checks active but treats App Store / Play upload as a manual local-build release step.
 - The gate also checks Android store permission hygiene: `SYSTEM_ALERT_WINDOW` and `RECORD_AUDIO` must be blocked, and Android backup must stay disabled for the mobile app.
 - The gate checks that the iOS privacy manifest source-of-truth declares app-functional collected data types and does not declare tracking.
 - If the ignored generated iOS project exists locally, the gate also checks `ios/OmaLeima/PrivacyInfo.xcprivacy`, stale iOS Pods paths, iOS Always/background location hygiene, and dev-client local-network plist hygiene.

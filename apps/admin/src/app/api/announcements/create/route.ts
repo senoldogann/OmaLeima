@@ -5,9 +5,11 @@ import {
   requireAnnouncementAccessAsync,
 } from "@/features/announcements/transport";
 import {
+  assertAnnouncementScopeAllowedForAccessOrThrow,
   AnnouncementValidationError,
   parseAnnouncementCreatePayloadOrThrow,
 } from "@/features/announcements/validation";
+import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
@@ -23,6 +25,7 @@ export async function POST(request: Request) {
 
     const supabase = await createRouteHandlerClient();
     const accessError = await requireAnnouncementAccessAsync(supabase);
+    const access = await resolveAdminAccessAsync(supabase);
 
     if (accessError !== null) {
       return NextResponse.json(accessError.response, {
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
     const body = parseAnnouncementCreatePayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
+    assertAnnouncementScopeAllowedForAccessOrThrow(access.area, body);
     const result = await createAnnouncementAsync(supabase, {
       audience: body.audienceValue,
       body: body.body,
@@ -67,6 +71,7 @@ export async function POST(request: Request) {
       priority: body.priorityValue,
       startsAt: body.startsAtValue,
       status: body.statusValue,
+      targetCity: body.targetCityValue,
       title: body.title,
     });
 

@@ -6,8 +6,11 @@ type DashboardMutationRequestOptions = {
 
 type DashboardMutationRequestErrorBody = {
   message: string;
-  status: "INVALID_REQUEST_ORIGIN" | "UNSUPPORTED_MEDIA_TYPE";
+  status: "CSRF_TOKEN_MISMATCH" | "INVALID_REQUEST_ORIGIN" | "UNSUPPORTED_MEDIA_TYPE";
 };
+
+export const dashboardCsrfCookieName = "omaleima_dashboard_csrf";
+export const dashboardCsrfHeaderName = "x-omaleima-csrf";
 
 const loopbackHostnames: ReadonlySet<string> = new Set(["127.0.0.1", "localhost", "::1"]);
 
@@ -63,6 +66,39 @@ const createMutationGuardResponse = (
   status: 403 | 415
 ): NextResponse<DashboardMutationRequestErrorBody> => NextResponse.json(body, { status });
 
+const readCookieValue = (request: Request, cookieName: string): string | null => {
+  const cookieHeader = request.headers.get("cookie");
+
+  if (cookieHeader === null) {
+    return null;
+  }
+
+  const cookiePrefix = `${cookieName}=`;
+  const cookieValue = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(cookiePrefix));
+
+  if (typeof cookieValue !== "string") {
+    return null;
+  }
+
+  return decodeURIComponent(cookieValue.slice(cookiePrefix.length));
+};
+
+const hasValidCsrfToken = (request: Request): boolean => {
+  const cookieToken = readCookieValue(request, dashboardCsrfCookieName);
+  const headerToken = request.headers.get(dashboardCsrfHeaderName);
+
+  return (
+    typeof cookieToken === "string" &&
+    typeof headerToken === "string" &&
+    cookieToken.length >= 32 &&
+    headerToken.length >= 32 &&
+    cookieToken === headerToken
+  );
+};
+
 export const validateDashboardMutationRequest = (
   request: Request,
   options: DashboardMutationRequestOptions
@@ -72,6 +108,16 @@ export const validateDashboardMutationRequest = (
       {
         message: "Dashboard mutation requests must come from the same site.",
         status: "INVALID_REQUEST_ORIGIN",
+      },
+      403
+    );
+  }
+
+  if (!hasValidCsrfToken(request)) {
+    return createMutationGuardResponse(
+      {
+        message: "Dashboard mutation request CSRF token is missing or invalid.",
+        status: "CSRF_TOKEN_MISMATCH",
       },
       403
     );

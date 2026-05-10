@@ -2,6 +2,188 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Main Release Merge + Low-cost Release Policy)
+
+- [x] Re-read required docs and inspect git/release script state.
+- [x] Clarify Sentry as optional and document the low-cost observability baseline.
+- [x] Add local native release mode for store readiness when EAS is unavailable.
+- [ ] Run final validation with local native release mode.
+- [ ] Commit the feature branch with the required trailer.
+- [ ] Merge to `main`, push GitHub, and inspect triggered release/deploy checks.
+- [ ] Delete safe merged local branches and update final handoff.
+
+## Current Todos (Production Ready Final Sweep)
+
+- [x] Re-read required project docs after compact and record the final production sweep scope.
+- [x] Run subagent-backed admin, student mobile, business mobile, Supabase/RLS/Edge, and release infrastructure review.
+- [x] Verify subagent P0/P1 claims against the repository and separate false positives from actionable fixes.
+- [x] Patch admin web production guards, generic error surfaces, login CSRF, and CSP baseline.
+- [x] Patch mobile student/business stale push routing, QR retry, scanner event context, scanner route guard, and bounded opportunity reads.
+- [x] Patch Edge push payload recipient binding and shared error-detail sanitization.
+- [x] Add release infrastructure CI/env/gitignore/runbook/checklist hardening.
+- [x] Run admin/mobile/Deno/diff validation and redeploy changed Supabase Edge Function bundles.
+- [x] Update final production review handoff.
+
+## Current Todos (Organization Release Rollout + Mobile Smoke)
+
+- [x] Re-read required project docs and inspect available mobile/Supabase/release tooling.
+- [x] Add and run a focused mobile organizer event edit/save RPC smoke.
+- [x] Run Supabase hosted migration push and deploy changed Edge Functions if needed.
+- [x] Update QA/release notes with the organization hardening production changelog line.
+- [x] Run final diff/validation and update `PROGRESS.md` handoff.
+
+## Current Todos (Per-business Venue Limit + Session Bootstrap Stabilization)
+
+- [x] Re-open and verify the affected event limit and session bootstrap files without changing unrelated product surfaces.
+- [x] Make `get_event_per_business_stamp_limit` support 1-5 clamped per-business limits instead of hardcoded 1.
+- [x] Update admin club-event rule builder and validation to accept 1-5 limits.
+- [x] Update mobile organizer event create/edit limit options to 1-5 and normalize mutation payload.
+- [x] Update `SessionProvider` bootstrap to avoid uncaught getSession/getBearer flow failures and to harden invalid refresh-token cleanup.
+- [x] Add a forward migration file for recovery path.
+- [x] Run local migration update and execute the function on linked remote DB.
+- [x] Verify function returns 1 for invalid/missing limits and clamps string/number values correctly.
+- [x] Reconcile migration history divergence (`supabase migration list` remote/local gap) in a clean sync.
+- [x] Run admin organizer limit editing smoke tests for club-events and department-tag paths.
+
+## Current Todos (Organization Operations Parity + RLS Hardening)
+
+- [x] Re-read required project docs after compact and retrieve organization web/RLS/test review outputs.
+- [x] Record organization operation review and REASONS plan before code changes.
+- [x] Add Supabase RPCs for club event update/cancel and department tag update/delete.
+- [x] Wire web and mobile event mutations through the new event RPCs.
+- [x] Add web department tag update/delete API routes, client helpers, validation, and UI controls.
+- [x] Extend organization smoke tests for event update/cancel and department tag update/delete.
+- [x] Run Supabase/admin/mobile validation and update PROGRESS handoff.
+
+## Current Todos (P1/P2 Core Security Hardening)
+
+- [x] Re-read required project docs and inspect the reported P1/P2 files.
+- [x] Record focused REVIEW/PLAN/TODOS context and REASONS prompt before code edits.
+- [x] Sanitize shared Edge error response details so internal UUID/provider/DB details are not exposed.
+- [x] Add endpoint-layer throttling before expensive push recipient expansion/send flows.
+- [x] Stabilize business scanner submission around an immutable selected event context snapshot.
+- [x] Reduce mobile QR refresh cadence to backend-driven intervals instead of aggressive first retry loops.
+- [x] Run Deno/admin/mobile/Supabase validation and update PROGRESS handoff.
+
+## Current Todos (Ignored Local Artifact Cleanup)
+
+- [x] Record the cleanup scope in REVIEW/PLAN/TODOS.
+- [x] Delete the repo-ignored local artifact directories under `outputs/` and `tmp/`.
+- [x] Run targeted git/rg validation to confirm the artifact paths are gone.
+- [x] Update `PROGRESS.md` handoff with the cleanup result.
+
+## Current Todos (City/Event Scoped Announcements + Business History)
+
+- [x] Convert business history to business-staff scoped RPC instead of operator-only rows.
+- [x] Add announcement `target_city` schema support and city-aware read visibility.
+- [x] Allow event-scoped announcements for `ALL`, `STUDENTS`, and `BUSINESSES` while blocking event-scoped `CLUBS`.
+- [x] Wire `targetCity` through admin validation, create/update transport, and read-model.
+- [x] Add admin compose controls for city and event scoping.
+- [x] Make announcement push recipient expansion respect event and city scopes.
+- [x] Update business history copy to describe business-wide history.
+- [x] Run validation and deploy Supabase/Vercel after explicit approval.
+- [x] Smoke production organizer announcement form in Chrome and fix leftover hosted announcement scope constraints.
+- [x] Enforce organizer announcements as event-scoped and event-city scoped only.
+- [x] Diagnose mobile EAS Android bundle failure and include production fallback PNG assets in the EAS archive.
+- [x] Restart Android production build after the archive fix.
+- [ ] Complete iOS production build after interactive Apple distribution certificate validation.
+
+## Current Todos (Organizer Reward Claim Visibility)
+
+- [x] Re-read required project docs after compact.
+- [x] Inspect web and mobile organizer reward claim read models and screens.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add read-only under-threshold reward progress rows to web/mobile snapshots.
+- [x] Render organizer-visible progress rows without enabling invalid claim.
+- [x] Add scoped student display-name lookup for organizer claim rows.
+- [x] Add mobile event filter for claimable/progress/recent handoff rows.
+- [x] Run admin/mobile/Supabase validation and update handoff.
+
+## Current Todos (Security Findings Hardening)
+
+- [x] Re-read required project docs and Codex Security fix-finding guidance.
+- [x] Inspect reported Edge, DB, mobile session/router, and scanner log paths.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add DB/RLS helper and promotion push atomic limiter migration.
+- [x] Patch Edge functions for recipient scope, reward HTTP semantics, audit, payload binding, and scanner log reduction.
+- [x] Patch mobile notification/session handling for recipient binding and local sign-out cleanup.
+- [x] Run Supabase/Deno/mobile/admin validation and update handoff.
+
+## Current Todos (Reward Path + Tiedotteet Ticket Polish)
+
+- [x] Re-read required project docs after compact and inspect current student event/announcement owners.
+- [x] Record focused review and REASONS plan for the UI polish slice.
+- [x] Compact the event detail reward path spacing and controls.
+- [x] Convert Yhteisö announcement rail cards toward the Approt ticket card language.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Event-Centered Student Rewards Navigation)
+
+- [x] Re-read required project docs and inspect student event/reward/navigation owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add reward progress state to Approt event cards.
+- [x] Render reward progress and handoff state inline on event detail.
+- [x] Restore Profile as bottom tab and hide Rewards from visible tabs.
+- [x] Remove duplicated student header profile buttons and update reward push routing.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Push Payload Session Boundary + Scanner Error Sanitization)
+
+- [x] Re-read required project docs and inspect the reported notification/scanner files.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Clear queued notification payloads across authenticated user changes.
+- [x] Sanitize scanner transport errors for unknown or non-JSON response bodies.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Store Polish, Localized Apple Login, Live Leima Consistency)
+
+- [x] Re-read required project docs and relevant frontend/Expo skills.
+- [x] Inspect login, Apple auth, community, leima pass, student query freshness, and startup auth logs.
+- [x] Redesign login while preserving the slider and app language controls.
+- [x] Force Sign in with Apple button copy to use Finnish/English app localization.
+- [x] Redesign the student community/club directory presentation.
+- [x] Fix leima pass slot count and student query freshness after event metadata updates.
+- [x] Quiet invalid refresh-token startup cleanup without hiding real auth errors.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Event Create Constraint + Mobile UI Polish)
+
+- [x] Re-read required project docs and inspect reported admin/mobile surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix admin event creation so empty optional ticket URLs persist as `null`.
+- [x] Keep same-venue stamp limit unchanged and document why it is currently `1`.
+- [x] Polish student Approt card/header layout for date, location, join, and profile access.
+- [x] Reduce Yhteisö announcement card height and make club email footer tappable.
+- [x] Simplify login hero/panel language and text density.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Cached Egress + Approt Ticket Cards)
+
+- [x] Re-read required project docs and inspect cached egress/media/card owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Extend future public media upload cache headers for immutable assets.
+- [x] Redesign student Approt event cards with ticket styling and aligned actions.
+- [x] Replace Approt `OmaLeima` header with screen title/subtitle.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Login Role Selector Polish)
+
+- [x] Re-read active project handoff/docs and inspect login screen owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Replace the student role selector Google icon with a neutral role icon.
+- [x] Move the slider language toggle slightly upward.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Physical iOS Xcode Build Fix)
+
+- [x] Re-read required project docs and inspect branch/native iOS state.
+- [x] Reproduce the Xcode build failure with signing disabled to separate compile/link errors from provisioning.
+- [x] Identify the Debug iPhoneOS linker failure source in React Native prebuilt core/debug renderer symbols.
+- [x] Switch the iOS native build to source-built React Native core and regenerate pods.
+- [x] Re-run mobile validation and Xcode Debug iPhoneOS build.
+- [x] Run signing-enabled build if possible and document any remaining provisioning-only issue.
+- [x] Update handoff with exact build evidence.
+
 ## Current Todos (Store Release Prep + Apple Sign-In)
 
 - [x] Re-read required project docs and inspect current production gaps / git state.
@@ -1696,6 +1878,72 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Update working docs and progress handoff.
 
 ## Next Queue
+
+## Current Todos (Business Announcement Push Delivery)
+
+- [x] Inspect mobile push handling, announcement visibility, and send-push recipient resolution for business vs student paths.
+- [x] Update working docs for the business push delivery slice.
+- [x] Add mobile foreground announcement push invalidation.
+- [x] Add club-scoped business announcement visibility migration.
+- [x] Include joined business staff in club-scoped business/all push recipients.
+- [x] Run validation, deploy Supabase migration/function, and update handoff.
+
+## Current Todos (Announcement Realtime Regression + Profile Panel Cleanup)
+
+- [x] Inspect realtime announcement hook, popup/feed image rendering, and organizer profile panel ownership.
+- [x] Update working docs for the regression fix slice.
+- [x] Give each announcement realtime hook instance a unique channel topic.
+- [x] Render popup announcement fallback image when no custom image exists.
+- [x] Remove duplicated organizer profile intro panel below the page header.
+- [x] Run mobile/admin validation, deploy admin, and update handoff.
+
+## Current Todos (Hosted Event + Realtime Refresh Fixes)
+
+- [x] Inspect event ticket URL transport, announcement mutation messages, post-event follow-up timing, announcement realtime invalidation, and shared manual refresh behavior.
+- [x] Update working docs for the hosted release fix slice.
+- [x] Normalize admin event update ticket URLs before persistence.
+- [x] Remove user-facing UUIDs from announcement mutation success messages.
+- [x] Make post-event follow-up announcements start immediately and invalidate mobile feeds through Supabase realtime.
+- [x] Add a shared manual refresh timeout guard for all screens using `useManualRefresh`.
+- [x] Run admin/mobile validation, deploy admin to Vercel, and update handoff.
+
+## Current Todos (Profile Typography + Collapsible Scanner)
+
+- [x] Inspect business profile notification setup, typography tokens, and scanner event selector.
+- [x] Update working docs for the current UI/typography slice.
+- [x] Align business profile notification row with other preference rows.
+- [x] Make business scanner multi-event selector collapsible.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Final Mobile UI Micro Polish)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and frontend-design skill.
+- [x] Inspect student club directory, business events, ROI, and reward handoff owners.
+- [x] Update working docs for the current micro-polish slice.
+- [x] Move student club count to the top-right and neutralize the email icon button.
+- [x] Add business events rail breathing room and reduce ROI bottom padding.
+- [x] Show student display name in reward handoff and soften the handoff background.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Business Surfaces + History Filter Sheet)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and frontend-design skill.
+- [x] Inspect business events, ROI, history, and student club directory owners.
+- [x] Update working docs for the current UI polish slice.
+- [x] Remove nested card backgrounds from business Approt/events surfaces.
+- [x] Redesign business ROI dashboard surfaces.
+- [x] Simplify student club summary and switch email action to icon-only.
+- [x] Move business history filters into one filter sheet.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Community Ticket Cards + Business Notification Icon)
+
+- [x] Re-read project rules, master plan, progress, todos, and plan.
+- [x] Inspect Yhteisö header, announcement cards, club cards, and business notification setup card.
+- [x] Update working docs for the current polish slice.
+- [x] Convert Yhteisö header and cards to the Approt visual language.
+- [x] Align the business profile notification icon with other profile icons.
+- [x] Run focused mobile validation and update handoff.
 
 - [ ] Physical iPhone smoke: student community tab opens tiedotteet + clubs, profile header icon opens profile, and event discovery no longer duplicates these sections.
 - [ ] Physical iPhone smoke: student profile `Ainejärjestötagit` modal keeps the custom-tag input visible above the keyboard and the create button remains tappable.

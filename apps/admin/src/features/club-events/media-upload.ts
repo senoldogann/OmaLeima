@@ -91,7 +91,7 @@ export const uploadClubEventCoverImageAsync = async ({
     userId: userData.user.id,
   });
   const { error } = await supabase.storage.from(mediaStagingBucketName).upload(storagePath, file, {
-    cacheControl: "3600",
+    cacheControl: "31536000",
     contentType: file.type,
     upsert: false,
   });

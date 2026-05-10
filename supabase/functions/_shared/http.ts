@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+
 export type ErrorCode =
   | "METHOD_NOT_ALLOWED"
   | "INVALID_JSON"
@@ -46,6 +48,7 @@ export type ErrorCode =
   | "QR_RATE_LIMITED"
   | "QR_INVALID"
   | "QR_NOT_FOUND"
+  | "RATE_LIMITED"
   | "INTERNAL_ERROR";
 
 export type ErrorResponse = {
@@ -55,6 +58,22 @@ export type ErrorResponse = {
 };
 
 export type JsonObject = Record<string, unknown>;
+
+export type EdgeActorRateLimitOptions = {
+  dayMaxRequests: number;
+  windowMaxRequests: number;
+  windowSeconds: number;
+};
+
+type EdgeRateLimitRpcResponse = {
+  limit?: unknown;
+  remainingInWindow?: unknown;
+  remainingToday?: unknown;
+  retryAfterSeconds?: unknown;
+  scope?: unknown;
+  status?: unknown;
+  windowSeconds?: unknown;
+};
 
 export const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Origin": "*",
@@ -74,7 +93,19 @@ export const jsonResponse = (body: JsonObject, status: number): Response =>
 const isSensitiveErrorDetailKey = (key: string): boolean => {
   const normalizedKey = key.toLowerCase();
 
-  return normalizedKey === "error" || normalizedKey.endsWith("error") || normalizedKey.includes("errormessage");
+  return (
+    normalizedKey === "error" ||
+    normalizedKey.endsWith("error") ||
+    normalizedKey.includes("errorcode") ||
+    normalizedKey.includes("errormessage") ||
+    normalizedKey.includes("secret") ||
+    normalizedKey.includes("password") ||
+    normalizedKey.includes("token") ||
+    normalizedKey === "id" ||
+    normalizedKey.endsWith("id") ||
+    /(^|[_-])ids?$/i.test(key) ||
+    /Ids?$/.test(key)
+  );
 };
 
 const sanitizeErrorDetailValue = (key: string, value: unknown): unknown => {
@@ -102,6 +133,74 @@ export const errorResponse = (
   message: string,
   details: Record<string, unknown>,
 ): Response => jsonResponse({ status: code, message, details: sanitizeErrorDetails(details) }, status);
+
+const readRetryAfterSeconds = (value: unknown): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 60;
+  }
+
+  return Math.max(1, Math.ceil(value));
+};
+
+const readRateLimitStatus = (value: unknown): string | null => {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const response = value as EdgeRateLimitRpcResponse;
+
+  return typeof response.status === "string" ? response.status : null;
+};
+
+export const enforceEdgeActorRateLimitAsync = async (
+  supabase: SupabaseClient,
+  actorUserId: string,
+  scope: string,
+  options: EdgeActorRateLimitOptions,
+): Promise<Response | null> => {
+  const { data, error } = await supabase.rpc("check_dashboard_mutation_rate_limit", {
+    p_actor_user_id: actorUserId,
+    p_day_max_requests: options.dayMaxRequests,
+    p_scope: scope,
+    p_window_max_requests: options.windowMaxRequests,
+    p_window_seconds: options.windowSeconds,
+  });
+
+  if (error !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to check endpoint rate limit.", {
+      actorUserId,
+      rateLimitError: error.message,
+      rateLimitErrorCode: error.code,
+      scope,
+    });
+  }
+
+  const status = readRateLimitStatus(data);
+
+  if (status === "ALLOWED") {
+    return null;
+  }
+
+  if (status === "RATE_LIMITED") {
+    const response = data as EdgeRateLimitRpcResponse;
+    const retryAfterSeconds = readRetryAfterSeconds(response.retryAfterSeconds);
+
+    return jsonResponse(
+      {
+        message: "Too many push requests. Please wait and try again.",
+        retryAfterSeconds,
+        status: "RATE_LIMITED",
+      },
+      429,
+    );
+  }
+
+  return errorResponse(500, "INTERNAL_ERROR", "Endpoint rate limit returned an unexpected status.", {
+    actorUserId,
+    rateLimitStatus: status,
+    scope,
+  });
+};
 
 export const optionsResponse = (): Response => new Response("ok", { headers: corsHeaders });
 

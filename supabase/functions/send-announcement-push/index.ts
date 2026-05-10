@@ -1,6 +1,13 @@
 import { readRuntimeEnv } from "../_shared/env.ts";
 import { type ExpoPushMessage, type ExpoPushSendResult, sendExpoPushMessages } from "../_shared/expoPush.ts";
-import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
+import {
+  assertPostRequest,
+  enforceEdgeActorRateLimitAsync,
+  errorResponse,
+  getBearerToken,
+  jsonResponse,
+  readJsonBody,
+} from "../_shared/http.ts";
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
 import { isUuid } from "../_shared/validation.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
@@ -8,6 +15,8 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 type SendAnnouncementPushRequest = {
   announcementId: string;
 };
+
+type ErrorResponseCode = Parameters<typeof errorResponse>[1];
 
 type ProfileRow = {
   id: string;
@@ -27,6 +36,7 @@ type AnnouncementRow = {
   image_url: string | null;
   starts_at: string;
   status: "ARCHIVED" | "DRAFT" | "PUBLISHED";
+  target_city: string | null;
   title: string;
 };
 
@@ -38,8 +48,24 @@ type BusinessStaffRow = {
   user_id: string;
 };
 
-type EventRow = {
+type BusinessRow = {
+  city: string | null;
   id: string;
+};
+
+type ClubRow = {
+  city: string | null;
+  id: string;
+};
+
+type EventRow = {
+  city: string;
+  id: string;
+  status: "ACTIVE" | "ARCHIVED" | "COMPLETED" | "DRAFT" | "PUBLISHED";
+};
+
+type EventVenueRow = {
+  business_id: string;
 };
 
 type RegistrationRow = {
@@ -212,6 +238,60 @@ const getDeliveryAttemptStatus = (
 const unique = (values: string[]): string[] => Array.from(new Set(values));
 
 const recipientQueryBatchSize = 500;
+const announcementPushRateLimitOptions = {
+  dayMaxRequests: 80,
+  windowMaxRequests: 6,
+  windowSeconds: 60,
+};
+
+const normalizeCityKey = (city: string | null): string =>
+  (city ?? "").trim().toLowerCase();
+
+type AuditedAnnouncementPushErrorParams = {
+  actorUserId: string | null;
+  announcementId: string | null;
+  code: ErrorResponseCode;
+  details: Record<string, unknown>;
+  message: string;
+  status: number;
+  supabase: SupabaseClient;
+};
+
+const auditedAnnouncementPushErrorResponseAsync = async ({
+  actorUserId,
+  announcementId,
+  code,
+  details,
+  message,
+  status,
+  supabase,
+}: AuditedAnnouncementPushErrorParams): Promise<Response> => {
+  const { error: auditLogError } = await supabase
+    .from("audit_logs")
+    .insert({
+      action: "ANNOUNCEMENT_PUSH_FAILED",
+      actor_user_id: actorUserId,
+      metadata: {
+        ...details,
+        code,
+        message,
+        httpStatus: status,
+      },
+      resource_id: announcementId,
+      resource_type: "announcement",
+    });
+
+  if (auditLogError !== null) {
+    console.warn("announcement_push_failure_audit_failed", {
+      announcementId,
+      auditLogError: auditLogError.message,
+      auditLogErrorCode: auditLogError.code,
+      code,
+    });
+  }
+
+  return errorResponse(status, code, message, details);
+};
 
 const chunkStrings = (values: string[], chunkSize: number): string[][] => {
   if (chunkSize <= 0) {
@@ -254,6 +334,172 @@ const fetchClubRegistrationRecipientsAsync = async (
     }
 
     recipients.push(...registrations.map((registration) => registration.student_id));
+  }
+
+  return recipients;
+};
+
+const fetchClubBusinessRecipientsAsync = async (
+  supabase: SupabaseClient,
+  eventIds: string[],
+  announcementId: string,
+  clubId: string | null
+): Promise<Response | string[]> => {
+  const businessIds: string[] = [];
+
+  for (const eventIdBatch of chunkStrings(eventIds, recipientQueryBatchSize)) {
+    const { data: venues, error: venuesError } = await supabase
+      .from("event_venues")
+      .select("business_id")
+      .in("event_id", eventIdBatch)
+      .eq("status", "JOINED")
+      .returns<EventVenueRow[]>();
+
+    if (venuesError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to read club event business recipients.", {
+        announcementId,
+        clubId,
+        eventBatchSize: eventIdBatch.length,
+        venuesError: venuesError.message,
+        venuesErrorCode: venuesError.code,
+      });
+    }
+
+    businessIds.push(...venues.map((venue) => venue.business_id));
+  }
+
+  const uniqueBusinessIds = unique(businessIds);
+  const recipients: string[] = [];
+
+  for (const businessIdBatch of chunkStrings(uniqueBusinessIds, recipientQueryBatchSize)) {
+    const { data: businessStaff, error: businessStaffError } = await supabase
+      .from("business_staff")
+      .select("user_id")
+      .in("business_id", businessIdBatch)
+      .eq("status", "ACTIVE")
+      .returns<BusinessStaffRow[]>();
+
+    if (businessStaffError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to read club event business staff recipients.", {
+        announcementId,
+        businessBatchSize: businessIdBatch.length,
+        clubId,
+        businessStaffError: businessStaffError.message,
+        businessStaffErrorCode: businessStaffError.code,
+      });
+    }
+
+    recipients.push(...businessStaff.map((row) => row.user_id));
+  }
+
+  return recipients;
+};
+
+const fetchBusinessRecipientsByCityAsync = async (
+  supabase: SupabaseClient,
+  city: string,
+  announcementId: string
+): Promise<Response | string[]> => {
+  const { data: businesses, error: businessesError } = await supabase
+    .from("businesses")
+    .select("id,city")
+    .eq("status", "ACTIVE")
+    .returns<BusinessRow[]>();
+
+  if (businessesError !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to read city business recipients.", {
+      announcementId,
+      businessesError: businessesError.message,
+      businessesErrorCode: businessesError.code,
+      city,
+    });
+  }
+
+  const targetCityKey = normalizeCityKey(city);
+  const businessIds = businesses
+    .filter((business) => normalizeCityKey(business.city) === targetCityKey)
+    .map((business) => business.id);
+
+  if (businessIds.length === 0) {
+    return [];
+  }
+
+  const recipients: string[] = [];
+
+  for (const businessIdBatch of chunkStrings(businessIds, recipientQueryBatchSize)) {
+    const { data: businessStaff, error: businessStaffError } = await supabase
+      .from("business_staff")
+      .select("user_id")
+      .in("business_id", businessIdBatch)
+      .eq("status", "ACTIVE")
+      .returns<BusinessStaffRow[]>();
+
+    if (businessStaffError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to read city business staff recipients.", {
+        announcementId,
+        businessBatchSize: businessIdBatch.length,
+        businessStaffError: businessStaffError.message,
+        businessStaffErrorCode: businessStaffError.code,
+        city,
+      });
+    }
+
+    recipients.push(...businessStaff.map((row) => row.user_id));
+  }
+
+  return recipients;
+};
+
+const fetchClubRecipientsByCityAsync = async (
+  supabase: SupabaseClient,
+  city: string,
+  announcementId: string
+): Promise<Response | string[]> => {
+  const { data: clubs, error: clubsError } = await supabase
+    .from("clubs")
+    .select("id,city")
+    .eq("status", "ACTIVE")
+    .returns<ClubRow[]>();
+
+  if (clubsError !== null) {
+    return errorResponse(500, "INTERNAL_ERROR", "Failed to read city club recipients.", {
+      announcementId,
+      city,
+      clubsError: clubsError.message,
+      clubsErrorCode: clubsError.code,
+    });
+  }
+
+  const targetCityKey = normalizeCityKey(city);
+  const clubIds = clubs
+    .filter((club) => normalizeCityKey(club.city) === targetCityKey)
+    .map((club) => club.id);
+
+  if (clubIds.length === 0) {
+    return [];
+  }
+
+  const recipients: string[] = [];
+
+  for (const clubIdBatch of chunkStrings(clubIds, recipientQueryBatchSize)) {
+    const { data: clubMembers, error: clubMembersError } = await supabase
+      .from("club_members")
+      .select("user_id")
+      .in("club_id", clubIdBatch)
+      .eq("status", "ACTIVE")
+      .returns<ClubMemberRow[]>();
+
+    if (clubMembersError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to read city club staff recipients.", {
+        announcementId,
+        city,
+        clubBatchSize: clubIdBatch.length,
+        clubMembersError: clubMembersError.message,
+        clubMembersErrorCode: clubMembersError.code,
+      });
+    }
+
+    recipients.push(...clubMembers.map((row) => row.user_id));
   }
 
   return recipients;
@@ -543,46 +789,97 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     if (profile.status !== "ACTIVE") {
-      return errorResponse(403, "PROFILE_NOT_ACTIVE", "User profile is not active.", {
-        profileStatus: profile.status,
-        userId: user.id,
+      return await auditedAnnouncementPushErrorResponseAsync({
+        actorUserId: user.id,
+        announcementId: body.announcementId,
+        code: "PROFILE_NOT_ACTIVE",
+        details: {
+          profileStatus: profile.status,
+          userId: user.id,
+        },
+        message: "User profile is not active.",
+        status: 403,
+        supabase,
       });
+    }
+
+    const rateLimitResponse = await enforceEdgeActorRateLimitAsync(
+      supabase,
+      user.id,
+      "edge-send-announcement-push",
+      announcementPushRateLimitOptions,
+    );
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const { data: announcement, error: announcementError } = await supabase
       .from("announcements")
-      .select("id,club_id,audience,title,body,cta_label,cta_url,image_url,status,starts_at,ends_at,event_id")
+      .select("id,club_id,audience,title,body,cta_label,cta_url,image_url,status,starts_at,ends_at,event_id,target_city")
       .eq("id", body.announcementId)
       .maybeSingle<AnnouncementRow>();
 
     if (announcementError !== null) {
-      return errorResponse(500, "INTERNAL_ERROR", "Failed to read announcement.", {
-        announcementError: announcementError.message,
-        announcementErrorCode: announcementError.code,
+      return await auditedAnnouncementPushErrorResponseAsync({
+        actorUserId: user.id,
         announcementId: body.announcementId,
+        code: "INTERNAL_ERROR",
+        details: {
+          announcementError: announcementError.message,
+          announcementErrorCode: announcementError.code,
+          announcementId: body.announcementId,
+        },
+        message: "Failed to read announcement.",
+        status: 500,
+        supabase,
       });
     }
 
     if (announcement === null) {
-      return errorResponse(404, "ANNOUNCEMENT_NOT_FOUND", "Announcement was not found.", {
+      return await auditedAnnouncementPushErrorResponseAsync({
+        actorUserId: user.id,
         announcementId: body.announcementId,
+        code: "ANNOUNCEMENT_NOT_FOUND",
+        details: {
+          announcementId: body.announcementId,
+        },
+        message: "Announcement was not found.",
+        status: 404,
+        supabase,
       });
     }
 
     if (!isAnnouncementActiveNow(announcement)) {
-      return errorResponse(400, "ANNOUNCEMENT_NOT_ACTIVE", "Announcement is not active for push delivery.", {
-        announcementEndsAt: announcement.ends_at,
+      return await auditedAnnouncementPushErrorResponseAsync({
+        actorUserId: user.id,
         announcementId: announcement.id,
-        announcementStartsAt: announcement.starts_at,
-        announcementStatus: announcement.status,
+        code: "ANNOUNCEMENT_NOT_ACTIVE",
+        details: {
+          announcementEndsAt: announcement.ends_at,
+          announcementId: announcement.id,
+          announcementStartsAt: announcement.starts_at,
+          announcementStatus: announcement.status,
+        },
+        message: "Announcement is not active for push delivery.",
+        status: 400,
+        supabase,
       });
     }
 
     if (!isPlatformAdmin(profile)) {
       if (announcement.club_id === null) {
-        return errorResponse(403, "ANNOUNCEMENT_PUSH_NOT_ALLOWED", "Only platform admins can send platform announcements.", {
+        return await auditedAnnouncementPushErrorResponseAsync({
+          actorUserId: user.id,
           announcementId: announcement.id,
-          userId: user.id,
+          code: "ANNOUNCEMENT_PUSH_NOT_ALLOWED",
+          details: {
+            announcementId: announcement.id,
+            userId: user.id,
+          },
+          message: "Only platform admins can send platform announcements.",
+          status: 403,
+          supabase,
         });
       }
 
@@ -596,20 +893,36 @@ Deno.serve(async (request: Request): Promise<Response> => {
         .maybeSingle<ClubMemberRow>();
 
       if (clubMemberError !== null) {
-        return errorResponse(500, "INTERNAL_ERROR", "Failed to verify club organizer access.", {
+        return await auditedAnnouncementPushErrorResponseAsync({
+          actorUserId: user.id,
           announcementId: announcement.id,
-          clubId: announcement.club_id,
-          clubMemberError: clubMemberError.message,
-          clubMemberErrorCode: clubMemberError.code,
-          userId: user.id,
+          code: "INTERNAL_ERROR",
+          details: {
+            announcementId: announcement.id,
+            clubId: announcement.club_id,
+            clubMemberError: clubMemberError.message,
+            clubMemberErrorCode: clubMemberError.code,
+            userId: user.id,
+          },
+          message: "Failed to verify club organizer access.",
+          status: 500,
+          supabase,
         });
       }
 
       if (clubMember === null) {
-        return errorResponse(403, "ANNOUNCEMENT_PUSH_NOT_ALLOWED", "User cannot send this club announcement.", {
+        return await auditedAnnouncementPushErrorResponseAsync({
+          actorUserId: user.id,
           announcementId: announcement.id,
-          clubId: announcement.club_id,
-          userId: user.id,
+          code: "ANNOUNCEMENT_PUSH_NOT_ALLOWED",
+          details: {
+            announcementId: announcement.id,
+            clubId: announcement.club_id,
+            userId: user.id,
+          },
+          message: "User cannot send this club announcement.",
+          status: 403,
+          supabase,
         });
       }
     }
@@ -618,75 +931,181 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     if (announcement.club_id === null) {
       if (announcement.audience === "BUSINESSES") {
-        const { data, error } = await supabase
-          .from("business_staff")
-          .select("user_id")
-          .eq("status", "ACTIVE")
-          .returns<BusinessStaffRow[]>();
+        if (announcement.target_city !== null) {
+          const businessRecipients = await fetchBusinessRecipientsByCityAsync(
+            supabase,
+            announcement.target_city,
+            announcement.id
+          );
 
-        if (error !== null) {
-          return errorResponse(500, "INTERNAL_ERROR", "Failed to read business staff recipients.", {
-            announcementId: announcement.id,
-            error: error.message,
-          });
+          if (businessRecipients instanceof Response) {
+            return businessRecipients;
+          }
+
+          recipientUserIds = businessRecipients;
+        } else {
+          const { data, error } = await supabase
+            .from("business_staff")
+            .select("user_id")
+            .eq("status", "ACTIVE")
+            .returns<BusinessStaffRow[]>();
+
+          if (error !== null) {
+            return errorResponse(500, "INTERNAL_ERROR", "Failed to read business staff recipients.", {
+              announcementId: announcement.id,
+              error: error.message,
+            });
+          }
+
+          recipientUserIds = data.map((row) => row.user_id);
         }
-
-        recipientUserIds = data.map((row) => row.user_id);
       } else if (announcement.audience === "CLUBS") {
-        const { data, error } = await supabase
-          .from("club_members")
-          .select("user_id")
-          .eq("status", "ACTIVE")
-          .returns<ClubMemberRow[]>();
+        if (announcement.target_city !== null) {
+          const clubRecipients = await fetchClubRecipientsByCityAsync(
+            supabase,
+            announcement.target_city,
+            announcement.id
+          );
 
-        if (error !== null) {
-          return errorResponse(500, "INTERNAL_ERROR", "Failed to read club staff recipients.", {
-            announcementId: announcement.id,
-            error: error.message,
-          });
+          if (clubRecipients instanceof Response) {
+            return clubRecipients;
+          }
+
+          recipientUserIds = clubRecipients;
+        } else {
+          const { data, error } = await supabase
+            .from("club_members")
+            .select("user_id")
+            .eq("status", "ACTIVE")
+            .returns<ClubMemberRow[]>();
+
+          if (error !== null) {
+            return errorResponse(500, "INTERNAL_ERROR", "Failed to read club staff recipients.", {
+              announcementId: announcement.id,
+              error: error.message,
+            });
+          }
+
+          recipientUserIds = data.map((row) => row.user_id);
         }
-
-        recipientUserIds = data.map((row) => row.user_id);
       } else {
-        let query = supabase
-          .from("profiles")
-          .select("id")
-          .eq("status", "ACTIVE");
+        if (announcement.target_city !== null) {
+          const { data: cityEvents, error: cityEventsError } = await supabase
+            .from("events")
+            .select("id,status,city")
+            .in("status", ["PUBLISHED", "ACTIVE"])
+            .returns<EventRow[]>();
 
-        if (announcement.audience === "STUDENTS") {
-          query = query.eq("primary_role", "STUDENT");
+          if (cityEventsError !== null) {
+            return errorResponse(500, "INTERNAL_ERROR", "Failed to read city events for announcement recipients.", {
+              announcementId: announcement.id,
+              city: announcement.target_city,
+              cityEventsError: cityEventsError.message,
+              cityEventsErrorCode: cityEventsError.code,
+            });
+          }
+
+          const targetCityKey = normalizeCityKey(announcement.target_city);
+          const cityEventIds = cityEvents
+            .filter((event) => normalizeCityKey(event.city) === targetCityKey)
+            .map((event) => event.id);
+
+          if (cityEventIds.length > 0 && (announcement.audience === "ALL" || announcement.audience === "STUDENTS")) {
+            const registrationRecipients = await fetchClubRegistrationRecipientsAsync(
+              supabase,
+              cityEventIds,
+              announcement.id,
+              announcement.club_id
+            );
+
+            if (registrationRecipients instanceof Response) {
+              return registrationRecipients;
+            }
+
+            recipientUserIds = registrationRecipients;
+          }
+
+          if (announcement.audience === "ALL") {
+            const businessRecipients = await fetchBusinessRecipientsByCityAsync(
+              supabase,
+              announcement.target_city,
+              announcement.id
+            );
+
+            if (businessRecipients instanceof Response) {
+              return businessRecipients;
+            }
+
+            const clubRecipients = await fetchClubRecipientsByCityAsync(
+              supabase,
+              announcement.target_city,
+              announcement.id
+            );
+
+            if (clubRecipients instanceof Response) {
+              return clubRecipients;
+            }
+
+            recipientUserIds = recipientUserIds.concat(businessRecipients, clubRecipients);
+          }
+        } else {
+          let query = supabase
+            .from("profiles")
+            .select("id")
+            .eq("status", "ACTIVE");
+
+          if (announcement.audience === "STUDENTS") {
+            query = query.eq("primary_role", "STUDENT");
+          }
+
+          const { data, error } = await query.returns<ActiveProfileRow[]>();
+
+          if (error !== null) {
+            return errorResponse(500, "INTERNAL_ERROR", "Failed to read profile recipients.", {
+              announcementId: announcement.id,
+              error: error.message,
+            });
+          }
+
+          recipientUserIds = data.map((row) => row.id);
         }
-
-        const { data, error } = await query.returns<ActiveProfileRow[]>();
-
-        if (error !== null) {
-          return errorResponse(500, "INTERNAL_ERROR", "Failed to read profile recipients.", {
-            announcementId: announcement.id,
-            error: error.message,
-          });
-        }
-
-        recipientUserIds = data.map((row) => row.id);
       }
     } else if (announcement.event_id !== null) {
-      const { data: registrations, error: registrationsError } = await supabase
-        .from("event_registrations")
-        .select("student_id")
-        .eq("event_id", announcement.event_id)
-        .eq("status", "REGISTERED")
-        .returns<RegistrationRow[]>();
+      if (announcement.audience === "ALL" || announcement.audience === "STUDENTS") {
+        const { data: registrations, error: registrationsError } = await supabase
+          .from("event_registrations")
+          .select("student_id")
+          .eq("event_id", announcement.event_id)
+          .eq("status", "REGISTERED")
+          .returns<RegistrationRow[]>();
 
-      if (registrationsError !== null) {
-        return errorResponse(500, "INTERNAL_ERROR", "Failed to read event-scoped announcement registrations.", {
-          announcementId: announcement.id,
-          clubId: announcement.club_id,
-          eventId: announcement.event_id,
-          registrationsError: registrationsError.message,
-          registrationsErrorCode: registrationsError.code,
-        });
+        if (registrationsError !== null) {
+          return errorResponse(500, "INTERNAL_ERROR", "Failed to read event-scoped announcement registrations.", {
+            announcementId: announcement.id,
+            clubId: announcement.club_id,
+            eventId: announcement.event_id,
+            registrationsError: registrationsError.message,
+            registrationsErrorCode: registrationsError.code,
+          });
+        }
+
+        recipientUserIds = registrations.map((registration) => registration.student_id);
       }
 
-      recipientUserIds = registrations.map((registration) => registration.student_id);
+      if (announcement.audience === "ALL" || announcement.audience === "BUSINESSES") {
+        const businessRecipients = await fetchClubBusinessRecipientsAsync(
+          supabase,
+          [announcement.event_id],
+          announcement.id,
+          announcement.club_id
+        );
+
+        if (businessRecipients instanceof Response) {
+          return businessRecipients;
+        }
+
+        recipientUserIds = recipientUserIds.concat(businessRecipients);
+      }
     } else if (announcement.audience === "CLUBS") {
       const { data, error } = await supabase
         .from("club_members")
@@ -705,11 +1124,13 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
       recipientUserIds = data.map((row) => row.user_id);
     } else {
-      const { data: events, error: eventsError } = await supabase
+      let eventsQuery = supabase
         .from("events")
-        .select("id")
+        .select("id,status,city")
         .eq("club_id", announcement.club_id)
-        .returns<EventRow[]>();
+        .in("status", ["PUBLISHED", "ACTIVE"]);
+
+      const { data: events, error: eventsError } = await eventsQuery.returns<EventRow[]>();
 
       if (eventsError !== null) {
         return errorResponse(500, "INTERNAL_ERROR", "Failed to read club events for announcement recipients.", {
@@ -720,9 +1141,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
         });
       }
 
-      const eventIds = events.map((event) => event.id);
+      const targetCityKey = normalizeCityKey(announcement.target_city);
+      const eventIds = events
+        .filter((event) => announcement.target_city === null || normalizeCityKey(event.city) === targetCityKey)
+        .map((event) => event.id);
 
-      if (eventIds.length > 0) {
+      if (eventIds.length > 0 && (announcement.audience === "ALL" || announcement.audience === "STUDENTS")) {
         const registrationRecipients = await fetchClubRegistrationRecipientsAsync(
           supabase,
           eventIds,
@@ -735,6 +1159,21 @@ Deno.serve(async (request: Request): Promise<Response> => {
         }
 
         recipientUserIds = registrationRecipients;
+      }
+
+      if (eventIds.length > 0 && (announcement.audience === "ALL" || announcement.audience === "BUSINESSES")) {
+        const businessRecipients = await fetchClubBusinessRecipientsAsync(
+          supabase,
+          eventIds,
+          announcement.id,
+          announcement.club_id
+        );
+
+        if (businessRecipients instanceof Response) {
+          return businessRecipients;
+        }
+
+        recipientUserIds = recipientUserIds.concat(businessRecipients);
       }
 
       if (announcement.audience === "ALL") {
@@ -877,6 +1316,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
             ctaUrl: announcement.cta_url,
             eventId: announcement.event_id,
             imageUrl: announcement.image_url,
+            recipientUserId: pushTarget.userId,
           },
         });
         pushMessageOwners.push(pushTarget.userId);
@@ -964,6 +1404,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
           deliveryResults: serializeTokenResults(tokenResults),
           deviceTokenCount: pushTarget.expoPushTokens.length,
           eventId: announcement.event_id,
+          recipientUserId: pushTarget.userId,
         },
         delivery_attempt_id: deliveryAttemptId,
         sent_at: hasSuccessfulDelivery ? new Date().toISOString() : null,

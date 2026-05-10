@@ -14,7 +14,6 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { MobileConsentCard } from "@/features/legal/mobile-consent-card";
 import { readMobileLegalConsentAsync } from "@/features/legal/mobile-consent";
-import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useSession } from "@/providers/session-provider";
@@ -23,7 +22,7 @@ type LoginMode = "student" | "business";
 
 export default function LoginScreen() {
   const theme = useAppTheme();
-  const { copy, language, setLanguage } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const isScannerProvisioningActive = useIsScannerProvisioningActive();
@@ -36,6 +35,14 @@ export default function LoginScreen() {
   const [isLegalConsentLoading, setIsLegalConsentLoading] = useState<boolean>(true);
   const [legalConsentError, setLegalConsentError] = useState<string | null>(null);
   const isResolvingAccess = !isLoading && isAuthenticated && !isScannerProvisioningActive && accessQuery.isLoading;
+  const titleText =
+    mode === "student"
+      ? language === "fi" ? "Opiskelija" : "Student"
+      : language === "fi" ? "Yritys" : "Business";
+  const helperText =
+    mode === "student"
+      ? language === "fi" ? "Jatka tapahtumiin ja leimapassiin." : "Continue to events and your leima pass."
+      : language === "fi" ? "Kirjaudu scanneriin ja hallintaan." : "Sign in to scanner and tools.";
 
   useEffect(() => {
     let isActive = true;
@@ -88,22 +95,19 @@ export default function LoginScreen() {
   }
 
   return (
-    <AppScreen>
+    <AppScreen contentContainerStyle={styles.screenContent}>
       <LoginHero />
 
-      <View style={styles.card}>
-        <View style={styles.cardHandle} />
-
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>
-            {mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
-          </Text>
-          <Text style={styles.cardSubtitle}>
-            {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
-          </Text>
+      <View style={styles.authPanel}>
+        <View style={styles.panelGlow} />
+        <View style={styles.panelTopRow}>
+          <View style={styles.panelTitleGroup}>
+            <Text style={styles.panelEyebrow}>{copy.auth.continueEyebrow}</Text>
+            <Text style={styles.cardTitle}>{titleText}</Text>
+          </View>
         </View>
 
-        <LanguageDropdown language={language} onLanguageChange={setLanguage} />
+        <Text numberOfLines={2} style={styles.cardSubtitle}>{helperText}</Text>
 
         <View style={styles.modeSelector}>
           <Pressable
@@ -116,7 +120,7 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="google" size={18} />
+            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="id-card" size={18} />
             <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
               {copy.common.student}
             </Text>
@@ -138,15 +142,17 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {legalConsentError !== null ? <Text style={styles.errorText}>{legalConsentError}</Text> : null}
-        {isLegalConsentAccepted ? (
-          mode === "student" ? (
-            <View style={styles.studentAuthActions}>
-              <GoogleSignInButton />
-              <AppleSignInButton />
-            </View>
-          ) : <BusinessPasswordSignIn />
-        ) : null}
+        <View style={styles.authActionStage}>
+          {legalConsentError !== null ? <Text style={styles.errorText}>{legalConsentError}</Text> : null}
+          {isLegalConsentAccepted ? (
+            mode === "student" ? (
+              <View style={styles.studentAuthActions}>
+                <GoogleSignInButton />
+                <AppleSignInButton />
+              </View>
+            ) : <BusinessPasswordSignIn />
+          ) : null}
+        </View>
       </View>
 
       {!isLegalConsentAccepted ? (
@@ -165,37 +171,29 @@ export default function LoginScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    card: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 24,
-      borderWidth: theme.mode === "light" ? 1 : 0,
+    authActionStage: {
+      gap: 12,
+    },
+    authPanel: {
+      backgroundColor: theme.mode === "dark" ? "rgba(12, 17, 12, 0.92)" : "rgba(255, 255, 255, 0.94)",
+      borderColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.18)" : theme.colors.borderDefault,
+      borderRadius: 22,
+      borderWidth: 1,
       gap: 16,
-      padding: 22,
-    },
-    cardHandle: {
-      alignSelf: "center",
-      backgroundColor: theme.colors.borderDefault,
-      borderRadius: 2,
-      height: 4,
-      marginBottom: 4,
-      width: 36,
-    },
-    cardHeader: {
-      gap: 4,
-    },
-    cardTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      letterSpacing: -0.4,
-      lineHeight: theme.typography.lineHeights.title,
+      overflow: "hidden",
+      padding: 18,
     },
     cardSubtitle: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    cardTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
     },
     errorText: {
       color: theme.colors.danger,
@@ -205,14 +203,15 @@ const createStyles = (theme: MobileTheme) =>
     },
     modeButton: {
       alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderRadius: theme.radius.card,
+      backgroundColor: "transparent",
+      borderRadius: 999,
       flex: 1,
       flexDirection: "row",
       gap: 8,
       justifyContent: "center",
+      minHeight: 46,
       paddingHorizontal: 12,
-      paddingVertical: 14,
+      paddingVertical: 11,
     },
     modeButtonActive: {
       backgroundColor: theme.colors.lime,
@@ -230,8 +229,44 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.actionPrimaryText,
     },
     modeSelector: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
       flexDirection: "row",
-      gap: 10,
+      gap: 4,
+      padding: 4,
+    },
+    panelEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    panelGlow: {
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 156,
+      opacity: theme.mode === "dark" ? 0.4 : 0.72,
+      position: "absolute",
+      right: -92,
+      top: -96,
+      width: 156,
+    },
+    panelTitleGroup: {
+      flex: 1,
+      gap: 3,
+      minWidth: 0,
+    },
+    panelTopRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    screenContent: {
+      gap: 16,
     },
     studentAuthActions: {
       gap: 10,

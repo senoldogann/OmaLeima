@@ -1,5 +1,10 @@
 import type { NextRequest } from "next/server";
 
+import {
+  dashboardCsrfCookieName,
+  dashboardCsrfHeaderName,
+} from "@/features/security/dashboard-mutation-request";
+
 export type PasswordSessionRequestError = {
   error: string;
   status: number;
@@ -50,12 +55,32 @@ const hasTrustedRequestOrigin = (request: NextRequest): boolean => {
   }
 };
 
+const hasValidCsrfToken = (request: NextRequest): boolean => {
+  const cookieToken = request.cookies.get(dashboardCsrfCookieName)?.value;
+  const headerToken = request.headers.get(dashboardCsrfHeaderName);
+
+  return (
+    typeof cookieToken === "string" &&
+    typeof headerToken === "string" &&
+    cookieToken.length >= 32 &&
+    headerToken.length >= 32 &&
+    cookieToken === headerToken
+  );
+};
+
 export const validatePasswordSessionRequest = (
   request: NextRequest
 ): PasswordSessionRequestError | null => {
   if (!hasTrustedRequestOrigin(request)) {
     return {
       error: "Password session requests must come from the same site.",
+      status: 403,
+    };
+  }
+
+  if (!hasValidCsrfToken(request)) {
+    return {
+      error: "Password session CSRF token is missing or invalid.",
       status: 403,
     };
   }

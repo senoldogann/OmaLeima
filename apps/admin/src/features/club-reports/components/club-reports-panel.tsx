@@ -82,8 +82,9 @@ export const ClubReportsPanel = ({ locale, snapshot }: ClubReportsPanelProps) =>
             imageStagingPath: "",
             imageUrl: "",
             priority: "3",
-            startsAt: toLocalDateTimeInput(new Date(Date.now() + 30 * 60 * 1000)),
+            startsAt: toLocalDateTimeInput(new Date()),
             status: "PUBLISHED",
+            targetCity: selectedEvent.city,
             title: selectedCopy.title,
           });
 

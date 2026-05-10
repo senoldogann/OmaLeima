@@ -181,6 +181,8 @@ const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
     card: {
       gap: 12,
+      paddingBottom: 12,
+      paddingTop: 12,
     },
     copy: {
       flex: 1,
@@ -204,8 +206,8 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "center",
       backgroundColor: theme.colors.limeSurface,
       borderRadius: 999,
-      height: 34,
       justifyContent: "center",
+      height: 34,
       width: 34,
     },
     primaryButton: {
@@ -225,8 +227,10 @@ const createStyles = (theme: MobileTheme) =>
     },
     readyPill: {
       alignItems: "center",
+      alignSelf: "flex-start",
       flexDirection: "row",
       gap: 4,
+      paddingTop: 2,
     },
     readyText: {
       color: theme.colors.success,

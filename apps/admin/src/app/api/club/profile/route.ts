@@ -65,71 +65,96 @@ const fetchEditableMembershipAsync = async (
 };
 
 export async function PATCH(request: Request) {
-  const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+  try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
 
-  if (requestGuardResponse !== null) {
-    return requestGuardResponse;
-  }
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
 
-  const supabase = await createRouteHandlerClient();
-  const access = await resolveAdminAccessAsync(supabase);
+    const supabase = await createRouteHandlerClient();
+    const access = await resolveAdminAccessAsync(supabase);
 
-  if (access.area !== "club" || access.userId === null) {
-    return NextResponse.json({ message: "Club organizer access is required." }, { status: 403 });
-  }
+    if (access.area !== "club" || access.userId === null) {
+      return NextResponse.json({ message: "Club organizer access is required." }, { status: 403 });
+    }
 
-  const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(access.userId, "club-profile-update");
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(access.userId, "club-profile-update");
 
-  if (rateLimitResponse !== null) {
-    return rateLimitResponse;
-  }
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
 
-  const parsedPayload = clubProfileUpdateSchema.safeParse(await request.json());
+    const parsedPayload = clubProfileUpdateSchema.safeParse(await request.json());
 
-  if (!parsedPayload.success) {
+    if (!parsedPayload.success) {
+      return NextResponse.json(
+        {
+          fieldErrors: parsedPayload.error.flatten().fieldErrors,
+          message: "Club profile payload validation failed.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const payload = parsedPayload.data;
+    const membership = await fetchEditableMembershipAsync(supabase, access.userId, payload.clubId);
+
+    if (membership === null) {
+      return NextResponse.json({ message: "This club profile cannot be edited by the current user." }, { status: 403 });
+    }
+
+    const { data, error } = await supabase
+      .from("clubs")
+      .update({
+        address: normalizeOptionalText(payload.address),
+        announcement: normalizeOptionalText(payload.announcement),
+        contact_email: normalizeOptionalText(payload.contactEmail),
+        instagram_url: normalizeOptionalText(payload.instagramUrl),
+        phone: normalizeOptionalText(payload.phone),
+        website_url: normalizeOptionalText(payload.websiteUrl),
+      })
+      .eq("id", payload.clubId)
+      .select("id,name,city,university_name,contact_email,phone,address,website_url,instagram_url,announcement")
+      .maybeSingle<ClubProfileClubRow>();
+
+    if (error !== null) {
+      console.error("[club-profile] update failed", {
+        errorCode: error.code,
+        message: error.message,
+      });
+
+      return NextResponse.json(
+        {
+          message: "Club profile could not be updated.",
+          status: "ROUTE_ERROR",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (data === null) {
+      return NextResponse.json({ message: "Club profile was not updated." }, { status: 404 });
+    }
+
+    const response: ClubProfileUpdateResponse = {
+      club: mapClubProfileRecord(data, membership),
+      message: "Club profile updated.",
+      status: "SUCCESS",
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error("[club-profile] route failed", {
+      message: error instanceof Error ? error.message : "Unknown route error.",
+    });
+
     return NextResponse.json(
       {
-        fieldErrors: parsedPayload.error.flatten().fieldErrors,
-        message: "Club profile payload validation failed.",
+        message: "Club profile could not be updated.",
+        status: "ROUTE_ERROR",
       },
-      { status: 400 }
+      { status: 500 }
     );
   }
-
-  const payload = parsedPayload.data;
-  const membership = await fetchEditableMembershipAsync(supabase, access.userId, payload.clubId);
-
-  if (membership === null) {
-    return NextResponse.json({ message: "This club profile cannot be edited by the current user." }, { status: 403 });
-  }
-
-  const { data, error } = await supabase
-    .from("clubs")
-    .update({
-      address: normalizeOptionalText(payload.address),
-      announcement: normalizeOptionalText(payload.announcement),
-      contact_email: normalizeOptionalText(payload.contactEmail),
-      instagram_url: normalizeOptionalText(payload.instagramUrl),
-      phone: normalizeOptionalText(payload.phone),
-      website_url: normalizeOptionalText(payload.websiteUrl),
-    })
-    .eq("id", payload.clubId)
-    .select("id,name,city,university_name,contact_email,phone,address,website_url,instagram_url,announcement")
-    .maybeSingle<ClubProfileClubRow>();
-
-  if (error !== null) {
-    throw new Error(`Failed to update club profile ${payload.clubId} for ${access.userId}: ${error.message}`);
-  }
-
-  if (data === null) {
-    return NextResponse.json({ message: "Club profile was not updated." }, { status: 404 });
-  }
-
-  const response: ClubProfileUpdateResponse = {
-    club: mapClubProfileRecord(data, membership),
-    message: "Club profile updated.",
-    status: "SUCCESS",
-  };
-
-  return NextResponse.json(response);
 }

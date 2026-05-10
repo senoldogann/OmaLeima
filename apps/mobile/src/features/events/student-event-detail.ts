@@ -328,6 +328,10 @@ export const useStudentEventDetailQuery = ({
     queryKey: studentEventDetailQueryKey(eventId, studentId),
     queryFn: async () => fetchStudentEventDetailAsync(eventId, studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
 export const joinEventAsync = async ({ eventId, studentId }: JoinEventMutationParams): Promise<JoinEventResult> => {

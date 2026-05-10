@@ -29,11 +29,9 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
     const safeAreaInsets = useSafeAreaInsets();
     const styles = useThemeStyles(createStyles);
     const clubDirectoryQuery = usePublicClubDirectoryQuery({ isEnabled });
-    const clubCount = clubDirectoryQuery.data?.length ?? 0;
     const [selectedClub, setSelectedClub] = useState<PublicClubDirectoryItem | null>(null);
     const [contactActionError, setContactActionError] = useState<string | null>(null);
     const clubCardWidth = Math.min(360, Math.max(280, windowWidth - 88));
-    const clubCoverHeight = Math.round(clubCardWidth * 0.56);
     const availableSheetHeight = Math.max(280, windowHeight - safeAreaInsets.top - safeAreaInsets.bottom - 48);
     const preferredSheetHeight = Math.max(280, windowHeight - safeAreaInsets.top - safeAreaInsets.bottom - 96);
     const infoSheetHeight = Math.min(availableSheetHeight, preferredSheetHeight);
@@ -41,8 +39,8 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
     const labels = {
         body:
             language === "fi"
-                ? `${clubCount} aktiivista opiskelijaklubia mukana OmaLeima-verkostossa.`
-                : `${clubCount} active student clubs are visible in the OmaLeima network.`,
+                ? "Tutustu järjestäjiin, yhteystietoihin ja opiskelijayhteisöihin tapahtumien takana."
+                : "Explore organizers, contact details, and the student communities behind the events.",
         close: language === "fi" ? "Sulje" : "Close",
         contactAvailable:
             language === "fi" ? "Avaa tiedot ja sähköposti" : "Open info and email",
@@ -76,7 +74,7 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
         city: language === "fi" ? "Kaupunki" : "City",
         country: language === "fi" ? "Maa" : "Country",
         notProvided: language === "fi" ? "Ei lisätty" : "Not added",
-        title: language === "fi" ? `Opiskelijaklubit · ${clubCount}` : `Student clubs · ${clubCount}`,
+        title: language === "fi" ? "Opiskelijaklubit" : "Student clubs",
     };
 
     const handleClubInfoPress = (club: PublicClubDirectoryItem): void => {
@@ -124,8 +122,21 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
         }
     };
 
+    const handleClubFooterPress = (club: PublicClubDirectoryItem): void => {
+        if (club.contactEmail === null) {
+            handleClubInfoPress(club);
+            return;
+        }
+
+        void handleEmailPress(club.contactEmail);
+    };
+
     return (
-        <InfoCard eyebrow={labels.eyebrow} title={labels.title}>
+        <InfoCard
+            eyebrow={labels.eyebrow}
+            showBorder={false}
+            title={labels.title}
+        >
             {clubDirectoryQuery.isLoading ? <Text style={styles.bodyText}>{labels.loading}</Text> : null}
 
             {clubDirectoryQuery.error ? (
@@ -134,8 +145,7 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
 
             {!clubDirectoryQuery.isLoading && !clubDirectoryQuery.error ? (
                 <>
-                    <Text style={styles.bodyText}>{labels.body}</Text>
-
+                    <Text style={styles.sectionIntroText}>{labels.body}</Text>
                     {clubDirectoryQuery.data !== undefined && clubDirectoryQuery.data.length > 0 ? (
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clubRail}>
                             {clubDirectoryQuery.data.map((club) => {
@@ -146,17 +156,9 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
                                         <CoverImageSurface
                                             imageStyle={styles.clubCoverImage}
                                             source={getEventCoverSourceWithFallback(club.coverImageUrl ?? club.logoUrl, "clubControl")}
-                                            style={[styles.clubCover, { height: clubCoverHeight }]}
+                                            style={styles.clubCover}
                                         >
                                             <View style={styles.clubCoverOverlay} />
-                                            <Pressable
-                                                accessibilityLabel={`${labels.openInfo}: ${club.clubName}`}
-                                                onPress={() => handleClubInfoPress(club)}
-                                                style={styles.infoButton}
-                                            >
-                                                <AppIcon color={theme.colors.actionPrimaryText} name="info" size={14} />
-                                                <Text style={styles.infoButtonText}>{labels.detailButton}</Text>
-                                            </Pressable>
                                             <View style={styles.clubLogoBubble}>
                                                 {club.logoUrl !== null ? (
                                                     <CoverImageSurface
@@ -173,9 +175,43 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
                                         <View style={styles.clubCardBody}>
                                             <Text numberOfLines={2} style={styles.clubTitle}>{club.clubName}</Text>
                                             <Text numberOfLines={2} style={styles.clubMeta}>{meta.length > 0 ? meta : labels.metaFallback}</Text>
-                                            <Text numberOfLines={1} style={styles.clubHint}>
-                                                {club.contactEmail !== null ? labels.contactAvailable : labels.openInfo}
-                                            </Text>
+                                            {hasTextValue(club.announcement) ? (
+                                                <Text numberOfLines={1} style={styles.clubAnnouncement}>
+                                                    {club.announcement}
+                                                </Text>
+                                            ) : null}
+                                        </View>
+
+                                        <View style={styles.ticketActionColumn}>
+                                            <View style={styles.ticketCutTop} />
+                                            <View style={styles.ticketPerforation} />
+                                            <View style={styles.ticketCutBottom} />
+                                            <Pressable
+                                                accessibilityLabel={`${labels.openInfo}: ${club.clubName}`}
+                                                accessibilityRole="button"
+                                                onPress={() => handleClubInfoPress(club)}
+                                                style={({ pressed }) => [
+                                                    styles.ticketIconButton,
+                                                    pressed ? styles.clubFooterRowPressed : null,
+                                                ]}
+                                            >
+                                                <AppIcon color={theme.colors.lime} name="info" size={16} />
+                                            </Pressable>
+                                            <Pressable
+                                                accessibilityLabel={club.contactEmail !== null ? labels.email : labels.openInfo}
+                                                accessibilityRole="button"
+                                                onPress={() => handleClubFooterPress(club)}
+                                                style={({ pressed }) => [
+                                                    styles.ticketTextButton,
+                                                    pressed ? styles.clubFooterRowPressed : null,
+                                                ]}
+                                            >
+                                                <AppIcon
+                                                    color={theme.colors.lime}
+                                                    name={club.contactEmail !== null ? "mail" : "chevron-right"}
+                                                    size={17}
+                                                />
+                                            </Pressable>
                                         </View>
                                     </View>
                                 );
@@ -378,40 +414,66 @@ const createStyles = (theme: MobileTheme) =>
             fontSize: theme.typography.sizes.body,
             lineHeight: theme.typography.lineHeights.body,
         },
-        clubCard: {
-            backgroundColor: theme.colors.surfaceL2,
-            borderColor: theme.colors.borderDefault,
-            borderRadius: theme.radius.inner,
-            borderWidth: theme.mode === "light" ? 1 : 0,
-            height: 320,
-            overflow: "hidden",
+        sectionIntroText: {
+            color: theme.colors.textSecondary,
+            fontFamily: theme.typography.families.medium,
+            fontSize: theme.typography.sizes.bodySmall,
+            lineHeight: theme.typography.lineHeights.bodySmall,
         },
-        clubCardBody: {
-            flex: 1,
-            gap: 8,
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-        },
-        clubHint: {
-            color: theme.colors.textMuted,
-            fontFamily: theme.typography.families.semibold,
+        clubAnnouncement: {
+            color: theme.colors.textSecondary,
+            fontFamily: theme.typography.families.medium,
             fontSize: theme.typography.sizes.caption,
             lineHeight: theme.typography.lineHeights.caption,
         },
+        clubCard: {
+            backgroundColor: theme.colors.surfaceL1,
+            borderColor: theme.colors.borderStrong,
+            borderRadius: theme.radius.card,
+            borderWidth: 1,
+            flexDirection: "row",
+            gap: 12,
+            minHeight: 136,
+            overflow: "visible",
+            padding: 10,
+        },
+        clubCardBody: {
+            flex: 1,
+            gap: 7,
+            justifyContent: "center",
+            minWidth: 0,
+            paddingVertical: 4,
+        },
         clubCover: {
-            borderTopLeftRadius: theme.radius.inner,
-            borderTopRightRadius: theme.radius.inner,
+            alignSelf: "center",
+            borderRadius: theme.radius.inner,
+            height: 112,
             overflow: "hidden",
             position: "relative",
+            width: 104,
         },
         clubCoverImage: {
-            borderTopLeftRadius: theme.radius.inner,
-            borderTopRightRadius: theme.radius.inner,
+            borderRadius: theme.radius.inner,
         },
         clubCoverOverlay: {
             ...StyleSheet.absoluteFillObject,
-            backgroundColor: theme.mode === "light" ? "rgba(0,0,0,0.16)" : "rgba(0,0,0,0.28)",
+            backgroundColor: theme.mode === "light" ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.34)",
+        },
+        clubFooterRow: {
+            alignItems: "center",
+            backgroundColor: theme.colors.surfaceL1,
+            borderColor: theme.colors.borderDefault,
+            borderRadius: 999,
+            borderWidth: theme.mode === "light" ? 1 : 0,
+            flexDirection: "row",
+            gap: 6,
+            justifyContent: "space-between",
+            paddingHorizontal: 11,
+            paddingVertical: 8,
+        },
+        clubFooterRowPressed: {
+            opacity: 0.82,
+            transform: [{ translateY: 1 }],
         },
         clubLogoBubble: {
             alignItems: "center",
@@ -419,22 +481,22 @@ const createStyles = (theme: MobileTheme) =>
             borderColor: theme.colors.borderDefault,
             borderRadius: 999,
             borderWidth: theme.mode === "light" ? 1 : 0,
-            bottom: 12,
-            height: 54,
+            bottom: 8,
+            height: 40,
             justifyContent: "center",
-            left: 12,
+            left: 8,
             overflow: "hidden",
             position: "absolute",
-            width: 54,
+            width: 40,
         },
         clubLogoImage: {
             borderRadius: 999,
         },
         clubLogoSurface: {
             borderRadius: 999,
-            height: 54,
+            height: 40,
             overflow: "hidden",
-            width: 54,
+            width: 40,
         },
         clubMeta: {
             color: theme.colors.textMuted,
@@ -523,27 +585,67 @@ const createStyles = (theme: MobileTheme) =>
         infoBody: {
             gap: 14,
         },
-        infoButton: {
+        ticketActionColumn: {
             alignItems: "center",
-            backgroundColor: theme.colors.lime,
-            borderColor: theme.colors.limeBorder,
+            alignSelf: "stretch",
+            justifyContent: "center",
+            paddingLeft: 12,
+            position: "relative",
+            width: 86,
+        },
+        ticketCutBottom: {
+            backgroundColor: theme.colors.screenBase,
+            borderColor: theme.colors.borderDefault,
+            borderRadius: 999,
+            borderWidth: 1,
+            bottom: -23,
+            height: 30,
+            left: -3,
+            position: "absolute",
+            width: 30,
+            zIndex: 2,
+        },
+        ticketCutTop: {
+            backgroundColor: theme.colors.screenBase,
+            borderColor: theme.colors.borderDefault,
+            borderRadius: 999,
+            borderWidth: 1,
+            height: 30,
+            left: -3,
+            position: "absolute",
+            top: -23,
+            width: 30,
+            zIndex: 2,
+        },
+        ticketIconButton: {
+            alignItems: "center",
+            backgroundColor: theme.colors.surfaceL2,
+            borderColor: theme.colors.borderDefault,
             borderRadius: 999,
             borderWidth: theme.mode === "light" ? 1 : 0,
-            flexDirection: "row",
-            gap: 6,
+            height: 36,
             justifyContent: "center",
-            minHeight: 44,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            position: "absolute",
-            right: 12,
-            top: 12,
+            marginBottom: 8,
+            width: 36,
         },
-        infoButtonText: {
-            color: theme.colors.actionPrimaryText,
-            fontFamily: theme.typography.families.extrabold,
-            fontSize: theme.typography.sizes.caption,
-            lineHeight: theme.typography.lineHeights.caption,
+        ticketPerforation: {
+            borderColor: theme.colors.borderDefault,
+            borderLeftWidth: 1,
+            borderStyle: "dashed",
+            bottom: 0,
+            left: 12,
+            position: "absolute",
+            top: 0,
+        },
+        ticketTextButton: {
+            alignItems: "center",
+            backgroundColor: theme.colors.surfaceL2,
+            borderColor: theme.colors.borderDefault,
+            borderRadius: 999,
+            borderWidth: theme.mode === "light" ? 1 : 0,
+            justifyContent: "center",
+            height: 36,
+            width: 36,
         },
         infoCloseButton: {
             alignItems: "center",

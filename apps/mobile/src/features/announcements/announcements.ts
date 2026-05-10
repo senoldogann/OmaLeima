@@ -521,9 +521,23 @@ export const useAnnouncementRealtimeInvalidation = ({
     };
 
     const interval = setInterval(invalidateAnnouncementQueries, announcementFreshnessIntervalMs);
+    const realtimeChannelName = `announcement-feed-${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase
+      .channel(realtimeChannelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "announcements",
+        },
+        invalidateAnnouncementQueries
+      )
+      .subscribe();
 
     return () => {
       clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [isEnabled, queryClient, userId]);
 };

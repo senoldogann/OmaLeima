@@ -7,6 +7,15 @@ type ManualRefreshState = {
     refreshAsync: () => void;
 };
 
+const manualRefreshTimeoutMs = 15_000;
+
+const rejectAfterTimeoutAsync = async (): Promise<never> =>
+    new Promise((_, reject) => {
+        setTimeout(() => {
+            reject(new Error(`Manual refresh timed out after ${manualRefreshTimeoutMs}ms.`));
+        }, manualRefreshTimeoutMs);
+    });
+
 export const useManualRefresh = (refetchAsync: RefetchAsync): ManualRefreshState => {
     const isMountedRef = useRef<boolean>(true);
     const isRefreshingRef = useRef<boolean>(false);
@@ -27,13 +36,17 @@ export const useManualRefresh = (refetchAsync: RefetchAsync): ManualRefreshState
         isRefreshingRef.current = true;
         setIsRefreshing(true);
 
-        void refetchAsync().finally(() => {
-            isRefreshingRef.current = false;
+        void Promise.race([refetchAsync(), rejectAfterTimeoutAsync()])
+            .catch((error: unknown) => {
+                console.error("Manual refresh failed.", { error });
+            })
+            .finally(() => {
+                isRefreshingRef.current = false;
 
-            if (isMountedRef.current) {
-                setIsRefreshing(false);
-            }
-        });
+                if (isMountedRef.current) {
+                    setIsRefreshing(false);
+                }
+            });
     }, [refetchAsync]);
 
     return {

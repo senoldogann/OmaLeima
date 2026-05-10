@@ -7,6 +7,7 @@ export type ClubClaimEventRecord = {
   eventId: string;
   eventStatus: "ACTIVE" | "COMPLETED";
   name: string;
+  progressCandidateCount: number;
   recentClaimCount: number;
   startAt: string;
 };
@@ -38,17 +39,35 @@ export type ClubRecentRewardClaimRecord = {
   studentLabel: string;
 };
 
+export type ClubClaimProgressRecord = {
+  eventId: string;
+  eventName: string;
+  inventoryRemaining: number | null;
+  inventoryTotal: number | null;
+  missingStampCount: number;
+  rewardTierId: string;
+  rewardTitle: string;
+  rewardType: "COUPON" | "ENTRY" | "HAALARIMERKKI" | "OTHER" | "PATCH" | "PRODUCT";
+  requiredStampCount: number;
+  stampCount: number;
+  studentId: string;
+  studentLabel: string;
+};
+
 export type ClubClaimsSummary = {
   claimableCandidateCount: number;
   operationalEventCount: number;
+  progressCandidateCount: number;
   recentClaimCount: number;
   visibleCandidateCount: number;
   visibleClaimCount: number;
+  visibleProgressCount: number;
 };
 
 export type ClubClaimsSnapshot = {
   candidates: ClubClaimCandidateRecord[];
   events: ClubClaimEventRecord[];
+  progress: ClubClaimProgressRecord[];
   recentClaims: ClubRecentRewardClaimRecord[];
   summary: ClubClaimsSummary;
 };

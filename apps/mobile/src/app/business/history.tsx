@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
@@ -77,9 +77,6 @@ const isInsideDateFilter = (
   return scannedDate >= windowStart;
 };
 
-const formatStudentLabel = (studentId: string, language: "fi" | "en"): string =>
-  language === "fi" ? `Opiskelija ...${studentId.slice(-4)}` : `Student ...${studentId.slice(-4)}`;
-
 export default function BusinessHistoryScreen() {
   const router = useRouter();
   const styles = useThemeStyles(createStyles);
@@ -87,6 +84,7 @@ export default function BusinessHistoryScreen() {
   const { copy, language, localeTag, theme } = useUiPreferences();
   const [dateFilter, setDateFilter] = useState<HistoryDateFilter>("ALL");
   const [filterClock, setFilterClock] = useState<number>(() => Date.now());
+  const [isFilterSheetVisible, setIsFilterSheetVisible] = useState<boolean>(false);
   const [selectedEventId, setSelectedEventId] = useState<string>(allEventsFilterValue);
   const userId = session?.user.id ?? null;
   const accessQuery = useSessionAccessQuery({
@@ -146,8 +144,8 @@ export default function BusinessHistoryScreen() {
       loadingTitle: language === "fi" ? "Avataan historiaa" : "Opening scan history",
       loadingBody:
         language === "fi"
-          ? "Ladataan tämän käyttäjän uusimmat skannaukset."
-          : "Loading the latest operator-owned scan rows.",
+          ? "Ladataan yrityksesi uusimmat tapahtumaskannaukset."
+          : "Loading the latest event scan rows for your business.",
       errorTitle:
         language === "fi" ? "Skannaushistoria ei avautunut" : "Could not load scan history",
       errorBody:
@@ -159,6 +157,9 @@ export default function BusinessHistoryScreen() {
           ? "Aktiivisilla suodattimilla ei löytynyt skannauksia. Vaihda aikaa tai tapahtumaa nähdäksesi lisää rivejä."
           : "No scans matched the active filters. Change the date or event filter to see more rows.",
       filters: language === "fi" ? "Suodattimet" : "Filters",
+      filterByDate: language === "fi" ? "Aikaväli" : "Date range",
+      filterByEvent: language === "fi" ? "Tapahtuma" : "Event",
+      closeFilters: language === "fi" ? "Valmis" : "Done",
       latestTitle: language === "fi" ? "Skannauspäivät" : "Scan days",
       metrics: {
         rows: language === "fi" ? "näkyvää riviä" : "visible rows",
@@ -168,14 +169,14 @@ export default function BusinessHistoryScreen() {
       },
       emptyBody:
         language === "fi"
-          ? "Tällä tunnuksella ei ole vielä skannauksia. Hyväksytyt ja tarkistukseen jääneet skannaukset näkyvät täällä."
-          : "No scan has been recorded by this account yet. Once a QR is accepted or flagged from the scanner, it will appear here.",
+          ? "Yrityksellesi ei ole vielä skannauksia. Hyväksytyt ja tarkistukseen jääneet tapahtumaskannaukset näkyvät täällä."
+          : "No scan has been recorded for your business yet. Accepted and review-needed event scans will appear here.",
       openScanner: language === "fi" ? "Avaa skanneri" : "Open scanner",
       openEvents: language === "fi" ? "Tapahtumat" : "Events",
       recentWindowNotice:
         language === "fi"
-          ? `Historia perustuu viimeisimpään ${RECENT_SCAN_LIMIT} skannaukseen tältä käyttäjältä.`
-          : `History is based on the latest ${RECENT_SCAN_LIMIT} scans owned by this operator.`,
+          ? `Historia perustuu yrityksesi viimeisimpään ${RECENT_SCAN_LIMIT} skannaukseen.`
+          : `History is based on the latest ${RECENT_SCAN_LIMIT} scans for your business.`,
       allShown: language === "fi" ? "Kaikki skannaukset näytetään" : "All scans are shown",
       scannedAt: language === "fi" ? "Skannattu" : "Scanned",
       scanRows: language === "fi" ? "skannausta" : "scans",
@@ -286,6 +287,10 @@ export default function BusinessHistoryScreen() {
   }, [eventOptions, selectedEventId]);
 
   const isRecentWindowCapped = historyEntries.length >= RECENT_SCAN_LIMIT;
+  const selectedEventLabel = selectedEventId === allEventsFilterValue
+    ? labels.allEvents
+    : eventOptions.find((eventOption) => eventOption.eventId === selectedEventId)?.eventName ?? labels.allEvents;
+  const activeFilterLabel = `${labels.dateFilters[dateFilter]} · ${selectedEventLabel}`;
 
   const filteredEntries = useMemo(
     () =>
@@ -432,46 +437,13 @@ export default function BusinessHistoryScreen() {
             <Text style={styles.windowNotice}>{labels.recentWindowNotice}</Text>
           ) : null}
 
-          {/* Filter bar */}
-          <View style={styles.filterBar}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
-              {historyDateFilters.map((filter) => (
-                <Pressable
-                  key={filter}
-                  onPress={() => setDateFilter(filter)}
-                  style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
-                >
-                  <Text style={[styles.filterChipText, dateFilter === filter ? styles.filterChipTextActive : null]}>
-                    {labels.dateFilters[filter]}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {eventOptions.length > 1 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRail}>
-                <Pressable
-                  onPress={() => setSelectedEventId(allEventsFilterValue)}
-                  style={[styles.filterChip, selectedEventId === allEventsFilterValue ? styles.filterChipActive : null]}
-                >
-                  <Text style={[styles.filterChipText, selectedEventId === allEventsFilterValue ? styles.filterChipTextActive : null]}>
-                    {labels.allEvents}
-                  </Text>
-                </Pressable>
-                {eventOptions.map((eventOption) => (
-                  <Pressable
-                    key={eventOption.eventId}
-                    onPress={() => setSelectedEventId(eventOption.eventId)}
-                    style={[styles.filterChip, selectedEventId === eventOption.eventId ? styles.filterChipActive : null]}
-                  >
-                    <Text style={[styles.filterChipText, selectedEventId === eventOption.eventId ? styles.filterChipTextActive : null]}>
-                      {eventOption.eventName}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            ) : null}
-          </View>
+          <Pressable onPress={() => setIsFilterSheetVisible(true)} style={styles.filterSummaryButton}>
+            <View style={styles.filterSummaryCopy}>
+              <Text style={styles.filterSummaryLabel}>{labels.filters}</Text>
+              <Text numberOfLines={1} style={styles.filterSummaryValue}>{activeFilterLabel}</Text>
+            </View>
+            <AppIcon color={theme.colors.textPrimary} name="filter" size={18} />
+          </Pressable>
 
           {historyEntries.length === 0 ? (
             <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
@@ -537,7 +509,7 @@ export default function BusinessHistoryScreen() {
                               </Text>
                             </View>
 
-                            <Text style={styles.cardTitle}>{formatStudentLabel(entry.studentId, language)}</Text>
+                            <Text style={styles.cardTitle}>{entry.studentLabel}</Text>
                             <Text style={styles.eventTitle}>
                               {entry.eventName.length > 0 ? entry.eventName : labels.unknownEvent}
                             </Text>
@@ -570,6 +542,71 @@ export default function BusinessHistoryScreen() {
           )}
         </>
       ) : null}
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsFilterSheetVisible(false)}
+        transparent
+        visible={isFilterSheetVisible}
+      >
+        <Pressable onPress={() => setIsFilterSheetVisible(false)} style={styles.filterModalBackdrop}>
+          <Pressable onPress={() => undefined} style={styles.filterSheet}>
+            <View style={styles.filterSheetHeader}>
+              <View style={styles.filterSummaryCopy}>
+                <Text style={styles.topBarEyebrow}>{labels.filters}</Text>
+                <Text style={styles.filterSheetTitle}>{activeFilterLabel}</Text>
+              </View>
+              <Pressable onPress={() => setIsFilterSheetVisible(false)} style={styles.filterDoneButton}>
+                <Text style={styles.filterDoneText}>{labels.closeFilters}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupTitle}>{labels.filterByDate}</Text>
+              <View style={styles.filterWrap}>
+                {historyDateFilters.map((filter) => (
+                  <Pressable
+                    key={filter}
+                    onPress={() => setDateFilter(filter)}
+                    style={[styles.filterChip, dateFilter === filter ? styles.filterChipActive : null]}
+                  >
+                    <Text style={[styles.filterChipText, dateFilter === filter ? styles.filterChipTextActive : null]}>
+                      {labels.dateFilters[filter]}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupTitle}>{labels.filterByEvent}</Text>
+              <ScrollView contentContainerStyle={styles.filterEventList} showsVerticalScrollIndicator={false}>
+                <Pressable
+                  onPress={() => setSelectedEventId(allEventsFilterValue)}
+                  style={[styles.filterEventRow, selectedEventId === allEventsFilterValue ? styles.filterEventRowActive : null]}
+                >
+                  <Text style={[styles.filterEventText, selectedEventId === allEventsFilterValue ? styles.filterChipTextActive : null]}>
+                    {labels.allEvents}
+                  </Text>
+                  {selectedEventId === allEventsFilterValue ? <AppIcon color={theme.colors.actionPrimaryText} name="check" size={16} /> : null}
+                </Pressable>
+                {eventOptions.map((eventOption) => (
+                  <Pressable
+                    key={eventOption.eventId}
+                    onPress={() => setSelectedEventId(eventOption.eventId)}
+                    style={[styles.filterEventRow, selectedEventId === eventOption.eventId ? styles.filterEventRowActive : null]}
+                  >
+                    <Text numberOfLines={2} style={[styles.filterEventText, selectedEventId === eventOption.eventId ? styles.filterChipTextActive : null]}>
+                      {eventOption.eventName}
+                    </Text>
+                    {selectedEventId === eventOption.eventId ? <AppIcon color={theme.colors.actionPrimaryText} name="check" size={16} /> : null}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AppScreen>
   );
 }
@@ -618,9 +655,6 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    filterBar: {
-      gap: 10,
-    },
     filterChip: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
@@ -645,9 +679,119 @@ const createStyles = (theme: MobileTheme) =>
     filterChipTextActive: {
       color: theme.colors.actionPrimaryText,
     },
-    filterRail: {
+    filterDoneButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: theme.radius.button,
+      justifyContent: "center",
+      minHeight: 40,
+      paddingHorizontal: 14,
+    },
+    filterDoneText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterEventList: {
       gap: 8,
-      paddingRight: 4,
+      paddingBottom: 4,
+    },
+    filterEventRow: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 10,
+      justifyContent: "space-between",
+      minHeight: 46,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    filterEventRowActive: {
+      backgroundColor: theme.colors.lime,
+      borderColor: theme.colors.limeBorder,
+    },
+    filterEventText: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterGroup: {
+      gap: 10,
+    },
+    filterGroupTitle: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    filterModalBackdrop: {
+      backgroundColor: theme.mode === "dark" ? "rgba(0,0,0,0.68)" : "rgba(12,16,12,0.24)",
+      flex: 1,
+      justifyContent: "flex-end",
+      padding: 18,
+    },
+    filterSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      gap: 18,
+      maxHeight: "82%",
+      padding: 16,
+    },
+    filterSheetHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    filterSheetTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    filterSummaryButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    filterSummaryCopy: {
+      flex: 1,
+      gap: 3,
+      minWidth: 0,
+    },
+    filterSummaryLabel: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    filterSummaryValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    filterWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
     },
     listEndNotice: {
       color: theme.colors.textDim,

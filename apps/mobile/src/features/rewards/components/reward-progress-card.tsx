@@ -18,6 +18,7 @@ import type {
 type RewardProgressCardProps = {
   event: StudentRewardEventProgress;
   onOpenEvent?: (eventId: string) => void;
+  studentDisplayName: string | null;
   studentId: string | null;
   visibleTierCount: number;
 };
@@ -132,8 +133,13 @@ const getRewardTypeLabel = (rewardType: StudentRewardTierProgress["rewardType"],
   }
 };
 
-const getStudentHandoffLabel = (studentId: string | null): string | null =>
-  studentId === null ? null : `Student ...${studentId.slice(-8)}`;
+const getStudentHandoffLabel = (studentDisplayName: string | null, studentId: string | null): string | null => {
+  if (studentDisplayName !== null) {
+    return studentDisplayName;
+  }
+
+  return studentId === null ? null : `Student ...${studentId.slice(-8)}`;
+};
 
 const getVisibleTiers = (
   tiers: StudentRewardTierProgress[],
@@ -194,7 +200,7 @@ const getEventSummaryCopy = (event: StudentRewardEventProgress, language: "fi" |
     : "Keep collecting leimas to unlock rewards.";
 };
 
-export const RewardProgressCard = ({ event, onOpenEvent, studentId, visibleTierCount }: RewardProgressCardProps) => {
+export const RewardProgressCard = ({ event, onOpenEvent, studentDisplayName, studentId, visibleTierCount }: RewardProgressCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const formatter = createDateTimeFormatter(localeTag);
@@ -202,7 +208,7 @@ export const RewardProgressCard = ({ event, onOpenEvent, studentId, visibleTierC
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
   const visibleTiers = getVisibleTiers(event.tiers, visibleTierCount);
   const hiddenTierCount = Math.max(0, event.tiers.length - visibleTiers.length);
-  const studentHandoffLabel = getStudentHandoffLabel(studentId);
+  const studentHandoffLabel = getStudentHandoffLabel(studentDisplayName, studentId);
 
   return (
     <InfoCard eyebrow={event.city} title={event.name} variant={hasClaimable ? "scene" : "card"}>
@@ -363,7 +369,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.eyebrow,
     },
     handoffTicket: {
-      backgroundColor: theme.colors.limeSurface,
+      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.limeBorder,
       borderRadius: theme.radius.inner,
       borderWidth: 1,

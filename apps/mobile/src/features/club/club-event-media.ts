@@ -93,7 +93,7 @@ export const uploadClubEventCoverAsync = async ({
     uri: asset.uri,
   });
   const { error } = await supabase.storage.from(mediaStagingBucketName).upload(storagePath, uploadBody, {
-    cacheControl: "3600",
+    cacheControl: "31536000",
     contentType: mimeType,
     upsert: false,
   });

@@ -361,6 +361,10 @@ export const useStudentRewardOverviewQuery = ({
     queryKey: studentRewardOverviewQueryKey(studentId),
     queryFn: async () => fetchStudentRewardOverviewAsync(studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
 export const useStudentRewardEventQuery = ({
@@ -372,4 +376,8 @@ export const useStudentRewardEventQuery = ({
     queryKey: studentRewardEventQueryKey(eventId, studentId),
     queryFn: async () => fetchStudentRewardEventProgressAsync(eventId, studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
