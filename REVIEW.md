@@ -2,6 +2,20 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Hide Operator URL Fields)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/hide-operator-url-fields`
+- **Scope:** Fix the web organization profile `Club: Invalid UUID` save loop and remove operator-facing URL entry fields from organization/business profile, announcement, and event surfaces without weakening backend validation.
+
+## Hide Operator URL Fields Findings
+
+- Web club profile submit trusts `draft.clubId`; if the selected club changes or the draft is stale, the server correctly returns `Club: Invalid UUID`. The submit payload should always use the currently selected server-owned club id.
+- Web announcement upload no longer persists signed staging URLs, but the manual `Image URL` input remains visible under the preview and confuses operators because uploaded images intentionally submit `imageStagingPath` instead.
+- Web organization event forms expose manual ticket and cover-image URL inputs even though media uploads already provide the safe staging flow.
+- Web business/organization account creation and the public business application form still expose website/Instagram/media URL inputs, while review cards show external URL links from submitted applications.
+- Mobile organization and business profile forms expose website/Instagram URL inputs. Mobile organizer announcements/events also expose CTA/ticket URL inputs. Hiding these fields is UI-only; existing backend/schema support stays intact to avoid destructive data loss or migrations in this hotfix.
+
 ## Current Review (Release Gate Drift + CSP Hardening)
 
 - **Date:** 2026-05-10

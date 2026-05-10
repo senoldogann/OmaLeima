@@ -317,36 +317,6 @@ export default function ClubProfileScreen() {
               />
             </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>{language === "fi" ? "Verkkosivu" : "Website"}</Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="url"
-                onChangeText={(websiteUrl) =>
-                  setClubDraft((currentDraft) => ({ ...currentDraft, websiteUrl }))
-                }
-                placeholder="https://..."
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.input}
-                value={clubDraft.websiteUrl}
-              />
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Instagram</Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="url"
-                onChangeText={(instagramUrl) =>
-                  setClubDraft((currentDraft) => ({ ...currentDraft, instagramUrl }))
-                }
-                placeholder="https://instagram.com/..."
-                placeholderTextColor={theme.colors.textDim}
-                style={styles.input}
-                value={clubDraft.instagramUrl}
-              />
-            </View>
-
             <Pressable
               disabled={
                 updateClubProfileMutation.isPending ||

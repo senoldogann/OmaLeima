@@ -54,8 +54,6 @@ type BusinessProfileDraftField = keyof Pick<
   | "phone"
   | "address"
   | "city"
-  | "websiteUrl"
-  | "instagramUrl"
   | "yTunnus"
   | "contactPersonName"
   | "openingHours"
@@ -158,18 +156,6 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
       language === "fi"
         ? "Lyhyt viesti henkilökunnalle tapahtumapäivää varten."
         : "Short event-day message for staff.",
-  },
-  {
-    field: "websiteUrl",
-    label: language === "fi" ? "Verkkosivu" : "Website",
-    multiline: false,
-    placeholder: "https://...",
-  },
-  {
-    field: "instagramUrl",
-    label: "Instagram",
-    multiline: false,
-    placeholder: "https://instagram.com/...",
   },
 ];
 
@@ -688,7 +674,7 @@ export default function BusinessProfileScreen() {
                 <Text style={styles.formGroupHeader}>
                   {language === "fi" ? "Yhteystiedot" : "Contact"}
                 </Text>
-                {fieldConfigs.filter(c => (["contactEmail", "phone", "address", "city", "websiteUrl", "instagramUrl"] as string[]).includes(c.field as string)).map((config) => (
+                {fieldConfigs.filter(c => (["contactEmail", "phone", "address", "city"] as string[]).includes(c.field as string)).map((config) => (
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput

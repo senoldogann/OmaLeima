@@ -716,25 +716,6 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                   />
                 </label>
 
-                <label className="field">
-                  <span className="field-label">{copy.ticketUrl}</span>
-                  <input
-                    className="field-input"
-                    disabled={isPending}
-                    inputMode="url"
-                    onChange={(event) =>
-                      setPayload((currentPayload) => ({
-                        ...currentPayload,
-                        ticketUrl: event.target.value,
-                      }))
-                    }
-                    placeholder="https://"
-                    type="url"
-                    value={payload.ticketUrl}
-                  />
-                  <span className="field-help">{copy.ticketUrlHint}</span>
-                </label>
-
                 <div className="detail-grid">
                   <label className="field">
                     <span className="field-label">{copy.start}</span>
@@ -802,20 +783,6 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                         style={{ backgroundImage: `url(${payload.coverImageUrl})` }}
                       />
                     ) : null}
-                    <label className="field">
-                      <span className="field-label">{copy.coverImageUrl}</span>
-                      <input
-                        className="field-input"
-                        disabled={isPending || isCoverUploading}
-                        onChange={(event) =>
-                          setPayload((currentPayload) => ({
-                            ...currentPayload,
-                            coverImageUrl: event.target.value,
-                          }))
-                        }
-                        value={payload.coverImageUrl}
-                      />
-                    </label>
                   </div>
 
                   <label className="field">
@@ -1039,29 +1006,6 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
               />
             </label>
 
-            <label className="field">
-              <span className="field-label">{copy.ticketUrl}</span>
-              <input
-                className="field-input"
-                disabled={isUpdatePending}
-                inputMode="url"
-                onChange={(event) =>
-                  setUpdatePayload((currentPayload) =>
-                    currentPayload === null
-                      ? null
-                      : {
-                        ...currentPayload,
-                        ticketUrl: event.target.value,
-                      }
-                  )
-                }
-                placeholder="https://"
-                type="url"
-                value={updatePayload.ticketUrl}
-              />
-              <span className="field-help">{copy.ticketUrlHint}</span>
-            </label>
-
             <div className="detail-grid">
               <label className="field">
                 <span className="field-label">{copy.start}</span>
@@ -1141,24 +1085,6 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     style={{ backgroundImage: `url(${updatePayload.coverImageUrl})` }}
                   />
                 ) : null}
-                <label className="field">
-                  <span className="field-label">{copy.coverImageUrl}</span>
-                  <input
-                    className="field-input"
-                    disabled={isUpdatePending || isCoverUploading}
-                    onChange={(event) =>
-                      setUpdatePayload((currentPayload) =>
-                        currentPayload === null
-                          ? null
-                          : {
-                            ...currentPayload,
-                            coverImageUrl: event.target.value,
-                          }
-                      )
-                    }
-                    value={updatePayload.coverImageUrl}
-                  />
-                </label>
               </div>
 
               <label className="field">

@@ -295,20 +295,6 @@ export const BusinessApplicationForm = ({
         </label>
       </div>
 
-      <div className="contact-row contact-row-split">
-        <label className="contact-field" htmlFor={fieldId("websiteUrl")}>
-          <span className="contact-label">{content.websiteLabel}</span>
-          <input id={fieldId("websiteUrl")} name="websiteUrl" type="url" />
-          <span className="contact-hint">{fieldErrors.websiteUrl ?? content.websiteHint}</span>
-        </label>
-
-        <label className="contact-field" htmlFor={fieldId("instagramUrl")}>
-          <span className="contact-label">{content.instagramLabel}</span>
-          <input id={fieldId("instagramUrl")} name="instagramUrl" type="url" />
-          <span className="contact-hint">{fieldErrors.instagramUrl ?? content.instagramHint}</span>
-        </label>
-      </div>
-
       <div className="contact-row">
         <label className="contact-field" htmlFor={fieldId("message")}>
           <span className="contact-label">{content.messageLabel}</span>

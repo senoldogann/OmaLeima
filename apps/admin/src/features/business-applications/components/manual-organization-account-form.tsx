@@ -187,22 +187,6 @@ export const ManualOrganizationAccountForm = ({ locale }: ManualOrganizationAcco
             <span className="field-label">{copy.country}</span>
             <input className="field-input" name="country" required type="text" />
           </label>
-          <label className="field">
-            <span className="field-label">{copy.websiteUrl}</span>
-            <input className="field-input" name="websiteUrl" type="url" />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.instagramUrl}</span>
-            <input className="field-input" name="instagramUrl" type="url" />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.logoUrl}</span>
-            <input className="field-input" name="logoUrl" type="url" />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.coverImageUrl}</span>
-            <input className="field-input" name="coverImageUrl" type="url" />
-          </label>
           <label className="field" style={{ gridColumn: "1 / -1" }}>
             <span className="field-label">{copy.announcement}</span>
             <textarea className="field-input" name="announcement" rows={4} />

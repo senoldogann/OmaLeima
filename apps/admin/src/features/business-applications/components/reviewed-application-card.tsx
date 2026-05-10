@@ -6,22 +6,9 @@ import {
   formatBusinessApplicationStatus,
 } from "@/features/business-applications/format";
 import type { BusinessApplicationRecord } from "@/features/business-applications/types";
-import { normalizeExternalReviewUrl } from "@/features/business-applications/validation";
 
 type ReviewedApplicationCardProps = {
   application: BusinessApplicationRecord;
-};
-
-const renderExternalLink = (label: string, href: string | null) => {
-  if (href === null) {
-    return null;
-  }
-
-  return (
-    <a className="detail-link" href={href} rel="noreferrer" target="_blank">
-      {label}
-    </a>
-  );
 };
 
 export const ReviewedApplicationCard = ({ application }: ReviewedApplicationCardProps) => {
@@ -63,10 +50,6 @@ export const ReviewedApplicationCard = ({ application }: ReviewedApplicationCard
           </div>
         ) : null}
 
-        <div className="action-row">
-          {renderExternalLink("Website", normalizeExternalReviewUrl(application.websiteUrl))}
-          {renderExternalLink("Instagram", normalizeExternalReviewUrl(application.instagramUrl))}
-        </div>
       </div>
     </article>
   );

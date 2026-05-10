@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Hide Operator URL Fields)
+
+- [x] Re-read required docs and inspect web/mobile organization/business URL surfaces.
+- [x] Record root causes and REASONS plan in working docs.
+- [x] Fix web club profile submit payload and hide operator URL inputs.
+- [x] Run admin/mobile validation and inspect the final diff.
+- [ ] Merge, deploy web UI, and update handoff.
+
 ## Current Todos (Release Gate Drift + CSP Hardening)
 
 - [x] Re-read required docs and inspect reward notification audit, docs, and admin CSP.
@@ -9,7 +17,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Update mobile/master/testing docs so they no longer claim unlock local notifications.
 - [x] Remove production `unsafe-eval` from admin CSP while keeping the currently required inline allowance.
 - [x] Mark only repo-verified release checklist items while leaving external public-launch gates open.
-- [ ] Re-run release gate validation and update handoff.
+- [x] Re-run release gate validation and update handoff.
 
 ## Current Todos (Web Organization Validation Hotfix)
 
