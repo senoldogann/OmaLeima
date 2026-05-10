@@ -251,9 +251,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     );
   } catch (error) {
+    console.error("[admin-business-account-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown business account creation error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown business account creation error.",
+        message: "Business account could not be created.",
         status: "BUSINESS_ACCOUNT_CREATE_FAILED",
       },
       {

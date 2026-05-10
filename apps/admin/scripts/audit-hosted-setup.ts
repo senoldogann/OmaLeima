@@ -16,8 +16,12 @@ const requiredActionsSecrets = [
 const protectionBypassSecretName = "VERCEL_AUTOMATION_BYPASS_SECRET";
 
 const requiredVercelEnvNames = [
+  "CONTACT_IP_HASH_SECRET",
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "TURNSTILE_SECRET_KEY",
 ] as const;
 
 const projectLinkSchema = z.object({

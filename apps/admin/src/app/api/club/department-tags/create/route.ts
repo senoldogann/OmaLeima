@@ -75,9 +75,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-department-tag-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown club department tag route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club department tag route error.",
+        message: "Department tag could not be created.",
         status: "ROUTE_ERROR",
       },
       {

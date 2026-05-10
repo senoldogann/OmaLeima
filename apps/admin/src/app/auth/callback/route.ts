@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
+const callbackErrorParam = "Authentication could not be completed. Try signing in again.";
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     if (exchangeResult.error !== null) {
       const loginUrl = new URL("/login", redirectBase);
-      loginUrl.searchParams.set("error", exchangeResult.error.message);
+      loginUrl.searchParams.set("error", callbackErrorParam);
       return NextResponse.redirect(loginUrl);
     }
   }

@@ -91,9 +91,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[announcement-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown announcement route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown announcement route error.",
+        message: "Announcement could not be created.",
         status: "ROUTE_ERROR",
       },
       {

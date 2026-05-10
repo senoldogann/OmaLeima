@@ -61,9 +61,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[admin-login-slide-upsert] failed", {
+      message: error instanceof Error ? error.message : "Unknown login slide upsert route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown login slide upsert route error.",
+        message: "Login slide could not be saved.",
         status: "ROUTE_ERROR",
       },
       {

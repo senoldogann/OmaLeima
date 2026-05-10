@@ -13,7 +13,7 @@ import { useSession } from "@/providers/session-provider";
 export default function IndexRoute() {
   const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
-  const { isAuthenticated, isLoading, session } = useSession();
+  const { bootstrapError, isAuthenticated, isLoading, retryBootstrap, session } = useSession();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
     isEnabled: isAuthenticated && session !== null,
@@ -27,6 +27,19 @@ export default function IndexRoute() {
             {copy.auth.openingMessage}
           </Text>
         </InfoCard>
+      </AppScreen>
+    );
+  }
+
+  if (bootstrapError !== null) {
+    return (
+      <AppScreen>
+        <AccessIssueCard
+          title={copy.student.accessChecking}
+          detail={createUserSafeErrorMessage(new Error(bootstrapError), language, "access")}
+          retryLabel={copy.common.retry}
+          onRetry={retryBootstrap}
+        />
       </AppScreen>
     );
   }

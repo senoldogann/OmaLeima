@@ -1,9 +1,6 @@
 name: staging admin verification
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       admin_app_base_url:
@@ -13,12 +10,6 @@ on:
   deployment_status:
 
 jobs:
-  push-noop:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "staging admin verification waits for deployment_status or manual dispatch"
-
   verify:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && github.event.deployment_status.target_url != '') }}
     runs-on: ubuntu-latest

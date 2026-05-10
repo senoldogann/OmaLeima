@@ -395,7 +395,27 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.admin-create-business-owner-access]
+enabled = true
+verify_jwt = false
+
+[functions.generate-business-scanner-login-qr]
+enabled = true
+verify_jwt = false
+
+[functions.provision-business-scanner-session]
+enabled = true
+verify_jwt = false
+
+[functions.revoke-business-scanner-access]
+enabled = true
+verify_jwt = false
+
 [functions.register-device-token]
+enabled = true
+verify_jwt = false
+
+[functions.send-announcement-push]
 enabled = true
 verify_jwt = false
 
@@ -404,6 +424,10 @@ enabled = true
 verify_jwt = false
 
 [functions.send-push-notification]
+enabled = true
+verify_jwt = false
+
+[functions.send-support-reply-push]
 enabled = true
 verify_jwt = false
 

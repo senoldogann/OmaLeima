@@ -62,9 +62,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[admin-login-slide-delete] failed", {
+      message: error instanceof Error ? error.message : "Unknown login slide delete route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown login slide delete route error.",
+        message: "Login slide could not be deleted.",
         status: "ROUTE_ERROR",
       },
       {

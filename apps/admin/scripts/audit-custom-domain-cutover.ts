@@ -133,7 +133,7 @@ const readDomainName = (): string => {
     return rawDomainName.trim();
   }
 
-  return "admin.omaleima.fi";
+  return "omaleima.fi";
 };
 
 const readProductionDeploymentSummary = (projectLink: ProjectLink): ProductionDeploymentSummary => {

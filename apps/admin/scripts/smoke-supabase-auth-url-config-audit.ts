@@ -47,6 +47,7 @@ const createAuditResponse = (siteUrl: string, uriAllowList: string, googleEnable
 const previewAllowList = [
   "http://localhost:3001/auth/callback",
   "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app/auth/callback",
+  "https://omaleima.fi/auth/callback",
   "https://admin.omaleima.fi/auth/callback",
   "omaleima://auth/callback",
   "http://localhost:8081/auth/callback",
@@ -75,7 +76,7 @@ const run = async (): Promise<void> => {
   }
 
   assertIncludes(missingRedirectError, "Missing required Supabase auth redirect URLs");
-  assertIncludes(missingRedirectError, "https://admin.omaleima.fi/auth/callback");
+  assertIncludes(missingRedirectError, "https://omaleima.fi/auth/callback");
 
   let googleDisabledError = "";
 
@@ -112,7 +113,7 @@ const run = async (): Promise<void> => {
   const customDomainReadyOutput = runAuditCommand({
     SUPABASE_AUTH_CONFIG_AUDIT_PROJECT_REF: "test-project",
     SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuditResponse(
-      "https://admin.omaleima.fi",
+      "https://omaleima.fi",
       previewAllowList,
       true,
       "google-client-id"

@@ -89,9 +89,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-event-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown club event route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club event route error.",
+        message: "Club event could not be created.",
         status: "ROUTE_ERROR",
       },
       {

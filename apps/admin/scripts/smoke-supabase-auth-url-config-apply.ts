@@ -46,6 +46,7 @@ const createAuthConfig = (siteUrl: string): string =>
     uri_allow_list: [
       "http://localhost:3001/auth/callback",
       "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app/auth/callback",
+      "https://omaleima.fi/auth/callback",
       "https://admin.omaleima.fi/auth/callback",
       "omaleima://auth/callback",
       "http://localhost:8081/auth/callback",
@@ -98,13 +99,13 @@ const run = async (): Promise<void> => {
   assertIncludes(previewToCustomDryRunOutput, "from:preview-site-url");
   assertIncludes(previewToCustomDryRunOutput, "to:custom-domain-site-url");
   assertIncludes(previewToCustomDryRunOutput, "domain-gate:passed");
-  assertIncludes(previewToCustomDryRunOutput, "redirect-count:7");
+  assertIncludes(previewToCustomDryRunOutput, "redirect-count:8");
 
   const customToPreviewDryRunOutput = runApplyCommand({
     SUPABASE_AUTH_CONFIG_APPLY_MODE: "dry-run",
     SUPABASE_AUTH_CONFIG_APPLY_PROJECT_REF: "test-project",
     SUPABASE_AUTH_CONFIG_APPLY_TARGET: "preview",
-    SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuthConfig("https://admin.omaleima.fi"),
+    SUPABASE_AUTH_CONFIG_RESPONSE_JSON: createAuthConfig("https://omaleima.fi"),
   });
 
   assertIncludes(customToPreviewDryRunOutput, "supabase-auth-url-config-apply:DRY_RUN");
@@ -117,10 +118,11 @@ const run = async (): Promise<void> => {
     SUPABASE_AUTH_CONFIG_APPLY_TARGET: "custom-domain",
     SUPABASE_AUTH_CONFIG_APPLY_DOMAIN_GATE_RESULT: "ready",
     SUPABASE_AUTH_CONFIG_EXPECTED_PATCH_JSON: JSON.stringify({
-      site_url: "https://admin.omaleima.fi",
+      site_url: "https://omaleima.fi",
       uri_allow_list: [
         "http://localhost:3001/auth/callback",
         "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app/auth/callback",
+        "https://omaleima.fi/auth/callback",
         "https://admin.omaleima.fi/auth/callback",
         "omaleima://auth/callback",
         "http://localhost:8081/auth/callback",
@@ -131,7 +133,7 @@ const run = async (): Promise<void> => {
     SUPABASE_AUTH_CONFIG_PATCH_RESPONSE_JSON: JSON.stringify({ ok: true }),
     SUPABASE_AUTH_CONFIG_RESPONSE_SEQUENCE_JSON: JSON.stringify([
       JSON.parse(createAuthConfig("https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app")),
-      JSON.parse(createAuthConfig("https://admin.omaleima.fi")),
+      JSON.parse(createAuthConfig("https://omaleima.fi")),
     ]),
   });
 

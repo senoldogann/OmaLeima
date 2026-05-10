@@ -73,9 +73,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-reward-tier-delete] failed", {
+      message: error instanceof Error ? error.message : "Unknown reward tier delete route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown reward tier delete route error.",
+        message: "Reward tier could not be deleted.",
         status: "ROUTE_ERROR",
       },
       {

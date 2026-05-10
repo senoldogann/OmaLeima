@@ -35,6 +35,7 @@ type EventReminderPushPayload = {
 
 type SupportReplyPushPayload = {
   area: "BUSINESS" | "CLUB" | "STUDENT" | null;
+  recipientUserId: string | null;
   supportRequestId: string | null;
   type: "SUPPORT_REPLY";
 };
@@ -113,6 +114,7 @@ const readRoutedPushPayloadFromData = (rawData: unknown): RoutedPushPayload | nu
   if (type === "SUPPORT_REPLY") {
     return {
       area: readSupportArea(record.area),
+      recipientUserId: readStringField(record, "recipientUserId") ?? readStringField(record, "userId"),
       supportRequestId: readStringField(record, "supportRequestId"),
       type,
     };
@@ -133,6 +135,9 @@ const readRoutedPushPayloadFromData = (rawData: unknown): RoutedPushPayload | nu
 const readRoutedPushPayload = (
   response: ExpoNotifications.NotificationResponse
 ): RoutedPushPayload | null => readRoutedPushPayloadFromData(response.notification.request.content.data);
+
+const isPersonalizedPushPayload = (payload: RoutedPushPayload): boolean =>
+  payload.type !== "ANNOUNCEMENT";
 
 const createHandledResponseKey = (
   response: ExpoNotifications.NotificationResponse,
@@ -267,6 +272,16 @@ export const AnnouncementPushRouterBridge = (): null => {
 
       const currentUserId = userIdRef.current;
 
+      if (isPersonalizedPushPayload(payload)) {
+        if (payload.recipientUserId === null) {
+          return;
+        }
+
+        if (currentUserId !== null && payload.recipientUserId !== currentUserId) {
+          return;
+        }
+      }
+
       if (
         payload.type === "ANNOUNCEMENT" &&
         payload.recipientUserId !== null &&
@@ -362,6 +377,11 @@ export const AnnouncementPushRouterBridge = (): null => {
     }
 
     const area = accessQuery.data?.area ?? "unsupported";
+
+    if (isPersonalizedPushPayload(pendingPayload) && pendingPayload.recipientUserId !== userId) {
+      setPendingPayload(null);
+      return;
+    }
 
     if (pendingPayload.type === "ANNOUNCEMENT") {
       if (
@@ -466,6 +486,13 @@ export const AnnouncementPushRouterBridge = (): null => {
     }
 
     const supportAreaPath = resolveProfilePathname(area);
+
+    if (pendingPayload.type === "SUPPORT_REPLY") {
+      if (pendingPayload.recipientUserId !== null && pendingPayload.recipientUserId !== userId) {
+        setPendingPayload(null);
+        return;
+      }
+    }
 
     if (supportAreaPath === null) {
       setPendingPayload(null);

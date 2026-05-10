@@ -23,9 +23,11 @@ export const POST = async (request: Request): Promise<NextResponse<ResponseBody>
   try {
     body = await request.json();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown JSON parse error.";
+    console.warn("[admin-turnstile] invalid json body", {
+      message: error instanceof Error ? error.message : "Unknown JSON parse error.",
+    });
 
-    return NextResponse.json({ error: `Invalid verification request JSON: ${message}` }, { status: 400 });
+    return NextResponse.json({ error: "Invalid verification request JSON." }, { status: 400 });
   }
 
   const parsed = requestSchema.safeParse(body);

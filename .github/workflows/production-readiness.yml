@@ -1,4 +1,4 @@
-name: Production Readiness
+name: Static Build Checks
 
 on:
   pull_request:
@@ -36,6 +36,9 @@ jobs:
           cache-dependency-path: |
             apps/admin/package-lock.json
             apps/mobile/package-lock.json
+
+      - name: Check Supabase Edge Function inventory
+        run: npm run qa:edge-function-inventory
 
       - name: Install admin dependencies
         run: npm --prefix apps/admin ci

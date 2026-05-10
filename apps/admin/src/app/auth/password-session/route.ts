@@ -56,12 +56,11 @@ const parseRequestBodyAsync = async (
   try {
     body = await request.json();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown JSON parse error.";
+    console.warn("[admin-login] invalid json body", {
+      message: error instanceof Error ? error.message : "Unknown JSON parse error.",
+    });
 
-    return createJsonResponse(
-      { error: `Password session request body was not valid JSON: ${message}` },
-      400
-    );
+    return createJsonResponse({ error: "Password session request body was not valid JSON." }, 400);
   }
 
   const parsed = requestSchema.safeParse(body);
@@ -151,7 +150,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PasswordS
   });
 
   if (signInResult.error !== null) {
-    return createJsonResponse({ error: signInResult.error.message }, 401);
+    console.warn("[admin-login] password sign-in failed", {
+      emailDomain: parsedBody.email.split("@")[1] ?? "unknown",
+      message: signInResult.error.message,
+    });
+
+    return createJsonResponse({ error: "Email or password is incorrect." }, 401);
   }
 
   const access = await resolveAdminAccessAsync(supabase);

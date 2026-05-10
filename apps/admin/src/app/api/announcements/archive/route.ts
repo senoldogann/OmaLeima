@@ -67,9 +67,13 @@ export async function POST(request: Request) {
             );
         }
 
+        console.error("[announcement-archive] failed", {
+          message: error instanceof Error ? error.message : "Unknown announcement archive route error.",
+        });
+
         return NextResponse.json(
             {
-                message: error instanceof Error ? error.message : "Unknown announcement archive route error.",
+                message: "Announcement could not be archived.",
                 status: "ROUTE_ERROR",
             },
             {

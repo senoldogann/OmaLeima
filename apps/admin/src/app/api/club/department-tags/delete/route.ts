@@ -74,9 +74,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-department-tag-delete] failed", {
+      message: error instanceof Error ? error.message : "Unknown club department tag delete route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club department tag delete route error.",
+        message: "Department tag could not be deleted.",
         status: "ROUTE_ERROR",
       },
       {

@@ -102,9 +102,11 @@ const parsePayload = async (request: Request): Promise<ApplicationPayload | { fi
   try {
     rawBody = await request.json();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown JSON parse error.";
+    console.warn("[business-application] invalid json body", {
+      message: error instanceof Error ? error.message : "Unknown JSON parse error.",
+    });
 
-    return { fieldErrors: {}, message: `Invalid JSON: ${message}` };
+    return { fieldErrors: {}, message: "Invalid JSON." };
   }
 
   const record = typeof rawBody === "object" && rawBody !== null ? rawBody as Record<string, unknown> : {};

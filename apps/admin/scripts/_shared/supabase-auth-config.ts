@@ -3,11 +3,12 @@ import { spawnSync } from "node:child_process";
 import { z } from "zod";
 
 export const previewSiteUrl = "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app";
-export const customDomainSiteUrl = "https://admin.omaleima.fi";
+export const customDomainSiteUrl = "https://omaleima.fi";
 
 export const requiredRedirectUrls = [
   "http://localhost:3001/auth/callback",
   "https://omaleima-admin-c8iakx9r6-senol-dogans-projects.vercel.app/auth/callback",
+  "https://omaleima.fi/auth/callback",
   "https://admin.omaleima.fi/auth/callback",
   "omaleima://auth/callback",
   "http://localhost:8081/auth/callback",

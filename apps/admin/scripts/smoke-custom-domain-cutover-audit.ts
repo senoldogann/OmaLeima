@@ -62,7 +62,7 @@ const run = async (): Promise<void> => {
   try {
     runAuditCommand({
       CUSTOM_DOMAIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
-      CUSTOM_DOMAIN_AUDIT_DOMAIN: "admin.omaleima.fi",
+      CUSTOM_DOMAIN_AUDIT_DOMAIN: "omaleima.fi",
       CUSTOM_DOMAIN_AUDIT_PRODUCTION_SUMMARY_JSON: JSON.stringify({
         readyState: "ERROR",
         target: "production",
@@ -99,7 +99,7 @@ const run = async (): Promise<void> => {
   try {
     runAuditCommand({
       CUSTOM_DOMAIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
-      CUSTOM_DOMAIN_AUDIT_DOMAIN: "admin.omaleima.fi",
+      CUSTOM_DOMAIN_AUDIT_DOMAIN: "omaleima.fi",
       CUSTOM_DOMAIN_AUDIT_PRODUCTION_SUMMARY_JSON: JSON.stringify({
         readyState: "READY",
         target: "production",
@@ -129,12 +129,12 @@ const run = async (): Promise<void> => {
     dnsPendingError = error instanceof Error ? error.message : String(error);
   }
 
-  assertIncludes(dnsPendingError, 'Either set DNS record "A admin.omaleima.fi 76.76.21.21"');
+  assertIncludes(dnsPendingError, 'Either set DNS record "A omaleima.fi 76.76.21.21"');
   assertIncludes(dnsPendingError, "delegate the domain to Vercel nameservers (ns1.vercel-dns.com, ns2.vercel-dns.com)");
 
   const successOutput = runAuditCommand({
     CUSTOM_DOMAIN_AUDIT_PROJECT_LINK_PATH: linkedProjectPath,
-    CUSTOM_DOMAIN_AUDIT_DOMAIN: "admin.omaleima.fi",
+    CUSTOM_DOMAIN_AUDIT_DOMAIN: "omaleima.fi",
     CUSTOM_DOMAIN_AUDIT_PRODUCTION_SUMMARY_JSON: JSON.stringify({
       readyState: "READY",
       target: "production",
@@ -162,7 +162,7 @@ const run = async (): Promise<void> => {
   });
 
   assertIncludes(successOutput, "custom-domain-cutover:READY");
-  assertIncludes(successOutput, "domain:admin.omaleima.fi");
+  assertIncludes(successOutput, "domain:omaleima.fi");
   assertIncludes(successOutput, "next:switch-supabase-site-url-and-redirects");
 
   console.log(

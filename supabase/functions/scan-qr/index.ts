@@ -35,6 +35,10 @@ type BusinessStaffRow = {
   business_id: string;
 };
 
+type ProfileStatusRow = {
+  status: "ACTIVE" | "SUSPENDED" | "DELETED";
+};
+
 type BusinessRow = {
   status: string;
 };
@@ -445,6 +449,25 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const { user } = authResult.value;
+    const { data: scannerProfile, error: scannerProfileError } = await supabase
+      .from("profiles")
+      .select("status")
+      .eq("id", user.id)
+      .maybeSingle<ProfileStatusRow>();
+
+    if (scannerProfileError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to read scanner profile.", {
+        scannerUserId: user.id,
+        scannerProfileError: scannerProfileError.message,
+      });
+    }
+
+    if (scannerProfile?.status !== "ACTIVE") {
+      return errorResponse(403, "PROFILE_NOT_ACTIVE", "Authenticated scanner profile is not active.", {
+        scannerUserId: user.id,
+      });
+    }
+
     const verifiedQrToken = await verifyQrToken(env.qrSigningSecret, body.qrToken);
 
     if (!verifiedQrToken.ok) {

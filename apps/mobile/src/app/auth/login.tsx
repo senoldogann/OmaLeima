@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
 import { AppleSignInButton } from "@/features/auth/components/apple-sign-in-button";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
@@ -24,7 +25,7 @@ export default function LoginScreen() {
   const theme = useAppTheme();
   const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
-  const { isAuthenticated, isLoading, session } = useSession();
+  const { bootstrapError, isAuthenticated, isLoading, retryBootstrap, session } = useSession();
   const isScannerProvisioningActive = useIsScannerProvisioningActive();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
@@ -89,6 +90,20 @@ export default function LoginScreen() {
         <AuthLoadingPanel
           message={copy.auth.openingMessage}
           title={copy.auth.opening}
+        />
+      </AppScreen>
+    );
+  }
+
+  if (bootstrapError !== null) {
+    return (
+      <AppScreen>
+        <LoginHero />
+        <AccessIssueCard
+          title={language === "fi" ? "Istuntoa ei voitu palauttaa" : "Session could not be restored"}
+          detail={createUserSafeErrorMessage(new Error(bootstrapError), language, "access")}
+          retryLabel={copy.common.retry}
+          onRetry={retryBootstrap}
         />
       </AppScreen>
     );

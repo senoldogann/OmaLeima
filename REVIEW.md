@@ -2,6 +2,23 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Subagent Production Code Review)
+
+- **Date:** 2026-05-10
+- **Branch:** `review/production-ready-20260510`
+- **Scope:** Production-ready code review with subagents across admin web, mobile, Supabase/RLS/Edge, and release infrastructure.
+
+## Subagent Production Review Findings
+
+- Mobile P1: scheduled local student reminders can survive an authenticated user switch because cleanup only considers the current student prefix. Fix by pruning all `student-event-reminder:` notifications that do not belong to the current student and trimming fired-record storage to current-user keys.
+- Mobile P1: personalized push payloads without `recipientUserId` can still route under the current session. Fix by requiring recipient binding for reward/reminder/promotion/support payloads before queueing/routing.
+- Mobile P2: `bootstrapError` is set in `SessionProvider` but root/login surfaces ignore it. Fix by showing a sanitized access issue with retry/local sign-out path instead of a normal login redirect.
+- Supabase P1: suspended profiles can retain active staff/member rows and continue privileged scanner/reward/business actions. Fix with forward RPC/helper hardening that checks active profiles in business manager checks, scanner stamp RPC, scanner registration, and reward claim authorization.
+- Supabase P1: scanner provisioning can promote any authenticated account that consumes a valid owner QR. Fix by locking and validating the scanner profile before activation: profile must exist, not be deleted, be suspended bootstrap scanner-shaped, and not already active/human-linked.
+- Supabase P2: `claim-reward` lacks endpoint actor rate limiting before RPC execution. Reuse the shared Edge actor limiter with a reward-claim scope.
+- Release P1/P2: production host/auth cutover scripts still point at `admin.omaleima.fi`, Edge Function inventory/config/docs are incomplete, hosted env audit checks fewer names than build-time validation, and staging verification can green-light as a push no-op. Fix repo-owned config/docs/workflows so release gates describe the actual `https://omaleima.fi` production host and all shipped functions.
+- Admin P1/P2: password session errors expose provider text and split proxy files can drop either Supabase session refresh or CSRF/geofence behavior. Fix the login error surface and compose all proxy behavior in one runtime proxy. Broader route-by-route error mapper and upload byte validation remain follow-up if not completed in this pass.
+
 ## Current Review (Production Ready Final Sweep)
 
 - **Date:** 2026-05-10

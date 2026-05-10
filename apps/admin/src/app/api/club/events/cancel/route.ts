@@ -63,9 +63,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-event-cancel] failed", {
+      message: error instanceof Error ? error.message : "Unknown club event cancel route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club event cancel route error.",
+        message: "Club event could not be cancelled.",
         status: "ROUTE_ERROR",
       },
       {

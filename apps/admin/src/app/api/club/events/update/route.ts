@@ -81,9 +81,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-event-update] failed", {
+      message: error instanceof Error ? error.message : "Unknown club event update route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club event update route error.",
+        message: "Club event could not be updated.",
         status: "ROUTE_ERROR",
       },
       {

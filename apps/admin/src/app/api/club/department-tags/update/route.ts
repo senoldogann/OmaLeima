@@ -75,9 +75,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-department-tag-update] failed", {
+      message: error instanceof Error ? error.message : "Unknown club department tag update route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown club department tag update route error.",
+        message: "Department tag could not be updated.",
         status: "ROUTE_ERROR",
       },
       {

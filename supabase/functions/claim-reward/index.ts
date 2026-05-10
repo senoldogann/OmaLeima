@@ -1,4 +1,4 @@
-import { assertPostRequest, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
+import { assertPostRequest, enforceEdgeActorRateLimitAsync, errorResponse, getBearerToken, jsonResponse, readJsonBody } from "../_shared/http.ts";
 import { readRuntimeEnv } from "../_shared/env.ts";
 import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.ts";
 import { isUuid } from "../_shared/validation.ts";
@@ -100,6 +100,20 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     const { user } = authResult.value;
+    const rateLimitResponse = await enforceEdgeActorRateLimitAsync(
+      supabase,
+      user.id,
+      `claim-reward:${body.eventId}`,
+      {
+        dayMaxRequests: 240,
+        windowMaxRequests: 20,
+        windowSeconds: 60,
+      },
+    );
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
 
     const { data: rpcResult, error: rpcError } = await supabase.rpc("claim_reward_atomic", {
       p_event_id: body.eventId,

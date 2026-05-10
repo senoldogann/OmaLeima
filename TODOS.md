@@ -2,6 +2,25 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Production Review Deploy + Merge)
+
+- [ ] Commit verified production review patch set with required trailer.
+- [ ] Apply hosted Supabase migration and deploy changed Edge Functions.
+- [ ] Deploy admin app to Vercel production for `https://omaleima.fi`.
+- [ ] Run hosted verification checks after deploy.
+- [ ] Merge reviewed branch to `main`, push, delete feature branch, and update handoff.
+
+## Current Todos (Subagent Production Code Review)
+
+- [x] Re-read required project docs and launch admin/mobile/Supabase/release review subagents.
+- [x] Record verified subagent findings and REASONS plan before code edits.
+- [x] Patch mobile reminder cleanup, personalized push recipient binding, and auth bootstrap error surfaces.
+- [x] Patch Supabase active-profile/provisioning/reward rate-limit hardening with a forward migration and Edge changes.
+- [x] Patch release host/function inventory/env audit/workflow docs and config.
+- [x] Patch admin password-session error surface and compose proxy behavior into a single runtime proxy.
+- [x] Run Supabase/admin/mobile/Deno/workflow validation.
+- [x] Update `PROGRESS.md` handoff with fixes, validation, and remaining external gates.
+
 ## Current Todos (Main Release Merge + Low-cost Release Policy)
 
 - [x] Re-read required docs and inspect git/release script state.

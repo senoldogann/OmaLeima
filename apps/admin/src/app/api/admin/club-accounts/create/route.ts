@@ -255,9 +255,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     );
   } catch (error) {
+    console.error("[admin-club-account-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown organization account creation error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown organization account creation error.",
+        message: "Organization account could not be created.",
         status: "CLUB_ACCOUNT_CREATE_FAILED",
       },
       {
