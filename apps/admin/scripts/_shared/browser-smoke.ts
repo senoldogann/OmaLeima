@@ -128,7 +128,7 @@ export const assertAnonymousRedirectAsync = async (
   await setDashboardLocaleCookieAsync(page, appBaseUrl);
 
   await page.goto(`${appBaseUrl}${protectedPath}`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   });
 
   await page.waitForURL("**/login", {
