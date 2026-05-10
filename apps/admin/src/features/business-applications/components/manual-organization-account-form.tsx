@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type ManualOrganizationAccountFormProps = {
@@ -79,7 +80,7 @@ const postOrganizationAccountAsync = async (formData: FormData): Promise<CreateO
       city: readFormValue(formData, "city"),
       clubName: readFormValue(formData, "clubName"),
       contactEmail: readFormValue(formData, "contactEmail"),
-      country: readFormValue(formData, "country"),
+      country: FINLAND_COUNTRY,
       coverImageUrl: readFormValue(formData, "coverImageUrl"),
       instagramUrl: readFormValue(formData, "instagramUrl"),
       logoUrl: readFormValue(formData, "logoUrl"),
@@ -181,11 +182,20 @@ export const ManualOrganizationAccountForm = ({ locale }: ManualOrganizationAcco
           </label>
           <label className="field">
             <span className="field-label">{copy.city}</span>
-            <input className="field-input" name="city" required type="text" />
+            <select className="field-input" defaultValue="" name="city" required>
+              <option disabled value="">
+                {copy.city}
+              </option>
+              {FINLAND_CITY_OPTIONS.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span className="field-label">{copy.country}</span>
-            <input className="field-input" name="country" required type="text" />
+            <input className="field-input" name="country" readOnly required type="text" value={FINLAND_COUNTRY} />
           </label>
           <label className="field" style={{ gridColumn: "1 / -1" }}>
             <span className="field-label">{copy.announcement}</span>

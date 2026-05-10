@@ -2,6 +2,20 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Finland Location Fields)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/finland-location-fields`
+- **Scope:** Make country immutable as Finland wherever it is asked, and replace typo-prone city text entry with Finnish city selections on web/mobile forms.
+
+## Finland Location Findings
+
+- Admin manual business and organization account forms ask for `country` as editable text and `city` as free text. These should submit `Finland` as a fixed value and use a controlled city select.
+- Public business application also asks country/city as text. The client payload can force `country: Finland`, but the route should also validate `country` as the Finland literal and `city` against the shared city list to prevent crafted payload drift.
+- Club event creation already defaults `country` to `Finland`, but the country field remains editable. Event city is locked to the selected organization membership city, so no free-typing risk exists there after account/profile creation is constrained.
+- Mobile business profile currently exposes `city` as a free-text input. Since React Native has no project picker dependency, use an in-app modal selector based on the same Finland city list instead of adding a package.
+- Existing historical records can contain old city strings. UI selectors should preserve the current value as a visible option if it is not in the standard list, avoiding accidental data loss while preventing new typos.
+
 ## Current Review (Hide Operator URL Fields)
 
 - **Date:** 2026-05-10

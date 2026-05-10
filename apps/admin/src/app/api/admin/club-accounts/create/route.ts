@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
 import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
@@ -46,10 +47,10 @@ const optionalEmailSchema = z.preprocess(
 const requestSchema = z.object({
   address: z.string().trim().max(240).optional(),
   announcement: optionalLongTextSchema,
-  city: z.string().trim().min(2).max(120),
+  city: z.enum(FINLAND_CITY_OPTIONS),
   clubName: z.string().trim().min(2).max(180),
   contactEmail: optionalEmailSchema,
-  country: z.string().trim().min(2).max(80),
+  country: z.literal(FINLAND_COUNTRY),
   coverImageUrl: optionalTextSchema,
   instagramUrl: optionalTextSchema,
   logoUrl: optionalTextSchema,

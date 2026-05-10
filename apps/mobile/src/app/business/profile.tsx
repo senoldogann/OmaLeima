@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 
 import { AppIcon } from "@/components/app-icon";
@@ -27,6 +27,7 @@ import type { MobileTheme } from "@/features/foundation/theme";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
 import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { LegalLinksModal } from "@/features/legal/legal-links-card";
+import { FINLAND_CITY_OPTIONS } from "@/features/location/finland";
 import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { PushNotificationSetupCard } from "@/features/push/push-notification-setup-card";
@@ -159,6 +160,16 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
   },
 ];
 
+const createCityOptions = (currentCity: string): readonly string[] => {
+  const trimmedCity = currentCity.trim();
+
+  if (trimmedCity.length === 0 || FINLAND_CITY_OPTIONS.includes(trimmedCity as (typeof FINLAND_CITY_OPTIONS)[number])) {
+    return FINLAND_CITY_OPTIONS;
+  }
+
+  return [trimmedCity, ...FINLAND_CITY_OPTIONS];
+};
+
 export default function BusinessProfileScreen() {
   const { session } = useSession();
   const { copy, language, setLanguage, theme } = useUiPreferences();
@@ -169,6 +180,7 @@ export default function BusinessProfileScreen() {
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
   const [isLegalLinksVisible, setIsLegalLinksVisible] = useState<boolean>(false);
   const [isOnboardingVisible, setIsOnboardingVisible] = useState<boolean>(false);
+  const [isCityPickerVisible, setIsCityPickerVisible] = useState<boolean>(false);
   const [isBusinessProfileExpanded, setIsBusinessProfileExpanded] = useState<boolean>(false);
   const [isScannerDevicesExpanded, setIsScannerDevicesExpanded] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
@@ -206,6 +218,7 @@ export default function BusinessProfileScreen() {
     [memberships, selectedBusinessId]
   );
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
+  const cityOptions = useMemo(() => createCityOptions(draft?.city ?? ""), [draft?.city]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
   const selectedBusinessIdForEvents = selectedMembership?.businessId ?? null;
   const selectedBusinessActiveJoinedEvents = useMemo(
@@ -677,22 +690,39 @@ export default function BusinessProfileScreen() {
                 {fieldConfigs.filter(c => (["contactEmail", "phone", "address", "city"] as string[]).includes(c.field as string)).map((config) => (
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
-                    <TextInput
-                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
-                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
-                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
-                      multiline={config.multiline}
-                      onChangeText={(value) => updateDraftField(config.field, value)}
-                      placeholder={config.placeholder}
-                      placeholderTextColor={theme.colors.textDim}
-                      style={[
-                        styles.input,
-                        config.multiline ? styles.textArea : null,
-                        !canEditSelectedMembership ? styles.readOnlyInput : null,
-                      ]}
-                      textAlignVertical={config.multiline ? "top" : "center"}
-                      value={draft[config.field]}
-                    />
+                    {config.field === "city" ? (
+                      <Pressable
+                        disabled={!canEditSelectedMembership || updateBusinessProfileMutation.isPending}
+                        onPress={() => setIsCityPickerVisible(true)}
+                        style={[
+                          styles.input,
+                          styles.citySelectInput,
+                          !canEditSelectedMembership ? styles.readOnlyInput : null,
+                        ]}
+                      >
+                        <Text style={draft.city.trim().length > 0 ? styles.citySelectText : styles.citySelectPlaceholder}>
+                          {draft.city.trim().length > 0 ? draft.city : config.placeholder}
+                        </Text>
+                        <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                      </Pressable>
+                    ) : (
+                      <TextInput
+                        autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                        editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                        keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                        multiline={config.multiline}
+                        onChangeText={(value) => updateDraftField(config.field, value)}
+                        placeholder={config.placeholder}
+                        placeholderTextColor={theme.colors.textDim}
+                        style={[
+                          styles.input,
+                          config.multiline ? styles.textArea : null,
+                          !canEditSelectedMembership ? styles.readOnlyInput : null,
+                        ]}
+                        textAlignVertical={config.multiline ? "top" : "center"}
+                        value={draft[config.field]}
+                      />
+                    )}
                   </View>
                 ))}
 
@@ -1138,6 +1168,46 @@ export default function BusinessProfileScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsCityPickerVisible(false)}
+        transparent
+        visible={isCityPickerVisible}
+      >
+        <Pressable onPress={() => setIsCityPickerVisible(false)} style={styles.modalBackdrop}>
+          <Pressable onPress={() => { }} style={styles.preferenceModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>{language === "fi" ? "Sijainti" : "Location"}</Text>
+                <Text style={styles.modalTitle}>{language === "fi" ? "Valitse kaupunki" : "Select city"}</Text>
+              </View>
+              <Pressable onPress={() => setIsCityPickerVisible(false)} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.cityOptionScroll} contentContainerStyle={styles.preferenceOptionList}>
+              {cityOptions.map((city) => {
+                const isSelected = draft?.city.trim() === city;
+
+                return (
+                  <Pressable
+                    key={city}
+                    onPress={() => {
+                      updateDraftField("city", city);
+                      setIsCityPickerVisible(false);
+                    }}
+                    style={[styles.preferenceOption, isSelected ? styles.preferenceOptionActive : null]}
+                  >
+                    <Text style={styles.preferenceOptionTitle}>{city}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <SupportRequestSheet
         area="BUSINESS"
         businessOptions={supportOptions}
@@ -1266,6 +1336,28 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.subtitle,
       lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    cityOptionScroll: {
+      maxHeight: 420,
+    },
+    citySelectInput: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    citySelectPlaceholder: {
+      color: theme.colors.textDim,
+      flex: 1,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    citySelectText: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     disabledButton: {
       opacity: 0.68,

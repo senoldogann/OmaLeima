@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 import { resolveClientIp } from "@/features/security/client-ip";
 import { validateTurnstileTokenAsync, isHostedRuntime, readOptionalServerEnv, type TurnstileValidationResult } from "@/features/security/turnstile";
 import { publicEnv } from "@/lib/env";
@@ -15,11 +16,11 @@ const turnstileAction = "business_application";
 const applicationSchema = z.object({
   address: z.string().min(2).max(240),
   businessName: z.string().min(2).max(180),
-  city: z.string().min(2).max(120),
+  city: z.enum(FINLAND_CITY_OPTIONS),
   consent: z.literal("yes"),
   contactEmail: z.string().min(5).max(200).email(),
   contactName: z.string().min(2).max(120),
-  country: z.string().min(2).max(80),
+  country: z.literal(FINLAND_COUNTRY),
   elapsedMs: z.number().min(0).max(60 * 60 * 1000),
   instagramUrl: z.string().max(300).optional(),
   message: z.string().max(2000).optional(),

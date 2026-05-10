@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type ManualBusinessAccountFormProps = {
@@ -74,7 +75,7 @@ const postBusinessAccountAsync = async (formData: FormData): Promise<CreateBusin
       businessName: readFormValue(formData, "businessName"),
       city: readFormValue(formData, "city"),
       contactEmail: readFormValue(formData, "contactEmail"),
-      country: readFormValue(formData, "country"),
+      country: FINLAND_COUNTRY,
       instagramUrl: readFormValue(formData, "instagramUrl"),
       ownerEmail: readFormValue(formData, "ownerEmail"),
       ownerName: readFormValue(formData, "ownerName"),
@@ -175,11 +176,20 @@ export const ManualBusinessAccountForm = ({ locale }: ManualBusinessAccountFormP
           </label>
           <label className="field">
             <span className="field-label">{copy.city}</span>
-            <input className="field-input" name="city" required type="text" />
+            <select className="field-input" defaultValue="" name="city" required>
+              <option disabled value="">
+                {copy.city}
+              </option>
+              {FINLAND_CITY_OPTIONS.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span className="field-label">{copy.country}</span>
-            <input className="field-input" name="country" required type="text" />
+            <input className="field-input" name="country" readOnly required type="text" value={FINLAND_COUNTRY} />
           </label>
         </div>
 

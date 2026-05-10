@@ -19,6 +19,7 @@ import {
 import { EventRulesBuilder } from "@/features/club-events/components/event-rules-builder";
 import { uploadClubEventCoverImageAsync } from "@/features/club-events/media-upload";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { FINLAND_COUNTRY } from "@/features/location/finland";
 import type {
   ClubEventActionState,
   ClubEventCreationPayload,
@@ -168,7 +169,7 @@ const copyByLocale = {
 const createInitialPayload = (clubId: string, city: string | null): ClubEventCreationPayload => ({
   city: city ?? "",
   clubId,
-  country: "Finland",
+  country: FINLAND_COUNTRY,
   coverImageStagingPath: "",
   coverImageUrl: "",
   description: "",
@@ -668,17 +669,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
                   <label className="field">
                     <span className="field-label">{copy.country}</span>
-                    <input
-                      className="field-input"
-                      disabled={isPending}
-                      onChange={(event) =>
-                        setPayload((currentPayload) => ({
-                          ...currentPayload,
-                          country: event.target.value,
-                        }))
-                      }
-                      value={payload.country}
-                    />
+                    <input className="field-input" readOnly value={FINLAND_COUNTRY} />
                   </label>
 
                   <label className="field">

@@ -2,6 +2,39 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Finland Location Fields)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/finland-location-fields`
+- **Goal:** Standardize location entry for the Finland-only launch: country is fixed to Finland, and city fields use selectable Finnish city values instead of typo-prone free text.
+
+## Architectural Decisions
+
+- Add small shared location constant modules per app (`apps/admin` and `apps/mobile`) so UI and validation use one Finland country value and one city option list in each runtime.
+- In admin/web forms, use native `<select>` controls for city and read-only country inputs backed by a constant payload value. Server routes validate the same constants for manual account creation and public business applications.
+- Keep organization event city locked from the selected club membership because the business rule scopes events to the club city; only make the event country read-only.
+- In mobile business profile, replace city `TextInput` with a modal option picker using existing modal/Pressable patterns to avoid adding dependencies.
+- Preserve legacy non-list city values as a current option so existing records can still be saved deliberately.
+
+## Prompt
+
+Sen OmaLeima frontend/form hardening engineer olarak calisiyorsun.
+Hedef: Finlandiya-only launch icin country alanlarini sabit `Finland` yap ve city alanlarini Finlandiya sehir secimine cevirerek yazim hatalarini engelle.
+Mimari: Next.js form components + route Zod validation + Expo React Native modal selector + app-local location constants. Supabase schema/RLS degisikligi yok.
+Kapsam: admin manual business/organization account forms, public business application form, club event country field, mobile business profile city picker, working docs ve validation.
+Cikti: Strict TS/TSX patch, country non-editable, city selectable, backend route validation aligned, admin/mobile validation kaniti.
+Yasaklar: yeni dependency eklemek, mevcut historical city verisini migration ile silmek, event city scoping kuralini gevsetmek, free-text fallback eklemek, unrelated UI refactor, `any` tipi.
+Standartlar: AGENTS.md, frontend-patterns form/accessibility guidance, no silent failures, focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
 ## Current Plan (Hide Operator URL Fields)
 
 - **Date:** 2026-05-10
