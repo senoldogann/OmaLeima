@@ -36,6 +36,8 @@ Additional release hardening verified on `2026-05-10`:
 - mobile organizer event create/edit-save RPC smoke passes with the seeded organizer account against local Supabase
 - hosted Supabase migration history reports up to date; organization RPC drift was corrected by reapplying the idempotent migration SQL and verifying the four RPCs exist
 - Edge Functions importing changed shared HTTP/JWT helpers were redeployed and are active in the hosted project
+- mobile reward notification bridge audit is aligned with the current UX: reward unlock/new-stamp foreground feedback uses the in-app celebration flow, stock changes use local foreground notifications, and remote reward-unlocked push is backend-owned
+- admin production CSP no longer includes `unsafe-eval`; the remaining `unsafe-inline` allowance is tracked as a future nonce/hash hardening item
 
 What is **not** yet fully verified:
 

@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Release Gate Drift + CSP Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/release-gate-drift-and-csp`
+- **Scope:** Fix repo-owned launch-readiness blockers from the latest review without falsely closing external public-launch gates.
+
+## Release Gate Drift Findings
+
+- `audit:reward-notification-bridge` is red because it still expects a `REWARD_UNLOCKED_LOCAL` notification marker. Current mobile behavior intentionally routes reward unlock/new-stamp foreground feedback through `triggerRewardCelebration`, while local notifications are only used for `REWARD_STOCK_CHANGED_LOCAL`.
+- `docs/TESTING.md`, `apps/mobile/README.md`, and `LEIMA_APP_MASTER_PLAN.md` still describe the old local unlock notification behavior. They should describe the current split: in-app celebration for unlock/new stamp, local foreground notification for stock changes, remote reward-unlocked push from `scan-qr`.
+- Admin CSP currently ships `unsafe-eval` and `unsafe-inline`. Removing `unsafe-eval` in production is low-risk because it is mainly needed for development tooling; removing `unsafe-inline` requires a nonce/hash architecture across Next.js/Turnstile styles/scripts and should remain a separate hardening item.
+- Public-launch P0/P1 items such as TestFlight/Android physical proof, store console, real operator accounts, secret rotation, custom domains, and restore drill are external gates and must remain open rather than being marked complete from code changes.
+
 ## Current Review (Web Organization Validation Hotfix)
 
 - **Date:** 2026-05-10

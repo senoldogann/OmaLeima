@@ -450,7 +450,7 @@ This gate is intentionally narrower than a full browser or device smoke. It does
 
 ## Mobile reward notification bridge
 
-For the local foreground reward notification bridge:
+For the local foreground reward celebration and stock notification bridge:
 
 ```bash
 npm run qa:mobile-reward-notification-readiness
@@ -462,18 +462,19 @@ This focused audit currently does three things in order:
 2. `npm --prefix apps/mobile run typecheck`
 3. `npm --prefix apps/mobile run audit:reward-notification-bridge`
 
-The audit is intentionally read-only. It verifies the current mobile repository state still matches the shipped reward notification follow-up:
+The audit is intentionally read-only. It verifies the current mobile repository state still matches the shipped reward follow-up:
 
 - `StudentRewardNotificationBridge` is wired through `apps/mobile/src/providers/app-providers.tsx`
 - the bridge reads the shared reward overview and reuses the existing student Realtime invalidation hooks
-- local foreground reward notifications are present for reward unlock and stock-change behavior
+- reward unlock and new-stamp changes trigger the in-app celebration flow
+- local foreground notifications are present for stock-change behavior only
 - the rewards screen no longer owns a duplicate overview-level Realtime subscription
 - docs still describe local foreground ownership honestly while also marking remote reward-unlocked push as backend-shipped
 
 Expected success output today:
 
 - `student-reward-notification-bridge:present`
-- `notification-mode:local-foreground`
+- `notification-mode:celebration-plus-stock-local`
 - `remote-reward-push:backend-shipped`
 - `reward-screen-ownership:provider-bridge`
 - `docs:aligned`

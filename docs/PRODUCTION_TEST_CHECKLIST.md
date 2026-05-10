@@ -9,23 +9,23 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 - [ ] Temiz release branch/commit/tag hazir.
 - [ ] Hosted Supabase migration history ve repo migration dosyalari karsilastirildi.
 - [ ] Supabase Edge Functions production version listesi kontrol edildi ve `supabase/functions/*` envanteri `supabase/config.toml` + `docs/EDGE_FUNCTIONS.md` ile eslesti.
-- [ ] Vercel production deploy `READY` ve `https://omaleima.fi` alias dogru.
-- [ ] `npm --prefix apps/admin run typecheck` gecti.
-- [ ] `npm --prefix apps/admin run lint` gecti.
-- [ ] `npm --prefix apps/admin run build` gecti.
-- [ ] `npm --prefix apps/mobile run typecheck` gecti.
-- [ ] `npm --prefix apps/mobile run lint` gecti.
-- [ ] `npm --prefix apps/mobile run export:web` gecti.
+- [x] Vercel production deploy `READY` ve `https://omaleima.fi` alias dogru.
+- [x] `npm --prefix apps/admin run typecheck` gecti.
+- [x] `npm --prefix apps/admin run lint` gecti.
+- [x] `npm --prefix apps/admin run build` gecti.
+- [x] `npm --prefix apps/mobile run typecheck` gecti.
+- [x] `npm --prefix apps/mobile run lint` gecti.
+- [x] `npm --prefix apps/mobile run export:web` gecti.
 - [ ] `npm --prefix apps/mobile run smoke:club-event-rpc` organizer event create/edit-save RPC smoke gecti.
-- [ ] `npm --prefix apps/mobile run audit:web-bundle-budget` gecti.
-- [ ] `npm --prefix apps/mobile run audit:store-release-readiness` gecti.
+- [x] `npm --prefix apps/mobile run audit:web-bundle-budget` gecti.
+- [x] `OMALEIMA_NATIVE_RELEASE_MODE=local npm --prefix apps/mobile run audit:store-release-readiness` gecti.
 - [ ] [EXTERNAL] `npm run qa:mobile-native-simulator-smoke` Android emulator ve iOS simulator executable launch-smoke dahil gecti.
 - [ ] [EXTERNAL] `npm --prefix apps/mobile run smoke:native-simulators` direct repeat gerekirse Android emulator ve iOS simulator icin gecti.
 - [ ] Native simulator smoke icin root entrypoint `npm run qa:mobile-native-simulator-smoke`; prefix komut ayni gate'i dogrudan tekrar calistirmak icindir.
 - [ ] `npm --prefix apps/mobile run audit:hosted-business-scan-readiness` gecti.
-- [ ] `npm --prefix apps/mobile run audit:native-push-device-readiness` gecti.
-- [ ] `npm --prefix apps/mobile run audit:realtime-readiness` gecti.
-- [ ] `npm --prefix apps/mobile run audit:reward-notification-bridge` gecti.
+- [x] `npm --prefix apps/mobile run audit:native-push-device-readiness` gecti.
+- [x] `npm --prefix apps/mobile run audit:realtime-readiness` gecti.
+- [x] `npm --prefix apps/mobile run audit:reward-notification-bridge` gecti.
 - [ ] Hosted `mobile_release_requirements` minimum supported version/build rows kontrol edildi.
 - [ ] Eski/stale build testinde update-required ekranı uygulamayı blokluyor.
 - [ ] [EXTERNAL] iOS dev/preview/store build yeni native dependency graph ile yeniden alindi.

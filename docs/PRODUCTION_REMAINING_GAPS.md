@@ -41,6 +41,11 @@ The product is not yet ready for broad public launch because launch readiness de
 - Hosted `public.device_tokens` currently has **0 Android tokens**. Android background/closed-app remote push remains unproven until a physical Android development/internal build registers a token and receives a remote notification.
 - Background or closed-app delivery is not a purely code-side property: it requires a native build, OS notification permission, an enabled Expo push token in Supabase, Expo/APNs/FCM delivery, and tap-routing confirmation on the physical device.
 
+## Repo-owned release gate state
+
+- `audit:reward-notification-bridge` is green again after aligning the audit with the current reward UX: in-app celebration for reward unlock/new-stamp foreground feedback, local foreground notification for stock-change alerts, and remote reward-unlocked push from `scan-qr`.
+- Admin production CSP has been tightened by removing `unsafe-eval`. `unsafe-inline` remains a public-launch hardening follow-up because removing it safely requires nonce/hash support across Next.js inline runtime assets and Turnstile-compatible pages.
+
 ## Launch position
 
 - **Private pilot:** feasible after real operator accounts are configured and the final hosted dry-run passes.
