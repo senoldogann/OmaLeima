@@ -105,10 +105,10 @@ export const validateTurnstileTokenAsync = async ({
 
     const expectedHostname = requestHost === null ? null : requestHost.split(":")[0];
     const hostnameMatches =
-      expectedHostname === null ||
-      typeof result.hostname !== "string" ||
+      expectedHostname !== null &&
+      typeof result.hostname === "string" &&
       result.hostname === expectedHostname;
-    const actionMatches = typeof result.action !== "string" || result.action === action;
+    const actionMatches = typeof result.action === "string" && result.action === action;
 
     if (!hostnameMatches || !actionMatches) {
       console.warn("[turnstile] context mismatch", {

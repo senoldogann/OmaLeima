@@ -2,6 +2,21 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Review Hardening Patch)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/review-hardening`
+- **Scope:** Port the downloaded `omaleima-hardening-fixes.patch` onto the current `main` codebase and verify the public-form, mobile release, Edge Function, and CI hardening changes.
+
+## Review Hardening Findings
+
+- The supplied patch is directionally valid, but it was generated against slightly older context. It does not apply cleanly to `apps/admin/src/app/api/business-applications/route.ts` and `supabase/functions/scan-qr/index.ts`, so those changes must be ported manually against current files.
+- Mobile release gating still fails open when `mobile_release_requirements` has no row for the release platform. A release build should treat this as unverifiable rather than ready.
+- Mobile invalid-refresh cleanup still depends only on the Supabase URL hostname-derived auth storage key. Explicit and legacy key support is needed for custom-domain or project-ref transitions.
+- Admin public mutation helpers still have two hardening gaps: malformed CSRF cookie decode can throw, and Turnstile action/hostname checks accept missing response fields.
+- The public business application endpoint has Turnstile/origin/honeypot protection but no DB-backed IP rate limit, unlike the contact form.
+- Edge Function hardening remains incomplete for `claim-reward` notes bounds and `scan-qr` direct `EdgeRuntime.waitUntil` usage. CI also does not typecheck Edge Functions with Deno.
+
 ## Current Review (Empty State Icon Badge)
 
 - **Date:** 2026-05-10

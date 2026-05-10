@@ -65,6 +65,31 @@ export const ReleaseGateProvider = ({ children }: PropsWithChildren) => {
 
   const gateState = evaluateMobileReleaseGate(currentRelease, releaseRequirementQuery.data ?? null);
 
+  if (gateState.status === "UNVERIFIED") {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.screenBase }]}>
+        <Text style={[styles.eyebrow, { color: theme.colors.warning }]}>OMA LEIMA</Text>
+        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+          {language === "fi" ? "Versiota ei voitu tarkistaa" : "Could not verify app version"}
+        </Text>
+        <Text style={[styles.body, { color: theme.colors.textSecondary }]}>
+          {language === "fi"
+            ? "Versiovaatimus puuttuu palvelimelta. Yhdista internetiin ja yrita uudelleen."
+            : "The release requirement is missing from the server. Connect to the internet and try again."}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void releaseRequirementQuery.refetch()}
+          style={[styles.button, { backgroundColor: theme.colors.actionPrimary }]}
+        >
+          <Text style={[styles.buttonText, { color: theme.colors.actionPrimaryText }]}>
+            {language === "fi" ? "Yrita uudelleen" : "Try again"}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (gateState.status === "BLOCKED") {
     const copy = language === "fi" ? gateState.requirement.message_fi : gateState.requirement.message_en;
     const updateUrl = gateState.requirement.update_url;

@@ -2,6 +2,42 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Review Hardening Patch)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/review-hardening`
+- **Goal:** Apply the downloaded hardening patch safely to the current repository state, manually porting stale hunks where necessary.
+
+## Architectural Decisions
+
+- Keep the patch scope focused on the reported P1/P2 hardening items: mobile release gate fail-closed behavior, auth storage cleanup, public-form abuse resistance, strict Turnstile/CSRF handling, Edge Function bounds/runtime guards, and CI coverage.
+- Add one shared `public_form_rate_limits` table for public-form abuse accounting, locked to service role with RLS enabled.
+- For business application rate limiting, reuse the contact form's IP hash model and fall back from `BUSINESS_APPLICATION_IP_HASH_SECRET` to `CONTACT_IP_HASH_SECRET`.
+- Preserve hosted fail-closed behavior for security config: missing hosted rate-limit secret should fail loudly instead of silently accepting submissions.
+- Avoid broad product changes and leave external launch gates (store/device/operator credentials/secret rotation) outside this patch.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npm --prefix apps/mobile run audit:realtime-readiness`
+- `npm --prefix apps/mobile run audit:store-release-readiness`
+- `npx --yes deno check supabase/functions/*/index.ts`
+- `git --no-pager diff --check`
+
+## Prompt
+
+Sen OmaLeima production hardening engineer olarak calisiyorsun.
+Hedef: indirilen `omaleima-hardening-fixes.patch` ve rapordaki repo-owned risk azaltma maddelerini mevcut main'e guvenli sekilde uygula.
+Mimari: Expo mobile release/auth cleanup, Next.js admin public API security, Supabase Edge Function runtime validation, Supabase migration, GitHub Actions CI gate.
+Kapsam: patch'teki dosyalar ve zorunlu working docs/handoff; external store/device/hosted smoke gate'leri kapsam disi.
+Cikti: temiz branch, fail-closed release gate, public business application rate-limit, strict CSRF/Turnstile behavior, safer Edge Functions, expanded CI checks.
+Yasaklar: secrets commit etmek, unrelated refactor, public launch external gate'lerini kapatilmis gibi gostermek, `any` tipi.
+Standartlar: focused diff, RLS/service-role-only table policy, no silent security fallbacks in hosted runtime, validation evidence.
+
 ## Current Plan (Empty State Icon Badge)
 
 - **Date:** 2026-05-10

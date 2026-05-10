@@ -29,6 +29,11 @@ export type MobileReleaseGateState =
       requirement: MobileReleaseRequirementRow | null;
     }
   | {
+      status: "UNVERIFIED";
+      currentRelease: CurrentMobileRelease;
+      reason: "MISSING_REQUIREMENT";
+    }
+  | {
       status: "BLOCKED";
       currentRelease: CurrentMobileRelease;
       reason: "STALE_VERSION" | "STALE_BUILD";
@@ -136,7 +141,23 @@ export const evaluateMobileReleaseGate = (
   currentRelease: CurrentMobileRelease,
   requirement: MobileReleaseRequirementRow | null
 ): MobileReleaseGateState => {
-  if (requirement === null || !currentRelease.isReleaseBuild || !requirement.is_blocking) {
+  if (requirement === null) {
+    if (currentRelease.isReleaseBuild) {
+      return {
+        status: "UNVERIFIED",
+        currentRelease,
+        reason: "MISSING_REQUIREMENT",
+      };
+    }
+
+    return {
+      status: "READY",
+      currentRelease,
+      requirement,
+    };
+  }
+
+  if (!currentRelease.isReleaseBuild || !requirement.is_blocking) {
     return {
       status: "READY",
       currentRelease,

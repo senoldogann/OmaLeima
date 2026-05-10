@@ -40,29 +40,52 @@ const isInvalidRefreshTokenError = (error: unknown): boolean => {
   return error.message.includes("Invalid Refresh Token") || error.message.includes("Refresh Token Not Found");
 };
 
-const getSupabaseAuthStorageKey = (): string | null => {
+const addSupabaseAuthStorageKey = (keys: Set<string>, value: string | null | undefined): void => {
+  const trimmedValue = value?.trim();
+
+  if (typeof trimmedValue !== "string" || trimmedValue.length === 0) {
+    return;
+  }
+
+  if (trimmedValue.startsWith("sb-") && trimmedValue.endsWith("-auth-token")) {
+    keys.add(trimmedValue);
+    return;
+  }
+
+  keys.add(`sb-${trimmedValue}-auth-token`);
+};
+
+const getSupabaseAuthStorageKeys = (): string[] => {
+  const keys = new Set<string>();
+
+  publicEnv.EXPO_PUBLIC_SUPABASE_AUTH_STORAGE_KEYS?.split(",").forEach((storageKey) => {
+    addSupabaseAuthStorageKey(keys, storageKey);
+  });
+
+  addSupabaseAuthStorageKey(keys, publicEnv.EXPO_PUBLIC_SUPABASE_PROJECT_REF);
+
   try {
     const supabaseHost = new URL(publicEnv.EXPO_PUBLIC_SUPABASE_URL).hostname;
     const projectRef = supabaseHost.split(".")[0];
 
-    if (projectRef.length === 0) {
-      return null;
+    if (projectRef.length > 0) {
+      addSupabaseAuthStorageKey(keys, projectRef);
     }
-
-    return `sb-${projectRef}-auth-token`;
   } catch {
-    return null;
+    return Array.from(keys);
   }
+
+  return Array.from(keys);
 };
 
 const deleteLocalAuthStorageFallback = async (): Promise<void> => {
-  const storageKey = getSupabaseAuthStorageKey();
+  const storageKeys = getSupabaseAuthStorageKeys();
 
-  if (storageKey === null) {
+  if (storageKeys.length === 0) {
     return;
   }
 
-  await deviceStorage.deleteItemAsync(storageKey);
+  await Promise.all(storageKeys.map((storageKey) => deviceStorage.deleteItemAsync(storageKey)));
 };
 
 const clearInvalidLocalAuthSessionAsync = async (): Promise<void> => {

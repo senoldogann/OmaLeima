@@ -41,6 +41,8 @@ const responseHttpStatuses: Record<string, number> = {
   REWARD_ALREADY_CLAIMED: 409,
 };
 
+const maxNotesLength = 500;
+
 const parseNotes = (value: unknown): string | null => {
   if (typeof value === "undefined" || value === null) {
     return null;
@@ -50,7 +52,17 @@ const parseNotes = (value: unknown): string | null => {
     throw new Error("notes must be a string when provided.");
   }
 
-  return value;
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    return null;
+  }
+
+  if (trimmedValue.length > maxNotesLength) {
+    throw new Error(`notes must be ${maxNotesLength} characters or shorter.`);
+  }
+
+  return trimmedValue;
 };
 
 const parseRequestBody = (body: Record<string, unknown>): ClaimRewardRequest => {

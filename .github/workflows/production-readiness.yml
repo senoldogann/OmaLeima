@@ -40,6 +40,14 @@ jobs:
       - name: Check Supabase Edge Function inventory
         run: npm run qa:edge-function-inventory
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Typecheck Supabase Edge Functions
+        run: deno check supabase/functions/*/index.ts
+
       - name: Install admin dependencies
         run: npm --prefix apps/admin ci
 
@@ -57,3 +65,5 @@ jobs:
           npm --prefix apps/mobile run lint
           npm --prefix apps/mobile run typecheck
           npm --prefix apps/mobile run export:web
+          npm --prefix apps/mobile run audit:realtime-readiness
+          npm --prefix apps/mobile run audit:store-release-readiness

@@ -5,6 +5,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
+- **Branch:** `fix/review-hardening`
+- **Yapılan iş:** Indirilen `omaleima-hardening-fixes.patch` mevcut `main` uzerine port edildi. Patch'in eski context nedeniyle uygulanmayan business application ve `scan-qr` hunks'lari elle tasindi. Mobile release gate artik release build'de eksik `mobile_release_requirements` satirini `UNVERIFIED` sayiyor ve retry ekrani gosteriyor. Invalid refresh-token cleanup explicit/current/legacy Supabase auth storage key listesini temizliyor. Admin CSRF cookie decode malformed degerde null donuyor, Turnstile action/hostname kontrolleri fail-closed hale geldi. Public business application endpoint'ine service-role-only `public_form_rate_limits` migration'i ve IP-hash recent/daily rate-limit eklendi. `claim-reward` notes trim/max 500 kontrolu, `scan-qr` guard'li background scheduler ve CI Deno/mobile audit gate'leri eklendi.
+- **Neden yapıldı:** Statik review'da repo-owned P1/P2 hardening riskleri ve verilen patch'in mevcut repoya uygulanmamis oldugu goruldu; public form abuse, stale mobile build fail-open, Edge runtime crash ve CI coverage risklerini azaltmak icin.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `npm --prefix apps/mobile run audit:realtime-readiness`, `npm --prefix apps/mobile run audit:store-release-readiness`, `npx --yes deno check supabase/functions/*/index.ts`, `npx --yes supabase@2.98.2 migration up --local --include-all`, `npx --yes supabase@2.98.2 db lint --local` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Production deploy sirasi migration -> admin deploy -> Edge Functions/CI seklinde tutulmali.
+- **Açık risk/blokaj:** Yeni business application rate-limit route'u `public_form_rate_limits` migration'i production'a uygulanmadan 500 verir. Hosted ortamda `BUSINESS_APPLICATION_IP_HASH_SECRET` veya `CONTACT_IP_HASH_SECRET` yoksa endpoint bilincli olarak rate-limit config hatasi verir. Store/device/operator/external public launch gate'leri bu patch kapsaminda kapatilmadi.
+
+- **Tarih:** 2026-05-10
 - **Branch:** `main`
 - **Yapılan iş:** Mobil ortak bos-durum ikon rozeti geri ayarlandi. `EmptyStateCard` transparan container olarak kaldi; yani siyah panel ve border geri gelmedi. Ancak kullanici geri bildirimi uzerine icon badge icin lime tint arka plan tekrar acildi, boylece bos durum ikonlari yeniden hafif rozetli gorunurken genel no-data alan sade kaldi.
 - **Neden yapıldı:** Kullanici siyah panel/border'in kaldirilmasini dogru buldu ama svg ikonunun arka plan renginin kalmasini istedigini belirtti.

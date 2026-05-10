@@ -4,6 +4,8 @@ const publicEnvSchema = z.object({
   EXPO_PUBLIC_SUPABASE_URL: z.string().url(),
   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   EXPO_PUBLIC_EAS_PROJECT_ID: z.string().uuid().optional(),
+  EXPO_PUBLIC_SUPABASE_PROJECT_REF: z.string().min(1).optional(),
+  EXPO_PUBLIC_SUPABASE_AUTH_STORAGE_KEYS: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -16,6 +18,8 @@ const readPublicEnv = (): PublicEnv => {
     EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
     EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     EXPO_PUBLIC_EAS_PROJECT_ID: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    EXPO_PUBLIC_SUPABASE_PROJECT_REF: process.env.EXPO_PUBLIC_SUPABASE_PROJECT_REF,
+    EXPO_PUBLIC_SUPABASE_AUTH_STORAGE_KEYS: process.env.EXPO_PUBLIC_SUPABASE_AUTH_STORAGE_KEYS,
   });
 
   if (!parsedEnv.success) {
