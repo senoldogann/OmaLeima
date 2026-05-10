@@ -2,6 +2,15 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Admin Organization Lists + Users Performance)
+
+- [x] Re-read required docs and inspect admin business-applications/users/performance paths.
+- [x] Record review and REASONS plan before code edits.
+- [x] Add existing/created organization listing to business-applications.
+- [x] Improve users table width and student display labels.
+- [x] Replace touched high-impact `router.refresh()` calls with local state updates.
+- [ ] Run validation, merge, deploy web UI, and update handoff.
+
 ## Current Todos (Finland Location Fields)
 
 - [x] Re-read required docs and inspect country/city inputs.

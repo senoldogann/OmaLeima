@@ -8,7 +8,7 @@ import {
   formatBusinessApplicationLocation,
   formatBusinessApplicationStatus,
 } from "@/features/business-applications/format";
-import type { BusinessApplicationsReviewQueue } from "@/features/business-applications/types";
+import type { BusinessApplicationsReviewQueue, OrganizationAccountRecord } from "@/features/business-applications/types";
 import { ManualBusinessAccountForm } from "@/features/business-applications/components/manual-business-account-form";
 import { ManualOrganizationAccountForm } from "@/features/business-applications/components/manual-organization-account-form";
 import { PendingApplicationReviewCard } from "@/features/business-applications/components/pending-application-review-card";
@@ -22,6 +22,7 @@ type BusinessApplicationsPanelProps = {
 const copyByLocale = {
   en: {
     businessManualTab: "Business Owner",
+    createdAt: "Created",
     manualTab: "Create Account",
     decisionsTab: "Decisions",
     emptyDecisionsBody: "Approved and rejected applications will appear here after the first review action.",
@@ -57,14 +58,22 @@ const copyByLocale = {
     rejectStepBody: "Low-quality or unverifiable submissions stay out of the business catalog and keep a clear rejection reason.",
     rejectStepTitle: "3. Reject",
     organizationManualTab: "Organization Owner",
+    organizationsEmptyBody: "Organizations created manually or already onboarded will appear here.",
+    organizationsEmptyTitle: "No organizations yet",
+    organizationsListBody: "Existing and newly created organizations are shown here so admins can confirm owner handoff without waiting for a full page reload.",
+    organizationsListEyebrow: "Organization accounts",
+    organizationsListTitle: "Organizations",
+    owner: "Owner",
     secondStepBody: "A valid venue becomes a business profile through the atomic approval flow; duplicates are rejected by the backend.",
     secondStepTitle: "2. Approve",
     showingEmpty: "Showing 0 of 0.",
     showingPrefix: "Showing",
     showingSeparator: "of",
+    status: "Status",
   },
   fi: {
     businessManualTab: "Yrityksen omistaja",
+    createdAt: "Luotu",
     manualTab: "Luo tilejä",
     decisionsTab: "Päätökset",
     emptyDecisionsBody: "Hyväksytyt ja hylätyt hakemukset näkyvät täällä ensimmäisen päätöksen jälkeen.",
@@ -100,11 +109,18 @@ const copyByLocale = {
     rejectStepBody: "Puutteelliset tai varmistamattomat hakemukset eivät pääse yrityskatalogiin ja saavat selkeän hylkäyssyyn.",
     rejectStepTitle: "3. Hylkäys",
     organizationManualTab: "Organisaation omistaja",
+    organizationsEmptyBody: "Käsin luodut tai jo olemassa olevat organisaatiot näkyvät täällä.",
+    organizationsEmptyTitle: "Ei organisaatioita",
+    organizationsListBody: "Olemassa olevat ja juuri luodut organisaatiot näkyvät tässä, jotta admin voi varmistaa omistajatunnuksen toimituksen ilman koko sivun uudelleenlatausta.",
+    organizationsListEyebrow: "Organisaatiotilit",
+    organizationsListTitle: "Organisaatiot",
+    owner: "Omistaja",
     secondStepBody: "Hyväksytty hakemus muuttuu yritysprofiiliksi; järjestelmä estää duplikaatit automaattisesti.",
     secondStepTitle: "2. Hyväksyntä",
     showingEmpty: "Näytetään 0 / 0.",
     showingPrefix: "Näytetään",
     showingSeparator: "/",
+    status: "Tila",
   },
 } as const satisfies Record<DashboardLocale, Record<string, string>>;
 
@@ -116,10 +132,29 @@ const buildPageHref = (pageNumber: number): string => {
   return `/admin/business-applications?page=${pageNumber}`;
 };
 
+const renderOrganizationStatusClassName = (status: string): string => {
+  if (status === "ACTIVE") {
+    return "status-pill status-pill-success";
+  }
+
+  if (status === "SUSPENDED") {
+    return "status-pill status-pill-warning";
+  }
+
+  return "status-pill status-pill-danger";
+};
+
 export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessApplicationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"pending-queue" | "decisions" | "manual">("pending-queue");
   const [activeManualTab, setActiveManualTab] = useState<"business" | "organization">("business");
+  const [organizations, setOrganizations] = useState<OrganizationAccountRecord[]>(reviewQueue.organizations);
   const copy = copyByLocale[locale];
+  const handleOrganizationCreated = (organization: OrganizationAccountRecord): void => {
+    setOrganizations((currentOrganizations) => [
+      organization,
+      ...currentOrganizations.filter((currentOrganization) => currentOrganization.id !== organization.id),
+    ]);
+  };
 
   return (
     <div className="stack-lg">
@@ -312,7 +347,65 @@ export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessAppli
         </div>
 
         <div style={{ display: activeManualTab !== "organization" ? "none" : undefined }}>
-          <ManualOrganizationAccountForm locale={locale} />
+          <div className="stack-md">
+            <ManualOrganizationAccountForm locale={locale} onOrganizationCreated={handleOrganizationCreated} />
+            <section className="panel stack-md">
+              <div className="stack-sm">
+                <div className="eyebrow">{copy.organizationsListEyebrow}</div>
+                <h3 className="section-title">{copy.organizationsListTitle}</h3>
+                <p className="muted-text">{copy.organizationsListBody}</p>
+              </div>
+
+              {organizations.length === 0 ? (
+                <article className="info-callout stack-sm">
+                  <p className="info-callout-title">{copy.organizationsEmptyTitle}</p>
+                  <p className="muted-text">{copy.organizationsEmptyBody}</p>
+                </article>
+              ) : (
+                <div className="panel-table-wrap">
+                  <table className="panel-table">
+                    <thead>
+                      <tr>
+                        <th>{locale === "fi" ? "Organisaatio" : "Organization"}</th>
+                        <th>{locale === "fi" ? "Sijainti" : "Location"}</th>
+                        <th>{copy.owner}</th>
+                        <th>{copy.status}</th>
+                        <th>{copy.createdAt}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {organizations.map((organization) => (
+                        <tr key={organization.id}>
+                          <td className="record-meta">
+                            <strong>{organization.name}</strong>
+                            {organization.universityName !== null ? (
+                              <span className="record-meta">{organization.universityName}</span>
+                            ) : null}
+                            <span className="record-meta">{organization.slug}</span>
+                          </td>
+                          <td className="record-meta">
+                            {formatBusinessApplicationLocation(organization.city ?? "—", organization.country)}
+                          </td>
+                          <td className="record-meta">
+                            {organization.ownerName ?? (locale === "fi" ? "Ei nimeä" : "No name")}
+                            {organization.ownerEmail !== null ? (
+                              <span className="record-meta">{organization.ownerEmail}</span>
+                            ) : null}
+                          </td>
+                          <td>
+                            <span className={renderOrganizationStatusClassName(organization.status)}>
+                              {organization.status}
+                            </span>
+                          </td>
+                          <td className="record-meta">{formatBusinessApplicationDateTime(organization.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
         </div>
       </section>
     </div>

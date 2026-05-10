@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { AdminUserRecord, AdminUserRole, AdminUsersSnapshot, AdminUserStatus } from "@/features/admin-users/types";
@@ -160,6 +159,40 @@ const formatMemberships = (
       })
       .join(" | ");
 
+const uuidLikePattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+const titleCaseToken = (token: string): string => {
+  if (token.length === 0) {
+    return "";
+  }
+
+  return `${token.slice(0, 1).toUpperCase()}${token.slice(1).toLowerCase()}`;
+};
+
+const getReadableUserName = (user: AdminUserRecord, locale: DashboardLocale): string => {
+  const trimmedDisplayName = user.displayName?.trim() ?? "";
+
+  if (trimmedDisplayName.length > 0) {
+    return trimmedDisplayName;
+  }
+
+  const emailLocalPart = user.email.split("@")[0]?.trim() ?? "";
+
+  if (emailLocalPart.length > 0 && !uuidLikePattern.test(emailLocalPart)) {
+    return emailLocalPart
+      .split(/[._\s-]+/u)
+      .filter((token) => token.length > 0)
+      .map(titleCaseToken)
+      .join(" ");
+  }
+
+  if (user.primaryRole === "STUDENT") {
+    return locale === "fi" ? "Opiskelijaprofiili" : "Student profile";
+  }
+
+  return locale === "fi" ? "Käyttäjäprofiili" : "User profile";
+};
+
 const updateUserStatusAsync = async (
   userId: string,
   status: AdminUserStatus
@@ -274,8 +307,8 @@ const createSearchText = (user: AdminUserRecord): string =>
     .toLowerCase();
 
 export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersPanelProps) => {
-  const router = useRouter();
   const copy = copyByLocale[locale];
+  const [users, setUsers] = useState<AdminUserRecord[]>(snapshot.users);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -289,7 +322,7 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
   const filteredUsers = useMemo<AdminUserRecord[]>(() => {
     const trimmedSearch = search.trim().toLowerCase();
 
-    return snapshot.users.filter((user) => {
+    return users.filter((user) => {
       if (roleFilter !== "all" && user.primaryRole !== roleFilter) {
         return false;
       }
@@ -304,7 +337,16 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
 
       return createSearchText(user).includes(trimmedSearch);
     });
-  }, [roleFilter, search, snapshot.users, statusFilter]);
+  }, [roleFilter, search, statusFilter, users]);
+
+  const userCounts = useMemo(
+    () => ({
+      active: users.filter((user) => user.status === "ACTIVE").length,
+      deleted: users.filter((user) => user.status === "DELETED").length,
+      suspended: users.filter((user) => user.status === "SUSPENDED").length,
+    }),
+    [users]
+  );
 
   const paginatedUsers = paginateItems(filteredUsers, currentPage, usersPageSize);
 
@@ -320,8 +362,18 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
     try {
       const response = await updateUserStatusAsync(userId, status);
 
+      setUsers((currentUsers) =>
+        currentUsers.map((user) =>
+          user.id === userId
+            ? {
+                ...user,
+                status,
+                updatedAt: new Date().toISOString(),
+              }
+            : user
+        )
+      );
       setSuccessMessage(typeof response.message === "string" ? response.message : "User status updated.");
-      router.refresh();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown user status update error.");
     } finally {
@@ -334,15 +386,15 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
       <section className="metrics-grid">
         <article className="panel panel-accent">
           <span className="field-label">{copy.activeUsers}</span>
-          <strong className="metric-value">{snapshot.activeCount}</strong>
+          <strong className="metric-value">{userCounts.active}</strong>
         </article>
         <article className="panel panel-warning">
           <span className="field-label">{copy.suspendedUsers}</span>
-          <strong className="metric-value">{snapshot.suspendedCount}</strong>
+          <strong className="metric-value">{userCounts.suspended}</strong>
         </article>
         <article className="panel panel-danger">
           <span className="field-label">{copy.deletedUsers}</span>
-          <strong className="metric-value">{snapshot.deletedCount}</strong>
+          <strong className="metric-value">{userCounts.deleted}</strong>
         </article>
       </section>
 
@@ -399,7 +451,7 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
         </div>
 
         <div className="admin-users-table-wrap">
-          <table className="admin-users-table">
+          <table className="admin-users-table" style={{ minWidth: "1240px" }}>
             <thead>
               <tr>
                 <th>{copy.user}</th>
@@ -419,7 +471,7 @@ export const AdminUsersPanel = ({ currentUserId, locale, snapshot }: AdminUsersP
               ) : paginatedUsers.items.map((user) => (
                 <tr key={user.id}>
                   <td>
-                    <strong>{user.displayName ?? user.email}</strong>
+                    <strong>{getReadableUserName(user, locale)}</strong>
                     <span className="muted-text">{user.email}</span>
                   </td>
                   <td>{user.primaryRole}</td>

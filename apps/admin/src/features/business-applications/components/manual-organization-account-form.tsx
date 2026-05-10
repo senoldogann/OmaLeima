@@ -1,18 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import type { OrganizationAccountRecord } from "@/features/business-applications/types";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
 import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type ManualOrganizationAccountFormProps = {
   locale: DashboardLocale;
+  onOrganizationCreated?: (organization: OrganizationAccountRecord) => void;
 };
 
 type CreateOrganizationAccountResponse = {
   authUserCreated?: boolean;
+  clubId?: string | null;
   clubSlug?: string;
   message?: string;
   ownerEmail?: string;
@@ -107,8 +109,7 @@ const postOrganizationAccountAsync = async (formData: FormData): Promise<CreateO
   return responseBody;
 };
 
-export const ManualOrganizationAccountForm = ({ locale }: ManualOrganizationAccountFormProps) => {
-  const router = useRouter();
+export const ManualOrganizationAccountForm = ({ locale, onOrganizationCreated }: ManualOrganizationAccountFormProps) => {
   const copy = copyByLocale[locale];
   const [isPending, setIsPending] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -128,10 +129,28 @@ export const ManualOrganizationAccountForm = ({ locale }: ManualOrganizationAcco
       const response = await postOrganizationAccountAsync(formData);
       const ownerLabel = typeof response.ownerEmail === "string" ? ` Owner: ${response.ownerEmail}.` : "";
       const clubLabel = typeof response.clubSlug === "string" ? ` Slug: ${response.clubSlug}.` : "";
+      const city = readFormValue(formData, "city");
+      const clubName = readFormValue(formData, "clubName");
+      const universityName = readFormValue(formData, "universityName");
+      const createdAt = new Date().toISOString();
 
       formElement.reset();
       setSuccessMessage(`${copy.successNew}${ownerLabel}${clubLabel}`);
-      router.refresh();
+      if (typeof response.clubId === "string" && response.clubId.length > 0) {
+        onOrganizationCreated?.({
+          city: city.length > 0 ? city : null,
+          country: FINLAND_COUNTRY,
+          createdAt,
+          id: response.clubId,
+          name: clubName,
+          ownerEmail: typeof response.ownerEmail === "string" ? response.ownerEmail : null,
+          ownerName: readFormValue(formData, "ownerName"),
+          slug: typeof response.clubSlug === "string" ? response.clubSlug : "",
+          status: "ACTIVE",
+          universityName: universityName.length > 0 ? universityName : null,
+          updatedAt: createdAt,
+        });
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown organization account creation error.");
     } finally {
