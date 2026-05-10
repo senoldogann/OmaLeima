@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AppIcon, type AppIconName } from "@/components/app-icon";
-import { GlassPanel, type GlassPanelVariant } from "@/features/foundation/components/glass-panel";
+import type { GlassPanelVariant } from "@/features/foundation/components/glass-panel";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles } from "@/features/preferences/ui-preferences-provider";
 
@@ -21,13 +21,11 @@ export const EmptyStateCard = ({
   eyebrow,
   iconName,
   title,
-  variant,
 }: EmptyStateCardProps) => {
   const styles = useThemeStyles(createStyles);
-  const resolvedVariant: GlassPanelVariant = variant ?? "subtle";
 
   return (
-    <GlassPanel contentStyle={styles.content} variant={resolvedVariant}>
+    <View style={styles.container}>
       <View style={styles.iconBadge}>
         <AppIcon color={styles.iconColor.color} name={iconName} size={26} />
       </View>
@@ -35,7 +33,7 @@ export const EmptyStateCard = ({
       {title ? <Text style={styles.title}>{title}</Text> : null}
       <Text style={styles.body}>{body}</Text>
       {action !== undefined ? <View style={styles.action}>{action}</View> : null}
-    </GlassPanel>
+    </View>
   );
 };
 
@@ -52,11 +50,13 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
       textAlign: "center",
     },
-    content: {
+    container: {
       alignItems: "center",
       gap: 12,
       justifyContent: "center",
       minHeight: 188,
+      paddingHorizontal: 8,
+      paddingVertical: 16,
     },
     eyebrow: {
       color: theme.colors.lime,
@@ -69,10 +69,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     iconBadge: {
       alignItems: "center",
-      backgroundColor: theme.colors.limeSurface,
-      borderColor: theme.colors.limeBorder,
       borderRadius: 999,
-      borderWidth: 1,
       height: 64,
       justifyContent: "center",
       width: 64,

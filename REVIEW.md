@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Empty State Surface Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/empty-state-surface-cleanup`
+- **Scope:** Remove the dark background and border from no-data empty states that show the shared icon + text treatment.
+
+## Empty State Surface Findings
+
+- Mobile no-data surfaces are centralized through `apps/mobile/src/components/empty-state-card.tsx`, which wraps the icon/text block in `GlassPanel` and also adds a bordered icon badge.
+- Removing those two wrappers at the shared component level updates the repeated empty-state presentation across student, business, club, and support flows without touching each screen one by one.
+
 ## Current Review (Support History Viewport)
 
 - **Date:** 2026-05-10

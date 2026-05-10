@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-05-10
 - **Branch:** `main`
+- **Yapılan iş:** Ortak mobil bos-durum kartlari sadeleştirildi. `apps/mobile/src/components/empty-state-card.tsx` artik `GlassPanel` ile siyah panel yuzeyi cizmiyor; icon/text/action blogu transparan layout uzerinde render oluyor. Icon badge icindeki lime tint/border da kaldirildi, boylece student, business, club ve support dahil `EmptyStateCard` kullanan tum no-data ekranlarinda arka plan ve cerceve gorunumu kalkti.
+- **Neden yapıldı:** Kullanici veri olmayan alanlarda gosterilen svg ikon + text bos-durumlarinda siyah arka plan ve border istemedigini, bunun her yerde kaldirilmasini istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Gercek cihazda birkac bos state (student rewards/events, business events/history, club home/upcoming, support history empty) hizli gorsel smoke ile teyit edilebilir.
+- **Açık risk/blokaj:** Degisiklik ortak mobil bileşende oldugu icin tum `EmptyStateCard` kullanimlarini etkiler; native kullanicilara ulasmasi normal mobile release surecine baglidir.
+
+- **Tarih:** 2026-05-10
+- **Branch:** `main`
 - **Yapılan iş:** Support history modal bu kez yalnizca kart yogunluguyla degil, dogrudan viewport boyutlandirmasiyla sertlestirildi. `SupportRequestSheet` artik `useWindowDimensions` ile cihaz yuksekligine gore history modal max-height ve history liste viewport yuksekligi hesapliyor; modal merkez yerine alt sheet gibi daha buyuk alan kullanıyor. History kart spacing/padding ve baslik boyutu bir adim daha kucultuldu, boylece listede ayni anda daha fazla oge fiziksel olarak gorunur hale geldi.
 - **Neden yapıldı:** Onceki density hotfix'ine ragmen kullanici gercek cihazda history modalda hala tek bir kart gordugunu bildirdi; flex tabanli yerlesim yetmedigi icin explicit viewport sizing eklendi.
 - **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
