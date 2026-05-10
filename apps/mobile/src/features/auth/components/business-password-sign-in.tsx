@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CameraView, type BarcodeScanningResult, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -22,32 +22,43 @@ const requiresWebPanel = (access: SessionAccess): boolean =>
 const isProvisionedScannerAccess = (access: SessionAccess): boolean =>
   access.area === "business" && access.homeHref === "/business/scanner" && access.isBusinessScannerOnly;
 
-const BusinessQrSignIn = () => {
+type BusinessQrScannerPanelProps = {
+  isVisible: boolean;
+  onClose: () => void;
+};
+
+const BusinessQrScannerPanel = ({ isVisible, onClose }: BusinessQrScannerPanelProps) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useAppTheme();
   const { language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const [permission, requestPermission] = useCameraPermissions();
-  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isProvisioning, setIsProvisioning] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const provisioningLockRef = useRef<boolean>(false);
 
-  const handleOpenScannerPress = async (): Promise<void> => {
-    setErrorMessage(null);
-
-    if (permission === null || !permission.granted) {
-      const nextPermission = await requestPermission();
-
-      if (!nextPermission.granted) {
-        setErrorMessage(language === "fi" ? "Kameralupa tarvitaan QR-kirjautumiseen." : "Camera access is required for QR sign-in.");
-        return;
-      }
+  useEffect(() => {
+    if (!isVisible) {
+      return;
     }
 
-    setIsScannerOpen(true);
-  };
+    setErrorMessage(null);
+
+    if (permission !== null && permission.granted) {
+      return;
+    }
+
+    void requestPermission().then((nextPermission) => {
+      if (nextPermission.granted) {
+        return;
+      }
+
+      setErrorMessage(
+        language === "fi" ? "Kameralupa tarvitaan QR-kirjautumiseen." : "Camera access is required for QR sign-in."
+      );
+    });
+  }, [isVisible, language, permission, requestPermission]);
 
   const handleBarcodeScanned = async (result: BarcodeScanningResult): Promise<void> => {
     if (provisioningLockRef.current || isProvisioning) {
@@ -61,7 +72,6 @@ const BusinessQrSignIn = () => {
     }
 
     provisioningLockRef.current = true;
-    setIsScannerOpen(false);
     setIsProvisioning(true);
     setScannerProvisioningActive(true);
     setErrorMessage(null);
@@ -95,7 +105,6 @@ const BusinessQrSignIn = () => {
       }
 
       queryClient.setQueryData(sessionAccessQueryKey(scannerUserId), access);
-      setIsScannerOpen(false);
       router.replace(provisionedSession.homeHref);
       didProvisionSuccessfully = true;
     } catch (error) {
@@ -109,6 +118,10 @@ const BusinessQrSignIn = () => {
       }
     }
   };
+
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <View style={styles.qrSignInCard}>
@@ -128,8 +141,9 @@ const BusinessQrSignIn = () => {
         </View>
       </View>
 
-      {isScannerOpen ? (
-        <View style={styles.qrCameraWrap}>
+      {permission?.granted ? (
+        <View style={styles.qrCameraStage}>
+          <View style={styles.qrCameraWrap}>
           <CameraView
             active={!isProvisioning}
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
@@ -145,33 +159,29 @@ const BusinessQrSignIn = () => {
             </View>
           ) : null}
         </View>
-      ) : null}
+          <Text style={styles.qrCameraHint}>
+            {language === "fi"
+              ? "Kohdista kamera ownerin QR-koodiin."
+              : "Point the camera at the owner's QR code."}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.qrPermissionCard}>
+          <Text style={styles.qrSignInText}>
+            {language === "fi"
+              ? "Salli kameran käyttö, jotta QR-kirjautuminen voidaan avata."
+              : "Allow camera access to open QR sign-in."}
+          </Text>
+          <Pressable disabled={isProvisioning} onPress={() => void requestPermission()} style={styles.qrRetryButton}>
+            <Text style={styles.qrRetryButtonText}>{language === "fi" ? "Salli kamera" : "Allow camera"}</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.qrSignInActions}>
-        <Pressable
-          disabled={isProvisioning}
-          onPress={() => void handleOpenScannerPress()}
-          style={({ pressed }) => [
-            styles.qrSignInButton,
-            isProvisioning ? styles.disabledButton : null,
-            pressed ? styles.buttonPressed : null,
-          ]}
-        >
-          <Text style={styles.qrSignInButtonText}>
-            {isScannerOpen
-              ? language === "fi"
-                ? "Skanneri auki"
-                : "Scanner open"
-              : language === "fi"
-                ? "Skannaa owner QR"
-                : "Scan owner QR"}
-          </Text>
+        <Pressable disabled={isProvisioning} onPress={onClose} style={styles.qrCancelButton}>
+          <Text style={styles.qrCancelButtonText}>{language === "fi" ? "Palaa kirjautumiseen" : "Back to sign in"}</Text>
         </Pressable>
-        {isScannerOpen ? (
-          <Pressable disabled={isProvisioning} onPress={() => setIsScannerOpen(false)} style={styles.qrCancelButton}>
-            <Text style={styles.qrCancelButtonText}>{language === "fi" ? "Peruuta" : "Cancel"}</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -179,10 +189,16 @@ const BusinessQrSignIn = () => {
   );
 };
 
-export const BusinessPasswordSignIn = () => {
+export const BusinessPasswordSignIn = ({
+  isQrScannerVisible,
+  onQrScannerVisibilityChange,
+}: {
+  isQrScannerVisible: boolean;
+  onQrScannerVisibilityChange: (isVisible: boolean) => void;
+}) => {
   const router = useRouter();
   const theme = useAppTheme();
-  const { copy } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const passwordInputRef = useRef<TextInput | null>(null);
   const [email, setEmail] = useState<string>("");
@@ -237,58 +253,85 @@ export const BusinessPasswordSignIn = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>{copy.auth.businessEmail}</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!isLoading}
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          onSubmitEditing={() => passwordInputRef.current?.focus()}
-          placeholder={copy.auth.businessEmailPlaceholder}
-          placeholderTextColor={theme.colors.textDim}
-          returnKeyType="next"
-          style={styles.input}
-          submitBehavior="submit"
-          value={email}
-        />
-      </View>
+      {isQrScannerVisible ? (
+        <BusinessQrScannerPanel isVisible={isQrScannerVisible} onClose={() => onQrScannerVisibilityChange(false)} />
+      ) : (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>{copy.auth.businessEmail}</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+              keyboardType="email-address"
+              onChangeText={setEmail}
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
+              placeholder={copy.auth.businessEmailPlaceholder}
+              placeholderTextColor={theme.colors.textDim}
+              returnKeyType="next"
+              style={styles.input}
+              submitBehavior="submit"
+              value={email}
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>{copy.auth.businessPassword}</Text>
-        <TextInput
-          editable={!isLoading}
-          onChangeText={setPassword}
-          onSubmitEditing={() => {
-            if (canSubmit) {
-              void handlePress();
-            }
-          }}
-          placeholder={copy.auth.businessPasswordPlaceholder}
-          placeholderTextColor={theme.colors.textDim}
-          ref={passwordInputRef}
-          returnKeyType="done"
-          secureTextEntry
-          style={styles.input}
-          submitBehavior="blurAndSubmit"
-          value={password}
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>{copy.auth.businessPassword}</Text>
+            <TextInput
+              editable={!isLoading}
+              onChangeText={setPassword}
+              onSubmitEditing={() => {
+                if (canSubmit) {
+                  void handlePress();
+                }
+              }}
+              placeholder={copy.auth.businessPasswordPlaceholder}
+              placeholderTextColor={theme.colors.textDim}
+              ref={passwordInputRef}
+              returnKeyType="done"
+              secureTextEntry
+              style={styles.input}
+              submitBehavior="blurAndSubmit"
+              value={password}
+            />
+          </View>
 
-      <Pressable
-        disabled={!canSubmit}
-        onPress={handlePress}
-        style={({ pressed }) => [
-          styles.button,
-          !canSubmit ? styles.disabledButton : null,
-          pressed ? styles.buttonPressed : null,
-        ]}
-      >
-        {isLoading ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
-        {isLoading ? null : <AppIcon color={theme.colors.actionPrimaryText} name="business" size={18} />}
-        <Text style={styles.buttonText}>{isLoading ? copy.auth.businessSigningIn : copy.auth.businessButton}</Text>
-      </Pressable>
+          <View style={styles.primaryActionRow}>
+            <Pressable
+              disabled={!canSubmit}
+              onPress={handlePress}
+              style={({ pressed }) => [
+                styles.button,
+                styles.primaryActionButton,
+                !canSubmit ? styles.disabledButton : null,
+                pressed ? styles.buttonPressed : null,
+              ]}
+            >
+              {isLoading ? <ActivityIndicator color={theme.colors.actionPrimaryText} size="small" /> : null}
+              {isLoading ? null : <AppIcon color={theme.colors.actionPrimaryText} name="business" size={18} />}
+              <Text style={styles.buttonText}>{isLoading ? copy.auth.businessSigningIn : copy.auth.businessButton}</Text>
+            </Pressable>
+
+            <Pressable
+              disabled={isLoading}
+              onPress={() => {
+                setErrorMessage(null);
+                onQrScannerVisibilityChange(true);
+              }}
+              style={({ pressed }) => [
+                styles.qrInlineButton,
+                isLoading ? styles.disabledButton : null,
+                pressed ? styles.buttonPressed : null,
+              ]}
+            >
+              <AppIcon color={theme.colors.textPrimary} name="scan" size={18} />
+              <Text style={styles.qrInlineButtonText}>
+                {language === "fi" ? "Scan owner QR" : "Scan owner QR"}
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      )}
 
       {isLoading ? (
         <AuthLoadingPanel
@@ -298,8 +341,6 @@ export const BusinessPasswordSignIn = () => {
       ) : null}
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-      <BusinessQrSignIn />
     </View>
   );
 };
@@ -353,9 +394,25 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: 13,
       fontWeight: "600",
     },
+    primaryActionButton: {
+      flex: 1,
+    },
+    primaryActionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
     qrCamera: {
-      minHeight: 220,
+      minHeight: 272,
       width: "100%",
+    },
+    qrCameraHint: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      lineHeight: 17,
+      textAlign: "center",
+    },
+    qrCameraStage: {
+      gap: 10,
     },
     qrCameraOverlay: {
       alignItems: "center",
@@ -375,7 +432,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     qrCameraWrap: {
       borderRadius: 18,
-      minHeight: 220,
+      minHeight: 272,
       overflow: "hidden",
       position: "relative",
     },
@@ -395,9 +452,36 @@ const createStyles = (theme: MobileTheme) =>
     qrSignInActions: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 10,
+      justifyContent: "center",
     },
-    qrSignInButton: {
+    qrInlineButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL3,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      minHeight: 46,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    qrInlineButtonText: {
+      color: theme.colors.textPrimary,
+      fontSize: 13,
+      fontWeight: "800",
+    },
+    qrPermissionCard: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 18,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      gap: 12,
+      padding: 16,
+    },
+    qrRetryButton: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL3,
       borderColor: theme.colors.borderDefault,
@@ -405,10 +489,10 @@ const createStyles = (theme: MobileTheme) =>
       borderWidth: theme.mode === "light" ? 1 : 0,
       justifyContent: "center",
       minHeight: 42,
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       paddingVertical: 10,
     },
-    qrSignInButtonText: {
+    qrRetryButtonText: {
       color: theme.colors.textPrimary,
       fontSize: 13,
       fontWeight: "800",

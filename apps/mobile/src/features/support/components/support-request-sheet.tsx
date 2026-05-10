@@ -25,6 +25,7 @@ import type {
   ClubSupportOption,
   BusinessSupportOption,
   SupportRequestArea,
+  SupportRequestSummary,
   SupportRequestStatus,
 } from "@/features/support/types";
 
@@ -36,6 +37,10 @@ type SupportRequestSheetProps = {
   onClose: () => void;
   userId: string | null;
 };
+
+type HistoryStatusFilter = "all" | SupportRequestStatus;
+
+const supportStatusOrder: SupportRequestStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 
 const formatDateTime = (localeTag: string, value: string): string =>
   new Intl.DateTimeFormat(localeTag, {
@@ -125,6 +130,22 @@ const createAccountDeletionMessage = (area: SupportRequestArea, language: "fi" |
   return `I want to request deletion of my ${areaLabel} and the personal data linked to it. I understand that OmaLeima may verify my identity and retain some records where required for legal, fraud-prevention, or security reasons.`;
 };
 
+const matchesSupportHistorySearch = (request: SupportRequestSummary, search: string): boolean => {
+  const trimmedSearch = search.trim().toLowerCase();
+
+  if (trimmedSearch.length === 0) {
+    return true;
+  }
+
+  return [
+    request.subject,
+    request.message,
+    request.adminReply ?? "",
+    request.businessName ?? "",
+    request.clubName ?? "",
+  ].some((value) => value.toLowerCase().includes(trimmedSearch));
+};
+
 export const SupportRequestSheet = ({
   area,
   businessOptions,
@@ -151,6 +172,8 @@ export const SupportRequestSheet = ({
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [isHistoryVisible, setIsHistoryVisible] = useState<boolean>(false);
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<HistoryStatusFilter>("all");
+  const [historySearch, setHistorySearch] = useState<string>("");
   const [isSentAnimationVisible, setIsSentAnimationVisible] = useState<boolean>(false);
   const planeTranslateY = useRef(new Animated.Value(0)).current;
   const planeTranslateX = useRef(new Animated.Value(0)).current;
@@ -193,6 +216,8 @@ export const SupportRequestSheet = ({
   useEffect(() => {
     if (!isVisible) {
       setIsHistoryVisible(false);
+      setHistoryStatusFilter("all");
+      setHistorySearch("");
       setIsSentAnimationVisible(false);
     }
   }, [isVisible]);
@@ -295,6 +320,32 @@ export const SupportRequestSheet = ({
         ? null
         : (clubOptions.find((option) => option.clubId === selectedClubId) ?? null),
     [clubOptions, selectedClubId]
+  );
+  const supportHistoryRequests = useMemo(() => supportQuery.data ?? [], [supportQuery.data]);
+  const filteredHistoryRequests = useMemo(
+    () =>
+      supportHistoryRequests.filter(
+        (request) =>
+          (historyStatusFilter === "all" || request.status === historyStatusFilter) &&
+          matchesSupportHistorySearch(request, historySearch)
+      ),
+    [historySearch, historyStatusFilter, supportHistoryRequests]
+  );
+  const historyStatusCounts = useMemo(
+    () =>
+      supportStatusOrder.reduce<Record<SupportRequestStatus, number>>(
+        (counts, status) => ({
+          ...counts,
+          [status]: supportHistoryRequests.filter((request) => request.status === status).length,
+        }),
+        {
+          CLOSED: 0,
+          IN_PROGRESS: 0,
+          OPEN: 0,
+          RESOLVED: 0,
+        }
+      ),
+    [supportHistoryRequests]
   );
 
   const handleSubmit = async (): Promise<void> => {
@@ -492,10 +543,10 @@ export const SupportRequestSheet = ({
                     {language === "fi" ? "Viimeisimmät pyynnöt" : "Latest requests"}
                   </Text>
                   <Text style={styles.metaText}>
-                    {supportQuery.data?.length
+                    {supportHistoryRequests.length
                       ? language === "fi"
-                        ? `${supportQuery.data.length} viimeisintä näkyvissä`
-                        : `${supportQuery.data.length} recent item(s) available`
+                        ? `${supportHistoryRequests.length} viimeisintä näkyvissä`
+                        : `${supportHistoryRequests.length} recent item(s) available`
                       : createEmptyHistory(area, language)}
                   </Text>
                 </View>
@@ -563,6 +614,59 @@ export const SupportRequestSheet = ({
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Sulje" : "Close"}</Text>
               </Pressable>
             </View>
+            <View style={styles.historyControls}>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setHistorySearch}
+                placeholder={language === "fi" ? "Hae lähetettyä viestiä tai vastausta" : "Search sent message or reply"}
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.historySearchInput}
+                value={historySearch}
+              />
+              <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false}>
+                <View style={styles.historyFilterRow}>
+                  <Pressable
+                    onPress={() => setHistoryStatusFilter("all")}
+                    style={[
+                      styles.historyFilterPill,
+                      historyStatusFilter === "all" ? styles.historyFilterPillActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.historyFilterText,
+                        historyStatusFilter === "all" ? styles.historyFilterTextActive : null,
+                      ]}
+                    >
+                      {language === "fi" ? "Kaikki" : "All"} · {supportHistoryRequests.length}
+                    </Text>
+                  </Pressable>
+                  {supportStatusOrder.map((status) => (
+                    <Pressable
+                      key={status}
+                      onPress={() => setHistoryStatusFilter(status)}
+                      style={[
+                        styles.historyFilterPill,
+                        historyStatusFilter === status ? styles.historyFilterPillActive : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.historyFilterText,
+                          historyStatusFilter === status ? styles.historyFilterTextActive : null,
+                        ]}
+                      >
+                        {createStatusLabel(language, status)} · {historyStatusCounts[status]}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+              <Text style={styles.historyResultMeta}>
+                {language === "fi" ? `${filteredHistoryRequests.length} tulosta` : `${filteredHistoryRequests.length} result(s)`}
+              </Text>
+            </View>
             <ScrollView
               contentContainerStyle={styles.historyModalContent}
               nestedScrollEnabled
@@ -573,12 +677,17 @@ export const SupportRequestSheet = ({
                 <Text style={styles.metaText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
               ) : null}
               {supportQuery.error ? <Text style={styles.errorText}>{supportQuery.error.message}</Text> : null}
-              {!supportQuery.isLoading && !supportQuery.error && supportQuery.data?.length === 0 ? (
+              {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length === 0 ? (
                 <Text style={styles.metaText}>{createEmptyHistory(area, language)}</Text>
+              ) : null}
+              {!supportQuery.isLoading && !supportQuery.error && supportHistoryRequests.length > 0 && filteredHistoryRequests.length === 0 ? (
+                <Text style={styles.metaText}>
+                  {language === "fi" ? "Hakuehdoilla ei löytynyt tukipyyntöjä." : "No support requests match this search."}
+                </Text>
               ) : null}
               {!supportQuery.isLoading && !supportQuery.error ? (
                 <View style={styles.historyStack}>
-                  {(supportQuery.data ?? []).map((request) => (
+                  {filteredHistoryRequests.map((request) => (
                     <View key={request.id} style={styles.historyCard}>
                       <View style={styles.historyHeader}>
                         <Text numberOfLines={1} style={styles.historyTitle}>
@@ -632,6 +741,35 @@ const createStyles = (theme: MobileTheme) =>
       gap: 6,
       padding: 14,
     },
+    historyControls: {
+      gap: 10,
+    },
+    historyFilterPill: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    historyFilterPillActive: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    historyFilterRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingRight: 4,
+    },
+    historyFilterText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    historyFilterTextActive: {
+      color: theme.colors.textPrimary,
+    },
     historyHeader: {
       alignItems: "center",
       flexDirection: "row",
@@ -667,7 +805,7 @@ const createStyles = (theme: MobileTheme) =>
       borderWidth: theme.mode === "light" ? 1 : 0,
       gap: 16,
       marginHorizontal: 20,
-      maxHeight: "72%",
+      maxHeight: "82%",
       padding: 18,
     },
     historyModalContent: {
@@ -681,6 +819,24 @@ const createStyles = (theme: MobileTheme) =>
     },
     historyModalScroll: {
       flexShrink: 1,
+      maxHeight: "62%",
+    },
+    historyResultMeta: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    historySearchInput: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.bodySmall,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
     },
     historyStatus: {
       color: theme.colors.lime,

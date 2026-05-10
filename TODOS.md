@@ -2,6 +2,15 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Support Message Scroll, Filter and Search)
+
+- [x] Re-read required docs and inspect admin/mobile support surfaces.
+- [x] Record support scroll/filter/search findings and REASONS plan.
+- [x] Add mobile support history status filters and search across sent message/reply content.
+- [x] Fix mobile/admin support scroll containment and visual controls.
+- [ ] Run admin/mobile validation.
+- [ ] Commit all uncommitted changes, merge to main, push, deploy, and update handoff.
+
 ## Current Todos (Admin Organization Lists + Users Performance)
 
 - [x] Re-read required docs and inspect admin business-applications/users/performance paths.

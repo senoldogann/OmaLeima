@@ -4,6 +4,7 @@ import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } 
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { RECENT_SCAN_LIMIT, useBusinessScanHistoryQuery } from "@/features/business/business-history";
@@ -446,19 +447,9 @@ export default function BusinessHistoryScreen() {
           </Pressable>
 
           {historyEntries.length === 0 ? (
-            <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
-              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-                <AppIcon color={theme.colors.textMuted} name="history" size={16} />
-                <Text style={[styles.bodyText, { flex: 1 }]}>{labels.emptyBody}</Text>
-              </View>
-            </InfoCard>
+            <EmptyStateCard body={labels.emptyBody} eyebrow={copy.business.history} iconName="history" />
           ) : filteredEntries.length === 0 ? (
-            <InfoCard eyebrow={copy.business.history} title={labels.latestTitle}>
-              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-                <AppIcon color={theme.colors.textMuted} name="search" size={16} />
-                <Text style={[styles.bodyText, { flex: 1 }]}>{labels.emptyFiltered}</Text>
-              </View>
-            </InfoCard>
+            <EmptyStateCard body={labels.emptyFiltered} eyebrow={copy.business.history} iconName="search" />
           ) : (
             <View style={styles.stack}>
               {groupedSections.map((section) => (

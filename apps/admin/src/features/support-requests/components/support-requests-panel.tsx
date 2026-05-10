@@ -389,6 +389,7 @@ export const SupportRequestsPanel = ({ locale, snapshot }: SupportRequestsPanelP
 
       <div className="contact-submissions__toolbar">
         <input
+          aria-label={copy.searchPlaceholder}
           className="contact-submissions__search"
           onChange={(event) => {
             setSearch(event.target.value);
@@ -424,7 +425,7 @@ export const SupportRequestsPanel = ({ locale, snapshot }: SupportRequestsPanelP
         </p>
       ) : null}
 
-      <div className="contact-submissions__layout">
+      <div className="contact-submissions__layout support-requests__layout">
         <ol className="contact-submissions__list" aria-label="Support requests">
           {filteredRecords.length === 0 ? (
             <li className="contact-submissions__empty">{copy.empty}</li>
@@ -477,7 +478,7 @@ export const SupportRequestsPanel = ({ locale, snapshot }: SupportRequestsPanelP
           </li>
         </ol>
 
-        <aside className="contact-submissions__detail" aria-live="polite">
+        <aside className="contact-submissions__detail support-requests__detail" aria-live="polite">
           {activeRecord === null ? (
             <p className="contact-submissions__detail-empty">{copy.detailEmpty}</p>
           ) : (

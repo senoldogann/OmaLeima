@@ -2,6 +2,39 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Support Message Scroll, Filter and Search)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-message-ui`
+- **Goal:** Make support history usable across all mobile roles and improve admin support review scrolling/filter/search UX.
+
+## Architectural Decisions
+
+- Keep the existing `support_requests` table, RLS, realtime invalidation, and admin reply API unchanged. This is a UI/query-window hotfix, not a schema change.
+- Add mobile support history local filter/search state inside the shared `SupportRequestSheet`, so student/business/club roles inherit the same behavior.
+- Increase mobile support history query limit from 5 to 50 to make local search/filter useful while preserving a bounded payload.
+- Add explicit scroll containment for mobile history modal and admin support detail/message panes, avoiding broad layout refactors.
+- Preserve existing Finnish status labels: `Avoin`, `Käsittelyssä`, `Ratkaistu`, `Suljettu`.
+
+## Prompt
+
+Sen OmaLeima support UX hotfix engineer olarak calisiyorsun.
+Hedef: Tüm rollerde supporttan gönderilen mesaj geçmişinde iç scroll'u düzelt, kullanıcıya status filtreleri (`Avoin`, `Käsittelyssä`, `Ratkaistu`, `Suljettu`) ve gönderilen mesaj/cevap araması ver, admin support panelinin uzun mesajlarda tasarımsal olarak taşmasını engelle.
+Mimari: Expo React Native shared `SupportRequestSheet` + Next.js admin support panel CSS/client UI. Supabase schema/RLS/API değişikliği yok.
+Kapsam: mobile support query window, mobile history modal filter/search/scroll, admin support detail scroll and visual controls, working docs, validation, commit/push/deploy.
+Cikti: Strict TS/TSX/CSS patch, all-role mobile support history filter/search, admin panel scroll containment, admin/mobile validation kanıtı.
+Yasaklar: service_role'u client'a taşımak, RLS gevşetmek, sınırsız query çekmek, yeni dependency eklemek, support request status enum'unu değiştirmek, `any` tipi.
+Standartlar: AGENTS.md, frontend-patterns accessible controls, Supabase zero-trust, no silent failures.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
 ## Current Plan (Admin Organization Lists + Users Performance)
 
 - **Date:** 2026-05-10

@@ -6,6 +6,7 @@ import { useIsFocused } from "@react-navigation/native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
 import { EventCard } from "@/features/events/components/event-card";
@@ -410,35 +411,25 @@ export default function StudentEventsScreen() {
       ) : null}
 
       {!eventsQuery.isLoading && !eventsQuery.error && !hasEvents ? (
-        <View style={styles.messageCard}>
-          <Text style={styles.messageEyebrow}>{copy.common.standby}</Text>
-          <Text style={styles.messageTitle}>
-            {language === "fi" ? "Ei aktiivisia tai tulevia tapahtumia" : "No active or upcoming events"}
-          </Text>
-          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 10 }}>
-            <AppIcon color={theme.colors.textMuted} name="calendar" size={16} />
-            <Text style={[styles.bodyText, { flex: 1 }]}>
-              {language === "fi"
-                ? "Kun järjestäjät julkaisevat seuraavan tapahtuman, se ilmestyy tänne."
-                : "When organizers publish the next event, it will appear here."}
-            </Text>
-          </View>
-        </View>
+        <EmptyStateCard
+          body={
+            language === "fi"
+              ? "Kun järjestäjät julkaisevat seuraavan tapahtuman, se ilmestyy tänne."
+              : "When organizers publish the next event, it will appear here."
+          }
+          eyebrow={copy.common.standby}
+          iconName="calendar"
+          title={language === "fi" ? "Ei aktiivisia tai tulevia tapahtumia" : "No active or upcoming events"}
+        />
       ) : null}
 
       {hasEvents && filteredActive.length === 0 && filteredUpcoming.length === 0 ? (
-        <View style={styles.messageCard}>
-          <Text style={styles.messageEyebrow}>{language === "fi" ? "EI TULOKSIA" : "NO RESULTS"}</Text>
-          <Text style={styles.messageTitle}>
-            {language === "fi" ? "Ei tapahtumia haulle" : "No events found"}
-          </Text>
-          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 10 }}>
-            <AppIcon color={theme.colors.textMuted} name="search" size={16} />
-            <Text style={[styles.bodyText, { flex: 1 }]}>
-              {language === "fi" ? "Kokeile eri hakusanaa tai poista suodatin." : "Try a different search or remove the filter."}
-            </Text>
-          </View>
-        </View>
+        <EmptyStateCard
+          body={language === "fi" ? "Kokeile eri hakusanaa tai poista suodatin." : "Try a different search or remove the filter."}
+          eyebrow={language === "fi" ? "Ei tuloksia" : "No results"}
+          iconName="search"
+          title={language === "fi" ? "Ei tapahtumia haulle" : "No events found"}
+        />
       ) : null}
 
       {filteredActive.length > 0 ? (
