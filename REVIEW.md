@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Edge CORS + JSON-LD Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/edge-cors-jsonld-hardening`
+- **Scope:** Address the second review report's Edge CORS wildcard and JSON-LD `dangerouslySetInnerHTML` findings.
+
+## Edge CORS + JSON-LD Findings
+
+- `supabase/functions/_shared/http.ts` still returned `Access-Control-Allow-Origin: *` for every Edge Function response. The functions use bearer tokens rather than cookies, so this is not cookie-CSRF, but it increases browser-callable abuse surface from arbitrary origins.
+- A safe narrow default is `https://omaleima.fi`, with `OMALEIMA_EDGE_CORS_ALLOW_ORIGIN` as an explicit hosted override if the Edge browser caller origin changes. Native/mobile/server calls without an `Origin` header remain accepted.
+- The landing pages only use `dangerouslySetInnerHTML` for code-owned JSON-LD. That is acceptable, but the serializer should still escape script-breaking characters so future copy changes cannot terminate the script tag.
+- The JSON-LD helper should remain a code-owned-data contract; user-supplied content must not be passed into it without additional review.
+
 ## Current Review (Admin CSP Unsafe Inline)
 
 - **Date:** 2026-05-10
