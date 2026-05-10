@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Web Organization Validation Hotfix)
+
+- [x] Re-read required docs and inspect profile/announcement validation paths.
+- [x] Record root causes in `REVIEW.md` and `PLAN.md`.
+- [x] Normalize profile URL inputs and surface field-level validation errors.
+- [x] Keep announcement signed staging preview URLs out of submitted `imageUrl` payloads.
+- [x] Run admin validation and update handoff docs.
+
 ## Current Todos (Production Review Deploy + Merge)
 
 - [x] Commit verified production review patch set with required trailer.

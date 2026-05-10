@@ -100,7 +100,43 @@ const isClubProfileUpdateResponse = (value: unknown): value is ClubProfileUpdate
   return value.status === "SUCCESS" && typeof value.message === "string" && isClubProfileRecord(value.club);
 };
 
+const fieldLabels = {
+  address: "Address",
+  announcement: "Announcement",
+  clubId: "Club",
+  contactEmail: "Contact email",
+  instagramUrl: "Instagram",
+  phone: "Phone",
+  websiteUrl: "Website",
+} as const satisfies Record<keyof ClubProfileUpdatePayload, string>;
+
+const orderedErrorFields = Object.keys(fieldLabels) as Array<keyof ClubProfileUpdatePayload>;
+
+const readFirstFieldError = (value: unknown): string | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  for (const fieldName of orderedErrorFields) {
+    const errors = value[fieldName];
+
+    if (Array.isArray(errors) && typeof errors[0] === "string" && errors[0].length > 0) {
+      return `${fieldLabels[fieldName]}: ${errors[0]}`;
+    }
+  }
+
+  return null;
+};
+
 const readErrorMessage = (value: unknown, fallback: string): string => {
+  if (isRecord(value)) {
+    const fieldError = readFirstFieldError(value.fieldErrors);
+
+    if (fieldError !== null) {
+      return fieldError;
+    }
+  }
+
   if (isRecord(value) && typeof value.message === "string" && value.message.length > 0) {
     return value.message;
   }
