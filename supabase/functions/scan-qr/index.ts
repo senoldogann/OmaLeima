@@ -12,8 +12,21 @@ import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.t
 import { verifyQrToken } from "../_shared/qrJwt.ts";
 import { isOptionalLatitude, isOptionalLongitude, isOptionalUuid, isString } from "../_shared/validation.ts";
 
-declare const EdgeRuntime: {
-  waitUntil: (promise: Promise<void>) => void;
+type EdgeRuntimeLike = {
+  EdgeRuntime?: {
+    waitUntil?: (promise: Promise<void>) => void;
+  };
+};
+
+const scheduleBackgroundTask = (task: Promise<void>): void => {
+  const runtime = (globalThis as EdgeRuntimeLike).EdgeRuntime;
+
+  if (typeof runtime?.waitUntil === "function") {
+    runtime.waitUntil(task);
+    return;
+  }
+
+  void task;
 };
 
 type ScannerLocation = {
@@ -641,7 +654,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
     if (responseResult.status === "SUCCESS" && unlockedRewardTiers.length > 0) {
       try {
-        EdgeRuntime.waitUntil((async (): Promise<void> => {
+        scheduleBackgroundTask((async (): Promise<void> => {
           try {
             await sendRewardUnlockPushAsync(
               supabase,

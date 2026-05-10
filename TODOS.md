@@ -2,6 +2,16 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Review Hardening Patch)
+
+- [x] Read the downloaded patch/report and confirm stale hunks against current `main`.
+- [x] Record review and REASONS plan for the hardening patch branch.
+- [x] Harden mobile release gate and invalid refresh-token cleanup.
+- [x] Harden admin CSRF/Turnstile checks and public business application rate limiting.
+- [x] Add public form rate-limit migration.
+- [x] Harden Edge Function notes/runtime scheduling and CI gates.
+- [x] Run validation, inspect final diff, and update handoff.
+
 ## Current Todos (Empty State Icon Badge)
 
 - [x] Confirm only the shared icon badge tint needs to come back.

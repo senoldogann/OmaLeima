@@ -83,7 +83,11 @@ const readCookieValue = (request: Request, cookieName: string): string | null =>
     return null;
   }
 
-  return decodeURIComponent(cookieValue.slice(cookiePrefix.length));
+  try {
+    return decodeURIComponent(cookieValue.slice(cookiePrefix.length));
+  } catch {
+    return null;
+  }
 };
 
 const hasValidCsrfToken = (request: Request): boolean => {
