@@ -6,6 +6,14 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 
 - **Tarih:** 2026-05-10
 - **Branch:** `main`
+- **Yapılan iş:** Support history modal scroll hotfix'i tamamlandi. Ortak mobil `SupportRequestSheet` icindeki history modal artik noop `Pressable` yerine pasif `View` kart shell'i kullaniyor; scroll alanina ayri bir `historyScrollViewport` eklendi ve ic `ScrollView` net `flex: 1` viewport'u icinde calisiyor. Modal kart `minHeight` + `overflow: hidden` ile sertlestirildi; uzun destek gecmisi ve uzun admin reply listesi modalin kendi icinde daha tutarli kayiyor.
+- **Neden yapıldı:** Kullanici support/history alaninda scroll'un hala calismadigini bildirdi ve daha guclu bir cozum istedi.
+- **Doğrulama:** `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti.
+- **Sıradaki önerilen adım:** Gercek cihazda student/business/club support history modalinde uzun liste + uzun reply ile son bir smoke yapilabilir.
+- **Açık risk/blokaj:** Bu hotfix repo kodunu guncelledi ama native kullanicilara ulasmasi icin normal mobile release sureci gerekir; bu turda yeni native/store deploy tetiklenmedi.
+
+- **Tarih:** 2026-05-10
+- **Branch:** `main`
 - **Yapılan iş:** Support mesaj gecmisi ve admin support inceleme UI'i duzeltildi. Mobilde ortak `SupportRequestSheet` uzerinden student, business ve club rollerinin "son gonderilen destek istekleri" modalina status filtreleri (`Avoin`, `Käsittelyssä`, `Ratkaistu`, `Suljettu`), gonderilen mesaj/admin cevabi aramasi ve daha genis ama sinirli 50 kayitlik gecmis eklendi. Mobil gecmis modali ic scroll containment ile uzun mesajlarda kendi icinde kayar hale getirildi. Admin `/admin/support-requests` panelinde arama input'u accessibility label aldi; liste/detay layout'u destek icin genisletildi, uzun mesajlar ve detay paneli kendi icinde scroll olacak sekilde sinirlandi. Kullanici tarafindan mevcut uncommitted olarak belirtilen tum degisiklikler ayni feature commit'ine dahil edildi.
 - **Neden yapıldı:** Kullanici tum rollerde supporttan gonderilen mesajlarin kendi icinde scroll calismadigini, kullanicinin `cözülen/acik/käsittelyssä/suljettu` durumlarina gore filtreleyebilmesini ve gonderilen mesaji arayabilmesini istedi; ayrica tum uncommitted degisikliklerin gonderilip deploylarin calistirilmesini talep etti.
 - **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint` ve `git --no-pager diff --check` gecti. Vercel `omaleima-admin` production deploy'u `https://omaleima-admin-6c8w0uoqp-senol-dogans-projects.vercel.app` olarak tamamlandi ve `curl -fsSI https://omaleima.fi` 200 dondu.

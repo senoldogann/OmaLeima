@@ -2,6 +2,35 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Support History Scroll Hardening)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-scroll`
+- **Goal:** Make the mobile support history modal scroll reliably on real devices for long support histories and long admin replies.
+
+## Architectural Decisions
+
+- Keep the current shared `SupportRequestSheet`, history search, and status filters.
+- Replace the history modal card's noop `Pressable` wrapper with a passive `View` so touch responders do not compete with the inner scroll view.
+- Add a dedicated scroll viewport wrapper with `flex: 1`, `minHeight: 0`, and `overflow: hidden` to make the inner `ScrollView` the clear scrolling surface.
+- Keep the change mobile-only; admin/web and Supabase layers are not part of this hotfix.
+
+## Prompt
+
+Sen OmaLeima mobile UI hotfix engineer olarak calisiyorsun.
+Hedef: support/history modalinin ic scroll'unu cihazlarda daha guclu ve tutarli hale getir; uzun mesaj ve reply listesi modalin icinde kaymali.
+Mimari: Expo React Native shared `SupportRequestSheet`, mevcut history search/filter kontrolleri korunacak. Supabase/API degisikligi yok.
+Kapsam: history modal container, viewport ve scroll responder davranisi; kucuk docs ve validation.
+Cikti: Strict TSX style/layout patch, guclendirilmis ic scroll, mobile validation kaniti.
+Yasaklar: yeni dependency eklemek, history ozelliklerini geri almak, schema/RLS degistirmek, `any` tipi.
+Standartlar: frontend-patterns modal/focus/layout guidance, focused diff, no silent failures.
+
+## Validation Plan
+
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
 ## Current Plan (Support Message Scroll, Filter and Search)
 
 - **Date:** 2026-05-10
