@@ -2,6 +2,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
@@ -311,12 +312,12 @@ export default function ClubReportsScreen() {
         ) : null}
 
         {!reportQuery.isLoading && events.length === 0 ? (
-          <InfoCard eyebrow={reportCopy.emptyEyebrow} title={reportCopy.emptyTitle}>
-            <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-              <AppIcon color={theme.colors.textMuted} name="history" size={16} />
-              <Text style={[styles.bodyText, { flex: 1 }]}>{reportCopy.emptyBody}</Text>
-            </View>
-          </InfoCard>
+          <EmptyStateCard
+            body={reportCopy.emptyBody}
+            eyebrow={reportCopy.emptyEyebrow}
+            iconName="history"
+            title={reportCopy.emptyTitle}
+          />
         ) : null}
       </ScrollView>
     </AppScreen>

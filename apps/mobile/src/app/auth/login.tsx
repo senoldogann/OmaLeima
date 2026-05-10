@@ -35,6 +35,7 @@ export default function LoginScreen() {
   const [isLegalConsentAccepted, setIsLegalConsentAccepted] = useState<boolean>(false);
   const [isLegalConsentLoading, setIsLegalConsentLoading] = useState<boolean>(true);
   const [legalConsentError, setLegalConsentError] = useState<string | null>(null);
+  const [isBusinessQrScannerVisible, setIsBusinessQrScannerVisible] = useState<boolean>(false);
   const isResolvingAccess = !isLoading && isAuthenticated && !isScannerProvisioningActive && accessQuery.isLoading;
   const titleText =
     mode === "student"
@@ -44,6 +45,7 @@ export default function LoginScreen() {
     mode === "student"
       ? language === "fi" ? "Jatka tapahtumiin ja leimapassiin." : "Continue to events and your leima pass."
       : language === "fi" ? "Kirjaudu scanneriin ja hallintaan." : "Sign in to scanner and tools.";
+  const isBusinessQrMode = mode === "business" && isBusinessQrScannerVisible;
 
   useEffect(() => {
     let isActive = true;
@@ -115,47 +117,52 @@ export default function LoginScreen() {
 
       <View style={styles.authPanel}>
         <View style={styles.panelGlow} />
-        <View style={styles.panelTopRow}>
-          <View style={styles.panelTitleGroup}>
-            <Text style={styles.panelEyebrow}>{copy.auth.continueEyebrow}</Text>
-            <Text style={styles.cardTitle}>{titleText}</Text>
+        {!isBusinessQrMode ? (
+          <View style={styles.panelTopRow}>
+            <View style={styles.panelTitleGroup}>
+              <Text style={styles.panelEyebrow}>{copy.auth.continueEyebrow}</Text>
+              <Text style={styles.cardTitle}>{titleText}</Text>
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        <Text numberOfLines={2} style={styles.cardSubtitle}>{helperText}</Text>
+        {!isBusinessQrMode ? <Text numberOfLines={2} style={styles.cardSubtitle}>{helperText}</Text> : null}
 
-        <View style={styles.modeSelector}>
-          <Pressable
-            onPress={() => {
-              setMode("student");
-            }}
-            style={({ pressed }) => [
-              styles.modeButton,
-              mode === "student" ? styles.modeButtonActive : null,
-              pressed ? styles.modeButtonPressed : null,
-            ]}
-          >
-            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="id-card" size={18} />
-            <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
-              {copy.common.student}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              setMode("business");
-            }}
-            style={({ pressed }) => [
-              styles.modeButton,
-              mode === "business" ? styles.modeButtonActive : null,
-              pressed ? styles.modeButtonPressed : null,
-            ]}
-          >
-            <AppIcon color={mode === "business" ? theme.colors.screenBase : theme.colors.textPrimary} name="business" size={18} />
-            <Text style={[styles.modeButtonText, mode === "business" ? styles.modeButtonTextActive : null]}>
-              {copy.common.business}
-            </Text>
-          </Pressable>
-        </View>
+        {!isBusinessQrMode ? (
+          <View style={styles.modeSelector}>
+            <Pressable
+              onPress={() => {
+                setIsBusinessQrScannerVisible(false);
+                setMode("student");
+              }}
+              style={({ pressed }) => [
+                styles.modeButton,
+                mode === "student" ? styles.modeButtonActive : null,
+                pressed ? styles.modeButtonPressed : null,
+              ]}
+            >
+              <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="id-card" size={18} />
+              <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
+                {copy.common.student}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setMode("business");
+              }}
+              style={({ pressed }) => [
+                styles.modeButton,
+                mode === "business" ? styles.modeButtonActive : null,
+                pressed ? styles.modeButtonPressed : null,
+              ]}
+            >
+              <AppIcon color={mode === "business" ? theme.colors.screenBase : theme.colors.textPrimary} name="business" size={18} />
+              <Text style={[styles.modeButtonText, mode === "business" ? styles.modeButtonTextActive : null]}>
+                {copy.common.business}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.authActionStage}>
           {legalConsentError !== null ? <Text style={styles.errorText}>{legalConsentError}</Text> : null}
@@ -165,7 +172,12 @@ export default function LoginScreen() {
                 <GoogleSignInButton />
                 <AppleSignInButton />
               </View>
-            ) : <BusinessPasswordSignIn />
+            ) : (
+              <BusinessPasswordSignIn
+                isQrScannerVisible={isBusinessQrScannerVisible}
+                onQrScannerVisibilityChange={setIsBusinessQrScannerVisible}
+              />
+            )
           ) : null}
         </View>
       </View>

@@ -16,6 +16,7 @@ import {
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 
 import {
@@ -766,16 +767,16 @@ export default function ClubAnnouncementsScreen() {
       ) : null}
 
       {announcementsQuery.data?.length === 0 ? (
-        <InfoCard eyebrow="Feed" title={language === "fi" ? "Ei tiedotteita vielä" : "No announcements yet"}>
-          <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-            <AppIcon color={theme.colors.textMuted} name="bell" size={16} />
-            <Text style={[styles.bodyText, { flex: 1 }]}>
-              {language === "fi"
-                ? "Ensimmäinen julkaistu tiedote näkyy opiskelijoille ja yrityksille heidän feedissään."
-                : "The first published announcement appears in the student and business feeds."}
-            </Text>
-          </View>
-        </InfoCard>
+        <EmptyStateCard
+          body={
+            language === "fi"
+              ? "Ensimmäinen julkaistu tiedote näkyy opiskelijoille ja yrityksille heidän feedissään."
+              : "The first published announcement appears in the student and business feeds."
+          }
+          eyebrow="Feed"
+          iconName="bell"
+          title={language === "fi" ? "Ei tiedotteita vielä" : "No announcements yet"}
+        />
       ) : null}
 
       {sortedAnnouncements.length > 0 ? (

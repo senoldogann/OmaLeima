@@ -89,7 +89,7 @@ const fetchSupportRequestsAsync = async (
     .eq("user_id", userId)
     .eq("area", area)
     .order("updated_at", { ascending: false })
-    .limit(5)
+    .limit(50)
     .returns<SupportRequestRow[]>();
 
   if (error !== null) {

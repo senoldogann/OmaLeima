@@ -120,11 +120,13 @@ export const LoginHero = () => {
               })}
             </View>
             <View style={styles.slideContent}>
-              <Text style={styles.slideEyebrow}>{slide.eyebrow}</Text>
-              <Text style={styles.title}>{slide.title}</Text>
-              <Text style={styles.subtitle}>{slide.body}</Text>
+              <View style={styles.slideCopyGroup}>
+                <Text numberOfLines={1} style={styles.slideEyebrow}>{slide.eyebrow}</Text>
+                <Text numberOfLines={2} style={styles.title}>{slide.title}</Text>
+                <Text numberOfLines={3} style={styles.subtitle}>{slide.body}</Text>
+              </View>
               <View style={styles.slideFooter}>
-                <Text style={styles.slideFooterText}>{copy.auth.swipeOrWait}</Text>
+                <Text numberOfLines={1} style={styles.slideFooterText}>{copy.auth.swipeOrWait}</Text>
                 <AppIcon color={theme.colors.lime} name="chevron-right" size={14} />
               </View>
             </View>
@@ -176,15 +178,23 @@ const createStyles = (theme: MobileTheme) =>
       zIndex: 2,
     },
     rail: {
-      minHeight: 218,
+      height: 246,
+      maxHeight: 246,
+      minHeight: 246,
     },
     railContent: {
       paddingRight: 8,
     },
     slide: {
       borderRadius: theme.radius.scene,
-      minHeight: 218,
+      height: 246,
+      maxHeight: 246,
+      minHeight: 246,
       overflow: "hidden",
+    },
+    slideCopyGroup: {
+      gap: 6,
+      maxWidth: 292,
     },
     slideContent: {
       flex: 1,

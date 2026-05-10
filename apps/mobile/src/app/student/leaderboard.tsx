@@ -5,6 +5,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { SkeletonCard } from "@/components/skeleton-block";
 import { StatusBadge } from "@/components/status-badge";
@@ -438,31 +439,25 @@ export default function StudentLeaderboardScreen() {
       ) : null}
 
       {rankingState === "error" || rankingState === "empty" ? (
-        <InfoCard
-          eyebrow={rankingState === "error" ? copy.common.error : copy.common.standby}
-          title={
-            rankingState === "error"
-              ? language === "fi"
-                ? "Sijoitusta ei voitu ladata"
-                : "Could not load ranking"
-              : language === "fi"
-                ? "Lista on vielä tyhjä"
-                : "Standings are still empty"
-          }
-        >
-          <Text style={styles.bodyText}>
-            {rankingState === "error"
-              ? rankingErrorBody
-              : language === "fi"
-                ? "Tähän tapahtumaan ei ole vielä kertynyt näkyviä sijoituksia."
-                : "No visible leaderboard entries yet for this event."}
-          </Text>
-          {rankingState === "error" ? (
+        rankingState === "error" ? (
+          <InfoCard eyebrow={copy.common.error} title={language === "fi" ? "Sijoitusta ei voitu ladata" : "Could not load ranking"}>
+            <Text style={styles.bodyText}>{rankingErrorBody}</Text>
             <Pressable onPress={() => void leaderboardQuery.refetch()} style={styles.retryButton}>
               <Text style={styles.retryButtonText}>{copy.common.retry}</Text>
             </Pressable>
-          ) : null}
-        </InfoCard>
+          </InfoCard>
+        ) : (
+          <EmptyStateCard
+            body={
+              language === "fi"
+                ? "Tähän tapahtumaan ei ole vielä kertynyt näkyviä sijoituksia."
+                : "No visible leaderboard entries yet for this event."
+            }
+            eyebrow={copy.common.standby}
+            iconName="star"
+            title={language === "fi" ? "Lista on vielä tyhjä" : "Standings are still empty"}
+          />
+        )
       ) : null}
 
       {rankingState === "ready" ? (

@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { SkeletonCard } from "@/components/skeleton-block";
 import {
@@ -151,29 +152,26 @@ export default function StudentRewardsScreen() {
       ) : null}
 
       {!rewardOverviewQuery.isLoading && !rewardOverviewQuery.error && events.length === 0 ? (
-        <InfoCard eyebrow={copy.common.standby} title={language === "fi" ? "Ei palkintopolkuja vielä" : "No reward progress yet"}>
-          {registeredEventCount === 0 ? (
-            <>
-              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-                <AppIcon color={theme.colors.textMuted} name="gift" size={16} />
-                <Text style={[styles.bodyText, { flex: 1 }]}>{copy.student.noRewardProgress}</Text>
-              </View>
+        <EmptyStateCard
+          action={
+            registeredEventCount === 0 ? (
               <Pressable onPress={() => router.push("/student/events")} style={styles.primaryButton}>
                 <AppIcon color={theme.colors.actionPrimaryText} name="calendar" size={18} />
                 <Text style={styles.primaryButtonText}>{copy.student.browseEvents}</Text>
               </Pressable>
-            </>
-          ) : (
-            <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
-              <AppIcon color={theme.colors.textMuted} name="gift" size={16} />
-              <Text style={[styles.bodyText, { flex: 1 }]}>
-                {language === "fi"
-                  ? "Olet jo ilmoittautunut, mutta palkintotasoja ei näy vielä. Tarkista myöhemmin uudelleen."
-                  : "Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers."}
-              </Text>
-            </View>
-          )}
-        </InfoCard>
+            ) : undefined
+          }
+          body={
+            registeredEventCount === 0
+              ? copy.student.noRewardProgress
+              : language === "fi"
+                ? "Olet jo ilmoittautunut, mutta palkintotasoja ei näy vielä. Tarkista myöhemmin uudelleen."
+                : "Registered for events, but none show reward progress yet. Check back after the organizer publishes tiers."
+          }
+          eyebrow={copy.common.standby}
+          iconName="gift"
+          title={language === "fi" ? "Ei palkintopolkuja vielä" : "No reward progress yet"}
+        />
       ) : null}
 
       {events.length > 0 ? (

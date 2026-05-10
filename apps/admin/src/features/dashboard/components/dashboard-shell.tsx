@@ -7,7 +7,6 @@ import { DashboardProfileStatusWatcher } from "@/features/dashboard/components/d
 import { NavIcon } from "@/features/dashboard/components/nav-icon";
 import { PageHeader } from "@/features/dashboard/components/page-header";
 import {
-  getAlternateDashboardLocale,
   getDashboardLocaleAsync,
   getDashboardShellCopy,
   translateDashboardNavigationItems,
@@ -48,7 +47,6 @@ export const DashboardShell = async ({
     subtitle,
     title,
   });
-  const alternateLocale = getAlternateDashboardLocale(resolvedLocale);
   const translatedNavigationItems = translateDashboardNavigationItems(navigationItems, resolvedLocale);
 
   return (
@@ -72,8 +70,7 @@ export const DashboardShell = async ({
           </div>
 
           <DashboardLocaleSwitch
-            hrefLang={alternateLocale}
-            label={shellCopy.localeSwitchLabel}
+            currentLocale={resolvedLocale}
             title={shellCopy.localeSwitchTitle}
           />
         </div>

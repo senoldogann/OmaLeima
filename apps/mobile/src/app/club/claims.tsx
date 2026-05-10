@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -338,9 +339,7 @@ export default function ClubClaimsScreen() {
       ) : null}
 
       {!claimsQuery.isLoading && !claimsQuery.error && claimsQuery.data?.candidates.length === 0 ? (
-        <InfoCard eyebrow={language === "fi" ? "Palkinnot" : "Rewards"} title={labels.emptyTitle}>
-          <Text style={styles.bodyText}>{labels.emptyBody}</Text>
-        </InfoCard>
+        <EmptyStateCard body={labels.emptyBody} eyebrow={language === "fi" ? "Palkinnot" : "Rewards"} iconName="gift" title={labels.emptyTitle} />
       ) : null}
 
       {claimsQuery.data !== undefined && claimsQuery.data.events.length > 0 ? (

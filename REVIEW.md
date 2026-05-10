@@ -2,6 +2,19 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Support Message Scroll, Filter and Search)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-message-ui`
+- **Scope:** Fix support request history UX across student, business, and club mobile roles plus admin support review readability.
+
+## Support UI Findings
+
+- Mobile support history is shared by all three roles through `SupportRequestSheet`; it only shows the latest requests without status filtering or search, so sent messages/replies cannot be narrowed by `Avoin`, `Käsittelyssä`, `Ratkaistu`, or `Suljettu`.
+- Mobile support history fetches only 5 requests, which makes search/filter nearly useless for active users. Increase the bounded history window while keeping the query limited.
+- Mobile history modal uses a nested `ScrollView`, but the card/scroll container sizing is too loose and long support replies can make the inner content feel stuck. Give the history area explicit bounded height and keep result cards inside the scroll region.
+- Admin support already has basic status counters and search, but the selected detail pane is sticky without an internal height/overflow bound. Long messages/replies can push the page instead of scrolling inside the panel. Add support-specific scroll containment and a clearer control layout.
+
 ## Current Review (Admin Organization Lists + Users Performance)
 
 - **Date:** 2026-05-10

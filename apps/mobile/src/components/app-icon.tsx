@@ -1,6 +1,6 @@
 import { Svg, Circle, Path, Rect } from "react-native-svg";
 
-type AppIconName =
+export type AppIconName =
   | "apple"
   | "google"
   | "business"
