@@ -702,16 +702,16 @@ export const SupportRequestSheet = ({
                             {createStatusLabel(language, request.status)}
                           </Text>
                         </View>
-                        <Text numberOfLines={3} style={styles.historyMessage}>
+                        <Text numberOfLines={2} style={styles.historyMessage}>
                           {request.message}
                         </Text>
-                        <Text style={styles.historyMeta}>
+                        <Text numberOfLines={1} style={styles.historyMeta}>
                           {formatDateTime(localeTag, request.createdAt)}
                           {request.businessName ? ` · ${request.businessName}` : ""}
                           {request.clubName ? ` · ${request.clubName}` : ""}
                         </Text>
                         {request.adminReply ? (
-                          <Text style={styles.historyReply}>
+                          <Text numberOfLines={2} style={styles.historyReply}>
                             {language === "fi" ? "Tuki:" : "Support:"} {request.adminReply}
                           </Text>
                         ) : null}
@@ -744,11 +744,12 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.inner,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 6,
-      padding: 14,
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
     historyControls: {
-      gap: 10,
+      gap: 8,
     },
     historyFilterPill: {
       backgroundColor: theme.colors.surfaceL2,
@@ -797,11 +798,11 @@ const createStyles = (theme: MobileTheme) =>
     historyReply: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
     historyStack: {
-      gap: 10,
+      gap: 8,
     },
     historyModalCard: {
       alignSelf: "stretch",
@@ -809,16 +810,16 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.card,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 16,
+      gap: 14,
       minHeight: 360,
       marginHorizontal: 20,
-      maxHeight: "82%",
+      maxHeight: "88%",
       overflow: "hidden",
-      padding: 18,
+      padding: 16,
     },
     historyModalContent: {
-      gap: 10,
-      paddingBottom: 12,
+      gap: 8,
+      paddingBottom: 8,
     },
     historyModalRoot: {
       flex: 1,
@@ -848,7 +849,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.regular,
       fontSize: theme.typography.sizes.bodySmall,
       paddingHorizontal: 14,
-      paddingVertical: 11,
+      paddingVertical: 10,
     },
     historyStatus: {
       color: theme.colors.lime,

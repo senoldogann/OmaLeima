@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Support History Density)
+
+- [x] Confirm that scroll works but card density is too low.
+- [x] Record the compact-card approach in working docs.
+- [x] Compact history cards so at least three items are visible in the modal viewport.
+- [x] Run mobile validation, merge to main, push, and update handoff.
+
 ## Current Todos (Support History Scroll Hardening)
 
 - [x] Re-read support history modal code and confirm scroll root cause.

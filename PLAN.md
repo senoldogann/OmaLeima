@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Support History Density)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-density`
+- **Goal:** Ensure the mobile support history viewport shows roughly three history items at once while keeping scroll intact.
+
+## Architectural Decisions
+
+- Keep the existing scroll viewport fix and compact the repeated history card content instead of changing query logic or removing reply visibility entirely.
+- Limit message and admin-reply previews to two lines, keep meta to one line, and slightly reduce card spacing/padding.
+- Increase modal usable height modestly so the history viewport can hold more compact cards.
+
+## Prompt
+
+Sen OmaLeima mobile support UX hotfix engineer olarak calisiyorsun.
+Hedef: support history modalinda ayni anda en az uc history item gorunsun; scroll korunacak ama kart yogunlugu artacak.
+Mimari: Expo React Native `SupportRequestSheet` history card layout/styling. Supabase/API degisikligi yok.
+Kapsam: history card preview lines, spacing, viewport height ve kucuk docs/validation.
+Cikti: Daha yogun history kartlari, korunan scroll davranisi, mobile validation kaniti.
+Yasaklar: history filter/search'i geri almak, tam mesajlari silmek, yeni dependency eklemek, `any` tipi.
+Standartlar: frontend-patterns compact responsive UI, focused diff.
+
 ## Current Plan (Support History Scroll Hardening)
 
 - **Date:** 2026-05-10
