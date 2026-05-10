@@ -1006,26 +1006,6 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             />
           </label>
 
-          <label className="field-stack">
-            <span className="field-label">{copy.ctaLabel}</span>
-            <input
-              disabled={isFormDisabled}
-              onChange={(event) => setPayload((current) => ({ ...current, ctaLabel: event.target.value }))}
-              placeholder={copy.placeholderCtaLabel}
-              value={payload.ctaLabel}
-            />
-          </label>
-
-          <label className="field-stack">
-            <span className="field-label">{copy.ctaUrl}</span>
-            <input
-              disabled={isFormDisabled}
-              onChange={(event) => setPayload((current) => ({ ...current, ctaUrl: event.target.value }))}
-              placeholder={copy.placeholderImageUrl}
-              value={payload.ctaUrl}
-            />
-          </label>
-
           <div className="field-stack form-grid-full">
             <span className="field-label">{copy.image}</span>
             <label className="upload-dropzone">
@@ -1044,22 +1024,6 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
                 style={{ backgroundImage: `url(${payload.imagePreviewUrl.trim().length > 0 ? payload.imagePreviewUrl : payload.imageUrl})` }}
               />
             ) : null}
-            <label className="field-stack">
-              <span className="field-label">{copy.imageUrl}</span>
-              <input
-                disabled={isFormDisabled}
-                onChange={(event) =>
-                  setPayload((current) => ({
-                    ...current,
-                    imagePreviewUrl: event.target.value,
-                    imageStagingPath: "",
-                    imageUrl: event.target.value,
-                  }))
-                }
-                placeholder={copy.placeholderImageUrl}
-                value={payload.imageUrl}
-              />
-            </label>
           </div>
 
           <div className="form-grid-full stack-sm">

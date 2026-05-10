@@ -174,15 +174,20 @@ export const ClubProfilePanel = ({ locale, snapshot }: ClubProfilePanelProps) =>
   };
 
   const handleSubmit = (): void => {
-    if (draft === null || !canEditSelectedClub) {
+    if (draft === null || selectedClub === null || !canEditSelectedClub) {
       return;
     }
+
+    const submitPayload: ClubProfileDraft = {
+      ...draft,
+      clubId: selectedClub.clubId,
+    };
 
     setActionState(null);
     startTransition(() => {
       void (async () => {
         const response = await fetch("/api/club/profile", {
-          body: JSON.stringify(draft),
+          body: JSON.stringify(submitPayload),
           headers: {
             "Content-Type": "application/json",
           },
@@ -285,26 +290,6 @@ export const ClubProfilePanel = ({ locale, snapshot }: ClubProfilePanelProps) =>
               onChange={(event) => setDraft((currentDraft) => currentDraft === null ? null : { ...currentDraft, address: event.target.value })}
               type="text"
               value={draft.address}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.website}</span>
-            <input
-              className="field-input"
-              disabled={!canEditSelectedClub || isPending}
-              onChange={(event) => setDraft((currentDraft) => currentDraft === null ? null : { ...currentDraft, websiteUrl: event.target.value })}
-              type="url"
-              value={draft.websiteUrl}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.instagram}</span>
-            <input
-              className="field-input"
-              disabled={!canEditSelectedClub || isPending}
-              onChange={(event) => setDraft((currentDraft) => currentDraft === null ? null : { ...currentDraft, instagramUrl: event.target.value })}
-              type="url"
-              value={draft.instagramUrl}
             />
           </label>
           <label className="field form-grid-full">

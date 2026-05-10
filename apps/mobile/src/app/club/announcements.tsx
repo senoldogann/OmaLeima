@@ -44,7 +44,7 @@ import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-erro
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
-type TextField = keyof Pick<ClubAnnouncementDraft, "body" | "ctaLabel" | "ctaUrl" | "priority" | "title">;
+type TextField = keyof Pick<ClubAnnouncementDraft, "body" | "priority" | "title">;
 
 type DateTimeField = keyof Pick<ClubAnnouncementDraft, "endsAt" | "startsAt">;
 
@@ -106,20 +106,6 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
     label: language === "fi" ? "Tärkeys 0-10" : "Priority 0-10",
     multiline: false,
     placeholder: "0",
-  },
-  {
-    field: "ctaLabel",
-    keyboardType: "default",
-    label: language === "fi" ? "Linkin teksti" : "Link label",
-    multiline: false,
-    placeholder: language === "fi" ? "Avaa ohje" : "Open guide",
-  },
-  {
-    field: "ctaUrl",
-    keyboardType: "url",
-    label: language === "fi" ? "Linkki" : "Link",
-    multiline: false,
-    placeholder: "https://",
   },
 ];
 

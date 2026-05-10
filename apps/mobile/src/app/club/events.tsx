@@ -53,7 +53,6 @@ type TextEditableField = keyof Pick<
   | "maxParticipants"
   | "minimumStampsRequired"
   | "name"
-  | "ticketUrl"
 >;
 
 type DateTimeField = keyof Pick<ClubEventFormDraft, "endAt" | "joinDeadlineAt" | "startAt">;
@@ -198,12 +197,6 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
       language === "fi"
         ? "Kirjoita opiskelijoille näkyvä tapahtumakuvaus."
         : "Write the public event description for students.",
-  },
-  {
-    field: "ticketUrl",
-    label: language === "fi" ? "Lippulinkki" : "Ticket URL",
-    multiline: false,
-    placeholder: "https://",
   },
   {
     field: "minimumStampsRequired",
@@ -1175,7 +1168,7 @@ export default function ClubEventsScreen() {
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
-                      autoCapitalize={config.field === "ticketUrl" ? "none" : "sentences"}
+                      autoCapitalize="sentences"
                       editable={
                         !isPending &&
                         config.field !== "city" &&
@@ -1185,9 +1178,7 @@ export default function ClubEventsScreen() {
                       keyboardType={
                         config.field === "minimumStampsRequired" || config.field === "maxParticipants"
                           ? "number-pad"
-                          : config.field === "ticketUrl"
-                            ? "url"
-                            : "default"
+                          : "default"
                       }
                       multiline={config.multiline}
                       onChangeText={(value) => updateDraftField(config.field, value)}

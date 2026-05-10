@@ -2,6 +2,38 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Hide Operator URL Fields)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/hide-operator-url-fields`
+- **Goal:** Stop the organization profile stale-club-id validation loop and simplify operator UI by hiding URL entry fields across web/mobile organization and business surfaces.
+
+## Architectural Decisions
+
+- Keep server-side validation strict. Fix the `Club: Invalid UUID` bug at the client boundary by submitting the selected club id from the authoritative selected-club record instead of trusting editable draft state.
+- Hide URL fields in operator/admin/public application forms rather than deleting columns, validation schemas, read models, or historical values. This avoids destructive data changes while removing the confusing UI surface.
+- Preserve upload previews and staged media paths. Uploaded images/covers continue using the safe staging/publish flow; manual image/cover URL entry is removed from the UI.
+- Keep public/marketing company links outside this hotfix; this pass targets organization/business creation, profile, event, announcement, and application flows.
+
+## Prompt
+
+Sen OmaLeima frontend production hotfix engineer olarak calisiyorsun.
+Hedef: Web organizasyon profilinde `Club: Invalid UUID` hatasina yol acan stale client club id kullanımını kapat ve operator-facing URL inputlarini web/mobile organizasyon/isletme akışlarından gizle.
+Mimari: Next.js client panels + Expo React Native operator screens + mevcut Supabase media staging/publish akışı. Backend validation, RLS ve schema degisikligi yok.
+Kapsam: club profile submit payload, web announcement/event/account/application URL inputs, mobile club/business profile URL inputs, mobile club announcement/event URL inputs, working docs ve validation.
+Cikti: Strict TypeScript/TSX patch, gorunur URL inputlari kaldirilmis operator UI, admin/mobile validation kaniti, deploy-ready handoff.
+Yasaklar: RLS gevsetmek, URL validation'i gevsetmek, signed staging URL persist etmek, mevcut veriyi migration ile silmek, unrelated public-site redesign, `any` tipi.
+Standartlar: AGENTS.md, mevcut upload/staging helperlari, no silent failures, focused diff.
+
+## Validation Plan
+
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `git --no-pager diff --check`
+
 ## Current Plan (Release Gate Drift + CSP Hardening)
 
 - **Date:** 2026-05-10

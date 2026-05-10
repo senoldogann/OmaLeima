@@ -181,14 +181,6 @@ export const ManualBusinessAccountForm = ({ locale }: ManualBusinessAccountFormP
             <span className="field-label">{copy.country}</span>
             <input className="field-input" name="country" required type="text" />
           </label>
-          <label className="field">
-            <span className="field-label">{copy.websiteUrl}</span>
-            <input className="field-input" name="websiteUrl" type="url" />
-          </label>
-          <label className="field">
-            <span className="field-label">{copy.instagramUrl}</span>
-            <input className="field-input" name="instagramUrl" type="url" />
-          </label>
         </div>
 
         <div className="action-row">

@@ -9,7 +9,6 @@ import {
 } from "@/features/business-applications/format";
 import { reviewRefreshableStatuses, submitReviewRequestAsync } from "@/features/business-applications/review-client";
 import type { BusinessApplicationRecord, ReviewActionState } from "@/features/business-applications/types";
-import { normalizeExternalReviewUrl } from "@/features/business-applications/validation";
 import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type PendingApplicationReviewCardProps = {
@@ -25,18 +24,6 @@ const renderActionState = (state: ReviewActionState) => {
     <p className={state.tone === "success" ? "inline-success" : "inline-error"}>
       {state.message}
     </p>
-  );
-};
-
-const renderExternalLink = (label: string, href: string | null) => {
-  if (href === null) {
-    return null;
-  }
-
-  return (
-    <a className="detail-link" href={href} rel="noreferrer" target="_blank">
-      {label}
-    </a>
   );
 };
 
@@ -67,9 +54,6 @@ export const PendingApplicationReviewCard = ({ application }: PendingApplication
   const [isRejectOpen, setIsRejectOpen] = useState<boolean>(false);
   const [isRejectPending, setIsRejectPending] = useState<boolean>(false);
   const isPending = isApprovePending || isRejectPending;
-  const websiteUrl = normalizeExternalReviewUrl(application.websiteUrl);
-  const instagramUrl = normalizeExternalReviewUrl(application.instagramUrl);
-
   const handleApproveSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setIsApprovePending(true);
@@ -185,11 +169,6 @@ export const PendingApplicationReviewCard = ({ application }: PendingApplication
             <dd>{application.address ?? "Not provided"}</dd>
           </div>
         </dl>
-
-        <div className="action-row">
-          {renderExternalLink("Website", websiteUrl)}
-          {renderExternalLink("Instagram", instagramUrl)}
-        </div>
 
         <div className="stack-sm">
           <span className="field-label">Applicant message</span>

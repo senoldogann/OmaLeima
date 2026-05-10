@@ -21,6 +21,7 @@ type BusinessApplicationsPanelProps = {
 
 const copyByLocale = {
   en: {
+    businessManualTab: "Business Owner",
     manualTab: "Create Account",
     decisionsTab: "Decisions",
     emptyDecisionsBody: "Approved and rejected applications will appear here after the first review action.",
@@ -55,6 +56,7 @@ const copyByLocale = {
     queueTitle: "Pending business applications",
     rejectStepBody: "Low-quality or unverifiable submissions stay out of the business catalog and keep a clear rejection reason.",
     rejectStepTitle: "3. Reject",
+    organizationManualTab: "Organization Owner",
     secondStepBody: "A valid venue becomes a business profile through the atomic approval flow; duplicates are rejected by the backend.",
     secondStepTitle: "2. Approve",
     showingEmpty: "Showing 0 of 0.",
@@ -62,6 +64,7 @@ const copyByLocale = {
     showingSeparator: "of",
   },
   fi: {
+    businessManualTab: "Yrityksen omistaja",
     manualTab: "Luo tilejä",
     decisionsTab: "Päätökset",
     emptyDecisionsBody: "Hyväksytyt ja hylätyt hakemukset näkyvät täällä ensimmäisen päätöksen jälkeen.",
@@ -96,6 +99,7 @@ const copyByLocale = {
     queueTitle: "Avoimet hakemukset",
     rejectStepBody: "Puutteelliset tai varmistamattomat hakemukset eivät pääse yrityskatalogiin ja saavat selkeän hylkäyssyyn.",
     rejectStepTitle: "3. Hylkäys",
+    organizationManualTab: "Organisaation omistaja",
     secondStepBody: "Hyväksytty hakemus muuttuu yritysprofiiliksi; järjestelmä estää duplikaatit automaattisesti.",
     secondStepTitle: "2. Hyväksyntä",
     showingEmpty: "Näytetään 0 / 0.",
@@ -114,6 +118,7 @@ const buildPageHref = (pageNumber: number): string => {
 
 export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessApplicationsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"pending-queue" | "decisions" | "manual">("pending-queue");
+  const [activeManualTab, setActiveManualTab] = useState<"business" | "organization">("business");
   const copy = copyByLocale[locale];
 
   return (
@@ -285,8 +290,30 @@ export const BusinessApplicationsPanel = ({ locale, reviewQueue }: BusinessAppli
           <p className="info-callout-title">{copy.handoffTitle}</p>
           <p className="muted-text">{copy.handoffBody}</p>
         </div>
-        <ManualBusinessAccountForm locale={locale} />
-        <ManualOrganizationAccountForm locale={locale} />
+        <div className="tab-nav">
+          <button
+            className={activeManualTab === "business" ? "tab-btn tab-btn-active" : "tab-btn"}
+            onClick={() => setActiveManualTab("business")}
+            type="button"
+          >
+            {copy.businessManualTab}
+          </button>
+          <button
+            className={activeManualTab === "organization" ? "tab-btn tab-btn-active" : "tab-btn"}
+            onClick={() => setActiveManualTab("organization")}
+            type="button"
+          >
+            {copy.organizationManualTab}
+          </button>
+        </div>
+
+        <div style={{ display: activeManualTab !== "business" ? "none" : undefined }}>
+          <ManualBusinessAccountForm locale={locale} />
+        </div>
+
+        <div style={{ display: activeManualTab !== "organization" ? "none" : undefined }}>
+          <ManualOrganizationAccountForm locale={locale} />
+        </div>
       </section>
     </div>
   );
