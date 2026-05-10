@@ -276,8 +276,8 @@ const createEventsCopy = (language: "fi" | "en"): BusinessEventsCopy => ({
       : "Upcoming events your business is already part of.",
   joinedNextEmptyBody:
     language === "fi"
-      ? "Ei vielä yhtään tulevaa liittynyttä tapahtumaa."
-      : "No upcoming joined event yet.",
+      ? "Yrityksesi ei ole vielä mukana missään tulevassa tapahtumassa."
+      : "Your business is not joined to a future event yet.",
   joinedNextTitle: language === "fi" ? "Tulossa" : "Upcoming",
   joiningEvent: language === "fi" ? "Liitytään..." : "Joining...",
   leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",

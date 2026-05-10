@@ -21,12 +21,13 @@ export const EmptyStateCard = ({
   eyebrow,
   iconName,
   title,
-  variant = "subtle",
+  variant,
 }: EmptyStateCardProps) => {
   const styles = useThemeStyles(createStyles);
+  const resolvedVariant: GlassPanelVariant = variant ?? "subtle";
 
   return (
-    <GlassPanel contentStyle={styles.content} variant={variant}>
+    <GlassPanel contentStyle={styles.content} variant={resolvedVariant}>
       <View style={styles.iconBadge}>
         <AppIcon color={styles.iconColor.color} name={iconName} size={26} />
       </View>

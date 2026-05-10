@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
+import { EmptyStateCard } from "@/components/empty-state-card";
 import { InfoCard } from "@/components/info-card";
 import { type PublicClubDirectoryItem, usePublicClubDirectoryQuery } from "@/features/club/public-club-directory";
 import { getEventCoverSourceWithFallback } from "@/features/events/event-visuals";
@@ -218,7 +219,7 @@ export const PublicClubDirectorySection = ({ isEnabled }: PublicClubDirectorySec
                             })}
                         </ScrollView>
                     ) : (
-                        <Text style={styles.bodyText}>{labels.empty}</Text>
+                        <EmptyStateCard body={labels.empty} iconName="business" />
                     )}
                 </>
             ) : null}
