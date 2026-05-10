@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Empty State Icon Badge)
+
+- [x] Confirm only the shared icon badge tint needs to come back.
+- [x] Record the follow-up tweak in working docs.
+- [x] Restore the shared empty-state icon badge background without re-adding borders.
+- [x] Run mobile validation, merge to main, push, and update handoff.
+
 ## Current Todos (Empty State Surface Cleanup)
 
 - [x] Confirm the shared empty-state wrapper is the source of the black surface and border.
