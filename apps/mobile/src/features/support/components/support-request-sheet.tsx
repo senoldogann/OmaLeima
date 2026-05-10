@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -156,7 +157,12 @@ export const SupportRequestSheet = ({
   userId,
 }: SupportRequestSheetProps) => {
   const { language, localeTag, theme } = useUiPreferences();
+  const { height: windowHeight } = useWindowDimensions();
   const styles = useThemeStyles(createStyles);
+  const historyModalMaxHeight = Math.min(windowHeight - 16, 720);
+  const historyViewportHeight = Math.round(
+    Math.min(420, Math.max(240, windowHeight * 0.44), historyModalMaxHeight - 150),
+  );
   const supportQuery = useSupportRequestsQuery({
     userId: userId ?? "",
     area,
@@ -605,7 +611,7 @@ export const SupportRequestSheet = ({
       <Modal animationType="fade" onRequestClose={() => setIsHistoryVisible(false)} transparent visible={isHistoryVisible}>
         <View style={styles.historyModalRoot}>
           <Pressable onPress={() => setIsHistoryVisible(false)} style={styles.modalBackdrop} />
-          <View style={styles.historyModalCard}>
+          <View style={[styles.historyModalCard, { maxHeight: historyModalMaxHeight }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Historia" : "History"}</Text>
@@ -668,7 +674,7 @@ export const SupportRequestSheet = ({
                 {language === "fi" ? `${filteredHistoryRequests.length} tulosta` : `${filteredHistoryRequests.length} result(s)`}
               </Text>
             </View>
-            <View style={styles.historyScrollViewport}>
+            <View style={[styles.historyScrollViewport, { height: historyViewportHeight }]}>
               <ScrollView
                 bounces={false}
                 contentContainerStyle={styles.historyModalContent}
@@ -744,20 +750,20 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.inner,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      gap: 3,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
     },
     historyControls: {
-      gap: 8,
+      gap: 6,
     },
     historyFilterPill: {
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
       borderRadius: 999,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
     },
     historyFilterPillActive: {
       backgroundColor: theme.colors.limeSurface,
@@ -765,7 +771,7 @@ const createStyles = (theme: MobileTheme) =>
     },
     historyFilterRow: {
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
       paddingRight: 4,
     },
     historyFilterText: {
@@ -780,7 +786,7 @@ const createStyles = (theme: MobileTheme) =>
     historyHeader: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
       justifyContent: "space-between",
     },
     historyMessage: {
@@ -810,24 +816,22 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.card,
       borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 14,
+      gap: 12,
       minHeight: 360,
       marginHorizontal: 20,
-      maxHeight: "88%",
       overflow: "hidden",
-      padding: 16,
+      padding: 14,
     },
     historyModalContent: {
-      gap: 8,
-      paddingBottom: 8,
+      gap: 6,
+      paddingBottom: 6,
     },
     historyModalRoot: {
       flex: 1,
-      justifyContent: "center",
-      paddingVertical: 24,
+      justifyContent: "flex-end",
+      paddingVertical: 16,
     },
     historyScrollViewport: {
-      flex: 1,
       minHeight: 0,
       overflow: "hidden",
     },
@@ -849,7 +853,7 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.regular,
       fontSize: theme.typography.sizes.bodySmall,
       paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingVertical: 8,
     },
     historyStatus: {
       color: theme.colors.lime,
@@ -861,8 +865,8 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textPrimary,
       flex: 1,
       fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.body,
-      lineHeight: theme.typography.lineHeights.body,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     input: {
       backgroundColor: theme.colors.surfaceL2,

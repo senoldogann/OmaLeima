@@ -2,6 +2,17 @@
 
 Bu dosya her yeni feature branch'te kod yazmadan once sistem analizini kaydetmek icin kullanilir.
 
+## Current Review (Support History Viewport)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/support-history-viewport`
+- **Scope:** Enforce a larger dedicated history viewport because compact cards alone did not reliably show three visible items on device.
+
+## Support History Viewport Findings
+
+- The previous density-only hotfix reduced card height, but the modal still reserved too much of its total height for wrapper spacing and controls.
+- A more reliable fix is to size the history modal from the bottom like a sheet and give the history list a direct computed viewport height based on the device window.
+
 ## Current Review (Support History Density)
 
 - **Date:** 2026-05-10
