@@ -2,6 +2,28 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Empty State Surface Cleanup)
+
+- **Date:** 2026-05-10
+- **Branch:** `fix/empty-state-surface-cleanup`
+- **Goal:** Make shared no-data icon/text areas render without the black panel surface or border chrome.
+
+## Architectural Decisions
+
+- Patch the shared mobile `EmptyStateCard` once instead of editing each screen separately.
+- Replace the `GlassPanel` wrapper with a transparent layout `View` and remove the icon badge background/border while preserving spacing, typography, and optional action support.
+- Keep the existing prop shape, including `variant`, so callers do not need to change.
+
+## Prompt
+
+Sen OmaLeima mobile shared UI hotfix engineer olarak calisiyorsun.
+Hedef: hic veri olmayan alanlarda kullanilan ortak icon+text empty state tasarimindan siyah panel arka planini ve borderi kaldir.
+Mimari: ortak `apps/mobile/src/components/empty-state-card.tsx` uzerinden tum tekrarli no-data yuzeylerini tek noktadan guncelle.
+Kapsam: empty state wrapper ve icon badge chrome'u kaldir; spacing ve action slot korunacak; docs/validation eklenecek.
+Cikti: Tum `EmptyStateCard` kullanicilarinda daha temiz, backgroundsuz/bordersiz bos durum gorunumu.
+Yasaklar: ekran bazli kopya patchler, yeni dependency, unrelated theme refactor, `any` tipi.
+Standartlar: focused diff, mevcut typography/hizalama korunacak.
+
 ## Current Plan (Support History Viewport)
 
 - **Date:** 2026-05-10

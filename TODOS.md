@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Empty State Surface Cleanup)
+
+- [x] Confirm the shared empty-state wrapper is the source of the black surface and border.
+- [x] Record the shared-component cleanup approach in working docs.
+- [x] Remove the empty-state panel/background chrome from the shared mobile component.
+- [x] Run mobile validation, merge to main, push, and update handoff.
+
 ## Current Todos (Support History Viewport)
 
 - [x] Confirm that the density-only fix still leaves too little visible history on device.
