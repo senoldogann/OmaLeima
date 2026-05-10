@@ -24,6 +24,58 @@ const websiteJsonLd = {
   url: publicSiteUrl,
 };
 
+const softwareApplicationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  applicationCategory: "LifestyleApplication",
+  description: content.metaDescription,
+  inLanguage: "fi-FI",
+  name: "OmaLeima",
+  operatingSystem: "iOS, Android, Web",
+  url: publicSiteUrl,
+};
+
+const serviceJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Service",
+  areaServed: {
+    "@type": "Country",
+    name: "Finland",
+  },
+  audience: [
+    {
+      "@type": "Audience",
+      audienceType: "Student event organizers",
+    },
+    {
+      "@type": "Audience",
+      audienceType: "Student-friendly venues and businesses",
+    },
+  ],
+  description: content.metaDescription,
+  name: "Digital leima pass for Finnish student events",
+  provider: {
+    "@type": "Organization",
+    name: "OmaLeima",
+    url: publicSiteUrl,
+  },
+  serviceType: "Digital stamp card, QR checkpoint, and student event reward operations",
+  url: publicSiteUrl,
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: content.faqItems.map((item) => ({
+    "@type": "Question",
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+    name: item.question,
+  })),
+};
+
 const renderJsonLd = (value: Record<string, unknown>) => ({
   __html: JSON.stringify(value),
 });
@@ -69,6 +121,18 @@ export default function Home() {
       />
       <script
         dangerouslySetInnerHTML={renderJsonLd(websiteJsonLd)}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={renderJsonLd(softwareApplicationJsonLd)}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={renderJsonLd(serviceJsonLd)}
+        type="application/ld+json"
+      />
+      <script
+        dangerouslySetInnerHTML={renderJsonLd(faqJsonLd)}
         type="application/ld+json"
       />
       <PublicLandingPage locale={locale} />

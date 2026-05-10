@@ -105,7 +105,7 @@ export const uploadBusinessMediaAsync = async ({
     uri: asset.uri,
   });
   const { error } = await supabase.storage.from(businessMediaBucketId).upload(storagePath, uploadBody, {
-    cacheControl: "3600",
+    cacheControl: "31536000",
     contentType: mimeType,
     upsert: false,
   });

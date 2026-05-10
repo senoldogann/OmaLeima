@@ -436,6 +436,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
             data: {
               type: "EVENT_REMINDER",
               eventId: candidate.eventId,
+              recipientUserId: candidate.userId,
               reminderWindowHours: candidate.reminderWindowHours,
               eventStartAt: candidate.eventStartAt,
             },

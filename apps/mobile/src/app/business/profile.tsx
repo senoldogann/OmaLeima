@@ -8,6 +8,7 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { BusinessOnboardingModal } from "@/features/business/components/business-onboarding-modal";
 import {
   type BusinessMediaKind,
   pickBusinessMediaAsync,
@@ -23,7 +24,12 @@ import { useBusinessHomeOverviewQuery } from "@/features/business/business-home"
 import type { BusinessMembershipSummary } from "@/features/business/types";
 import { getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
+import { LegalLinksModal } from "@/features/legal/legal-links-card";
+import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { PushNotificationSetupCard } from "@/features/push/push-notification-setup-card";
 import {
   useBusinessScannerLoginQrQuery,
   useBusinessScannerLoginQrSvgQuery,
@@ -40,7 +46,7 @@ import { SupportRequestSheet } from "@/features/support/components/support-reque
 import type { BusinessSupportOption } from "@/features/support/types";
 import { useSession } from "@/providers/session-provider";
 
-type PreferenceSheet = "language" | "theme" | null;
+type PreferenceSheet = "language" | null;
 type BusinessProfileDraftField = keyof Pick<
   BusinessProfileDraft,
   | "name"
@@ -169,12 +175,14 @@ const createFieldConfigs = (language: "fi" | "en"): EditableFieldConfig[] => [
 
 export default function BusinessProfileScreen() {
   const { session } = useSession();
-  const { copy, language, setLanguage, setThemeMode, theme, themeMode } = useUiPreferences();
+  const { copy, language, setLanguage, theme } = useUiPreferences();
   const router = useRouter();
   const styles = useThemeStyles(createStyles);
   const userId = session?.user.id ?? null;
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [isLegalLinksVisible, setIsLegalLinksVisible] = useState<boolean>(false);
+  const [isOnboardingVisible, setIsOnboardingVisible] = useState<boolean>(false);
   const [isBusinessProfileExpanded, setIsBusinessProfileExpanded] = useState<boolean>(false);
   const [isScannerDevicesExpanded, setIsScannerDevicesExpanded] = useState<boolean>(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
@@ -186,6 +194,12 @@ export default function BusinessProfileScreen() {
   const [uploadingMediaKind, setUploadingMediaKind] = useState<BusinessMediaKind | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const updateBusinessProfileMutation = useUpdateBusinessProfileMutation();
+
+  useTransientSuccessKey(
+    updateBusinessProfileMutation.isSuccess ? "business-profile-saved" : null,
+    () => updateBusinessProfileMutation.reset(),
+    successNoticeDurationMs
+  );
   const renameScannerDeviceMutation = useRenameBusinessScannerDeviceMutation();
   const revokeScannerDeviceMutation = useRevokeBusinessScannerDeviceMutation();
   const setScannerPinMutation = useSetBusinessScannerDevicePinMutation();
@@ -205,8 +219,6 @@ export default function BusinessProfileScreen() {
     () => memberships.find((membership) => membership.businessId === selectedBusinessId) ?? memberships[0] ?? null,
     [memberships, selectedBusinessId]
   );
-  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
-  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const canEditSelectedMembership = selectedMembership !== null && canManageBusinessProfile(selectedMembership);
   const selectedBusinessIdForEvents = selectedMembership?.businessId ?? null;
@@ -246,8 +258,10 @@ export default function BusinessProfileScreen() {
     isEnabled: canEditSelectedMembership && selectedMembership !== null,
   });
   const scannerLoginQrSvgQuery = useBusinessScannerLoginQrSvgQuery({
-    token: scannerLoginQrQuery.data?.qrPayload.token ?? "",
+    businessId: scannerLoginQrQuery.data?.businessId ?? selectedMembership?.businessId ?? "",
+    expiresAt: scannerLoginQrQuery.data?.expiresAt ?? "",
     isEnabled: canEditSelectedMembership && scannerLoginQrQuery.data !== undefined,
+    token: scannerLoginQrQuery.data?.qrPayload.token ?? "",
   });
   const scannerDeviceCount = scannerDevicesQuery.data?.length ?? 0;
   const scannerDeviceSummary =
@@ -410,7 +424,7 @@ export default function BusinessProfileScreen() {
       setDraft(nextDraft);
       await updateBusinessProfileMutation.mutateAsync(nextDraft);
     } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Unknown business media upload error.");
+      setMediaError(createUserSafeErrorMessage(error, language, "businessMedia"));
     } finally {
       setUploadingMediaKind(null);
     }
@@ -435,7 +449,7 @@ export default function BusinessProfileScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={copy.common.business}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "business")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -450,6 +464,34 @@ export default function BusinessProfileScreen() {
             style={styles.businessHero}
           >
             <View style={styles.heroOverlay} />
+            {canEditSelectedMembership ? (
+              <View style={styles.heroMediaButtons}>
+                <Pressable
+                  disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                  onPress={() => void handleMediaPress("cover")}
+                  style={[styles.heroMediaBtn, uploadingMediaKind !== null ? styles.disabledButton : null]}
+                >
+                  <AppIcon color="rgba(255,255,255,0.92)" name="tools" size={13} />
+                  <Text style={styles.heroMediaBtnText}>
+                    {uploadingMediaKind === "cover"
+                      ? language === "fi" ? "Ladataan..." : "Uploading..."
+                      : language === "fi" ? "Vaihda kansikuva" : "Change cover"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
+                  onPress={() => void handleMediaPress("logo")}
+                  style={[styles.heroMediaBtn, uploadingMediaKind !== null ? styles.disabledButton : null]}
+                >
+                  <AppIcon color="rgba(255,255,255,0.92)" name="tools" size={13} />
+                  <Text style={styles.heroMediaBtnText}>
+                    {uploadingMediaKind === "logo"
+                      ? language === "fi" ? "Ladataan..." : "Uploading..."
+                      : language === "fi" ? "Vaihda logo" : "Change logo"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.heroContent}>
               <CoverImageSurface
                 fallbackSource={getFallbackCoverSource("qrPass")}
@@ -471,40 +513,6 @@ export default function BusinessProfileScreen() {
             </View>
           </CoverImageSurface>
 
-          {canEditSelectedMembership ? (
-            <View style={styles.mediaActionRow}>
-              <Pressable
-                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
-                onPress={() => void handleMediaPress("cover")}
-                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
-              >
-                <Text style={styles.mediaButtonText}>
-                  {uploadingMediaKind === "cover"
-                    ? language === "fi"
-                      ? "Ladataan..."
-                      : "Uploading..."
-                    : language === "fi"
-                      ? "Vaihda kansikuva"
-                      : "Change cover"}
-                </Text>
-              </Pressable>
-              <Pressable
-                disabled={uploadingMediaKind !== null || updateBusinessProfileMutation.isPending}
-                onPress={() => void handleMediaPress("logo")}
-                style={[styles.mediaButton, uploadingMediaKind !== null ? styles.disabledButton : null]}
-              >
-                <Text style={styles.mediaButtonText}>
-                  {uploadingMediaKind === "logo"
-                    ? language === "fi"
-                      ? "Ladataan..."
-                      : "Uploading..."
-                    : language === "fi"
-                      ? "Vaihda logo"
-                      : "Change logo"}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
           {mediaError ? <Text style={styles.errorText}>{mediaError}</Text> : null}
 
           <View style={styles.scannerWorkflowCard}>
@@ -552,14 +560,14 @@ export default function BusinessProfileScreen() {
             <View style={styles.ownerQrCard}>
               <View style={styles.ownerQrCopy}>
                 <Text style={styles.sectionEyebrow}>
-                  {language === "fi" ? "Henkilokunta" : "Staff access"}
+                  {language === "fi" ? "Henkilökunta" : "Staff access"}
                 </Text>
                 <Text style={styles.sectionTitle}>
                   {language === "fi" ? "Scanner QR" : "Scanner QR"}
                 </Text>
                 <Text style={styles.bodyText}>
                   {language === "fi"
-                    ? "Nayta tama QR tyontekijalle. Han avaa yrityskirjautumisen, valitsee QR-skannauksen ja laite saa oman scanner-oikeuden."
+                    ? "Näytä tämä QR henkilöstölle. He avaavat yrityskirjautumisen, skannaavat koodin ja saavat laitekohtaisen skannausroolin."
                     : "Show this QR to staff. They open business sign-in, scan it, and this phone gets its own scanner access."}
                 </Text>
               </View>
@@ -587,24 +595,24 @@ export default function BusinessProfileScreen() {
                 <Text style={styles.metaText}>
                   {scannerLoginQrQuery.data
                     ? language === "fi"
-                      ? "QR paivittyy automaattisesti."
+                      ? "QR päivittyy automaattisesti."
                       : "QR refreshes automatically."
                     : language === "fi"
-                      ? "Owner/manager oikeus vaaditaan."
+                      ? "Omistaja- tai managerioikeus vaaditaan."
                       : "Owner/manager access required."}
                 </Text>
                 <Pressable onPress={() => void scannerLoginQrQuery.refetch()} style={styles.scannerDeviceActionButton}>
                   <Text style={styles.scannerDeviceActionText}>
-                    {language === "fi" ? "Paivita" : "Refresh"}
+                    {language === "fi" ? "Päivitä" : "Refresh"}
                   </Text>
                 </Pressable>
               </View>
 
               {scannerLoginQrQuery.error ? (
-                <Text style={styles.errorText}>{scannerLoginQrQuery.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerLoginQrQuery.error, language, "businessScanner")}</Text>
               ) : null}
               {scannerLoginQrSvgQuery.error ? (
-                <Text style={styles.errorText}>{scannerLoginQrSvgQuery.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerLoginQrSvgQuery.error, language, "businessScanner")}</Text>
               ) : null}
             </View>
           ) : null}
@@ -652,7 +660,60 @@ export default function BusinessProfileScreen() {
               title={language === "fi" ? "Yrityksen tiedot" : "Business details"}
             >
               <View style={styles.formStack}>
-                {fieldConfigs.map((config) => (
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Perustiedot" : "Basic info"}
+                </Text>
+                {fieldConfigs.filter(c => (["name", "yTunnus", "contactPersonName"] as string[]).includes(c.field as string)).map((config) => (
+                  <View key={config.field} style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <TextInput
+                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                      multiline={config.multiline}
+                      onChangeText={(value) => updateDraftField(config.field, value)}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={[
+                        styles.input,
+                        config.multiline ? styles.textArea : null,
+                        !canEditSelectedMembership ? styles.readOnlyInput : null,
+                      ]}
+                      textAlignVertical={config.multiline ? "top" : "center"}
+                      value={draft[config.field]}
+                    />
+                  </View>
+                ))}
+
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Yhteystiedot" : "Contact"}
+                </Text>
+                {fieldConfigs.filter(c => (["contactEmail", "phone", "address", "city", "websiteUrl", "instagramUrl"] as string[]).includes(c.field as string)).map((config) => (
+                  <View key={config.field} style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>{config.label}</Text>
+                    <TextInput
+                      autoCapitalize={config.field === "contactEmail" || config.field.includes("Url") ? "none" : "sentences"}
+                      editable={canEditSelectedMembership && !updateBusinessProfileMutation.isPending}
+                      keyboardType={config.field === "contactEmail" ? "email-address" : "default"}
+                      multiline={config.multiline}
+                      onChangeText={(value) => updateDraftField(config.field, value)}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={theme.colors.textDim}
+                      style={[
+                        styles.input,
+                        config.multiline ? styles.textArea : null,
+                        !canEditSelectedMembership ? styles.readOnlyInput : null,
+                      ]}
+                      textAlignVertical={config.multiline ? "top" : "center"}
+                      value={draft[config.field]}
+                    />
+                  </View>
+                ))}
+
+                <Text style={styles.formGroupHeader}>
+                  {language === "fi" ? "Toiminta" : "Operations"}
+                </Text>
+                {fieldConfigs.filter(c => (["openingHours", "announcement"] as string[]).includes(c.field as string)).map((config) => (
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
@@ -700,7 +761,7 @@ export default function BusinessProfileScreen() {
               )}
 
               {updateBusinessProfileMutation.error ? (
-                <Text style={styles.errorText}>{updateBusinessProfileMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(updateBusinessProfileMutation.error, language, "business")}</Text>
               ) : null}
               {updateBusinessProfileMutation.isSuccess ? (
                 <Text style={styles.successText}>
@@ -737,7 +798,7 @@ export default function BusinessProfileScreen() {
 
               {scannerDevicesQuery.error ? (
                 <View style={styles.inlineErrorBlock}>
-                  <Text style={styles.errorText}>{scannerDevicesQuery.error.message}</Text>
+                  <Text style={styles.errorText}>{createUserSafeErrorMessage(scannerDevicesQuery.error, language, "businessScanner")}</Text>
                   <Pressable onPress={() => void scannerDevicesQuery.refetch()} style={styles.secondaryButton}>
                     <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
                   </Pressable>
@@ -951,43 +1012,57 @@ export default function BusinessProfileScreen() {
               </View>
 
               {renameScannerDeviceMutation.error ? (
-                <Text style={styles.errorText}>{renameScannerDeviceMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(renameScannerDeviceMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {revokeScannerDeviceMutation.error ? (
-                <Text style={styles.errorText}>{revokeScannerDeviceMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(revokeScannerDeviceMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {setScannerPinMutation.error ? (
-                <Text style={styles.errorText}>{setScannerPinMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(setScannerPinMutation.error, language, "businessScanner")}</Text>
               ) : null}
               {clearScannerPinMutation.error ? (
-                <Text style={styles.errorText}>{clearScannerPinMutation.error.message}</Text>
+                <Text style={styles.errorText}>{createUserSafeErrorMessage(clearScannerPinMutation.error, language, "businessScanner")}</Text>
               ) : null}
             </InfoCard>
           ) : null}
 
+          <InfoCard eyebrow={language === "fi" ? "Skannaushistoria" : "Scan history"} title={language === "fi" ? "Historia" : "History"}>
+            <Text style={styles.bodyText}>
+              {language === "fi"
+                ? "Tarkastele kaikkia skannauksia, suodata tapahtuman tai päivän mukaan ja seuraa leimakertoja."
+                : "Review all scan records, filter by event or date, and track stamp activity."}
+            </Text>
+            <Pressable
+              onPress={() => router.push("/business/history")}
+              style={styles.primaryButton}
+            >
+              <AppIcon color={theme.colors.actionPrimaryText} name="history" size={16} />
+              <Text style={styles.primaryButtonText}>
+                {language === "fi" ? "Avaa historia" : "Open history"}
+              </Text>
+            </Pressable>
+          </InfoCard>
+
           <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={copy.common.profile}>
             <View style={styles.preferenceSection}>
-              <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceRow}>
-                <View style={styles.preferenceIconWrap}>
-                  <AppIcon color={theme.colors.lime} name="palette" size={16} />
-                </View>
-                <Text style={styles.preferenceTitle}>{copy.common.theme}</Text>
-                <View style={styles.preferenceValue}>
-                  <Text style={styles.preferenceValueText}>{selectedThemeLabel}</Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-                </View>
-              </Pressable>
+              <LanguageDropdown language={language} onLanguageChange={setLanguage} />
 
               <View style={styles.preferenceDivider} />
 
-              <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceRow}>
+              <PushNotificationSetupCard context="business" />
+
+              <View style={styles.preferenceDivider} />
+
+              <Pressable onPress={() => setIsOnboardingVisible(true)} style={styles.preferenceRow}>
                 <View style={styles.preferenceIconWrap}>
-                  <AppIcon color={theme.colors.lime} name="globe" size={16} />
+                  <AppIcon color={theme.colors.lime} name="info" size={16} />
                 </View>
-                <Text style={styles.preferenceTitle}>{copy.common.language}</Text>
+                <Text style={styles.preferenceTitle}>
+                  {language === "fi" ? "Näytä aloitusopastus" : "Show onboarding guide"}
+                </Text>
                 <View style={styles.preferenceValue}>
-                  <Text style={styles.preferenceValueText}>{selectedLanguageLabel}</Text>
-                  <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
+                  <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
                 </View>
               </Pressable>
 
@@ -1006,9 +1081,30 @@ export default function BusinessProfileScreen() {
 
               <View style={styles.preferenceDivider} />
 
+              <Pressable onPress={() => setIsLegalLinksVisible(true)} style={styles.preferenceRow}>
+                <View style={styles.preferenceIconWrap}>
+                  <AppIcon color={theme.colors.lime} name="info" size={16} />
+                </View>
+                <Text style={styles.preferenceTitle}>
+                  {language === "fi" ? "Tietosuoja ja käyttöehdot" : "Privacy and terms"}
+                </Text>
+                <View style={styles.preferenceValue}>
+                  <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
+                  <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+                </View>
+              </Pressable>
+
+              <View style={styles.preferenceDivider} />
+
               <SignOutButton />
             </View>
           </InfoCard>
+
+          <LegalLinksModal
+            isVisible={isLegalLinksVisible}
+            language={language}
+            onClose={() => setIsLegalLinksVisible(false)}
+          />
         </>
       ) : null}
 
@@ -1023,9 +1119,7 @@ export default function BusinessProfileScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
-                <Text style={styles.modalTitle}>
-                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
-                </Text>
+                <Text style={styles.modalTitle}>{copy.common.language}</Text>
               </View>
               <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
@@ -1033,49 +1127,26 @@ export default function BusinessProfileScreen() {
             </View>
 
             <View style={styles.preferenceOptionList}>
-              {preferenceSheet === "theme" ? (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("dark");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("light");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("fi");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("en");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
-                  </Pressable>
-                </>
-              )}
+              <>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("fi");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("en");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                </Pressable>
+              </>
             </View>
           </Pressable>
         </Pressable>
@@ -1088,12 +1159,50 @@ export default function BusinessProfileScreen() {
         onClose={() => setIsSupportVisible(false)}
         userId={userId}
       />
+
+      <BusinessOnboardingModal
+        isVisible={isOnboardingVisible}
+        onDismiss={() => setIsOnboardingVisible(false)}
+      />
     </AppScreen>
   );
 }
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
+    formGroupHeader: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.4,
+      marginTop: 6,
+      textTransform: "uppercase",
+    },
+    heroMediaButtons: {
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "space-between",
+      left: 14,
+      position: "absolute",
+      right: 14,
+      top: 14,
+      zIndex: 3,
+    },
+    heroMediaBtn: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.54)",
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    heroMediaBtnText: {
+      color: "rgba(255,255,255,0.92)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
     bodyText: {
       color: theme.colors.textSecondary,
       fontFamily: theme.typography.families.regular,
@@ -1417,13 +1526,15 @@ const createStyles = (theme: MobileTheme) =>
     preferenceValueText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
     primaryButton: {
       alignItems: "center",
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
+      flexDirection: "row",
+      gap: 8,
       justifyContent: "center",
       minHeight: 46,
       paddingHorizontal: 14,

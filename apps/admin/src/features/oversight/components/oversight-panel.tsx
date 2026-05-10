@@ -24,6 +24,8 @@ type OversightCopy = {
   eventOperations: string;
   fraudSignals: string;
   fraudSignalsBody: string;
+  fraudSignalsDetectionRule: string;
+  fraudSignalsReviewRule: string;
   latestAuditLogs: string;
   latestClubs: string;
   latestFraudSignals: string;
@@ -57,6 +59,8 @@ const copyByLocale: Record<DashboardLocale, OversightCopy> = {
     eventOperations: "Event operations",
     fraudSignals: "Fraud Signals",
     fraudSignalsBody: "Signals still waiting for an explicit review or confirmation path.",
+    fraudSignalsDetectionRule: "Current detection: a signal is created when a stamp scan includes scanner coordinates that are more than 300 meters from the business location. Severity rises at 750 m and 1.5 km.",
+    fraudSignalsReviewRule: "Review actions are atomic: dismiss for a false positive, confirm for a real issue, or mark reviewed after checking the scan context. Every action is written to the audit log.",
     latestAuditLogs: "Latest audit logs",
     latestClubs: "Latest clubs",
     latestFraudSignals: "Latest open fraud signals",
@@ -79,31 +83,33 @@ const copyByLocale: Record<DashboardLocale, OversightCopy> = {
   fi: {
     activeClubs: "Aktiiviset klubit",
     activeClubsBody: "Koko alustan aktiiviset klubit, jotka ovat adminille näkyvissä.",
-    auditLogs: "Audit-lokit",
-    auditLogs24h: "Audit-lokit 24 h",
-    auditLogsBody: "Viimeisimmät järjestelmän toimet adminin audit trailissa.",
+    auditLogs: "Valvontakirjaukset",
+    auditLogs24h: "Kirjaukset 24 h",
+    auditLogsBody: "Viimeisimmät järjestelmän toimet valvontahistoriassa.",
     catalogHealth: "Katalogin tila",
     clubsAndEvents: "Klubit ja tapahtumat",
     created: "Luotu",
-    eventOperations: "Tapahtumaoperaatiot",
-    fraudSignals: "Fraud-signaalit",
-    fraudSignalsBody: "Signaalit, jotka odottavat vielä tarkistusta tai vahvistusta.",
-    latestAuditLogs: "Viimeisimmät audit-lokit",
+    eventOperations: "Tapahtumat",
+    fraudSignals: "Väärinkäyttöilmoitukset",
+    fraudSignalsBody: "Ilmoitukset, joita ei ole vielä tarkistettu.",
+    fraudSignalsDetectionRule: "Nykyinen tunnistus: signaali luodaan, kun leimaskannaus sisältää skannerin sijainnin, joka on yli 300 metriä yrityksen sijainnista. Vakavuus kasvaa 750 m ja 1,5 km kohdalla.",
+    fraudSignalsReviewRule: "Tarkistus on atominen: hylkää virhehälytys, vahvista todellinen ongelma tai merkitse tarkistetuksi. Jokainen toimi kirjataan valvontalokiin.",
+    latestAuditLogs: "Viimeisimmät valvontakirjaukset",
     latestClubs: "Viimeisimmät klubit",
-    latestFraudSignals: "Viimeisimmät avoimet fraud-signaalit",
-    noAuditLogs: "Audit-lokeja ei ole nyt näkyvissä.",
+    latestFraudSignals: "Viimeisimmät avoimet väärinkäyttöilmoitukset",
+    noAuditLogs: "Valvontakirjauksia ei ole nyt näkyvissä.",
     noActorOrResource: "Ei toimija- tai resurssitietoja",
     noClubs: "Klubeja ei ole nyt näkyvissä.",
     noContactEmail: "Ei yhteyssähköpostia",
     noLocationMeta: "Ei kaupunki- tai yliopistotietoa",
-    noFraudSignals: "Fraud-signaaleja ei ole nyt näkyvissä.",
-    noOperationalEvents: "Operatiivisia tapahtumia ei ole nyt näkyvissä.",
-    operationalEvents: "Operatiiviset tapahtumat",
-    operationalEventsBody: "Luonnokset, julkaistut ja aktiiviset tapahtumat, joilla on yhä operatiivista merkitystä.",
-    showingAuditLogs: "Näytetään viimeisimmät {count} backendin kirjaamaa audit-riviä.",
+    noFraudSignals: "Väärinkäyttöilmoituksia ei ole nyt näkyvissä.",
+    noOperationalEvents: "Käynnissä olevia tapahtumia ei ole nyt näkyvissä.",
+    operationalEvents: "Käynnissä olevat tapahtumat",
+    operationalEventsBody: "Luonnokset, julkaistut ja aktiiviset tapahtumat, jotka ovat vielä ajankohtaisia.",
+    showingAuditLogs: "Näytetään viimeisimmät {count} valvontakirjausta.",
     showingClubs: "Näytetään {count} uusinta klubia.",
-    showingFraudSignals: "Näytetään viimeisimmät {count} fraud-signaalia, jotka tarvitsevat operaattorin huomiota.",
-    showingOperationalEvents: "Näytetään seuraavat {count} tulevaa tai käynnissä olevaa tapahtumaa, joilla on vielä operatiivista merkitystä.",
+    showingFraudSignals: "Näytetään viimeisimmät {count} väärinkäyttöilmoitusta, jotka odottavat tarkistusta.",
+    showingOperationalEvents: "Näytetään seuraavat {count} tulevaa tai käynnissä olevaa tapahtumaa.",
     timeRangeSeparator: "-",
     traceability: "Jäljitettävyys",
   },
@@ -113,14 +119,6 @@ const interpolateCount = (template: string, count: number): string =>
   template.replace("{count}", String(count));
 
 const withFallback = (value: string, fallback: string): string => (value.length > 0 ? value : fallback);
-
-const renderMetadataLine = (value: string | null) => {
-  if (value === null) {
-    return null;
-  }
-
-  return <p className="record-note">{value}</p>;
-};
 
 export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
   const copy = copyByLocale[locale];
@@ -179,22 +177,30 @@ export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
           {snapshot.clubs.length === 0 ? (
             <p className="muted-text">{copy.noClubs}</p>
           ) : (
-            <ul className="record-list">
-              {snapshot.clubs.map((club) => (
-                  <li key={club.id} className="record-item">
-                    <div className="record-main">
-                      <p className="record-title">{club.name}</p>
-                      <p className="record-meta record-meta-accent">
-                        {withFallback(formatOversightClubMeta(club.city, club.universityName), copy.noLocationMeta)}
-                      </p>
-                      <p className="record-note">
-                        {club.contactEmail ?? copy.noContactEmail} · {copy.created} {formatOversightDateTime(locale, club.createdAt)}
-                      </p>
-                    </div>
-                    <span className="status-pill">{club.status}</span>
-                  </li>
-              ))}
-            </ul>
+            <div className="panel-table-wrap">
+              <table className="panel-table">
+                <thead>
+                  <tr>
+                    <th>{locale === "fi" ? "Nimi" : "Name"}</th>
+                    <th>{locale === "fi" ? "Sijainti" : "Location"}</th>
+                    <th>{locale === "fi" ? "Sähköposti" : "Email"}</th>
+                    <th>{locale === "fi" ? "Luotu" : "Created"}</th>
+                    <th>{locale === "fi" ? "Tila" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.clubs.map((club) => (
+                    <tr key={club.id}>
+                      <td>{club.name}</td>
+                      <td className="record-meta">{withFallback(formatOversightClubMeta(club.city, club.universityName), copy.noLocationMeta)}</td>
+                      <td className="record-meta">{club.contactEmail ?? copy.noContactEmail}</td>
+                      <td className="record-meta">{formatOversightDateTime(locale, club.createdAt)}</td>
+                      <td><span className="status-pill">{club.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
 
@@ -208,20 +214,28 @@ export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
           {snapshot.events.length === 0 ? (
             <p className="muted-text">{copy.noOperationalEvents}</p>
           ) : (
-            <ul className="record-list">
-              {snapshot.events.map((event) => (
-                  <li key={event.id} className="record-item">
-                  <div className="record-main">
-                    <p className="record-title">{event.name}</p>
-                    <p className="record-meta record-meta-accent">{formatOversightEventMeta(event.clubName, event.city, event.visibility)}</p>
-                    <p className="record-note">
-                      {formatOversightDateTime(locale, event.startAt)} {copy.timeRangeSeparator} {formatOversightDateTime(locale, event.endAt)}
-                    </p>
-                  </div>
-                  <span className="status-pill">{event.status}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="panel-table-wrap">
+              <table className="panel-table">
+                <thead>
+                  <tr>
+                    <th>{locale === "fi" ? "Nimi" : "Name"}</th>
+                    <th>{locale === "fi" ? "Järjestäjä" : "Club"}</th>
+                    <th>{locale === "fi" ? "Ajankohta" : "Date range"}</th>
+                    <th>{locale === "fi" ? "Tila" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.events.map((event) => (
+                    <tr key={event.id}>
+                      <td>{event.name}</td>
+                      <td className="record-meta">{formatOversightEventMeta(event.clubName, event.city, event.visibility)}</td>
+                      <td className="record-meta">{formatOversightDateTime(locale, event.startAt)} {copy.timeRangeSeparator} {formatOversightDateTime(locale, event.endAt)}</td>
+                      <td><span className="status-pill">{event.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
       </section>
@@ -232,6 +246,8 @@ export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
             <div className="eyebrow">Integrity</div>
             <h3 className="section-title">{copy.latestFraudSignals}</h3>
             <p className="muted-text">{interpolateCount(copy.showingFraudSignals, snapshot.summary.latestFraudLimit)}</p>
+            <p className="review-note">{copy.fraudSignalsDetectionRule}</p>
+            <p className="review-note">{copy.fraudSignalsReviewRule}</p>
           </div>
 
           <FraudSignalReviewList
@@ -251,25 +267,35 @@ export const OversightPanel = ({ locale, snapshot }: OversightPanelProps) => {
           {snapshot.auditLogs.length === 0 ? (
             <p className="muted-text">{copy.noAuditLogs}</p>
           ) : (
-            <ul className="record-list">
-              {snapshot.auditLogs.map((log) => (
-                <li key={log.id} className="record-item">
-                  <div className="record-main">
-                    <p className="record-title">{log.action}</p>
-                    <p className="record-meta">
-                      {withFallback(
-                        [log.actorEmail, log.resourceType, log.resourceId]
-                          .filter((value) => value !== null)
-                          .join(" · "),
-                        copy.noActorOrResource
-                      )}
-                    </p>
-                    {renderMetadataLine(log.metadataSummary)}
-                    <p className="record-note">{copy.created} {formatOversightDateTime(locale, log.createdAt)}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="panel-table-wrap">
+              <table className="panel-table">
+                <thead>
+                  <tr>
+                    <th>{locale === "fi" ? "Toiminto" : "Action"}</th>
+                    <th>{locale === "fi" ? "Toimija / resurssi" : "Actor / resource"}</th>
+                    <th>{locale === "fi" ? "Lisätiedot" : "Metadata"}</th>
+                    <th>{locale === "fi" ? "Aika" : "Time"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td>{log.action}</td>
+                      <td className="record-meta">
+                        {withFallback(
+                          [log.actorEmail, log.resourceType, log.resourceId]
+                            .filter((value) => value !== null)
+                            .join(" · "),
+                          copy.noActorOrResource
+                        )}
+                      </td>
+                      <td className="record-meta">{log.metadataSummary ?? "—"}</td>
+                      <td className="record-meta">{formatOversightDateTime(locale, log.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
       </section>

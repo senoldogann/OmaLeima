@@ -12,6 +12,7 @@ export type DashboardShortcut = {
     href: string;
     iconName: NavIconName;
     title: string;
+    urgent?: boolean;
 };
 
 type DashboardShortcutsGridProps = {
@@ -34,21 +35,27 @@ const resolveBadgeClassName = (tone: DashboardShortcut["badgeTone"]): string => 
 export const DashboardShortcutsGrid = ({ shortcuts }: DashboardShortcutsGridProps) => (
     <section className="shortcut-grid">
         {shortcuts.map((shortcut) => (
-            <Link key={`${shortcut.href}-${shortcut.title}`} className="shortcut-card" href={shortcut.href}>
+            <Link
+                key={`${shortcut.href}-${shortcut.title}`}
+                className={shortcut.urgent === true ? "shortcut-card shortcut-card-urgent" : "shortcut-card"}
+                href={shortcut.href}
+            >
                 <span className="shortcut-icon" aria-hidden>
                     <NavIcon name={shortcut.iconName} />
                 </span>
                 <div className="shortcut-body">
-                    <h3 className="shortcut-title">{shortcut.title}</h3>
+                    <div className="shortcut-heading-row">
+                        <h3 className="shortcut-title">{shortcut.title}</h3>
+                        {shortcut.badgeValue === undefined ? (
+                            <span className="shortcut-arrow" aria-hidden>
+                                →
+                            </span>
+                        ) : (
+                            <span className={resolveBadgeClassName(shortcut.badgeTone)}>{shortcut.badgeValue}</span>
+                        )}
+                    </div>
                     <p className="shortcut-description">{shortcut.description}</p>
                 </div>
-                {shortcut.badgeValue === undefined ? (
-                    <span className="shortcut-arrow" aria-hidden>
-                        →
-                    </span>
-                ) : (
-                    <span className={resolveBadgeClassName(shortcut.badgeTone)}>{shortcut.badgeValue}</span>
-                )}
             </Link>
         ))}
     </section>

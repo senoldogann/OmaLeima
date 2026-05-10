@@ -2,11 +2,11 @@ import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "r
 
 import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
-import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import type { StudentEventSummary } from "@/features/events/types";
+import type { StudentRewardEventProgress } from "@/features/rewards/types";
 
 type EventCardProps = {
   countdownLabel?: string | null;
@@ -15,37 +15,8 @@ type EventCardProps = {
   onJoinPress?: () => void;
   onMapPress?: () => void;
   onPress: () => void;
+  rewardProgress?: StudentRewardEventProgress | null;
   motionIndex?: number;
-};
-
-const getTimelineBadge = (
-  event: StudentEventSummary,
-  language: "fi" | "en"
-): { label: string; state: "ready" | "pending" } => {
-  if (event.timelineState === "ACTIVE") {
-    return { label: language === "fi" ? "käynnissä" : "live now", state: "ready" };
-  }
-
-  return { label: language === "fi" ? "tulossa" : "upcoming", state: "pending" };
-};
-
-const getRegistrationBadge = (
-  event: StudentEventSummary,
-  language: "fi" | "en"
-): { label: string; state: "ready" | "warning" | "pending" } => {
-  if (event.registrationState === "REGISTERED") {
-    return { label: language === "fi" ? "liitytty" : "registered", state: "ready" };
-  }
-
-  if (event.registrationState === "CANCELLED") {
-    return { label: language === "fi" ? "peruttu" : "cancelled", state: "warning" };
-  }
-
-  if (event.registrationState === "BANNED") {
-    return { label: language === "fi" ? "estetty" : "restricted", state: "warning" };
-  }
-
-  return { label: language === "fi" ? "ei liitytty" : "not joined", state: "pending" };
 };
 
 const canJoinEventFromCard = (event: StudentEventSummary, onJoinPress: (() => void) | undefined): boolean =>
@@ -56,14 +27,21 @@ export const EventCard = ({
   event,
   isJoinPending = false,
   onJoinPress,
+  onMapPress,
   onPress,
+  rewardProgress = null,
 }: EventCardProps) => {
   const { language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
-  const timelineBadge = getTimelineBadge(event, language);
-  const registrationBadge = getRegistrationBadge(event, language);
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
   const canJoinFromCard = canJoinEventFromCard(event, onJoinPress);
+  const isActive = event.timelineState === "ACTIVE";
+  const hasClaimableReward = (rewardProgress?.claimableTierCount ?? 0) > 0;
+  const hasClaimedReward = (rewardProgress?.claimedTierCount ?? 0) > 0;
+  const rewardGoal = Math.max(rewardProgress?.minimumStampsRequired ?? event.minimumStampsRequired, 1);
+  const rewardStampCount = rewardProgress?.stampCount ?? 0;
+  const rewardProgressRatio = Math.min(rewardStampCount / rewardGoal, 1);
+  const shouldShowRewardProgress = rewardProgress !== null && rewardProgress.tiers.length > 0;
 
   const startDate = new Date(event.startAt);
   const dayNum = startDate.getDate().toString();
@@ -77,83 +55,141 @@ export const EventCard = ({
     onJoinPress?.();
   };
 
+  const handleMapPress = (pressEvent: GestureResponderEvent): void => {
+    pressEvent.stopPropagation();
+    onMapPress?.();
+  };
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}
+      style={({ pressed }) => [
+        styles.card,
+        hasClaimableReward ? styles.cardClaimable : null,
+        hasClaimedReward && !hasClaimableReward ? styles.cardClaimed : null,
+        pressed ? styles.cardPressed : null,
+      ]}
     >
-      {/* Kapa görseli + tarih rozeti */}
       <View style={styles.thumbWrap}>
         <CoverImageSurface imageStyle={styles.thumbImage} source={coverSource} style={styles.thumb}>
-          <View style={styles.thumbOverlay} />
-          <View style={styles.dateBadge}>
-            <Text style={styles.dateDay}>{dayNum}</Text>
-            <Text style={styles.dateMonth}>{monthAbbr}</Text>
+          <View style={styles.thumbShade} />
+          <View style={styles.dateTextGroup}>
+            <Text style={[styles.dateDayNum, isActive ? styles.dateDayNumActive : null]}>{dayNum}</Text>
+            <Text style={styles.dateMonthAbbr}>{monthAbbr}</Text>
           </View>
         </CoverImageSurface>
       </View>
 
-      {/* İçerik: başlık, konum, rozetler */}
-      <View style={styles.content}>
-        <Text numberOfLines={2} style={styles.eventName}>{event.name}</Text>
-        {countdownLabel !== null ? (
-          <View style={styles.countdownPill}>
-            <Text numberOfLines={1} style={styles.countdownPillText}>{countdownLabel}</Text>
+      <View style={styles.innerRow}>
+        <View style={styles.content}>
+          {isActive ? (
+            <View style={styles.liveRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveLabel}>{language === "fi" ? "käynnissä" : "LIVE"}</Text>
+            </View>
+          ) : null}
+          <Text numberOfLines={2} style={styles.eventName}>{event.name}</Text>
+          {countdownLabel !== null ? (
+            <View style={styles.countdownPill}>
+              <Text numberOfLines={1} style={styles.countdownPillText}>{countdownLabel}</Text>
+            </View>
+          ) : null}
+          <View style={styles.locationRow}>
+            <AppIcon color={theme.colors.textMuted} name="map-pin" size={11} />
+            <Text numberOfLines={1} style={styles.locationText}>
+              {event.city}{event.country.length > 0 ? `, ${event.country}` : ""}
+            </Text>
           </View>
-        ) : null}
-        <View style={styles.locationRow}>
-          <AppIcon color={theme.colors.textMuted} name="map-pin" size={11} />
-          <Text numberOfLines={1} style={styles.locationText}>
-            {event.city}{event.country.length > 0 ? `, ${event.country}` : ""}
-          </Text>
-        </View>
-        <View style={styles.badgeRow}>
-          <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
-          {event.registrationState === "REGISTERED" ? (
-            <StatusBadge label={registrationBadge.label} state={registrationBadge.state} />
+          {shouldShowRewardProgress ? (
+            <View style={styles.rewardStrip}>
+              <View style={styles.rewardStripHeader}>
+                <View style={styles.rewardStripLabelRow}>
+                  <AppIcon
+                    color={hasClaimableReward ? theme.colors.lime : theme.colors.textMuted}
+                    name="gift"
+                    size={12}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.rewardStripLabel,
+                      hasClaimableReward ? styles.rewardStripLabelReady : null,
+                    ]}
+                  >
+                    {hasClaimableReward
+                      ? language === "fi" ? "Palkinto valmis" : "Reward ready"
+                      : hasClaimedReward
+                        ? language === "fi" ? "Palkinto lunastettu" : "Reward claimed"
+                        : `${rewardStampCount}/${rewardGoal} ${language === "fi" ? "leimaa" : "leimas"}`}
+                  </Text>
+                </View>
+              </View>
+              {!hasClaimableReward && !hasClaimedReward ? (
+                <View style={styles.rewardTrack}>
+                  <View style={[styles.rewardTrackFill, { width: `${rewardProgressRatio * 100}%` }]} />
+                </View>
+              ) : null}
+            </View>
           ) : null}
         </View>
       </View>
 
-      {/* Sağ taraf: katıl butonu veya ok */}
-      {canJoinFromCard ? (
-        <Pressable
-          disabled={isJoinPending}
-          onPress={handleJoinPress}
-          style={[styles.joinButton, isJoinPending ? styles.joinButtonDisabled : null]}
-        >
-          <Text style={styles.joinButtonText}>
-            {isJoinPending
-              ? "..."
-              : language === "fi" ? "Liity" : "Join"}
-          </Text>
-        </Pressable>
-      ) : (
-        <AppIcon color={theme.colors.textDim} name="chevron-right" size={18} />
-      )}
+      <View style={styles.ticketActionColumn}>
+        <View style={styles.ticketPerforation} />
+        <View style={styles.ticketCutTop} />
+        <View style={styles.ticketCutBottom} />
+        {onMapPress !== undefined ? (
+          <Pressable
+            accessibilityLabel={language === "fi" ? "Avaa kartta" : "Open map"}
+            accessibilityRole="button"
+            onPress={handleMapPress}
+            style={styles.mapButton}
+          >
+            <Text style={styles.mapButtonText}>{language === "fi" ? "Kartta" : "Map"}</Text>
+          </Pressable>
+        ) : null}
+        {canJoinFromCard ? (
+          <Pressable
+            disabled={isJoinPending}
+            onPress={handleJoinPress}
+            style={[styles.joinButton, isJoinPending ? styles.joinButtonDisabled : null]}
+          >
+            <Text style={styles.joinButtonText}>
+              {isJoinPending
+                ? language === "fi" ? "Liittyy..." : "Joining..."
+                : language === "fi" ? "Liity" : "Join"}
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={styles.chevronWrap}>
+            <AppIcon color={theme.colors.textDim} name="chevron-right" size={18} />
+          </View>
+        )}
+      </View>
     </Pressable>
   );
 };
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    badgeRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6,
-      marginTop: 2,
-    },
     card: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
+      borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.card,
       borderWidth: 1,
       flexDirection: "row",
-      gap: 14,
-      overflow: "hidden",
+      gap: 10,
+      overflow: "visible",
       paddingHorizontal: 12,
       paddingVertical: 12,
+    },
+    cardClaimable: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+    },
+    cardClaimed: {
+      borderColor: theme.colors.success,
     },
     cardPressed: {
       transform: [{ translateY: 1.5 }, { scale: 0.992 }],
@@ -162,6 +198,12 @@ const createStyles = (theme: MobileTheme) =>
       flex: 1,
       gap: 5,
       minWidth: 0,
+    },
+    chevronWrap: {
+      alignItems: "center",
+      height: 38,
+      justifyContent: "center",
+      width: "100%",
     },
     countdownPill: {
       alignSelf: "flex-start",
@@ -179,24 +221,60 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: 14,
       textTransform: "uppercase",
     },
-    dateBadge: {
-      alignItems: "center",
+    dateTextGroup: {
+      alignItems: "flex-start",
       bottom: 8,
       left: 8,
+      minWidth: 46,
       position: "absolute",
     },
-    dateDay: {
-      color: "#FFFFFF",
+    dateDayNum: {
+      color: "#F8FAF5",
       fontFamily: theme.typography.families.extrabold,
-      fontSize: 22,
-      lineHeight: 24,
+      fontSize: 18,
+      lineHeight: 20,
+      textShadowColor: "rgba(0, 0, 0, 0.72)",
+      textShadowOffset: { height: 1, width: 0 },
+      textShadowRadius: 6,
     },
-    dateMonth: {
-      color: "rgba(255, 255, 255, 0.75)",
+    dateDayNumActive: {
+      color: theme.colors.lime,
+    },
+    dateMonthAbbr: {
+      color: "rgba(248, 250, 245, 0.82)",
       fontFamily: theme.typography.families.bold,
       fontSize: 10,
-      letterSpacing: 0.8,
+      letterSpacing: 0,
       lineHeight: 13,
+      textShadowColor: "rgba(0, 0, 0, 0.72)",
+      textShadowOffset: { height: 1, width: 0 },
+      textShadowRadius: 6,
+      textTransform: "uppercase",
+    },
+    innerRow: {
+      alignItems: "flex-start",
+      flex: 1,
+      flexDirection: "row",
+      gap: 0,
+    },
+    liveLabel: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 11,
+      letterSpacing: 0.5,
+      lineHeight: 14,
+      textTransform: "uppercase",
+    },
+    liveDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 6,
+      width: 6,
+    },
+    liveRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 5,
     },
     eventName: {
       color: theme.colors.textPrimary,
@@ -207,8 +285,10 @@ const createStyles = (theme: MobileTheme) =>
     joinButton: {
       backgroundColor: theme.colors.lime,
       borderRadius: 999,
-      flexShrink: 0,
-      paddingHorizontal: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 38,
+      width: "100%",
       paddingVertical: 8,
     },
     joinButtonDisabled: {
@@ -232,22 +312,111 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: 12,
       lineHeight: 17,
     },
+    mapButton: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 38,
+      width: "100%",
+    },
+    mapButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 11,
+      lineHeight: 14,
+    },
+    rewardStrip: {
+      gap: 5,
+      paddingTop: 2,
+    },
+    rewardStripHeader: {
+      gap: 4,
+    },
+    rewardStripLabel: {
+      color: theme.colors.textMuted,
+      flexShrink: 1,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 11,
+      lineHeight: 14,
+    },
+    rewardStripLabelReady: {
+      color: theme.colors.lime,
+    },
+    rewardStripLabelRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 5,
+      minWidth: 0,
+    },
+    rewardTrack: {
+      backgroundColor: theme.colors.surfaceL3,
+      borderRadius: 999,
+      height: 4,
+      overflow: "hidden",
+      width: "100%",
+    },
+    rewardTrackFill: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: "100%",
+    },
     thumb: {
-      height: 88,
-      width: 88,
+      height: 92,
+      width: 92,
     },
     thumbImage: {
       borderRadius: theme.radius.inner,
     },
-    thumbOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0, 0, 0, 0.38)",
-    },
     thumbWrap: {
       borderRadius: theme.radius.inner,
       flexShrink: 0,
-      height: 88,
+      height: 92,
       overflow: "hidden",
-      width: 88,
+      width: 92,
+    },
+    thumbShade: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.18)",
+    },
+    ticketActionColumn: {
+      alignItems: "center",
+      alignSelf: "stretch",
+      flexShrink: 0,
+      gap: 8,
+      justifyContent: "center",
+      paddingLeft: 13,
+      position: "relative",
+      width: 70,
+    },
+    ticketCutBottom: {
+      backgroundColor: theme.colors.screenBase,
+      borderRadius: 999,
+      bottom: -21,
+      height: 24,
+      left: -12,
+      position: "absolute",
+      width: 24,
+    },
+    ticketCutTop: {
+      backgroundColor: theme.colors.screenBase,
+      borderRadius: 999,
+      height: 24,
+      left: -12,
+      position: "absolute",
+      top: -21,
+      width: 24,
+    },
+    ticketPerforation: {
+      borderColor: theme.colors.borderStrong,
+      borderLeftWidth: 1,
+      borderStyle: "dashed",
+      bottom: 4,
+      left: 0,
+      opacity: 0.72,
+      position: "absolute",
+      top: 4,
     },
   });

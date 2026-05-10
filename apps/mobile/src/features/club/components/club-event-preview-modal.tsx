@@ -43,6 +43,9 @@ const getTimelineBadge = (
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
 
+const canOpenEventEditor = (event: ClubDashboardEventSummary): boolean =>
+  event.canManageEvent && event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED";
+
 export const ClubEventPreviewModal = ({
   event,
   formatter,
@@ -59,18 +62,23 @@ export const ClubEventPreviewModal = ({
     minimum: language === "fi" ? "minimi" : "minimum",
     participants: language === "fi" ? "osallistujaa" : "participants",
     preview: language === "fi" ? "Esikatselu" : "Preview",
+    readOnly:
+      language === "fi"
+        ? "Katseluoikeus. Muokkaus vaatii järjestäjä- tai omistajaroolin."
+        : "View only. Editing requires an organizer or owner role.",
     starts: language === "fi" ? "Alkaa" : "Starts",
     venues: language === "fi" ? "rastia" : "venues",
     status: {
       CANCELLED: language === "fi" ? "Peruttu" : "Cancelled",
       COMPLETED: language === "fi" ? "Päättynyt" : "Completed",
       DRAFT: language === "fi" ? "Luonnos" : "Draft",
-      LIVE: language === "fi" ? "Live" : "Live",
+      LIVE: language === "fi" ? "Käynnissä" : "Live",
       UPCOMING: language === "fi" ? "Tulossa" : "Upcoming",
     } satisfies Record<ClubDashboardTimelineState, string>,
   };
 
   const badge = event === null ? null : getTimelineBadge(event.timelineState, labels.status);
+  const canEditEvent = event !== null && canOpenEventEditor(event);
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible={event !== null}>
@@ -128,10 +136,16 @@ export const ClubEventPreviewModal = ({
               <Pressable onPress={onClose} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>{labels.close}</Text>
               </Pressable>
-              <Pressable onPress={() => onEditPress(event.eventId)} style={styles.primaryButton}>
-                <AppIcon color="#071006" name="calendar" size={18} />
-                <Text style={styles.primaryButtonText}>{labels.edit}</Text>
-              </Pressable>
+              {canEditEvent ? (
+                <Pressable onPress={() => onEditPress(event.eventId)} style={styles.primaryButton}>
+                  <AppIcon color="#071006" name="calendar" size={18} />
+                  <Text style={styles.primaryButtonText}>{labels.edit}</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.readOnlyPill}>
+                  <Text style={styles.readOnlyText}>{labels.readOnly}</Text>
+                </View>
+              )}
             </View>
           </Pressable>
         ) : null}
@@ -265,6 +279,24 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    readOnlyPill: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 18,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flex: 1,
+      justifyContent: "center",
+      minHeight: 54,
+      paddingHorizontal: 12,
+    },
+    readOnlyText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      textAlign: "center",
     },
     secondaryButton: {
       alignItems: "center",

@@ -177,9 +177,16 @@ const main = async () => {
     !rewardEventBlock.includes("refetchInterval") &&
     !isRealtimeLine(rewardOverviewBlock) &&
     !isRealtimeLine(rewardEventBlock);
-  const sessionProviderUsesOnlyAuthSubscription =
+  const sessionProviderClearsInactiveSession =
+    sessionProviderSource.includes("clearLocalAuthSessionAsync") &&
+    sessionProviderSource.includes('supabase.auth.signOut({ scope: "local" })') &&
+    sessionProviderSource.includes("isInvalidRefreshTokenError");
+  const sessionProviderUsesAuthAndProfileStatusSubscription =
     sessionProviderSource.includes("onAuthStateChange") &&
-    !isRealtimeLine(sessionProviderSource);
+    sessionProviderSource.includes("profile-status:${userId}") &&
+    sessionProviderSource.includes('table: "profiles"') &&
+    sessionProviderSource.includes("filter: `id=eq.${userId}`") &&
+    sessionProviderClearsInactiveSession;
   const rewardOverviewOwnedByProvider =
     appProvidersSource.includes("StudentRewardNotificationBridge") &&
     notificationBridgeSource.includes("useStudentRewardOverviewRealtime") &&
@@ -237,10 +244,11 @@ const main = async () => {
     ]);
   }
 
-  if (!sessionProviderUsesOnlyAuthSubscription) {
+  if (!sessionProviderUsesAuthAndProfileStatusSubscription) {
     fail("mobile-realtime-audit:unexpected-session-provider-shape", [
-      "Session provider no longer matches the expected auth-only subscription pattern.",
+      "Session provider no longer matches the expected auth plus profile status suspension sign-out pattern.",
       `Checked file: ${createRelativePath(sessionProviderPath)}`,
+      `Local inactive-session clear path present: ${sessionProviderClearsInactiveSession}`,
     ]);
   }
 

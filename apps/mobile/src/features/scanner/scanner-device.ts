@@ -1,7 +1,7 @@
 import * as Device from "expo-device";
-import * as SecureStore from "expo-secure-store";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
+import { deviceStorage } from "@/lib/device-storage";
 import { supabase } from "@/lib/supabase";
 import { readSupabaseFunctionErrorMessageAsync } from "@/lib/supabase-function-errors";
 
@@ -144,9 +144,6 @@ export type ClearBusinessScannerDevicePinParams = {
   scannerDeviceId: string;
 };
 
-const isBrowserStorageAvailable = (): boolean =>
-  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-
 const createFallbackInstallationId = (): string => {
   const randomParts = Array.from({ length: 4 }, (): string =>
     Math.floor(Math.random() * 36 ** 6)
@@ -168,41 +165,15 @@ const createInstallationId = (): string => {
 };
 
 const readStoredInstallationIdAsync = async (): Promise<string | null> => {
-  if (expoRuntimeOs === "web") {
-    if (!isBrowserStorageAvailable()) {
-      return null;
-    }
-
-    return window.localStorage.getItem(scannerInstallationKey);
-  }
-
-  return SecureStore.getItemAsync(scannerInstallationKey);
+  return deviceStorage.getItemAsync(scannerInstallationKey);
 };
 
 const writeStoredInstallationIdAsync = async (installationId: string): Promise<void> => {
-  if (expoRuntimeOs === "web") {
-    if (!isBrowserStorageAvailable()) {
-      return;
-    }
-
-    window.localStorage.setItem(scannerInstallationKey, installationId);
-    return;
-  }
-
-  await SecureStore.setItemAsync(scannerInstallationKey, installationId);
+  await deviceStorage.setItemAsync(scannerInstallationKey, installationId);
 };
 
 export const resetScannerInstallationIdAsync = async (): Promise<void> => {
-  if (expoRuntimeOs === "web") {
-    if (!isBrowserStorageAvailable()) {
-      return;
-    }
-
-    window.localStorage.removeItem(scannerInstallationKey);
-    return;
-  }
-
-  await SecureStore.deleteItemAsync(scannerInstallationKey);
+  await deviceStorage.deleteItemAsync(scannerInstallationKey);
 };
 
 export const getScannerInstallationIdAsync = async (): Promise<string> => {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,16 +19,23 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
+
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { pickClubEventCoverAsync, uploadClubEventCoverAsync } from "@/features/club/club-event-media";
 import {
   useCancelClubEventMutation,
   useCreateClubEventMutation,
+  useDeleteDraftClubEventMutation,
   useUpdateClubEventMutation,
 } from "@/features/club/club-event-mutations";
+import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import { getEventCoverSourceWithFallback, getFallbackCoverSource } from "@/features/events/event-visuals";
+import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import type {
   ClubDashboardEventSummary,
+  ClubDashboardTimelineState,
   ClubEventEditableStatus,
   ClubEventFormDraft,
   ClubEventVisibility,
@@ -45,6 +53,7 @@ type TextEditableField = keyof Pick<
   | "maxParticipants"
   | "minimumStampsRequired"
   | "name"
+  | "ticketUrl"
 >;
 
 type DateTimeField = keyof Pick<ClubEventFormDraft, "endAt" | "joinDeadlineAt" | "startAt">;
@@ -74,11 +83,38 @@ type ActionNotice = {
   title: string;
 };
 
+type ClubEventMutationNoticeResult = {
+  message: string;
+  status: string;
+};
+
 type CalendarDay = {
   date: string;
   dayLabel: string;
   isCurrentMonth: boolean;
   isSelected: boolean;
+};
+
+const readRouteEventId = (value: string | string[] | undefined): string | null => {
+  if (typeof value === "string") {
+    const normalizedValue = value.trim();
+
+    return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  if (Array.isArray(value)) {
+    const firstValue = value[0];
+
+    if (typeof firstValue !== "string") {
+      return null;
+    }
+
+    const normalizedValue = firstValue.trim();
+
+    return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  return null;
 };
 
 const toLocalDateTimeInput = (value: string): string => {
@@ -101,6 +137,7 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
   return {
     city: city ?? "",
     clubId,
+    coverImageStagingPath: "",
     coverImageUrl: "",
     description: "",
     endAt: toLocalDateTimeInput(endAt.toISOString()),
@@ -113,13 +150,17 @@ const createNewDraft = (clubId: string, city: string | null): ClubEventFormDraft
     rules: {},
     startAt: toLocalDateTimeInput(startAt.toISOString()),
     status: "DRAFT",
+    ticketUrl: "",
     visibility: "PUBLIC",
   };
 };
 
+const perBusinessLimitOptions = ["1", "2", "3", "4", "5"] as const;
+
 const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDraft => ({
   city: event.city,
   clubId: event.clubId,
+  coverImageStagingPath: event.coverImageStagingPath ?? "",
   coverImageUrl: event.coverImageUrl ?? "",
   description: event.description ?? "",
   endAt: toLocalDateTimeInput(event.endAt),
@@ -132,6 +173,7 @@ const createDraftFromEvent = (event: ClubDashboardEventSummary): ClubEventFormDr
   rules: event.rules,
   startAt: toLocalDateTimeInput(event.startAt),
   status: event.status === "ACTIVE" || event.status === "PUBLISHED" ? event.status : "DRAFT",
+  ticketUrl: event.ticketUrl ?? "",
   visibility: event.visibility,
 });
 
@@ -156,6 +198,12 @@ const createFieldConfigs = (language: "fi" | "en"): FieldConfig[] => [
       language === "fi"
         ? "Kirjoita opiskelijoille näkyvä tapahtumakuvaus."
         : "Write the public event description for students.",
+  },
+  {
+    field: "ticketUrl",
+    label: language === "fi" ? "Lippulinkki" : "Ticket URL",
+    multiline: false,
+    placeholder: "https://",
   },
   {
     field: "minimumStampsRequired",
@@ -189,6 +237,26 @@ const createDateTimeFieldConfigs = (language: "fi" | "en"): DateTimeFieldConfig[
 const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): ActionNotice => {
   const message = error instanceof Error ? error.message : "";
 
+  if (message.includes("ticketUrl must be a valid absolute URL")) {
+    return {
+      body:
+        language === "fi"
+          ? "Lisää lipulle täydellinen URL, esimerkiksi https://kide.app/..."
+          : "Add a complete ticket URL, for example https://kide.app/...",
+      title: language === "fi" ? "Tarkista lippulinkki" : "Check ticket link",
+    };
+  }
+
+  if (message.includes("ticketUrl must use http or https")) {
+    return {
+      body:
+        language === "fi"
+          ? "Lippulinkin täytyy alkaa muodossa http:// tai https://."
+          : "The ticket link must start with http:// or https://.",
+      title: language === "fi" ? "Tarkista lippulinkki" : "Check ticket link",
+    };
+  }
+
   if (message.includes("endAt must be after startAt") || message.includes("EVENT_END_BEFORE_START")) {
     return {
       body:
@@ -206,6 +274,16 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
           ? "Ilmoittautumisen takaraja ei voi olla tapahtuman aloituksen jälkeen."
           : "Join deadline cannot be after the event start.",
       title: language === "fi" ? "Tarkista ilmoittautuminen" : "Check join deadline",
+    };
+  }
+
+  if (message.includes("EVENT_CITY_OUT_OF_SCOPE") || message.includes("CLUB_CITY_REQUIRED")) {
+    return {
+      body:
+        language === "fi"
+          ? "Järjestäjän tapahtuman kaupunki lukitaan oman organisaation kaupunkiin. Päivitä organisaation profiili, jos kaupunki on väärä."
+          : "Organizer events are locked to the organization's own city. Update the organization profile if the city is wrong.",
+      title: language === "fi" ? "Kaupunki lukittu" : "City is locked",
     };
   }
 
@@ -239,13 +317,47 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
     };
   }
 
-  if (message.includes("perBusinessLimit must be an integer between 1 and 5")) {
+  if (message.includes("perBusinessLimit must be an integer between 1 and 5") || message.includes("perBusinessLimit must be 1")) {
     return {
       body:
         language === "fi"
-          ? "Valitse samasta pisteestä sallittu leimamäärä välillä 1-5."
-          : "Choose a same-venue stamp limit between 1 and 5.",
+          ? "Samasta pisteestä voi saada enintään viisi leimaa."
+          : "You can get up to 5 stamps from the same venue.",
       title: language === "fi" ? "Tarkista leimaraja" : "Check stamp limit",
+    };
+  }
+
+  if (message.includes("EVENT_UPDATE_NOT_ALLOWED") || message.includes("Event was not updated")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtumaa ei voitu päivittää. Se voi olla päättynyt, peruttu tai toisen järjestäjätilin alla."
+          : "The event could not be updated. It may be completed, cancelled, or outside this organizer account.",
+      title: language === "fi" ? "Päivitys epäonnistui" : "Update failed",
+    };
+  }
+
+  if (
+    message.includes("EVENT_DELETE_NOT_ALLOWED") ||
+    message.includes("Event was not deleted") ||
+    message.includes("Only draft events can be permanently deleted")
+  ) {
+    return {
+      body:
+        language === "fi"
+          ? "Vain luonnostapahtumat voidaan poistaa pysyvästi. Julkaistut tai aktiiviset tapahtumat perutaan, jotta historia säilyy."
+          : "Only draft events can be permanently deleted. Published or active events are cancelled so history stays intact.",
+      title: language === "fi" ? "Poisto ei onnistunut" : "Delete failed",
+    };
+  }
+
+  if (message.includes("EVENT_CANCEL_NOT_ALLOWED") || message.includes("Event was not cancelled")) {
+    return {
+      body:
+        language === "fi"
+          ? "Tapahtumaa ei voitu perua. Se voi olla jo päättynyt, peruttu tai toisen järjestäjätilin alla."
+          : "The event could not be cancelled. It may already be completed, cancelled, or outside this organizer account.",
+      title: language === "fi" ? "Peruminen epäonnistui" : "Cancel failed",
     };
   }
 
@@ -255,11 +367,80 @@ const createClubEventActionNotice = (error: unknown, language: "fi" | "en"): Act
   };
 };
 
+const localizeClubEventSuccessMessage = (
+  result: ClubEventMutationNoticeResult | undefined,
+  language: "fi" | "en"
+): string | null => {
+  if (result === undefined || result.status !== "SUCCESS") {
+    return null;
+  }
+
+  const messages: Record<string, { en: string; fi: string }> = {
+    "Draft event deleted successfully.": {
+      en: "Draft event deleted.",
+      fi: "Tapahtumaluonnos poistettu.",
+    },
+    "Event cancelled without deleting operational history.": {
+      en: "Event cancelled. Operational history stays intact.",
+      fi: "Tapahtuma peruttu. Toimintahistoria säilyy.",
+    },
+    "Event created and published successfully.": {
+      en: "Event created and published.",
+      fi: "Tapahtuma luotu ja julkaistu.",
+    },
+    "Event draft created successfully.": {
+      en: "Event draft created.",
+      fi: "Tapahtumaluonnos luotu.",
+    },
+    "Event updated successfully.": {
+      en: "Event updated.",
+      fi: "Tapahtuma päivitetty.",
+    },
+  };
+
+  return messages[result.message]?.[language] ?? result.message;
+};
+
 const canEditEvent = (event: ClubDashboardEventSummary | null): boolean =>
   event !== null &&
+  event.canManageEvent &&
   event.timelineState !== "COMPLETED" &&
   event.timelineState !== "CANCELLED" &&
   (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
+
+const canEditEventName = (event: ClubDashboardEventSummary | null): boolean =>
+  event === null || event.status !== "ACTIVE";
+
+const isDraftEvent = (event: ClubDashboardEventSummary): boolean =>
+  event.status === "DRAFT" || event.timelineState === "DRAFT";
+
+const canDeleteEvent = (event: ClubDashboardEventSummary | null): boolean =>
+  event !== null &&
+  event.canManageEvent &&
+  event.timelineState !== "COMPLETED" &&
+  event.timelineState !== "CANCELLED" &&
+  (event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED");
+
+const timelineStateLabel = (state: ClubDashboardTimelineState, language: "fi" | "en"): string => {
+  if (state === "LIVE") return language === "fi" ? "Käynnissä" : "Live";
+  if (state === "UPCOMING") return language === "fi" ? "Tulossa" : "Upcoming";
+  if (state === "DRAFT") return language === "fi" ? "Luonnos" : "Draft";
+  if (state === "CANCELLED") return language === "fi" ? "Peruttu" : "Cancelled";
+  if (state === "COMPLETED") return language === "fi" ? "Päättynyt" : "Completed";
+  return state;
+};
+
+const timelineStateBadgeState = (state: ClubDashboardTimelineState): "pending" | "ready" | "warning" => {
+  if (state === "LIVE") return "ready";
+  if (state === "CANCELLED" || state === "COMPLETED") return "warning";
+  return "pending";
+};
+
+const assertClubEventMutationSucceeded = (result: { message: string; status: string }): void => {
+  if (result.status !== "SUCCESS") {
+    throw new Error(result.message);
+  }
+};
 
 const splitLocalDateTime = (value: string): { date: string; time: string } => {
   const [date = "", time = ""] = value.split("T");
@@ -319,7 +500,7 @@ const createCalendarDays = (visibleMonth: string, selectedDate: string): Calenda
 
 export default function ClubEventsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ eventId?: string }>();
+  const params = useLocalSearchParams<{ eventId?: string | string[] }>();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
@@ -332,6 +513,7 @@ export default function ClubEventsScreen() {
   const createMutation = useCreateClubEventMutation();
   const updateMutation = useUpdateClubEventMutation();
   const cancelMutation = useCancelClubEventMutation();
+  const deleteMutation = useDeleteDraftClubEventMutation();
   const memberships = useMemo(
     () => dashboardQuery.data?.memberships ?? [],
     [dashboardQuery.data?.memberships]
@@ -343,6 +525,15 @@ export default function ClubEventsScreen() {
   const events = useMemo(
     () => dashboardQuery.data?.events ?? [],
     [dashboardQuery.data?.events]
+  );
+  const sortedEvents = useMemo(() => sortClubEventsForOrganizer(events), [events]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const filteredEvents = useMemo(
+    () =>
+      searchQuery.trim().length === 0
+        ? sortedEvents
+        : sortedEvents.filter((e) => e.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [sortedEvents, searchQuery]
   );
   const manageableEvents = useMemo(
     () => events.filter((event) => event.timelineState !== "COMPLETED" && event.timelineState !== "CANCELLED"),
@@ -358,9 +549,12 @@ export default function ClubEventsScreen() {
   const [coverUploadError, setCoverUploadError] = useState<string | null>(null);
   const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
+  const [contextMenuEventId, setContextMenuEventId] = useState<string | null>(null);
+  const contextMenuEvent = events.find((event) => event.eventId === contextMenuEventId) ?? null;
   const fieldConfigs = useMemo(() => createFieldConfigs(language), [language]);
   const dateTimeFieldConfigs = useMemo(() => createDateTimeFieldConfigs(language), [language]);
-  const requestedEventId = typeof params.eventId === "string" ? params.eventId : null;
+  const requestedEventId = readRouteEventId(params.eventId);
   const formatter = useMemo(
     () =>
       new Intl.DateTimeFormat(localeTag, {
@@ -393,11 +587,11 @@ export default function ClubEventsScreen() {
   }, [mode, selectedEvent]);
 
   useEffect(() => {
-    if (typeof params.eventId !== "string") {
+    if (requestedEventId === null) {
       return;
     }
 
-    const routedEvent = manageableEvents.find((event) => event.eventId === params.eventId);
+    const routedEvent = manageableEvents.find((event) => event.eventId === requestedEventId);
 
     if (typeof routedEvent === "undefined") {
       return;
@@ -406,10 +600,11 @@ export default function ClubEventsScreen() {
     setSelectedEventId(routedEvent.eventId);
     setMode("edit");
     setDraft(createDraftFromEvent(routedEvent));
-  }, [manageableEvents, params.eventId]);
+    setIsFormModalOpen(true);
+  }, [manageableEvents, requestedEventId]);
 
   useEffect(() => {
-    if (requestedEventId !== null || mode !== "edit") {
+    if (requestedEventId !== null || mode !== "edit" || selectedEventId !== null || isFormModalOpen) {
       return;
     }
 
@@ -418,7 +613,7 @@ export default function ClubEventsScreen() {
     setActionNotice(null);
     setMode("create");
     setDraft(createNewDraft(selectedMembership?.clubId ?? "", selectedMembership?.city ?? null));
-  }, [creatableMemberships, mode, requestedEventId]);
+  }, [creatableMemberships, isFormModalOpen, mode, requestedEventId, selectedEventId]);
 
   useEffect(() => {
     setDateTimeEditor(null);
@@ -478,10 +673,11 @@ export default function ClubEventsScreen() {
 
       setDraft((currentDraft) => ({
         ...currentDraft,
-        coverImageUrl: uploadedCover.publicUrl,
+        coverImageStagingPath: uploadedCover.stagingPath,
+        coverImageUrl: uploadedCover.previewUrl,
       }));
     } catch (error) {
-      setCoverUploadError(error instanceof Error ? error.message : "Unknown event cover upload error.");
+      setCoverUploadError(createUserSafeErrorMessage(error, language, "clubMedia"));
     } finally {
       setIsUploadingCover(false);
     }
@@ -489,6 +685,7 @@ export default function ClubEventsScreen() {
 
   const handleSelectCreateMode = (): void => {
     const selectedMembership = creatableMemberships[0] ?? null;
+    setSelectedEventId(null);
     setMode("create");
     setActionNotice(null);
     setDraft(createNewDraft(selectedMembership?.clubId ?? "", selectedMembership?.city ?? null));
@@ -499,46 +696,158 @@ export default function ClubEventsScreen() {
       return;
     }
 
+    hapticImpact(ImpactStyle.Medium);
     setActionNotice(null);
 
     try {
       if (mode === "create") {
         const result = await createMutation.mutateAsync({ draft, userId });
 
-        if (result.status === "SUCCESS") {
-          handleSelectCreateMode();
-        }
+        assertClubEventMutationSucceeded(result);
+        hapticNotification(NotificationType.Success);
+        handleSelectCreateMode();
+        setIsFormModalOpen(false);
         return;
       }
 
-      await updateMutation.mutateAsync({ draft, userId });
+      const result = await updateMutation.mutateAsync({ draft, userId });
+
+      assertClubEventMutationSucceeded(result);
+      hapticNotification(NotificationType.Success);
+      setIsFormModalOpen(false);
     } catch (error) {
+      hapticNotification(NotificationType.Error);
       setActionNotice(createClubEventActionNotice(error, language));
     }
   };
 
-  const handleCancelPress = async (): Promise<void> => {
-    if (userId === null || selectedEvent === null) {
+  const cancelEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
+    if (userId === null) {
       return;
     }
 
+    hapticImpact(ImpactStyle.Medium);
     setActionNotice(null);
 
     try {
-      await cancelMutation.mutateAsync({ eventId: selectedEvent.eventId, userId });
+      const result = await cancelMutation.mutateAsync({ eventId: event.eventId, userId });
+
+      assertClubEventMutationSucceeded(result);
+      hapticNotification(NotificationType.Success);
+      setIsFormModalOpen(false);
       router.push("/club/upcoming");
     } catch (error) {
+      hapticNotification(NotificationType.Error);
       setActionNotice(createClubEventActionNotice(error, language));
     }
   };
 
+  const handleCancelPress = (): void => {
+    if (userId === null || selectedEvent === null || isPending) {
+      return;
+    }
+
+    const eventToCancel = selectedEvent;
+
+    Alert.alert(
+      language === "fi" ? "Perutaanko tapahtuma?" : "Cancel event?",
+      language === "fi"
+        ? "Tapahtuma piilotetaan aktiivisista näkymistä. Leimat, ilmoittautumiset ja audit-historia säilyvät."
+        : "This hides the event from active views. Stamps, registrations, and audit history stay intact.",
+      [
+        {
+          style: "cancel",
+          text: language === "fi" ? "Ei, palaa" : "No, go back",
+        },
+        {
+          onPress: () => void cancelEventAsync(eventToCancel),
+          style: "destructive",
+          text: language === "fi" ? "Kyllä, peru tapahtuma" : "Yes, cancel event",
+        },
+      ]
+    );
+  };
+
+  const handleDeleteEventAsync = async (event: ClubDashboardEventSummary): Promise<void> => {
+    if (userId === null || isPending) {
+      return;
+    }
+
+    hapticImpact(ImpactStyle.Medium);
+    setActionNotice(null);
+    setContextMenuEventId(null);
+
+    try {
+      const result = isDraftEvent(event)
+        ? await deleteMutation.mutateAsync({
+            eventId: event.eventId,
+            userId,
+          })
+        : await cancelMutation.mutateAsync({
+            eventId: event.eventId,
+            userId,
+          });
+
+      assertClubEventMutationSucceeded(result);
+      hapticNotification(NotificationType.Success);
+      if (isDraftEvent(event)) {
+        setSelectedEventId(null);
+        handleSelectCreateMode();
+      } else {
+        setIsFormModalOpen(false);
+        router.push("/club/upcoming");
+      }
+    } catch (error) {
+      hapticNotification(NotificationType.Error);
+      setActionNotice(createClubEventActionNotice(error, language));
+    }
+  };
+
+  const handleDeleteEventPress = (event: ClubDashboardEventSummary): void => {
+    const isDraft = isDraftEvent(event);
+
+    Alert.alert(
+      language === "fi" ? "Poista tapahtuma?" : "Delete event?",
+      isDraft
+        ? language === "fi"
+          ? "Tapahtumaluonnos poistetaan pysyvästi."
+          : "This permanently removes the draft event."
+        : language === "fi"
+          ? "Julkaistu tai aktiivinen tapahtuma perutaan ja piilotetaan aktiivisista näkymistä. Leimat, ilmoittautumiset ja audit-historia säilyvät."
+          : "A published or active event will be cancelled and hidden from active views. Stamps, registrations, and audit history stay intact.",
+      [
+        {
+          style: "cancel",
+          text: language === "fi" ? "Peruuta" : "Cancel",
+        },
+        {
+          onPress: () => void handleDeleteEventAsync(event),
+          style: "destructive",
+          text: language === "fi" ? "Poista" : "Delete",
+        },
+      ]
+    );
+  };
+
   const latestMessage =
-    createMutation.data?.message ??
-    updateMutation.data?.message ??
-    cancelMutation.data?.message ??
+    localizeClubEventSuccessMessage(createMutation.data, language) ??
+    localizeClubEventSuccessMessage(updateMutation.data, language) ??
+    localizeClubEventSuccessMessage(cancelMutation.data, language) ??
+    localizeClubEventSuccessMessage(deleteMutation.data, language) ??
     null;
   const latestError = actionNotice;
-  const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending;
+
+  useTransientSuccessKey(
+    latestMessage,
+    () => {
+      createMutation.reset();
+      updateMutation.reset();
+      cancelMutation.reset();
+      deleteMutation.reset();
+    },
+    successNoticeDurationMs
+  );
+  const isPending = createMutation.isPending || updateMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
   const submitButtonLabel = (() => {
     if (isPending) {
       return language === "fi" ? "Tallennetaan..." : "Saving...";
@@ -586,13 +895,23 @@ export default function ClubEventsScreen() {
       }
     >
       <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
-          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Klubi" : "Club"}</Text>
-          <Text style={styles.screenTitle}>{copy.common.events}</Text>
-          <Text style={styles.metaText}>
-            {language === "fi" ? "Luo, päivitä ja sulje klubin tapahtumia." : "Create, update, and close club events."}
+        <View style={styles.clubHeader}>
+          <View style={styles.clubBrand}>
+            <AppIcon color={theme.colors.lime} name="star" size={18} />
+            <Text style={styles.clubBrandTitle}>OmaLeima</Text>
+          </View>
+          <Text style={styles.clubBrandSub}>
+            {language === "fi" ? "Tapahtumat" : "Events"}
           </Text>
         </View>
+        {hasCreateAccess ? (
+          <Pressable
+            onPress={() => { handleSelectCreateMode(); setIsFormModalOpen(true); }}
+            style={styles.addButton}
+          >
+            <Text style={styles.addButtonText}>+</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {dashboardQuery.isLoading ? (
@@ -603,7 +922,7 @@ export default function ClubEventsScreen() {
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={copy.common.events}>
-          <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
         </InfoCard>
       ) : null}
 
@@ -635,17 +954,176 @@ export default function ClubEventsScreen() {
             </InfoCard>
           ) : null}
 
-          {((isEditingExistingEvent && selectedEvent !== null) || (!isEditingExistingEvent && hasCreateAccess)) ? (
-            <InfoCard
-              eyebrow={mode === "create" ? "Create" : "Edit"}
-              title={mode === "create" ? (language === "fi" ? "Luo tapahtuma" : "Create event") : (selectedEvent?.name ?? "Event")}
-            >
+          {sortedEvents.length === 0 && hasCreateAccess ? (
+            <InfoCard eyebrow={language === "fi" ? "Tapahtumat" : "Events"} title={language === "fi" ? "Ei tapahtumia vielä" : "No events yet"}>
+              <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+                <AppIcon color={theme.colors.textMuted} name="calendar" size={16} />
+                <Text style={[styles.bodyText, { flex: 1 }]}>
+                  {language === "fi"
+                    ? "Luo ensimmäinen tapahtuma + -painikkeella."
+                    : "Create your first event with the + button."}
+                </Text>
+              </View>
+            </InfoCard>
+          ) : null}
+
+          {sortedEvents.length > 0 ? (
+            <View style={styles.listSection}>
+              <View style={styles.sectionIconHeader}>
+                <AppIcon color={theme.colors.lime} name="calendar" size={16} />
+                <Text style={styles.sectionTitle}>{copy.common.events}</Text>
+                <Text style={styles.sectionCount}>{sortedEvents.length}</Text>
+              </View>
+              <TextInput
+                onChangeText={setSearchQuery}
+                placeholder={language === "fi" ? "Hae tapahtumia..." : "Search events..."}
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.searchInput}
+                value={searchQuery}
+              />
+              <View style={styles.listStack}>
+                {filteredEvents.length === 0 ? (
+                  <Text style={styles.bodyText}>
+                    {language === "fi" ? "Ei hakutuloksia." : "No results found."}
+                  </Text>
+                ) : null}
+                {filteredEvents.map((event) => (
+                  <Pressable
+                    key={event.eventId}
+                    onPress={() => setContextMenuEventId(event.eventId)}
+                    style={styles.eventListCard}
+                  >
+                    <CoverImageSurface
+                      fallbackSource={getEventCoverSourceWithFallback(null, "clubControl")}
+                      imageStyle={styles.eventListCardImage}
+                      source={event.coverImageUrl === null ? null : { uri: event.coverImageUrl }}
+                      style={styles.eventListCardCover}
+                    >
+                      <View style={styles.eventListCardOverlay} />
+                      <View style={styles.eventListCardBadgeRow}>
+                        <View style={styles.eventStatusChip}>
+                          <View style={[styles.statusDot, timelineStateBadgeState(event.timelineState) === "ready" ? styles.statusDotReady : timelineStateBadgeState(event.timelineState) === "warning" ? styles.statusDotWarning : styles.statusDotPending]} />
+                          <Text style={styles.statusChipLabel}>{timelineStateLabel(event.timelineState, language)}</Text>
+                        </View>
+                      </View>
+                    </CoverImageSurface>
+                    <View style={styles.eventListCardCopy}>
+                      <View style={styles.eventListCardTopRow}>
+                        <Text style={styles.eventListCardTitle}>{event.name}</Text>
+                      </View>
+                      <View style={styles.eventListCardMeta}>
+                        {event.city ? (
+                          <View style={styles.eventListCardMetaItem}>
+                            <AppIcon color={theme.colors.textMuted} name="map-pin" size={12} />
+                            <Text style={styles.metaText}>{event.city}</Text>
+                          </View>
+                        ) : null}
+                        <View style={styles.eventListCardMetaItem}>
+                          <AppIcon color={theme.colors.textMuted} name="calendar" size={12} />
+                          <Text style={styles.metaText}>{formatter.format(new Date(event.startAt))}</Text>
+                        </View>
+                        <View style={styles.eventListCardMetaItem}>
+                          <AppIcon color={theme.colors.textMuted} name="user" size={12} />
+                          <Text style={styles.metaText}>
+                            {event.registeredParticipantCount}{" "}
+                            {language === "fi" ? "os." : "part."}
+                            {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {/* Action sheet */}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setContextMenuEventId(null)}
+        transparent
+        visible={contextMenuEventId !== null}
+      >
+        <Pressable style={styles.actionSheetBackdrop} onPress={() => setContextMenuEventId(null)}>
+          <Pressable style={styles.actionSheet} onPress={() => {}}>
+            {contextMenuEvent !== null &&
+            hasCreateAccess &&
+            contextMenuEvent.timelineState !== "COMPLETED" &&
+            contextMenuEvent.timelineState !== "CANCELLED" ? (
+              <Pressable
+                onPress={() => {
+                  const ev = contextMenuEvent;
+                  setSelectedEventId(ev.eventId);
+                  setMode("edit");
+                  setDraft(createDraftFromEvent(ev));
+                  setContextMenuEventId(null);
+                  setIsFormModalOpen(true);
+                }}
+                style={styles.actionSheetItem}
+              >
+                <Text style={styles.actionSheetItemText}>{language === "fi" ? "Muokkaa" : "Edit"}</Text>
+              </Pressable>
+            ) : null}
+            {contextMenuEvent !== null &&
+            canDeleteEvent(contextMenuEvent) ? (
+              <Pressable
+                onPress={() => handleDeleteEventPress(contextMenuEvent)}
+                style={styles.actionSheetItem}
+              >
+                <Text style={styles.actionSheetItemDangerText}>
+                  {language === "fi" ? "Poista tapahtuma" : "Delete event"}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={() => setContextMenuEventId(null)} style={styles.actionSheetItem}>
+              <Text style={styles.actionSheetItemMutedText}>{language === "fi" ? "Peruuta" : "Cancel"}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Form modal */}
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsFormModalOpen(false)}
+        visible={isFormModalOpen}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.formModalContainer}
+        >
+          <ScrollView
+            contentContainerStyle={styles.formModalScrollContent}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formModalHeader}>
+              <View style={styles.formModalHeaderCopy}>
+                <Text style={styles.topBarEyebrow}>
+                  {mode === "create" ? (language === "fi" ? "Luo" : "Create") : (language === "fi" ? "Muokkaa" : "Edit")}
+                </Text>
+                <Text numberOfLines={2} style={styles.formModalTitle}>
+                  {mode === "create"
+                    ? (language === "fi" ? "Uusi tapahtuma" : "New event")
+                    : (selectedEvent?.name ?? (language === "fi" ? "Tapahtuma" : "Event"))}
+                </Text>
+              </View>
+              <Pressable onPress={() => setIsFormModalOpen(false)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.formModalBody}>
               {mode === "create" && creatableMemberships.length > 1 ? (
                 <View style={styles.optionRow}>
                   {creatableMemberships.map((membership: ClubMembershipSummary) => (
                     <Pressable
                       key={membership.clubId}
-                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, clubId: membership.clubId, city: currentDraft.city || membership.city || "" }))}
+                      onPress={() => setDraft((currentDraft) => ({ ...currentDraft, clubId: membership.clubId, city: membership.city ?? "" }))}
                       style={[styles.optionChip, draft.clubId === membership.clubId ? styles.optionChipSelected : null]}
                     >
                       <Text style={styles.optionChipText}>{membership.clubName}</Text>
@@ -697,9 +1175,20 @@ export default function ClubEventsScreen() {
                   <View key={config.field} style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>{config.label}</Text>
                     <TextInput
-                      autoCapitalize="sentences"
-                      editable={!isPending && (mode === "create" || canEditEvent(selectedEvent))}
-                      keyboardType={config.field === "minimumStampsRequired" || config.field === "maxParticipants" ? "number-pad" : "default"}
+                      autoCapitalize={config.field === "ticketUrl" ? "none" : "sentences"}
+                      editable={
+                        !isPending &&
+                        config.field !== "city" &&
+                        !(config.field === "name" && mode === "edit" && !canEditEventName(selectedEvent)) &&
+                        (mode === "create" || canEditEvent(selectedEvent))
+                      }
+                      keyboardType={
+                        config.field === "minimumStampsRequired" || config.field === "maxParticipants"
+                          ? "number-pad"
+                          : config.field === "ticketUrl"
+                            ? "url"
+                            : "default"
+                      }
                       multiline={config.multiline}
                       onChangeText={(value) => updateDraftField(config.field, value)}
                       placeholder={config.placeholder}
@@ -708,6 +1197,13 @@ export default function ClubEventsScreen() {
                       textAlignVertical={config.multiline ? "top" : "center"}
                       value={draft[config.field]}
                     />
+                    {config.field === "name" && mode === "edit" && selectedEvent?.status === "ACTIVE" ? (
+                      <Text style={styles.metaText}>
+                        {language === "fi"
+                          ? "Käynnissä olevan tapahtuman nimeä ei voi enää muuttaa mobiilissa tai webissä."
+                          : "Active event names cannot be changed on mobile or web."}
+                      </Text>
+                    ) : null}
                   </View>
                 ))}
 
@@ -740,11 +1236,11 @@ export default function ClubEventsScreen() {
                 </Text>
                 <Text style={styles.metaText}>
                   {language === "fi"
-                    ? "Kuinka monta leimaa yksi opiskelija voi saada samasta pisteestä tämän tapahtuman aikana."
-                    : "How many stamps one student can collect from the same venue during this event."}
+                    ? "Yksi opiskelija voi saada samasta pisteestä enintään viisi leimaa tämän tapahtuman aikana."
+                    : "One student can collect up to five stamps from the same venue during this event."}
                 </Text>
                 <View style={styles.optionRow}>
-                  {(["1", "2", "3", "4", "5"] as const).map((limit) => (
+                  {perBusinessLimitOptions.map((limit) => (
                     <Pressable
                       disabled={isPending || (mode === "edit" && !canEditEvent(selectedEvent))}
                       key={limit}
@@ -766,14 +1262,20 @@ export default function ClubEventsScreen() {
                       onPress={() => setDraft((currentDraft) => ({ ...currentDraft, visibility }))}
                       style={[styles.optionChip, draft.visibility === visibility ? styles.optionChipSelected : null]}
                     >
-                      <Text style={styles.optionChipText}>{visibility}</Text>
+                      <Text style={styles.optionChipText}>
+                        {visibility === "PUBLIC"
+                          ? (language === "fi" ? "Julkinen" : "Public")
+                          : visibility === "UNLISTED"
+                            ? (language === "fi" ? "Ei listattu" : "Unlisted")
+                            : (language === "fi" ? "Yksityinen" : "Private")}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
               <View style={styles.optionBlock}>
-                <Text style={styles.fieldLabel}>Status</Text>
+                <Text style={styles.fieldLabel}>{language === "fi" ? "Tila" : "Status"}</Text>
                 <View style={styles.optionRow}>
                   {(["DRAFT", "PUBLISHED", "ACTIVE"] as ClubEventEditableStatus[]).map((status) => (
                     <Pressable
@@ -782,7 +1284,13 @@ export default function ClubEventsScreen() {
                       onPress={() => setDraft((currentDraft) => ({ ...currentDraft, status }))}
                       style={[styles.optionChip, draft.status === status ? styles.optionChipSelected : null]}
                     >
-                      <Text style={styles.optionChipText}>{status}</Text>
+                      <Text style={styles.optionChipText}>
+                        {status === "DRAFT"
+                          ? (language === "fi" ? "Luonnos" : "Draft")
+                          : status === "PUBLISHED"
+                            ? (language === "fi" ? "Julkaistu" : "Published")
+                            : (language === "fi" ? "Aktiivinen" : "Active")}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
@@ -799,11 +1307,23 @@ export default function ClubEventsScreen() {
               {mode === "edit" && selectedEvent !== null && canEditEvent(selectedEvent) ? (
                 <Pressable
                   disabled={isPending}
-                  onPress={() => void handleCancelPress()}
+                  onPress={handleCancelPress}
                   style={[styles.secondaryButton, isPending ? styles.disabledButton : null]}
                 >
                   <Text style={styles.secondaryButtonText}>
                     {language === "fi" ? "Peru tapahtuma" : "Cancel event"}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {mode === "edit" && selectedEvent !== null && canDeleteEvent(selectedEvent) ? (
+                <Pressable
+                  disabled={isPending}
+                  onPress={() => handleDeleteEventPress(selectedEvent)}
+                  style={[styles.dangerButton, isPending ? styles.disabledButton : null]}
+                >
+                  <Text style={styles.dangerButtonText}>
+                    {language === "fi" ? "Poista tapahtuma" : "Delete event"}
                   </Text>
                 </Pressable>
               ) : null}
@@ -815,159 +1335,160 @@ export default function ClubEventsScreen() {
                   <Text style={styles.errorText}>{latestError.body}</Text>
                 </View>
               ) : null}
-            </InfoCard>
-          ) : null}
-        </>
-      ) : null}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setDateTimeEditor(null)}
-        transparent
-        visible={dateTimeEditor !== null}
-      >
-        <View style={styles.modalBackdrop}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={16}
-            style={styles.modalKeyboardAvoidingView}
-          >
-            <ScrollView
-              automaticallyAdjustKeyboardInsets
-              contentContainerStyle={styles.modalScrollContent}
-              keyboardDismissMode="interactive"
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+        {/* Calendar picker lives inside the form modal so it renders on top */}
+        <Modal
+          animationType="fade"
+          onRequestClose={() => setDateTimeEditor(null)}
+          transparent
+          visible={dateTimeEditor !== null}
+        >
+          <View style={styles.modalBackdrop}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={16}
+              style={styles.modalKeyboardAvoidingView}
             >
-              <View style={styles.modalCard}>
-                <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
-                <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
+              <ScrollView
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardDismissMode="interactive"
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalEyebrow}>{language === "fi" ? "Aika" : "Time"}</Text>
+                  <Text style={styles.modalTitle}>{dateTimeEditor?.label ?? ""}</Text>
 
-                <View style={styles.calendarHeader}>
-                  <Pressable
-                    onPress={() =>
-                      setDateTimeEditor((currentEditor) =>
-                        currentEditor === null
-                          ? null
-                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
-                      )
-                    }
-                    style={styles.calendarNavButton}
-                  >
-                    <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
-                  </Pressable>
-                  <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
-                  <Pressable
-                    onPress={() =>
-                      setDateTimeEditor((currentEditor) =>
-                        currentEditor === null
-                          ? null
-                          : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
-                      )
-                    }
-                    style={styles.calendarNavButton}
-                  >
-                    <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
-                  </Pressable>
-                </View>
-
-                <View style={styles.weekdayGrid}>
-                  {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
-                    <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
-                  ))}
-                </View>
-
-                <View style={styles.calendarGrid}>
-                  {calendarDays.map((day) => (
+                  <View style={styles.calendarHeader}>
                     <Pressable
-                      key={day.date}
                       onPress={() =>
                         setDateTimeEditor((currentEditor) =>
                           currentEditor === null
                             ? null
-                            : {
-                              ...currentEditor,
-                              date: day.date,
-                              visibleMonth: getMonthStartInput(day.date),
-                            }
+                            : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, -1) }
                         )
                       }
-                      style={[
-                        styles.calendarDay,
-                        day.isSelected ? styles.calendarDaySelected : null,
-                        day.isCurrentMonth ? null : styles.calendarDayOutside,
-                      ]}
+                      style={styles.calendarNavButton}
                     >
-                      <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
-                        {day.dayLabel}
-                      </Text>
+                      <AppIcon color={theme.colors.textPrimary} name="chevron-left" size={16} />
                     </Pressable>
-                  ))}
-                </View>
-
-                <View style={styles.modalFieldRow}>
-                  <View style={styles.modalField}>
-                    <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      keyboardType="numbers-and-punctuation"
-                      onChangeText={(date) =>
-                        setDateTimeEditor((currentEditor) =>
-                          currentEditor === null ? null : { ...currentEditor, date }
-                        )
-                      }
-                      placeholder="2026-09-12"
-                      placeholderTextColor={theme.colors.textDim}
-                      style={styles.input}
-                      value={dateTimeEditor?.date ?? ""}
-                    />
-                  </View>
-                  <View style={styles.modalField}>
-                    <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      keyboardType="numbers-and-punctuation"
-                      onChangeText={(time) =>
-                        setDateTimeEditor((currentEditor) =>
-                          currentEditor === null ? null : { ...currentEditor, time }
-                        )
-                      }
-                      placeholder="18:00"
-                      placeholderTextColor={theme.colors.textDim}
-                      style={styles.input}
-                      value={dateTimeEditor?.time ?? ""}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.timeChipRow}>
-                  {["16:00", "18:00", "20:00", "22:00"].map((time) => (
+                    <Text style={styles.calendarMonthTitle}>{monthTitle}</Text>
                     <Pressable
-                      key={time}
                       onPress={() =>
                         setDateTimeEditor((currentEditor) =>
-                          currentEditor === null ? null : { ...currentEditor, time }
+                          currentEditor === null
+                            ? null
+                            : { ...currentEditor, visibleMonth: shiftMonthInput(currentEditor.visibleMonth, 1) }
                         )
                       }
-                      style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
+                      style={styles.calendarNavButton}
                     >
-                      <Text style={styles.timeChipText}>{time}</Text>
+                      <AppIcon color={theme.colors.textPrimary} name="chevron-right" size={16} />
                     </Pressable>
-                  ))}
-                </View>
+                  </View>
 
-                <View style={styles.modalActions}>
-                  <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
-                    <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
-                  </Pressable>
-                  <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
-                    <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
-                  </Pressable>
+                  <View style={styles.weekdayGrid}>
+                    {["Ma", "Ti", "Ke", "To", "Pe", "La", "Su"].map((weekday) => (
+                      <Text key={weekday} style={styles.weekdayLabel}>{weekday}</Text>
+                    ))}
+                  </View>
+
+                  <View style={styles.calendarGrid}>
+                    {calendarDays.map((day) => (
+                      <Pressable
+                        key={day.date}
+                        onPress={() =>
+                          setDateTimeEditor((currentEditor) =>
+                            currentEditor === null
+                              ? null
+                              : {
+                                ...currentEditor,
+                                date: day.date,
+                                visibleMonth: getMonthStartInput(day.date),
+                              }
+                          )
+                        }
+                        style={[
+                          styles.calendarDay,
+                          day.isSelected ? styles.calendarDaySelected : null,
+                          day.isCurrentMonth ? null : styles.calendarDayOutside,
+                        ]}
+                      >
+                        <Text style={[styles.calendarDayText, day.isSelected ? styles.calendarDayTextSelected : null]}>
+                          {day.dayLabel}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={styles.modalFieldRow}>
+                    <View style={styles.modalField}>
+                      <Text style={styles.fieldLabel}>{language === "fi" ? "Päivä" : "Date"}</Text>
+                      <TextInput
+                        autoCapitalize="none"
+                        keyboardType="numbers-and-punctuation"
+                        onChangeText={(date) =>
+                          setDateTimeEditor((currentEditor) =>
+                            currentEditor === null ? null : { ...currentEditor, date }
+                          )
+                        }
+                        placeholder="2026-09-12"
+                        placeholderTextColor={theme.colors.textDim}
+                        style={styles.input}
+                        value={dateTimeEditor?.date ?? ""}
+                      />
+                    </View>
+                    <View style={styles.modalField}>
+                      <Text style={styles.fieldLabel}>{language === "fi" ? "Kello" : "Time"}</Text>
+                      <TextInput
+                        autoCapitalize="none"
+                        keyboardType="numbers-and-punctuation"
+                        onChangeText={(time) =>
+                          setDateTimeEditor((currentEditor) =>
+                            currentEditor === null ? null : { ...currentEditor, time }
+                          )
+                        }
+                        placeholder="18:00"
+                        placeholderTextColor={theme.colors.textDim}
+                        style={styles.input}
+                        value={dateTimeEditor?.time ?? ""}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.timeChipRow}>
+                    {["16:00", "18:00", "20:00", "22:00"].map((time) => (
+                      <Pressable
+                        key={time}
+                        onPress={() =>
+                          setDateTimeEditor((currentEditor) =>
+                            currentEditor === null ? null : { ...currentEditor, time }
+                          )
+                        }
+                        style={[styles.timeChip, dateTimeEditor?.time === time ? styles.timeChipSelected : null]}
+                      >
+                        <Text style={styles.timeChipText}>{time}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={styles.modalActions}>
+                    <Pressable onPress={() => setDateTimeEditor(null)} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>{language === "fi" ? "Sulje" : "Close"}</Text>
+                    </Pressable>
+                    <Pressable onPress={handleConfirmDateTimePress} style={styles.primaryButton}>
+                      <Text style={styles.primaryButtonText}>{language === "fi" ? "Käytä aikaa" : "Use time"}</Text>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
       </Modal>
     </AppScreen>
   );
@@ -1362,6 +1883,23 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
+    dangerButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.dangerSurface,
+      borderColor: theme.colors.danger,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      minHeight: 46,
+      justifyContent: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    dangerButtonText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
     successText: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.semibold,
@@ -1413,5 +1951,250 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.caption,
       textAlign: "center",
       width: `${100 / 7}%`,
+    },
+    addButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 32,
+      justifyContent: "center",
+      width: 32,
+    },
+    addButtonText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 20,
+      height: 32,
+      includeFontPadding: false,
+      lineHeight: 32,
+      textAlign: "center",
+      textAlignVertical: "center",
+      width: 32,
+    },
+    actionSheetBackdrop: {
+      backgroundColor: "rgba(0, 0, 0, 0.54)",
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    actionSheet: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      gap: 4,
+      paddingBottom: 32,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
+    actionSheetItem: {
+      alignItems: "center",
+      borderRadius: theme.radius.button,
+      minHeight: 52,
+      justifyContent: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    actionSheetItemText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    actionSheetItemMutedText: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    actionSheetItemDangerText: {
+      color: theme.colors.danger,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    closeButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    closeButtonText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.bold,
+      fontSize: 16,
+      lineHeight: 20,
+    },
+    eventListCard: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      overflow: "hidden",
+    },
+    eventListCardBadgeRow: {
+      alignItems: "flex-start",
+      flex: 1,
+      padding: 10,
+    },
+    eventListCardCopy: {
+      gap: 8,
+      padding: 12,
+    },
+    eventListCardCover: {
+      minHeight: 96,
+      position: "relative",
+    },
+    eventListCardImage: {
+      borderRadius: 0,
+    },
+    eventListCardMeta: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    eventListCardMetaItem: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+    },
+    eventListCardOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.22)",
+    },
+    eventListCardTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+    },
+    eventListCardTopRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "space-between",
+    },
+    formModalBody: {
+      gap: 14,
+      paddingBottom: 32,
+      paddingHorizontal: 20,
+    },
+    formModalContainer: {
+      backgroundColor: theme.colors.screenBase,
+      flex: 1,
+    },
+    formModalHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 12,
+      paddingBottom: 16,
+      paddingHorizontal: 20,
+      paddingTop: 58,
+    },
+    formModalHeaderCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    formModalScrollContent: {
+      flexGrow: 1,
+    },
+    formModalTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
+    },
+    listStack: {
+      gap: 10,
+    },
+    listSection: {
+      gap: 12,
+    },
+    sectionIconHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.bodySmall,
+      flex: 1,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    sectionCount: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 10,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    searchInput: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      height: 44,
+      paddingHorizontal: 14,
+    },
+    statusDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8,
+    },
+    statusDotReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    statusDotWarning: {
+      backgroundColor: theme.colors.danger,
+    },
+    statusDotPending: {
+      backgroundColor: theme.colors.textMuted,
+    },
+    eventStatusChip: {
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.45)",
+      borderRadius: 999,
+      flexDirection: "row",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    statusChipLabel: {
+      color: "rgba(255,255,255,0.92)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    clubHeader: {
+      flex: 1,
+      gap: 4,
+    },
+    clubBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    clubBrandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    clubBrandSub: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      marginLeft: 26,
     },
   });

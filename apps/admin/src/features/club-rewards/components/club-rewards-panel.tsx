@@ -14,6 +14,7 @@ import type {
   ClubRewardTierCreatePayload,
   ClubRewardsSnapshot,
 } from "@/features/club-rewards/types";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type ClubRewardsPanelProps = {
   locale: DashboardLocale;
@@ -88,7 +89,7 @@ const copyByLocale = {
     inventoryTotal: "Varasto yhteensä",
     lowStockBody: "Palkintotasot, jotka ovat vähissä tai loppuneet luovutetun varaston perusteella.",
     lowStockLabel: "Vähissä olevat tasot",
-    manageableEventsBody: "Klubitapahtumat, joissa tämä järjestäjä voi tarkistaa palkintokatalogin näkyvyyden.",
+    manageableEventsBody: "Klubitapahtumat, joissa tällä tilillä on oikeus hallita palkintoja.",
     manageableEventsLabel: "Hallittavat tapahtumat",
     readOnly: "Vain luku",
     requiredStamps: "Vaaditut leimat",
@@ -101,8 +102,8 @@ const copyByLocale = {
     totalTiersBodyPrefix: "Viimeisin lista näyttää",
     totalTiersBodySuffix: "tässä klubisessiossa.",
     totalTiersLabel: "Palkintotasoja yhteensä",
-    workflowBody: "Valitse muokattava tapahtuma, määritä leimaraja, varasto ja luovutusohjeet. Opiskelijat avaavat tason samasta tapahtuman scan-edistymisestä kuin mobiilissa.",
-    workflowEyebrow: "Palkintovirta",
+    workflowBody: "Valitse muokattava tapahtuma, määritä leimaraja, varasto ja luovutusohjeet. Opiskelijat avaavat tason samalla leimakertymällä kuin mobiilisovelluksessa.",
+    workflowEyebrow: "Palkintojen hallinta",
     workflowTitle: "Palkinnot liitetään aina yhteen tapahtumaan",
   },
 } as const satisfies Record<DashboardLocale, Record<string, string>>;
@@ -140,6 +141,12 @@ export const ClubRewardsPanel = ({ locale, snapshot }: ClubRewardsPanelProps) =>
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [isPending, setIsPending] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"event-catalog" | "create-reward" | "reward-catalog">("event-catalog");
 

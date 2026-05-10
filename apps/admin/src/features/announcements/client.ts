@@ -111,6 +111,24 @@ export const submitAnnouncementArchiveRequestAsync = async (
   return parseAnnouncementResponseAsync(response);
 };
 
+export const submitAnnouncementDeleteRequestAsync = async (
+  announcementId: string,
+  clubId: string | null
+): Promise<AnnouncementMutationResponse> => {
+  const response = await fetch("/api/announcements/delete", {
+    body: JSON.stringify({
+      announcementId,
+      clubId: clubId ?? "",
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  return parseAnnouncementResponseAsync(response);
+};
+
 export const submitAnnouncementPushRequestAsync = async (
   announcementId: string
 ): Promise<AnnouncementMutationResponse> => {

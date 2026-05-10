@@ -23,6 +23,7 @@ import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/featu
 import type { MobileTheme } from "@/features/foundation/theme";
 import type { StudentRewardCelebrationCandidate } from "@/features/notifications/student-reward-notification-model";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 
 type StudentRewardCelebrationContextValue = {
   triggerRewardCelebration: (candidates: StudentRewardCelebrationCandidate[]) => void;
@@ -171,22 +172,22 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
       Animated.timing(backdropOpacity, {
         toValue: 0,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(cardTranslateY, {
         toValue: 28,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(cardScale, {
         toValue: 0.96,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(stampOpacity, {
         toValue: 0,
         duration: 120,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start(({ finished }) => {
       if (finished) {
@@ -224,6 +225,13 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
         triggeredAt: now,
       };
 
+      const isRewardUnlock = candidates.some((c) => c.kind !== "STAMP");
+      if (isRewardUnlock) {
+        hapticNotification(NotificationType.Success);
+      } else {
+        hapticImpact(ImpactStyle.Medium);
+      }
+
       clearDismissTimeout();
       setActiveCandidates(candidates);
 
@@ -247,21 +255,21 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
         Animated.timing(backdropOpacity, {
           toValue: 1,
           duration: 180,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.spring(cardTranslateY, {
           toValue: 0,
           damping: 18,
           stiffness: 220,
           mass: 0.9,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.spring(cardScale, {
           toValue: 1,
           damping: 18,
           stiffness: 220,
           mass: 0.86,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.sequence([
           Animated.delay(140),
@@ -269,21 +277,21 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
             Animated.timing(stampOpacity, {
               toValue: 1,
               duration: 110,
-              useNativeDriver: true,
+              useNativeDriver: false,
             }),
             Animated.spring(stampScale, {
               toValue: 1,
               damping: 10,
               stiffness: 190,
               mass: 0.72,
-              useNativeDriver: true,
+              useNativeDriver: false,
             }),
             Animated.spring(stampRotate, {
               toValue: -7,
               damping: 12,
               stiffness: 170,
               mass: 0.82,
-              useNativeDriver: true,
+              useNativeDriver: false,
             }),
           ]),
         ]),
@@ -292,12 +300,12 @@ export const StudentRewardCelebrationProvider = ({ children }: PropsWithChildren
           Animated.timing(shimmerOpacity, {
             toValue: 0.16,
             duration: 150,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(shimmerOpacity, {
             toValue: 0,
             duration: 260,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]),
       ]).start();

@@ -18,6 +18,8 @@ import type {
 type RewardProgressCardProps = {
   event: StudentRewardEventProgress;
   onOpenEvent?: (eventId: string) => void;
+  studentDisplayName: string | null;
+  studentId: string | null;
   visibleTierCount: number;
 };
 
@@ -114,6 +116,42 @@ const getInventoryCopy = (tier: StudentRewardTierProgress, language: "fi" | "en"
     : `${tier.remainingInventory} rewards left`;
 };
 
+const getRewardTypeLabel = (rewardType: StudentRewardTierProgress["rewardType"], language: "fi" | "en"): string => {
+  switch (rewardType) {
+    case "HAALARIMERKKI":
+      return language === "fi" ? "Haalarimerkki" : "Overall patch";
+    case "PATCH":
+      return language === "fi" ? "Merkki" : "Patch";
+    case "COUPON":
+      return language === "fi" ? "Kuponki" : "Coupon";
+    case "PRODUCT":
+      return language === "fi" ? "Tuote" : "Product";
+    case "ENTRY":
+      return language === "fi" ? "Sisäänpääsy" : "Entry";
+    case "OTHER":
+      return language === "fi" ? "Muu palkinto" : "Other reward";
+  }
+};
+
+const getStudentHandoffLabel = (studentDisplayName: string | null, studentId: string | null): string | null => {
+  if (studentDisplayName !== null) {
+    return studentDisplayName;
+  }
+
+  return studentId === null ? null : `Student ...${studentId.slice(-8)}`;
+};
+
+const getVisibleTiers = (
+  tiers: StudentRewardTierProgress[],
+  visibleTierCount: number
+): StudentRewardTierProgress[] => {
+  const primaryTiers = tiers.slice(0, Math.max(0, visibleTierCount));
+  const primaryTierIds = new Set(primaryTiers.map((tier) => tier.id));
+  const claimableTiers = tiers.filter((tier) => tier.state === "CLAIMABLE" && !primaryTierIds.has(tier.id));
+
+  return [...primaryTiers, ...claimableTiers];
+};
+
 const getEventHeroCopy = (event: StudentRewardEventProgress, language: "fi" | "en"): string => {
   if (event.claimableTierCount > 0) {
     return language === "fi"
@@ -162,14 +200,15 @@ const getEventSummaryCopy = (event: StudentRewardEventProgress, language: "fi" |
     : "Keep collecting leimas to unlock rewards.";
 };
 
-export const RewardProgressCard = ({ event, onOpenEvent, visibleTierCount }: RewardProgressCardProps) => {
+export const RewardProgressCard = ({ event, onOpenEvent, studentDisplayName, studentId, visibleTierCount }: RewardProgressCardProps) => {
   const { language, localeTag } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const formatter = createDateTimeFormatter(localeTag);
   const hasClaimable = event.claimableTierCount > 0;
   const coverSource = getEventCoverSource(event.coverImageUrl, `${event.id}:${event.name}`);
-  const visibleTiers = event.tiers.slice(0, Math.max(0, visibleTierCount));
+  const visibleTiers = getVisibleTiers(event.tiers, visibleTierCount);
   const hiddenTierCount = Math.max(0, event.tiers.length - visibleTiers.length);
+  const studentHandoffLabel = getStudentHandoffLabel(studentDisplayName, studentId);
 
   return (
     <InfoCard eyebrow={event.city} title={event.name} variant={hasClaimable ? "scene" : "card"}>
@@ -224,12 +263,22 @@ export const RewardProgressCard = ({ event, onOpenEvent, visibleTierCount }: Rew
                 <StatusBadge label={getTierBadgeLabel(tier.state, language)} state={getTierBadgeState(tier.state)} />
               </View>
               <Text style={styles.tierMeta}>
-                {tier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"} · {tier.rewardType.toLowerCase()}
+                {tier.requiredStampCount} {language === "fi" ? "leimaa" : "leima"} · {getRewardTypeLabel(tier.rewardType, language)}
               </Text>
               <Text numberOfLines={1} style={styles.tierCopy}>{getTierCopy(tier, language, formatter)}</Text>
               <Text style={styles.tierInventory}>{getInventoryCopy(tier, language)}</Text>
               {tier.description ? <Text numberOfLines={1} style={styles.tierCopy}>{tier.description}</Text> : null}
               {tier.claimInstructions ? <Text numberOfLines={1} style={styles.tierCopy}>{tier.claimInstructions}</Text> : null}
+              {tier.state === "CLAIMABLE" && studentHandoffLabel !== null ? (
+                <View style={styles.handoffTicket}>
+                  <Text style={styles.handoffTicketEyebrow}>
+                    {language === "fi" ? "NÄYTÄ HENKILÖKUNNALLE" : "SHOW STAFF"}
+                  </Text>
+                  <Text style={styles.handoffTicketText}>
+                    {studentHandoffLabel} · {tier.title}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ))}
           {hiddenTierCount > 0 ? (
@@ -318,6 +367,29 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.eyebrow,
       lineHeight: theme.typography.lineHeights.eyebrow,
+    },
+    handoffTicket: {
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      gap: 4,
+      marginTop: 2,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    handoffTicketEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 1.2,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+    },
+    handoffTicketText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     progressFill: {
       backgroundColor: theme.colors.lime,

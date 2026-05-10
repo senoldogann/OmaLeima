@@ -9,6 +9,7 @@ import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-pref
 
 type StudentLeimaPassCardProps = {
     minimumStampsRequired: number;
+    targetStampCount: number;
     venues: EventVenueSummary[];
 };
 
@@ -28,8 +29,15 @@ const compareCollectedVenues = (left: EventVenueSummary, right: EventVenueSummar
     return (left.venueOrder ?? Number.MAX_SAFE_INTEGER) - (right.venueOrder ?? Number.MAX_SAFE_INTEGER);
 };
 
-const createLeimaSlots = (minimumStampsRequired: number, venues: EventVenueSummary[]): LeimaSlot[] => {
-    const slotCount = Math.max(minimumStampsRequired, 1);
+const countCollectedVenueStamps = (venues: EventVenueSummary[]): number =>
+    venues.reduce((total, venue) => total + venue.collectedStampCount, 0);
+
+const createLeimaSlots = (
+    minimumStampsRequired: number,
+    targetStampCount: number,
+    venues: EventVenueSummary[]
+): LeimaSlot[] => {
+    const slotCount = Math.max(minimumStampsRequired, targetStampCount, venues.length, countCollectedVenueStamps(venues), 1);
     const collectedVenueSlots = venues
         .filter((venue) => venue.stampStatus === "COLLECTED")
         .sort(compareCollectedVenues)
@@ -47,10 +55,10 @@ const createLeimaSlots = (minimumStampsRequired: number, venues: EventVenueSumma
     }));
 };
 
-export const StudentLeimaPassCard = ({ minimumStampsRequired, venues }: StudentLeimaPassCardProps) => {
+export const StudentLeimaPassCard = ({ minimumStampsRequired, targetStampCount, venues }: StudentLeimaPassCardProps) => {
     const { language, localeTag, theme } = useUiPreferences();
     const styles = useThemeStyles(createStyles);
-    const leimaSlots = createLeimaSlots(minimumStampsRequired, venues);
+    const leimaSlots = createLeimaSlots(minimumStampsRequired, targetStampCount, venues);
     const collectedCount = leimaSlots.filter((slot) => slot.venue !== null).length;
     const [selectedVenue, setSelectedVenue] = useState<EventVenueSummary | null>(null);
     const stampedAtFormatter = new Intl.DateTimeFormat(localeTag, {

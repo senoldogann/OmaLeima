@@ -1,14 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
-import { validatePasswordSessionRequest } from "@/features/auth/password-session-guard";
 import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { validatePasswordSessionRequest } from "@/features/auth/password-session-guard";
+import { resolveClientIp } from "@/features/security/client-ip";
+import { validateTurnstileTokenAsync } from "@/features/security/turnstile";
 import { publicEnv } from "@/lib/env";
-
-type PasswordSessionRequestBody = {
-  accessToken: string;
-  refreshToken: string;
-};
 
 type PasswordSessionResponseBody =
   | {
@@ -17,16 +15,6 @@ type PasswordSessionResponseBody =
   | {
       error: string;
     };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isPasswordSessionRequestBody = (value: unknown): value is PasswordSessionRequestBody =>
-  isRecord(value) &&
-  typeof value.accessToken === "string" &&
-  value.accessToken.length > 0 &&
-  typeof value.refreshToken === "string" &&
-  value.refreshToken.length > 0;
 
 const createJsonResponse = (
   body: PasswordSessionResponseBody,
@@ -39,6 +27,16 @@ type CookieToSet = {
   options: object;
 };
 
+const turnstileAction = "admin_login";
+
+const requestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+  turnstileToken: z.string().max(2048).optional(),
+});
+
+type PasswordSessionRequestBody = z.infer<typeof requestSchema>;
+
 const attachSessionCookies = (
   response: NextResponse<PasswordSessionResponseBody>,
   cookiesToSet: CookieToSet[]
@@ -50,16 +48,9 @@ const attachSessionCookies = (
   return response;
 };
 
-export async function POST(request: NextRequest): Promise<NextResponse<PasswordSessionResponseBody>> {
-  const requestError = validatePasswordSessionRequest(request);
-
-  if (requestError !== null) {
-    return createJsonResponse(
-      { error: requestError.error },
-      requestError.status
-    );
-  }
-
+const parseRequestBodyAsync = async (
+  request: NextRequest
+): Promise<PasswordSessionRequestBody | NextResponse<PasswordSessionResponseBody>> => {
   let body: unknown;
 
   try {
@@ -73,8 +64,67 @@ export async function POST(request: NextRequest): Promise<NextResponse<PasswordS
     );
   }
 
-  if (!isPasswordSessionRequestBody(body)) {
-    return createJsonResponse({ error: "Password session request requires accessToken and refreshToken." }, 400);
+  const parsed = requestSchema.safeParse(body);
+
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const issuePath = firstIssue?.path.join(".") ?? "request";
+    const issueMessage = firstIssue?.message ?? "Invalid password session request.";
+
+    return createJsonResponse({ error: `${issuePath}: ${issueMessage}` }, 400);
+  }
+
+  return parsed.data;
+};
+
+const validateLoginProtectionAsync = async (
+  request: NextRequest,
+  turnstileToken: string | undefined
+): Promise<NextResponse<PasswordSessionResponseBody> | null> => {
+  try {
+    const validationResult = await validateTurnstileTokenAsync({
+      action: turnstileAction,
+      clientIp: resolveClientIp(request),
+      context: "admin login",
+      requestHost: request.headers.get("host"),
+      token: turnstileToken,
+    });
+
+    if (!validationResult.ok) {
+      const status = validationResult.reason === "misconfigured" ? 503 : 400;
+      return createJsonResponse({ error: "Login verification failed." }, status);
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[admin-login] turnstile configuration failed", {
+      message: error instanceof Error ? error.message : "Unknown Turnstile configuration error.",
+    });
+
+    return createJsonResponse({ error: "Login protection is not configured." }, 503);
+  }
+};
+
+export async function POST(request: NextRequest): Promise<NextResponse<PasswordSessionResponseBody>> {
+  const requestError = validatePasswordSessionRequest(request);
+
+  if (requestError !== null) {
+    return createJsonResponse(
+      { error: requestError.error },
+      requestError.status
+    );
+  }
+
+  const parsedBody = await parseRequestBodyAsync(request);
+
+  if (parsedBody instanceof NextResponse) {
+    return parsedBody;
+  }
+
+  const protectionError = await validateLoginProtectionAsync(request, parsedBody.turnstileToken);
+
+  if (protectionError !== null) {
+    return protectionError;
   }
 
   const cookiesToSet: CookieToSet[] = [];
@@ -95,13 +145,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<PasswordS
       },
     }
   );
-  const sessionResult = await supabase.auth.setSession({
-    access_token: body.accessToken,
-    refresh_token: body.refreshToken,
+  const signInResult = await supabase.auth.signInWithPassword({
+    email: parsedBody.email,
+    password: parsedBody.password,
   });
 
-  if (sessionResult.error !== null) {
-    return createJsonResponse({ error: `Failed to persist password session: ${sessionResult.error.message}` }, 401);
+  if (signInResult.error !== null) {
+    return createJsonResponse({ error: signInResult.error.message }, 401);
   }
 
   const access = await resolveAdminAccessAsync(supabase);

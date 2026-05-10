@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 
-import { readImageUploadBody, verifyPublicImageUrlAsync } from "@/features/media/storage-upload";
+import { readImageUploadBody } from "@/features/media/storage-upload";
+import { createSignedStagedMediaUrlAsync, mediaStagingBucketName } from "@/features/media/staged-media";
 import { supabase } from "@/lib/supabase";
 
 type UploadClubAnnouncementImageParams = {
@@ -9,11 +10,10 @@ type UploadClubAnnouncementImageParams = {
 };
 
 type UploadedClubAnnouncementImage = {
-  publicUrl: string;
-  storagePath: string;
+  previewUrl: string;
+  stagingPath: string;
 };
 
-const announcementMediaBucketId = "announcement-media";
 const supportedMediaTypes = ["image/jpeg", "image/png", "image/webp"] as const;
 
 type SupportedMediaType = (typeof supportedMediaTypes)[number];
@@ -46,10 +46,10 @@ const getExtension = (mimeType: SupportedMediaType): "jpg" | "png" | "webp" => {
   return "jpg";
 };
 
-const createStoragePath = (clubId: string, mimeType: SupportedMediaType): string => {
+const createStoragePath = (clubId: string, mimeType: SupportedMediaType, userId: string): string => {
   const extension = getExtension(mimeType);
 
-  return `clubs/${clubId}/announcements/announcement-${Date.now()}.${extension}`;
+  return `users/${userId}/announcements/clubs/${clubId}/announcement-${Date.now()}.${extension}`;
 };
 
 export const pickClubAnnouncementImageAsync = async (): Promise<ImagePicker.ImagePickerAsset | null> => {
@@ -79,30 +79,32 @@ export const uploadClubAnnouncementImageAsync = async ({
   clubId,
 }: UploadClubAnnouncementImageParams): Promise<UploadedClubAnnouncementImage> => {
   const mimeType = getMediaType(asset);
-  const storagePath = createStoragePath(clubId, mimeType);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError !== null || userData.user === null) {
+    throw new Error(userError?.message ?? "Sign in again before uploading an announcement image.");
+  }
+
+  const storagePath = createStoragePath(clubId, mimeType, userData.user.id);
   const uploadBody = await readImageUploadBody({
     base64: asset.base64 ?? null,
     context: `announcement image for club ${clubId}`,
     uri: asset.uri,
   });
-  const { error } = await supabase.storage.from(announcementMediaBucketId).upload(storagePath, uploadBody, {
-    cacheControl: "3600",
+  const { error } = await supabase.storage.from(mediaStagingBucketName).upload(storagePath, uploadBody, {
+    cacheControl: "31536000",
     contentType: mimeType,
     upsert: false,
   });
 
   if (error !== null) {
-    throw new Error(`Failed to upload announcement image for club ${clubId}: ${error.message}`);
+    throw new Error(`Failed to upload private announcement image for club ${clubId}: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(announcementMediaBucketId).getPublicUrl(storagePath);
-  await verifyPublicImageUrlAsync({
-    context: `announcement image for club ${clubId}`,
-    publicUrl: data.publicUrl,
-  });
+  const previewUrl = await createSignedStagedMediaUrlAsync(storagePath);
 
   return {
-    publicUrl: data.publicUrl,
-    storagePath,
+    previewUrl,
+    stagingPath: storagePath,
   };
 };

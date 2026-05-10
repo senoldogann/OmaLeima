@@ -20,7 +20,10 @@ const privilegedProfileRoles = [
 ] as const;
 
 const authUserSchema = z.object({
-  email: z.string().email().nullable(),
+  email: z.preprocess(
+    (value) => (typeof value === "string" && value.trim().length === 0 ? null : value),
+    z.string().email().nullable()
+  ),
   id: z.string().min(1),
 });
 

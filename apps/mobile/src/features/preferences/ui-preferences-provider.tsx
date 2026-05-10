@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
-import { StyleSheet, useColorScheme } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import { StyleSheet } from "react-native";
 
 import {
   darkMobileTheme,
@@ -15,8 +14,8 @@ import {
   type AppLanguage,
   type MobileCopy,
 } from "@/features/i18n/translations";
+import { deviceStorage } from "@/lib/device-storage";
 
-const THEME_MODE_KEY = "ui-theme-mode";
 const LANGUAGE_KEY = "ui-language";
 
 type UiPreferencesContextValue = {
@@ -34,27 +33,18 @@ const UiPreferencesContext = createContext<UiPreferencesContextValue | null>(nul
 const getDeviceLocale = (): string => Intl.DateTimeFormat().resolvedOptions().locale;
 
 export const UiPreferencesProvider = ({ children }: PropsWithChildren) => {
-  const systemColorScheme = useColorScheme();
-  const defaultThemeMode: MobileThemeMode = systemColorScheme === "light" ? "light" : "dark";
   const defaultLanguage = detectPreferredLanguage(getDeviceLocale());
-  const [themeMode, setThemeModeState] = useState<MobileThemeMode>(defaultThemeMode);
+  const [themeMode] = useState<MobileThemeMode>("dark");
   const [language, setLanguageState] = useState<AppLanguage>(defaultLanguage);
 
   useEffect(() => {
     let isActive = true;
 
     const loadPreferencesAsync = async (): Promise<void> => {
-      const [storedThemeMode, storedLanguage] = await Promise.all([
-        SecureStore.getItemAsync(THEME_MODE_KEY),
-        SecureStore.getItemAsync(LANGUAGE_KEY),
-      ]);
+      const storedLanguage = await deviceStorage.getItemAsync(LANGUAGE_KEY);
 
       if (!isActive) {
         return;
-      }
-
-      if (storedThemeMode === "light" || storedThemeMode === "dark") {
-        setThemeModeState(storedThemeMode);
       }
 
       if (storedLanguage === "fi" || storedLanguage === "en") {
@@ -69,14 +59,13 @@ export const UiPreferencesProvider = ({ children }: PropsWithChildren) => {
     };
   }, []);
 
-  const setThemeMode = async (mode: MobileThemeMode): Promise<void> => {
-    setThemeModeState(mode);
-    await SecureStore.setItemAsync(THEME_MODE_KEY, mode);
+  const setThemeMode = async (_mode: MobileThemeMode): Promise<void> => {
+    // Dark mode is fixed; this is kept for API compatibility.
   };
 
   const setLanguage = async (nextLanguage: AppLanguage): Promise<void> => {
     setLanguageState(nextLanguage);
-    await SecureStore.setItemAsync(LANGUAGE_KEY, nextLanguage);
+    await deviceStorage.setItemAsync(LANGUAGE_KEY, nextLanguage);
   };
 
   const value = useMemo<UiPreferencesContextValue>(

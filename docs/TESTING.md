@@ -10,15 +10,23 @@ This document defines the current local QA path for OmaLeima. Phase 6 is intenti
 
 The current smoke suite expects the Docker-backed local Supabase stack to be available for:
 
-- `supabase db reset`
+- current migrations applied with Supabase CLI `2.98.2`
 - deterministic seed data
 - direct SQL fixtures for RLS and admin route smokes
 
-Required baseline:
+Recommended baseline for this repository:
 
 ```bash
-supabase start
-supabase db reset --yes
+npx --yes supabase@2.98.2 start
+npx --yes supabase@2.98.2 migration up --local
+docker restart supabase_auth_omaleima
+docker exec -i supabase_db_omaleima psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/seed.sql
+```
+
+Use a clean reset only when you specifically need an isolated database rebuild and the local Supabase services bootstrap cleanly:
+
+```bash
+npx --yes supabase@2.98.2 db reset --yes
 ```
 
 ### Admin app
@@ -59,19 +67,20 @@ npm run qa:phase6-core
 
 Current core matrix:
 
-1. `supabase db reset`
+1. local Supabase schema and seed baseline
 2. `apps/admin` lint
 3. `apps/admin` typecheck
 4. `apps/admin` build
 5. `smoke:auth`
 6. `smoke:routes`
-7. `smoke:oversight`
-8. `smoke:department-tags`
-9. `smoke:club-events`
-10. `smoke:club-rewards`
-11. `smoke:club-claims`
-12. `smoke:club-department-tags`
-13. `smoke:rls-core`
+7. `smoke:dashboard-browser`
+8. `smoke:oversight`
+9. `smoke:department-tags`
+10. `smoke:club-events`
+11. `smoke:club-rewards`
+12. `smoke:club-claims`
+13. `smoke:club-department-tags`
+14. `smoke:rls-core`
 
 This matrix is the default local gate before adding new Phase 6 coverage.
 
@@ -143,7 +152,10 @@ These checks remain separate from the core matrix because they require extra run
 For routine work:
 
 ```bash
-supabase start
+npx --yes supabase@2.98.2 start
+npx --yes supabase@2.98.2 migration up --local
+docker restart supabase_auth_omaleima
+docker exec -i supabase_db_omaleima psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/seed.sql
 npm --prefix apps/admin run dev -- --hostname 127.0.0.1 --port 3001
 npm run qa:phase6-core
 ```
@@ -153,6 +165,12 @@ For admin review flows:
 ```bash
 supabase functions serve --env-file supabase/.env.local
 npm --prefix apps/admin run smoke:business-applications
+```
+
+For a credentialed browser check of dashboard navigation and locale switching:
+
+```bash
+ADMIN_APP_BASE_URL=http://localhost:3001 npm --prefix apps/admin run smoke:dashboard-browser
 ```
 
 For the first real browser click-path on admin review:
@@ -165,7 +183,7 @@ npm run qa:browser-admin-review
 
 `qa:browser-admin-review` currently does four things in order:
 
-1. `supabase db reset --yes`
+1. local Supabase schema and seed baseline
 2. `npm --prefix apps/admin run lint`
 3. `npm --prefix apps/admin run typecheck`
 4. `npm --prefix apps/admin run smoke:browser-admin-review`
@@ -255,21 +273,27 @@ Official Expo guidance is still that push notifications are not supported on And
 
 Recommended fallback order:
 
-1. run the existing repo wiring gate:
+1. run the repo-owned simulator gate. This runs static wiring checks and, when local Android/iOS tooling is available, the executable native launch smoke:
 
 ```bash
 npm run qa:mobile-native-simulator-smoke
 ```
 
-2. start the mobile app with Android support:
+2. run the direct executable native simulator smoke only when you want to repeat just the install/launch/crash portion:
+
+```bash
+npm --prefix apps/mobile run smoke:native-simulators
+```
+
+3. start the mobile app with Android support for credentialed manual flow checks:
 
 ```bash
 cd apps/mobile
 npx expo start --android
 ```
 
-3. use the emulator to verify business login, event, QR, and scanner flows
-4. keep Android remote push as an explicit open risk until a real Android phone is available
+4. use the emulator to verify business login, event, QR, and scanner flows
+5. keep Android remote push as an explicit open risk until a real Android phone is available
 
 Current readiness matrix:
 
@@ -296,16 +320,36 @@ This gate checks repo-owned broader-launch prerequisites only:
 - iOS bundle identifier and Android package name
 - store-facing build assets and splash/icon references
 - native policy fields like camera permission text and `ITSAppUsesNonExemptEncryption`
-- Expo notifications and EAS project wiring
-- explicit EAS build environments for development, preview, and production
-- required remote Expo EAS environment-variable names for development, preview, and production
+- Android store permission hygiene: `SYSTEM_ALERT_WINDOW` and `RECORD_AUDIO` blocked, and Android backup disabled
+- iOS privacy manifest source-of-truth for app-functional collected data types with tracking disabled
+- generated local iOS `PrivacyInfo.xcprivacy` alignment, iOS Always/background location hygiene, Expo Dev Launcher local-network plist hygiene, and stale iOS Pods path checks when the ignored `apps/mobile/ios` project is present; run `OMALEIMA_STORE_BUILD=1 npx expo prebuild --platform ios --no-install` and then `pod install` from `apps/mobile/ios` after privacy/config/dependency changes before local Xcode release builds
+- public privacy notice coverage for the mobile app, QR/leima/reward data, push tokens, scanner location proof, and account/data deletion requests
+- in-app Privacy and Terms links on login and signed-in profile/settings surfaces
+- in-app account/data deletion request initiation through the mobile support flow
+- public privacy-page web resource for account and associated data deletion requests
+- hosted active mobile login slides through the public Supabase API, including placeholder/test copy, Finnish/English localized copy, and HTTPS image URL hygiene
+- Expo notifications and native project wiring
+- explicit EAS build environments for development, preview, and production when using EAS
+- required remote Expo EAS environment-variable names for development, preview, and production when using EAS
+- local native release mode via `OMALEIMA_NATIVE_RELEASE_MODE=local` when EAS quota/subscription is unavailable
 - owner-facing store/public-launch checklist documentation
+
+For CI or offline script tests where the EAS CLI cannot read remote environment state, set `MOBILE_STORE_EAS_ENV_LIST_JSON` to a JSON array shaped like the EAS environment list output:
+
+```bash
+MOBILE_STORE_EAS_ENV_LIST_JSON='[{"name":"production","variables":[{"name":"EXPO_PUBLIC_SUPABASE_URL"},{"name":"EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"}]}]' \
+  npm --prefix apps/mobile run audit:store-release-readiness
+```
+
+Use this override only to simulate deterministic EAS input. For a final EAS store release gate, run the audit against the real EAS project state. If the release is intentionally local/manual, run `OMALEIMA_NATIVE_RELEASE_MODE=local npm --prefix apps/mobile run audit:store-release-readiness` and keep App Store Connect / Play Console upload evidence outside the repo.
 
 This gate does **not** prove App Store Connect or Google Play Console state. It also does **not** prove:
 
 - screenshots or listing copy
 - privacy-policy or support URLs configured in store consoles
 - Apple or Google account setup
+- Sign in with Apple or an equivalent privacy-preserving login option for iOS App Store submission while student primary login uses Google
+- the final Android target API level from a produced release AAB uploaded to Google Play Console
 - EAS Submit credentials or app IDs stored outside the repo
 
 ## Pilot operator hygiene readiness
@@ -475,6 +519,30 @@ This audit does not claim that a notification was really delivered on a device. 
 5. confirm the profile diagnostics modal records the received notification and, after opening it, the notification response
 6. confirm provider-owned diagnostics capture shows a remote source, not only local foreground notification activity
 
+## Mobile leima card save/share device readiness
+
+The student QR screen uses native modules for the shareable LEIMA card:
+
+- `expo-media-library`
+- `expo-sharing`
+- `react-native-view-shot`
+
+After adding or updating those dependencies, always create and install a fresh native development, preview, or store build before testing. Metro reload alone is not enough; an older dev client will not contain `ExpoMediaLibrary`, `ExpoSharing`, or `RNViewShot`.
+
+Manual physical-device smoke:
+
+1. Install the newest iOS or Android native build.
+2. Sign in as a student with an active registered event.
+3. Open `Oma QR` and confirm the QR face renders without a red screen.
+4. Try taking a screenshot while the QR face is visible; it should be blocked or hidden by the OS/app protection.
+5. Flip to the LEIMA card side and confirm the QR code is no longer visible.
+6. Take a screenshot of the LEIMA card side; this side may be capturable because it contains no QR token.
+7. Tap `Save image` / `Tallenna kuva`, grant photo permission, and confirm the image appears in Photos/Gallery.
+8. Repeat the save path after denying photo permission and confirm the app shows a clear error instead of false success.
+9. Tap `Share card` / `Jaa kortti` and confirm the native share sheet opens.
+10. Share to a real target such as Messages, WhatsApp, Instagram, or Files and confirm the shared image contains only the leima card, not the QR code or token.
+11. Flip back to QR and confirm a fresh QR is generated and scanner flow still works.
+
 ## Mobile hosted business scan readiness
 
 For the hosted one-device student-to-scanner smoke wiring:
@@ -516,7 +584,7 @@ For the pre-device simulator and emulator wiring gate:
 npm run qa:mobile-native-simulator-smoke
 ```
 
-This focused wrapper currently does seven things in order:
+This focused wrapper currently does static/repo checks and then the executable native simulator launch smoke in order:
 
 1. `bash -n apps/mobile/script/build_and_run.sh`
 2. `cd apps/mobile && ./script/build_and_run.sh --help`
@@ -525,22 +593,34 @@ This focused wrapper currently does seven things in order:
 5. `npm --prefix apps/mobile run export:web`
 6. `npm --prefix apps/mobile run audit:native-push-device-readiness`
 7. `npm --prefix apps/mobile run audit:native-simulator-smoke`
+8. `npm --prefix apps/mobile run smoke:native-simulators`
 
-The audit is intentionally read-only. It verifies the repository now exposes a stable local run path before the final physical-device push check:
+The audit verifies that the repository exposes both a stable local run path and an executable launch-smoke path before the final physical-device push check:
 
 - `apps/mobile/script/build_and_run.sh` supports `--ios`, `--android`, `--dev-client`, `--web`, `--doctor`, and `--export-web`
+- `apps/mobile/scripts/smoke-native-simulators.mjs` can run Android emulator and iOS simulator launch smoke
 - `apps/mobile/.codex/environments/environment.toml` exposes matching Codex actions
 - the existing native push diagnostics audit is still present
 - docs stay explicit that simulator or emulator smoke does not prove real APNs or FCM-backed delivery
+
+When local Android SDK and Xcode simulator tooling are available, the wrapper above runs the executable smoke. To repeat only that heavy launch portion, run:
+
+```bash
+npm --prefix apps/mobile run smoke:native-simulators
+```
+
+That command builds and launches the release app on Android emulator and iOS simulator, captures launch screenshots/log artifacts under `/tmp/omaleima-native-smoke`, and fails on crash markers or missing startup UI markers where the platform exposes them.
 
 Expected success output today:
 
 - `native-simulator-wiring:repo-wired`
 - `codex-run-actions:present`
 - `dev-client-entrypoint:present`
+- `native-launch-smoke:scripted`
 - `docs:aligned`
+- `native-simulator-smoke:passed`
 
-This gate does not prove a successful native launch on an actual simulator or emulator, and it does not prove remote push delivery. It only proves the repo wiring and entrypoint surface are in place so the final human-driven device step is smaller.
+This gate still does not prove remote push delivery. The executable smoke improves launch/crash confidence on simulators, while APNs/FCM delivery and camera behavior remain physical-device checks.
 
 ## Reward-unlocked remote push smoke
 

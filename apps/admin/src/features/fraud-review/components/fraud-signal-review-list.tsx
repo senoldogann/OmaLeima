@@ -14,6 +14,7 @@ import type {
   FraudSignalActionState,
   FraudSignalResolutionStatus,
 } from "@/features/fraud-review/types";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 
 type FraudSignalReviewListProps = {
   emptyText: string;
@@ -49,10 +50,10 @@ const copyByLocale: Record<DashboardLocale, FraudReviewCopy> = {
     confirmIssue: "Vahvista ongelma",
     created: "Luotu",
     dismiss: "Hylkää",
-    noLinkedContext: "Ei liitettyä tapahtumaa, yritystä tai scanneria",
-    noteLabel: "Ratkaisumuistio",
-    notePlaceholder: "Valinnainen sisäinen huomio audit trailia varten",
-    requestError: "Tuntematon fraud-tarkistuksen virhe.",
+    noLinkedContext: "Ei liitettyä tapahtumaa, yritystä tai skanneria",
+    noteLabel: "Huomio",
+    notePlaceholder: "Valinnainen sisäinen huomio valvontahistoriaa varten",
+    requestError: "Tuntematon väärinkäyttötarkistuksen virhe.",
     reviewed: "Merkitse tarkistetuksi",
     saving: "Tallennetaan...",
   },
@@ -94,6 +95,21 @@ export const FraudSignalReviewList = ({ emptyText, locale, signals }: FraudSigna
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
   const [pendingStatus, setPendingStatus] = useState<FraudSignalResolutionStatus | null>(null);
   const isPending = pendingSignalId !== null;
+  const successStateKey = Object.entries(statesById)
+    .filter(([, state]) => state.tone === "success")
+    .map(([signalId, state]) => `${signalId}:${state.message ?? ""}`)
+    .join("|");
+
+  useTransientSuccessKey(
+    successStateKey.length > 0 ? successStateKey : null,
+    () =>
+      setStatesById((currentStates) =>
+        Object.fromEntries(
+          Object.entries(currentStates).filter(([, state]) => state.tone !== "success")
+        )
+      ),
+    successNoticeDurationMs
+  );
 
   const handleNoteChange = (signalId: string, value: string): void => {
     setNotesById((current) => ({

@@ -9,6 +9,7 @@ export const SignOutButton = () => {
   const router = useRouter();
   const [isPending, setIsPending] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [confirmPending, setConfirmPending] = useState<boolean>(false);
 
   const handleSignOut = async (): Promise<void> => {
     setIsPending(true);
@@ -35,10 +36,39 @@ export const SignOutButton = () => {
 
   return (
     <div className="stack-sm">
-      <button className="button button-secondary" disabled={isPending} onClick={() => void handleSignOut()} type="button">
-        {isPending ? "Signing out..." : "Sign out"}
-      </button>
-      {errorMessage !== null ? <p className="inline-error">{errorMessage}</p> : null}
+      {!confirmPending ? (
+        <button
+          className="button button-ghost sign-out-btn"
+          disabled={isPending}
+          onClick={() => setConfirmPending(true)}
+          type="button"
+        >
+          Sign out
+        </button>
+      ) : (
+        <div className="sign-out-confirm">
+          <p className="muted-text sign-out-confirm-label">Kirjaudutaanko ulos?</p>
+          <div className="sign-out-confirm-row">
+            <button
+              className="button button-danger"
+              disabled={isPending}
+              onClick={() => void handleSignOut()}
+              type="button"
+            >
+              {isPending ? "Kirjaudutaan ulos..." : "Kyllä, kirjaudu ulos"}
+            </button>
+            <button
+              className="button button-secondary"
+              disabled={isPending}
+              onClick={() => setConfirmPending(false)}
+              type="button"
+            >
+              Peruuta
+            </button>
+          </div>
+          {errorMessage !== null ? <p className="inline-error">{errorMessage}</p> : null}
+        </div>
+      )}
     </div>
   );
 };

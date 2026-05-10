@@ -47,6 +47,7 @@ type AuthedClient = {
 
 type CookieBackedClient = {
   email: string;
+  readCsrfToken: () => string;
   supabase: ReturnType<typeof createBrowserClient>;
   syncCookiesFromResponse: (response: Response) => void;
   toCookieHeader: () => string;
@@ -68,6 +69,15 @@ type DepartmentTagSmokeArtifacts = {
 type ClubDepartmentTagCreatePayload = {
   clubId: string;
   title: string;
+};
+
+type ClubDepartmentTagUpdatePayload = {
+  departmentTagId: string;
+  title: string;
+};
+
+type ClubDepartmentTagDeletePayload = {
+  departmentTagId: string;
 };
 
 const createStatelessClient = () =>
@@ -147,8 +157,24 @@ const createCookieBackedClientAsync = async (email: string, password: string): P
     throw new Error(`Failed to sign in ${email} for club department-tag route smoke: ${signInResult.error.message}`);
   }
 
+  const seedCsrfResponse = await fetch(`${appBaseUrl}/club/department-tags`, {
+    headers: {
+      Cookie: Array.from(cookieJar.entries())
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; "),
+    },
+    method: "GET",
+    redirect: "manual",
+  });
+  syncCookiesFromResponse(seedCsrfResponse);
+
+  if (!cookieJar.has("omaleima_dashboard_csrf")) {
+    cookieJar.set("omaleima_dashboard_csrf", randomUUID());
+  }
+
   return {
     email,
+    readCsrfToken: () => cookieJar.get("omaleima_dashboard_csrf") ?? "",
     supabase,
     syncCookiesFromResponse,
     toCookieHeader: () =>
@@ -429,6 +455,54 @@ const invokeCreateRouteAsync = async (
     headers: {
       Cookie: client.toCookieHeader(),
       "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
+    },
+    method: "POST",
+  });
+  client.syncCookiesFromResponse(response);
+  const responseBody = (await response.json()) as DepartmentTagMutationResponse;
+
+  return {
+    responseBody,
+    status: response.status,
+  };
+};
+
+const invokeUpdateRouteAsync = async (
+  client: CookieBackedClient,
+  body: Partial<ClubDepartmentTagUpdatePayload>
+): Promise<{ responseBody: DepartmentTagMutationResponse; status: number }> => {
+  const response = await fetch(`${appBaseUrl}/api/club/department-tags/update`, {
+    body: JSON.stringify(body),
+    headers: {
+      Cookie: client.toCookieHeader(),
+      "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
+    },
+    method: "POST",
+  });
+  client.syncCookiesFromResponse(response);
+  const responseBody = (await response.json()) as DepartmentTagMutationResponse;
+
+  return {
+    responseBody,
+    status: response.status,
+  };
+};
+
+const invokeDeleteRouteAsync = async (
+  client: CookieBackedClient,
+  body: Partial<ClubDepartmentTagDeletePayload>
+): Promise<{ responseBody: DepartmentTagMutationResponse; status: number }> => {
+  const response = await fetch(`${appBaseUrl}/api/club/department-tags/delete`, {
+    body: JSON.stringify(body),
+    headers: {
+      Cookie: client.toCookieHeader(),
+      "Content-Type": "application/json",
+      Origin: appBaseUrl,
+      "x-omaleima-csrf": client.readCsrfToken(),
     },
     method: "POST",
   });
@@ -456,6 +530,66 @@ const fetchDepartmentTagsByTitleAsync = async (
   }
 
   return data;
+};
+
+const fetchDepartmentTagByIdAsync = async (
+  client: AuthedClient,
+  departmentTagId: string
+): Promise<DepartmentTagRow | null> => {
+  const { data, error } = await client.supabase
+    .from("department_tags")
+    .select("id,title,slug,university_name,city,source_type,source_club_id,created_by,status")
+    .eq("id", departmentTagId)
+    .maybeSingle<DepartmentTagRow>();
+
+  if (error !== null) {
+    throw new Error(`Failed to read department tag ${departmentTagId}: ${error.message}`);
+  }
+
+  return data;
+};
+
+const assertOrganizerDirectUpdateBlockedAsync = async (
+  client: AuthedClient,
+  departmentTagId: string,
+  expectedTitle: string
+): Promise<void> => {
+  const { error } = await client.supabase
+    .from("department_tags")
+    .update({
+      title: "Organizer Direct Update Should Fail",
+    })
+    .eq("id", departmentTagId);
+
+  if (error !== null) {
+    return;
+  }
+
+  const row = await fetchDepartmentTagByIdAsync(client, departmentTagId);
+
+  if (row === null || row.title !== expectedTitle) {
+    throw new Error("Expected organizer direct official department tag update to be blocked by RLS.");
+  }
+};
+
+const assertOrganizerDirectDeleteBlockedAsync = async (
+  client: AuthedClient,
+  departmentTagId: string
+): Promise<void> => {
+  const { error } = await client.supabase
+    .from("department_tags")
+    .delete()
+    .eq("id", departmentTagId);
+
+  if (error !== null) {
+    return;
+  }
+
+  const row = await fetchDepartmentTagByIdAsync(client, departmentTagId);
+
+  if (row === null) {
+    throw new Error("Expected organizer direct official department tag delete to be blocked by RLS.");
+  }
 };
 
 const cleanupSmokeArtifactsAsync = async (artifacts: DepartmentTagSmokeArtifacts): Promise<void> => {
@@ -564,7 +698,6 @@ const run = async (): Promise<void> => {
     outputs.push("student-custom-insert:ok");
 
     await assertDepartmentTagsPageContainsAsync(organizerRouteClient, [
-      "Publish official tag",
       artifacts.secondClubName,
     ]);
     outputs.push("organizer-route:ok");
@@ -595,7 +728,7 @@ const run = async (): Promise<void> => {
 
     if (createPrimaryClubResult.status !== 200 || createPrimaryClubResult.responseBody.status !== "SUCCESS") {
       throw new Error(
-        `Expected organizer department tag create to succeed, got ${createPrimaryClubResult.status} ${createPrimaryClubResult.responseBody.status ?? "null"}.`
+        `Expected organizer department tag create to succeed, got ${createPrimaryClubResult.status} ${createPrimaryClubResult.responseBody.status ?? "null"}. Message: ${createPrimaryClubResult.responseBody.message ?? "none"}`
       );
     }
 
@@ -654,6 +787,90 @@ const run = async (): Promise<void> => {
     }
 
     outputs.push(`duplicate-route:${duplicateResult.responseBody.status}`);
+
+    await assertOrganizerDirectUpdateBlockedAsync(organizerClient, createdPrimaryRow.id, sharedTitle);
+    outputs.push("organizer-direct-update:rls-blocked");
+
+    await assertOrganizerDirectDeleteBlockedAsync(organizerClient, createdSecondRow.id);
+    outputs.push("organizer-direct-delete:rls-blocked");
+
+    const updatedTitle = `Updated Official Study Label ${suffix}`;
+    const updateResult = await invokeUpdateRouteAsync(organizerRouteClient, {
+      departmentTagId: createdPrimaryRow.id,
+      title: updatedTitle,
+    });
+
+    if (updateResult.status !== 200 || updateResult.responseBody.status !== "SUCCESS") {
+      throw new Error(
+        `Expected organizer department tag update to succeed, got ${updateResult.status} ${updateResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    const updatedPrimaryRow = await fetchDepartmentTagByIdAsync(organizerClient, createdPrimaryRow.id);
+
+    if (updatedPrimaryRow === null || updatedPrimaryRow.title !== updatedTitle || updatedPrimaryRow.status !== "ACTIVE") {
+      throw new Error("Expected organizer department tag update route to persist the edited title.");
+    }
+
+    outputs.push(`update-route:${updateResult.responseBody.status}`);
+
+    const duplicateUpdateSeedResult = await invokeCreateRouteAsync(organizerRouteClient, {
+      clubId: seededClubId,
+      title: `Duplicate Update Seed ${suffix}`,
+    });
+
+    if (duplicateUpdateSeedResult.status !== 200 || duplicateUpdateSeedResult.responseBody.status !== "SUCCESS") {
+      throw new Error(
+        `Expected duplicate-update seed tag create to succeed, got ${duplicateUpdateSeedResult.status} ${duplicateUpdateSeedResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    const duplicateUpdateSeedRows = await fetchDepartmentTagsByTitleAsync(
+      organizerClient,
+      `Duplicate Update Seed ${suffix}`
+    );
+    const duplicateUpdateSeedRow =
+      duplicateUpdateSeedRows.find((row) => row.source_club_id === seededClubId) ?? null;
+
+    if (duplicateUpdateSeedRow === null) {
+      throw new Error("Expected duplicate-update seed official tag for the seeded club to be readable.");
+    }
+
+    artifacts.createdDepartmentTagIds.push(duplicateUpdateSeedRow.id);
+
+    const duplicateUpdateResult = await invokeUpdateRouteAsync(organizerRouteClient, {
+      departmentTagId: duplicateUpdateSeedRow.id,
+      title: updatedTitle,
+    });
+
+    if (
+      duplicateUpdateResult.status !== 200 ||
+      duplicateUpdateResult.responseBody.status !== "DEPARTMENT_TAG_ALREADY_EXISTS"
+    ) {
+      throw new Error(
+        `Expected duplicate department tag update to return DEPARTMENT_TAG_ALREADY_EXISTS, got ${duplicateUpdateResult.status} ${duplicateUpdateResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    outputs.push(`duplicate-update:${duplicateUpdateResult.responseBody.status}`);
+
+    const deleteResult = await invokeDeleteRouteAsync(organizerRouteClient, {
+      departmentTagId: createdPrimaryRow.id,
+    });
+
+    if (deleteResult.status !== 200 || deleteResult.responseBody.status !== "SUCCESS") {
+      throw new Error(
+        `Expected organizer department tag delete to succeed, got ${deleteResult.status} ${deleteResult.responseBody.status ?? "null"}.`
+      );
+    }
+
+    const deletedPrimaryRow = await fetchDepartmentTagByIdAsync(organizerClient, createdPrimaryRow.id);
+
+    if (deletedPrimaryRow !== null) {
+      throw new Error("Expected organizer department tag delete route to remove the official tag.");
+    }
+
+    outputs.push(`delete-route:${deleteResult.responseBody.status}`);
 
     const invalidClubResult = await invokeCreateRouteAsync(organizerRouteClient, {
       clubId: "not-a-uuid",

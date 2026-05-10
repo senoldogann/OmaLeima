@@ -5,25 +5,35 @@ import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { pickClubMediaAsync, uploadClubMediaAsync, type ClubMediaKind } from "@/features/club/club-media";
 import { useUpdateClubProfileMutation } from "@/features/club/club-profile";
 import type { ClubMembershipSummary } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, getFallbackCoverSource } from "@/features/events/event-visuals";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
+import { LegalLinksModal } from "@/features/legal/legal-links-card";
+import { LanguageDropdown } from "@/features/preferences/language-dropdown";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { PushNotificationSetupCard } from "@/features/push/push-notification-setup-card";
 import { SupportRequestSheet } from "@/features/support/components/support-request-sheet";
 import type { ClubSupportOption } from "@/features/support/types";
 import { useSession } from "@/providers/session-provider";
 
-type PreferenceSheet = "language" | "theme" | null;
+type PreferenceSheet = "language" | null;
 
 type ClubProfileDraft = {
+  address: string;
   announcement: string;
   clubId: string;
   contactEmail: string;
   coverImageUrl: string;
+  instagramUrl: string;
   logoUrl: string;
+  phone: string;
+  websiteUrl: string;
 };
 
 const mapClubSupportOptions = (memberships: ClubMembershipSummary[]): ClubSupportOption[] =>
@@ -35,11 +45,15 @@ const mapClubSupportOptions = (memberships: ClubMembershipSummary[]): ClubSuppor
   }));
 
 const createDraftFromMembership = (membership: ClubMembershipSummary | null): ClubProfileDraft => ({
+  address: membership?.address ?? "",
   announcement: membership?.announcement ?? "",
   clubId: membership?.clubId ?? "",
   contactEmail: membership?.contactEmail ?? "",
   coverImageUrl: membership?.coverImageUrl ?? "",
+  instagramUrl: membership?.instagramUrl ?? "",
   logoUrl: membership?.logoUrl ?? "",
+  phone: membership?.phone ?? "",
+  websiteUrl: membership?.websiteUrl ?? "",
 });
 
 const isValidOptionalEmail = (value: string): boolean => {
@@ -52,21 +66,32 @@ const isValidOptionalEmail = (value: string): boolean => {
 
 const normalizeClubDraft = (draft: ClubProfileDraft): ClubProfileDraft => ({
   ...draft,
+  address: draft.address.trim(),
   contactEmail: draft.contactEmail.trim(),
+  instagramUrl: draft.instagramUrl.trim(),
+  phone: draft.phone.trim(),
+  websiteUrl: draft.websiteUrl.trim(),
 });
 
 export default function ClubProfileScreen() {
-  const { copy, language, setLanguage, setThemeMode, theme, themeMode } = useUiPreferences();
+  const { copy, language, setLanguage, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const [preferenceSheet, setPreferenceSheet] = useState<PreferenceSheet>(null);
   const [isSupportVisible, setIsSupportVisible] = useState<boolean>(false);
+  const [isLegalLinksVisible, setIsLegalLinksVisible] = useState<boolean>(false);
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [clubDraft, setClubDraft] = useState<ClubProfileDraft>(() => createDraftFromMembership(null));
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [uploadingMediaKind, setUploadingMediaKind] = useState<ClubMediaKind | null>(null);
   const updateClubProfileMutation = useUpdateClubProfileMutation();
+
+  useTransientSuccessKey(
+    updateClubProfileMutation.data ? "club-profile-saved" : null,
+    () => updateClubProfileMutation.reset(),
+    successNoticeDurationMs
+  );
   const dashboardQuery = useClubDashboardQuery({
     userId: userId ?? "",
     isEnabled: userId !== null,
@@ -84,11 +109,9 @@ export default function ClubProfileScreen() {
   const isContactEmailValid = isValidOptionalEmail(normalizedContactEmail);
   const clubProfileValidationMessage = !isContactEmailValid
     ? language === "fi"
-      ? "Anna kelvollinen sahkopostiosoite tai jata kentta tyhjaksi."
+      ? "Anna kelvollinen sähköpostiosoite tai jätä kenttä tyhjäksi."
       : "Enter a valid email address or leave the field empty."
     : null;
-  const selectedThemeLabel = themeMode === "dark" ? copy.common.darkMode : copy.common.lightMode;
-  const selectedLanguageLabel = language === "fi" ? copy.common.finnish : copy.common.english;
 
   useEffect(() => {
     if (selectedClub === null) {
@@ -132,7 +155,7 @@ export default function ClubProfileScreen() {
         userId,
       });
     } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "Unknown club media upload error.");
+      setMediaError(createUserSafeErrorMessage(error, language, "clubMedia"));
     } finally {
       setUploadingMediaKind(null);
     }
@@ -162,7 +185,7 @@ export default function ClubProfileScreen() {
         {dashboardQuery.isLoading ? (
           <Text style={styles.bodyText}>{language === "fi" ? "Ladataan..." : "Loading..."}</Text>
         ) : null}
-        {dashboardQuery.error ? <Text style={styles.errorText}>{dashboardQuery.error.message}</Text> : null}
+        {dashboardQuery.error ? <Text style={styles.errorText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text> : null}
         {!dashboardQuery.isLoading && !dashboardQuery.error ? (
           <View style={styles.clubEditorStack}>
             {memberships.length > 1 ? (
@@ -267,6 +290,63 @@ export default function ClubProfileScreen() {
               />
             </View>
 
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>{language === "fi" ? "Puhelin" : "Phone"}</Text>
+              <TextInput
+                keyboardType="phone-pad"
+                onChangeText={(phone) =>
+                  setClubDraft((currentDraft) => ({ ...currentDraft, phone }))
+                }
+                placeholder={language === "fi" ? "+358 ..." : "+358 ..."}
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.input}
+                value={clubDraft.phone}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>{language === "fi" ? "Osoite" : "Address"}</Text>
+              <TextInput
+                onChangeText={(address) =>
+                  setClubDraft((currentDraft) => ({ ...currentDraft, address }))
+                }
+                placeholder={language === "fi" ? "Katuosoite tai toimiston osoite" : "Street or office address"}
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.input}
+                value={clubDraft.address}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>{language === "fi" ? "Verkkosivu" : "Website"}</Text>
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="url"
+                onChangeText={(websiteUrl) =>
+                  setClubDraft((currentDraft) => ({ ...currentDraft, websiteUrl }))
+                }
+                placeholder="https://..."
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.input}
+                value={clubDraft.websiteUrl}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Instagram</Text>
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="url"
+                onChangeText={(instagramUrl) =>
+                  setClubDraft((currentDraft) => ({ ...currentDraft, instagramUrl }))
+                }
+                placeholder="https://instagram.com/..."
+                placeholderTextColor={theme.colors.textDim}
+                style={styles.input}
+                value={clubDraft.instagramUrl}
+              />
+            </View>
+
             <Pressable
               disabled={
                 updateClubProfileMutation.isPending ||
@@ -292,7 +372,7 @@ export default function ClubProfileScreen() {
               <Text style={styles.errorText}>{clubProfileValidationMessage}</Text>
             ) : null}
             {updateClubProfileMutation.error ? (
-              <Text style={styles.errorText}>{updateClubProfileMutation.error.message}</Text>
+              <Text style={styles.errorText}>{createUserSafeErrorMessage(updateClubProfileMutation.error, language, "clubDashboard")}</Text>
             ) : null}
             {updateClubProfileMutation.data ? (
               <Text style={styles.successText}>{language === "fi" ? "Tallennettu." : "Saved."}</Text>
@@ -303,29 +383,11 @@ export default function ClubProfileScreen() {
 
       <InfoCard eyebrow={language === "fi" ? "Asetukset" : "Preferences"} title={language === "fi" ? "Valinnat" : "Settings"}>
         <View style={styles.preferenceSection}>
-          <Pressable onPress={() => setPreferenceSheet("theme")} style={styles.preferenceRow}>
-            <View style={styles.preferenceIconWrap}>
-              <AppIcon color={theme.colors.lime} name="palette" size={16} />
-            </View>
-            <Text style={styles.preferenceTitle}>{copy.common.theme}</Text>
-            <View style={styles.preferenceValue}>
-              <Text style={styles.preferenceValueText}>{selectedThemeLabel}</Text>
-              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-            </View>
-          </Pressable>
+          <LanguageDropdown language={language} onLanguageChange={setLanguage} />
 
           <View style={styles.preferenceDivider} />
 
-          <Pressable onPress={() => setPreferenceSheet("language")} style={styles.preferenceRow}>
-            <View style={styles.preferenceIconWrap}>
-              <AppIcon color={theme.colors.lime} name="globe" size={16} />
-            </View>
-            <Text style={styles.preferenceTitle}>{copy.common.language}</Text>
-            <View style={styles.preferenceValue}>
-              <Text style={styles.preferenceValueText}>{selectedLanguageLabel}</Text>
-              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={16} />
-            </View>
-          </Pressable>
+          <PushNotificationSetupCard context="club" />
 
           <View style={styles.preferenceDivider} />
 
@@ -341,8 +403,31 @@ export default function ClubProfileScreen() {
           </Pressable>
 
           <View style={styles.preferenceDivider} />
+
+          <Pressable onPress={() => setIsLegalLinksVisible(true)} style={styles.preferenceRow}>
+            <View style={styles.preferenceIconWrap}>
+              <AppIcon color={theme.colors.lime} name="info" size={16} />
+            </View>
+            <Text style={styles.preferenceTitle}>
+              {language === "fi" ? "Tietosuoja ja käyttöehdot" : "Privacy and terms"}
+            </Text>
+            <View style={styles.preferenceValue}>
+              <Text style={styles.preferenceValueText}>{copy.common.open}</Text>
+              <AppIcon color={theme.colors.textMuted} name="chevron-right" size={16} />
+            </View>
+          </Pressable>
+
+          <View style={styles.preferenceDivider} />
+
+          <SignOutButton />
         </View>
       </InfoCard>
+
+      <LegalLinksModal
+        isVisible={isLegalLinksVisible}
+        language={language}
+        onClose={() => setIsLegalLinksVisible(false)}
+      />
 
       <Modal
         animationType="fade"
@@ -355,9 +440,7 @@ export default function ClubProfileScreen() {
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalEyebrow}>{language === "fi" ? "Asetus" : "Setting"}</Text>
-                <Text style={styles.modalTitle}>
-                  {preferenceSheet === "theme" ? copy.common.theme : copy.common.language}
-                </Text>
+                <Text style={styles.modalTitle}>{copy.common.language}</Text>
               </View>
               <Pressable onPress={() => setPreferenceSheet(null)} style={styles.modalCloseButton}>
                 <Text style={styles.modalCloseText}>{language === "fi" ? "Valmis" : "Done"}</Text>
@@ -365,49 +448,26 @@ export default function ClubProfileScreen() {
             </View>
 
             <View style={styles.preferenceOptionList}>
-              {preferenceSheet === "theme" ? (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("dark");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "dark" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.darkMode}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setThemeMode("light");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, themeMode === "light" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.lightMode}</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("fi");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void setLanguage("en");
-                      setPreferenceSheet(null);
-                    }}
-                    style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
-                  >
-                    <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
-                  </Pressable>
-                </>
-              )}
+              <>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("fi");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "fi" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.finnish}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    void setLanguage("en");
+                    setPreferenceSheet(null);
+                  }}
+                  style={[styles.preferenceOption, language === "en" ? styles.preferenceOptionActive : null]}
+                >
+                  <Text style={styles.preferenceOptionTitle}>{copy.common.english}</Text>
+                </Pressable>
+              </>
             </View>
           </Pressable>
         </Pressable>

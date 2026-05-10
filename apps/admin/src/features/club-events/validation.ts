@@ -50,6 +50,32 @@ export const parseIsoDateTimeOrThrow = (value: string, fieldName: string): strin
   return parsedDate.toISOString();
 };
 
+const parseOptionalHttpUrlOrThrow = (value: string, fieldName: string): string | null => {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    return null;
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(trimmedValue);
+  } catch {
+    throw new ClubEventValidationError(`${fieldName} must be a valid absolute URL.`);
+  }
+
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw new ClubEventValidationError(`${fieldName} must use http or https.`);
+  }
+
+  if (trimmedValue.length > 500) {
+    throw new ClubEventValidationError(`${fieldName} must be 500 characters or shorter.`);
+  }
+
+  return trimmedValue;
+};
+
 export const parseRulesJsonOrThrow = (value: string): EventRules => {
   if (value.trim().length === 0) {
     return {};
@@ -137,11 +163,13 @@ export const parseClubEventCreationPayloadOrThrow = (
     typeof body.endAt !== "string" ||
     typeof body.joinDeadlineAt !== "string" ||
     typeof body.description !== "string" ||
+    typeof body.coverImageStagingPath !== "string" ||
     typeof body.country !== "string" ||
     typeof body.coverImageUrl !== "string" ||
     typeof body.maxParticipants !== "string" ||
     typeof body.minimumStampsRequired !== "string" ||
-    typeof body.rulesJson !== "string"
+    typeof body.rulesJson !== "string" ||
+    typeof body.ticketUrl !== "string"
   ) {
     throw new ClubEventValidationError("event creation payload is incomplete.");
   }
@@ -156,10 +184,15 @@ export const parseClubEventCreationPayloadOrThrow = (
     throw new ClubEventValidationError("minimumStampsRequired is required.");
   }
 
+  if (body.coverImageUrl.trim().length > 0 && body.coverImageStagingPath.trim().length === 0) {
+    throw new ClubEventValidationError("draft event coverImageUrl must be empty.");
+  }
+
   return {
     city: body.city,
     clubId: body.clubId,
     country: body.country,
+    coverImageStagingPath: body.coverImageStagingPath,
     coverImageUrl: body.coverImageUrl,
     description: body.description,
     endAt: body.endAt,
@@ -172,6 +205,7 @@ export const parseClubEventCreationPayloadOrThrow = (
     parsedRules: parseRulesJsonOrThrow(body.rulesJson),
     rulesJson: body.rulesJson,
     startAt: body.startAt,
+    ticketUrl: parseOptionalHttpUrlOrThrow(body.ticketUrl, "ticketUrl") ?? "",
     visibility: body.visibility,
   };
 };
@@ -210,10 +244,12 @@ const parseSharedEditableEventFieldsOrThrow = (
     typeof body.endAt !== "string" ||
     typeof body.joinDeadlineAt !== "string" ||
     typeof body.description !== "string" ||
+    typeof body.coverImageStagingPath !== "string" ||
     typeof body.coverImageUrl !== "string" ||
     typeof body.maxParticipants !== "string" ||
     typeof body.minimumStampsRequired !== "string" ||
-    typeof body.rulesJson !== "string"
+    typeof body.rulesJson !== "string" ||
+    typeof body.ticketUrl !== "string"
   ) {
     throw new ClubEventValidationError("event update payload is incomplete.");
   }
@@ -228,8 +264,17 @@ const parseSharedEditableEventFieldsOrThrow = (
     throw new ClubEventValidationError("minimumStampsRequired is required.");
   }
 
+  if (
+    body.status === "DRAFT" &&
+    body.coverImageUrl.trim().length > 0 &&
+    body.coverImageStagingPath.trim().length === 0
+  ) {
+    throw new ClubEventValidationError("draft event coverImageUrl must be empty.");
+  }
+
   return {
     city: body.city,
+    coverImageStagingPath: body.coverImageStagingPath,
     coverImageUrl: body.coverImageUrl,
     description: body.description,
     endAt: body.endAt,
@@ -243,6 +288,7 @@ const parseSharedEditableEventFieldsOrThrow = (
     rulesJson: body.rulesJson,
     startAt: body.startAt,
     status: body.status,
+    ticketUrl: parseOptionalHttpUrlOrThrow(body.ticketUrl, "ticketUrl") ?? "",
     visibility: body.visibility,
   };
 };

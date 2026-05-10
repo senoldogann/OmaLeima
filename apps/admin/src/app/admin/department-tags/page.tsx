@@ -1,4 +1,4 @@
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
 import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
 import { adminDashboardNavigationItems } from "@/features/dashboard/sections";
@@ -9,7 +9,7 @@ import { createServerComponentClient } from "@/lib/supabase/server";
 export default async function AdminDepartmentTagsPage() {
   const supabase = await createServerComponentClient();
   const [access, snapshot, locale] = await Promise.all([
-    resolveAdminAccessAsync(supabase),
+    resolveCurrentAdminAccessAsync(),
     fetchDepartmentTagModerationSnapshotAsync(supabase),
     getDashboardLocaleAsync(),
   ]);

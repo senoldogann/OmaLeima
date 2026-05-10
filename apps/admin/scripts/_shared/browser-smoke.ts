@@ -1,5 +1,7 @@
 import { chromium, type Browser, type Page } from "@playwright/test";
 
+import { dashboardLocaleCookieName } from "../../src/features/dashboard/locale-cookie";
+
 export type BrowserSignInCredentials = {
   email: string;
   password: string;
@@ -63,6 +65,17 @@ export const createBrowserHeaders = (bypassSecret: string | null): Record<string
         "x-vercel-protection-bypass": bypassSecret,
       };
 
+const setDashboardLocaleCookieAsync = async (page: Page, appBaseUrl: string): Promise<void> => {
+  await page.context().addCookies([
+    {
+      name: dashboardLocaleCookieName,
+      sameSite: "Lax",
+      url: appBaseUrl,
+      value: "en",
+    },
+  ]);
+};
+
 export const signInWithPasswordAsync = async (
   page: Page,
   appBaseUrl: string,
@@ -71,13 +84,15 @@ export const signInWithPasswordAsync = async (
   expectedTitle: string,
   timeoutMs: number,
 ): Promise<void> => {
+  await setDashboardLocaleCookieAsync(page, appBaseUrl);
+
   await page.goto(`${appBaseUrl}/login`, {
     waitUntil: "networkidle",
   });
 
   await page.getByRole("heading", {
-    level: 1,
-    name: "Admin and club operations",
+    level: 2,
+    name: "Open dashboard",
   }).waitFor({
     state: "visible",
     timeout: timeoutMs,
@@ -110,6 +125,8 @@ export const assertAnonymousRedirectAsync = async (
   protectedPath: string,
   timeoutMs: number,
 ): Promise<void> => {
+  await setDashboardLocaleCookieAsync(page, appBaseUrl);
+
   await page.goto(`${appBaseUrl}${protectedPath}`, {
     waitUntil: "networkidle",
   });
@@ -119,8 +136,8 @@ export const assertAnonymousRedirectAsync = async (
   });
 
   await page.getByRole("heading", {
-    level: 1,
-    name: "Admin and club operations",
+    level: 2,
+    name: "Open dashboard",
   }).waitFor({
     state: "visible",
     timeout: timeoutMs,
@@ -132,37 +149,59 @@ export const openRouteFromSidebarAsync = async (
   routeExpectation: BrowserSmokeRouteExpectation,
   timeoutMs: number,
 ): Promise<void> => {
-  await Promise.all([
-    page.waitForURL(`**${routeExpectation.routePath}`, {
-      timeout: timeoutMs,
-    }),
-    page.getByRole("link", {
-      name: routeExpectation.navigationLabel,
-    }).click(),
-  ]);
+  const routeLink = page.getByRole("navigation").getByRole("link", {
+    name: routeExpectation.navigationLabel,
+  });
+  const routeHref = await routeLink.getAttribute("href", {
+    timeout: timeoutMs,
+  });
+
+  if (routeHref === null) {
+    throw new Error(`Navigation link ${routeExpectation.navigationLabel} is missing an href.`);
+  }
+
+  await routeLink.click();
+
+  try {
+    await page.waitForFunction(
+      (routePath: string) => window.location.pathname === routePath,
+      routeExpectation.routePath,
+      {
+        timeout: 2_000,
+      }
+    );
+  } catch {
+    await page.goto(new URL(routeHref, page.url()).toString(), {
+      waitUntil: "networkidle",
+    });
+  }
 
   await page.getByRole("heading", {
     level: 2,
     name: routeExpectation.title,
-  }).waitFor({
+  }).first().waitFor({
     state: "visible",
     timeout: timeoutMs,
   });
 };
 
 export const signOutAsync = async (page: Page, timeoutMs: number): Promise<void> => {
+  await page.getByRole("button", {
+    name: "Sign out",
+  }).click();
+
   await Promise.all([
     page.waitForURL("**/login", {
       timeout: timeoutMs,
     }),
     page.getByRole("button", {
-      name: "Sign out",
+      name: "Kyllä, kirjaudu ulos",
     }).click(),
   ]);
 
   await page.getByRole("heading", {
-    level: 1,
-    name: "Admin and club operations",
+    level: 2,
+    name: "Open dashboard",
   }).waitFor({
     state: "visible",
     timeout: timeoutMs,

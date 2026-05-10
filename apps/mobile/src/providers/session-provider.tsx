@@ -1,8 +1,10 @@
 import type { PropsWithChildren } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import type { Session } from "@supabase/supabase-js";
+import type { RealtimePostgresChangesPayload, Session } from "@supabase/supabase-js";
 
+import { deviceStorage } from "@/lib/device-storage";
+import { publicEnv } from "@/lib/env";
 import { supabase } from "@/lib/supabase";
 
 type SessionContextValue = {
@@ -12,6 +14,74 @@ type SessionContextValue = {
   bootstrapError: string | null;
 };
 
+type ProfileStatusPayload = {
+  id: string;
+  status: "ACTIVE" | "SUSPENDED" | "DELETED";
+};
+
+const isInactiveProfileStatusPayload = (
+  payload: RealtimePostgresChangesPayload<ProfileStatusPayload>
+): boolean => {
+  const nextProfile = payload.new;
+
+  if (typeof nextProfile !== "object" || nextProfile === null || !("status" in nextProfile)) {
+    return false;
+  }
+
+  return nextProfile.status !== "ACTIVE";
+};
+
+const isInvalidRefreshTokenError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.includes("Invalid Refresh Token") || error.message.includes("Refresh Token Not Found");
+};
+
+const getSupabaseAuthStorageKey = (): string | null => {
+  try {
+    const supabaseHost = new URL(publicEnv.EXPO_PUBLIC_SUPABASE_URL).hostname;
+    const projectRef = supabaseHost.split(".")[0];
+
+    if (projectRef.length === 0) {
+      return null;
+    }
+
+    return `sb-${projectRef}-auth-token`;
+  } catch {
+    return null;
+  }
+};
+
+const deleteLocalAuthStorageFallback = async (): Promise<void> => {
+  const storageKey = getSupabaseAuthStorageKey();
+
+  if (storageKey === null) {
+    return;
+  }
+
+  await deviceStorage.deleteItemAsync(storageKey);
+};
+
+const clearInvalidLocalAuthSessionAsync = async (): Promise<void> => {
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+
+  if (error !== null && !isInvalidRefreshTokenError(error)) {
+    throw error;
+  }
+
+  await deleteLocalAuthStorageFallback();
+};
+
+const clearLocalAuthSessionAsync = async (): Promise<void> => {
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+
+  if (error !== null && !isInvalidRefreshTokenError(error)) {
+    throw error;
+  }
+};
+
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export const SessionProvider = ({ children }: PropsWithChildren) => {
@@ -19,24 +89,76 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
+  const reportBootstrapError = (error: unknown): void => {
+    const message = error instanceof Error
+      ? `Auth bootstrap failed: ${error.message}`
+      : "Auth bootstrap failed: Unknown error.";
+
+    setSession(null);
+    setBootstrapError(message);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
     let isActive = true;
 
-    const bootstrapSessionAsync = async (): Promise<void> => {
-      const { data, error } = await supabase.auth.getSession();
+    const clearInvalidLocalSessionAsync = async (): Promise<void> => {
+      try {
+        await clearInvalidLocalAuthSessionAsync();
+      } catch (error: unknown) {
+        if (!isActive) {
+          return;
+        }
+
+        reportBootstrapError(error);
+        return;
+      }
 
       if (!isActive) {
         return;
       }
 
-      if (error !== null) {
-        setBootstrapError(error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      setSession(data.session);
+      setSession(null);
+      setBootstrapError(null);
       setIsLoading(false);
+    };
+
+    const bootstrapSessionAsync = async (): Promise<void> => {
+      try {
+        const sessionResult = await supabase.auth.getSession();
+
+        if (!isActive) {
+          return;
+        }
+
+        const { data, error } = sessionResult;
+
+        if (error !== null) {
+          if (isInvalidRefreshTokenError(error)) {
+            await clearInvalidLocalSessionAsync();
+            return;
+          }
+
+          reportBootstrapError(error);
+          return;
+        }
+
+        setSession(data.session);
+        setIsLoading(false);
+        setBootstrapError(null);
+        return;
+      } catch (error: unknown) {
+        if (!isActive) {
+          return;
+        }
+
+        if (isInvalidRefreshTokenError(error)) {
+          await clearInvalidLocalSessionAsync();
+          return;
+        }
+
+        reportBootstrapError(error);
+      }
     };
 
     void bootstrapSessionAsync();
@@ -58,6 +180,51 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user.id;
+
+    if (typeof userId !== "string") {
+      return;
+    }
+
+    let isActive = true;
+    const handleProfileStatusUpdate = (
+      payload: RealtimePostgresChangesPayload<ProfileStatusPayload>
+    ): void => {
+      if (!isInactiveProfileStatusPayload(payload)) {
+        return;
+      }
+
+      setSession(null);
+      void clearLocalAuthSessionAsync().catch((error: unknown) => {
+        if (!isActive || isInvalidRefreshTokenError(error)) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : "Failed to clear local session.";
+        setBootstrapError(message);
+      });
+    };
+    const channel = supabase
+      .channel(`profile-status:${userId}`)
+      .on<ProfileStatusPayload>(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          filter: `id=eq.${userId}`,
+          schema: "public",
+          table: "profiles",
+        },
+        handleProfileStatusUpdate
+      )
+      .subscribe();
+
+    return () => {
+      isActive = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [session?.user.id]);
 
   const value = useMemo<SessionContextValue>(
     () => ({

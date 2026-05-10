@@ -3,6 +3,11 @@ import { useMutation, useQuery, useQueryClient, type UseMutationResult, type Use
 import type { ClubMembershipSummary } from "@/features/club/types";
 import { clubDashboardQueryKey } from "@/features/club/club-dashboard";
 import { announcementFeedQueryKey, activeAnnouncementsQueryKey } from "@/features/announcements/announcements";
+import {
+  removePublicStorageObjectByUrlAsync,
+  removeReplacedPublicStorageObjectAsync,
+} from "@/features/media/storage-cleanup";
+import { createSignedStagedMediaUrlAsync, mediaStagingBucketName, publishStagedMediaAsync } from "@/features/media/staged-media";
 import { supabase } from "@/lib/supabase";
 
 export type ClubAnnouncementAudience = "ALL" | "CLUBS" | "STUDENTS";
@@ -17,6 +22,7 @@ export type ClubAnnouncementRecord = {
   ctaLabel: string | null;
   ctaUrl: string | null;
   endsAt: string | null;
+  imageStagingPath: string | null;
   imageUrl: string | null;
   priority: number;
   showAsPopup: boolean;
@@ -34,6 +40,7 @@ export type ClubAnnouncementDraft = {
   ctaLabel: string;
   ctaUrl: string;
   endsAt: string;
+  imageStagingPath: string;
   imageUrl: string;
   priority: string;
   showAsPopup: boolean;
@@ -54,6 +61,7 @@ type ClubAnnouncementRow = {
   ends_at: string | null;
   id: string;
   image_url: string | null;
+  image_staging_path: string | null;
   priority: number;
   show_as_popup: boolean;
   starts_at: string;
@@ -78,6 +86,12 @@ type ClubAnnouncementArchiveVariables = {
   userId: string;
 };
 
+type ClubAnnouncementDeleteVariables = {
+  announcementId: string;
+  clubId: string;
+  userId: string;
+};
+
 type ClubAnnouncementMutationResult = {
   announcementId: string | null;
   message: string;
@@ -85,6 +99,7 @@ type ClubAnnouncementMutationResult = {
 };
 
 const localDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const announcementMediaBucketId = "announcement-media";
 
 const clubAnnouncementsQueryRoot = ["club-announcements"] as const;
 
@@ -106,6 +121,7 @@ export const createEmptyClubAnnouncementDraft = (membership: ClubMembershipSumma
   ctaUrl: "",
   endsAt: "",
   imageUrl: "",
+  imageStagingPath: "",
   priority: "0",
   showAsPopup: true,
   startsAt: toLocalDateTimeInput(new Date()),
@@ -122,6 +138,7 @@ export const createClubAnnouncementDraftFromRecord = (record: ClubAnnouncementRe
   ctaUrl: record.ctaUrl ?? "",
   endsAt: record.endsAt === null ? "" : toLocalDateTimeInput(new Date(record.endsAt)),
   imageUrl: record.imageUrl ?? "",
+  imageStagingPath: record.imageStagingPath ?? "",
   priority: String(record.priority),
   showAsPopup: record.showAsPopup,
   startsAt: toLocalDateTimeInput(new Date(record.startsAt)),
@@ -170,6 +187,19 @@ const parseOptionalText = (value: string): string | null => {
   return normalizedValue.length === 0 ? null : normalizedValue;
 };
 
+const readStorageExtension = (path: string): string => {
+  const extension = path.split(".").pop()?.toLowerCase();
+
+  if (extension === "jpeg" || extension === "jpg" || extension === "png" || extension === "webp") {
+    return extension;
+  }
+
+  throw new Error(`Unsupported announcement staging path extension: ${path}`);
+};
+
+const createPublishedAnnouncementImagePath = (clubId: string, stagingPath: string): string =>
+  `clubs/${clubId}/announcement-${Date.now()}.${readStorageExtension(stagingPath)}`;
+
 const assertDraftFields = (draft: ClubAnnouncementDraft): void => {
   if (draft.clubId.trim().length === 0) {
     throw new Error("clubId is required before saving an announcement.");
@@ -192,7 +222,10 @@ const assertDraftFields = (draft: ClubAnnouncementDraft): void => {
   }
 };
 
-const mapClubAnnouncementRow = (row: ClubAnnouncementRow): ClubAnnouncementRecord => ({
+const mapClubAnnouncementRow = (
+  row: ClubAnnouncementRow,
+  signedUrlByStagingPath: Map<string, string>
+): ClubAnnouncementRecord => ({
   announcementId: row.id,
   audience: row.audience,
   body: row.body,
@@ -201,7 +234,10 @@ const mapClubAnnouncementRow = (row: ClubAnnouncementRow): ClubAnnouncementRecor
   ctaLabel: row.cta_label,
   ctaUrl: row.cta_url,
   endsAt: row.ends_at,
-  imageUrl: row.image_url,
+  imageStagingPath: row.image_staging_path,
+  imageUrl:
+    row.image_url ??
+    (row.image_staging_path === null ? null : signedUrlByStagingPath.get(row.image_staging_path) ?? null),
   priority: row.priority,
   showAsPopup: row.show_as_popup,
   startsAt: row.starts_at,
@@ -209,6 +245,26 @@ const mapClubAnnouncementRow = (row: ClubAnnouncementRow): ClubAnnouncementRecor
   title: row.title,
   updatedAt: row.updated_at,
 });
+
+const createSignedUrlByStagingPathAsync = async (
+  rows: ClubAnnouncementRow[]
+): Promise<Map<string, string>> => {
+  const stagingPaths = Array.from(
+    new Set(
+      rows
+        .map((row) => row.image_staging_path)
+        .filter((value): value is string => value !== null && value.trim().length > 0)
+    )
+  );
+  const entries = await Promise.all(
+    stagingPaths.map(async (stagingPath): Promise<[string, string]> => [
+      stagingPath,
+      await createSignedStagedMediaUrlAsync(stagingPath),
+    ])
+  );
+
+  return new Map(entries);
+};
 
 const fetchClubAnnouncementsAsync = async (clubIds: string[]): Promise<ClubAnnouncementRecord[]> => {
   if (clubIds.length === 0) {
@@ -232,6 +288,7 @@ const fetchClubAnnouncementsAsync = async (clubIds: string[]): Promise<ClubAnnou
       cta_label,
       cta_url,
       image_url,
+      image_staging_path,
       updated_at,
       club:clubs(name)
     `
@@ -245,10 +302,12 @@ const fetchClubAnnouncementsAsync = async (clubIds: string[]): Promise<ClubAnnou
     throw new Error(`Failed to load club announcements for ${clubIds.join(",")}: ${error.message}`);
   }
 
-  return data.map(mapClubAnnouncementRow);
+  const signedUrlByStagingPath = await createSignedUrlByStagingPathAsync(data);
+
+  return data.map((row) => mapClubAnnouncementRow(row, signedUrlByStagingPath));
 };
 
-const buildAnnouncementPayload = (draft: ClubAnnouncementDraft, userId: string) => {
+const buildAnnouncementPayload = async (draft: ClubAnnouncementDraft, userId: string) => {
   assertDraftFields(draft);
   const startsAt = parseLocalDateTimeOrThrow(draft.startsAt, "startsAt");
   const endsAt = parseOptionalLocalDateTimeOrThrow(draft.endsAt, "endsAt");
@@ -257,20 +316,39 @@ const buildAnnouncementPayload = (draft: ClubAnnouncementDraft, userId: string) 
     throw new Error("endsAt must be after startsAt.");
   }
 
+  const parsedImageStagingPath = parseOptionalText(draft.imageStagingPath);
+  const publishedImageUrl =
+    draft.status === "DRAFT"
+      ? null
+      : await publishStagedMediaAsync({
+        context: `announcement for club ${draft.clubId}`,
+        destinationBucketId: announcementMediaBucketId,
+        destinationPath:
+          parsedImageStagingPath === null
+            ? ""
+            : createPublishedAnnouncementImagePath(draft.clubId, parsedImageStagingPath),
+        stagingPath: parsedImageStagingPath,
+      });
+  const parsedImageUrl = draft.status === "DRAFT" ? null : publishedImageUrl ?? parseOptionalText(draft.imageUrl);
+
   return {
-    audience: draft.audience,
-    body: draft.body.trim(),
-    club_id: draft.clubId,
-    created_by: userId,
-    cta_label: parseOptionalText(draft.ctaLabel),
-    cta_url: parseOptionalText(draft.ctaUrl),
-    ends_at: endsAt,
-    image_url: parseOptionalText(draft.imageUrl),
-    priority: parsePriorityOrThrow(draft.priority),
-    show_as_popup: draft.showAsPopup,
-    starts_at: startsAt,
-    status: draft.status,
-    title: draft.title.trim(),
+    publishedImageUrl,
+    row: {
+      audience: draft.audience,
+      body: draft.body.trim(),
+      club_id: draft.clubId,
+      created_by: userId,
+      cta_label: parseOptionalText(draft.ctaLabel),
+      cta_url: parseOptionalText(draft.ctaUrl),
+      ends_at: endsAt,
+      image_staging_path: draft.status === "DRAFT" ? parsedImageStagingPath : null,
+      image_url: parsedImageUrl,
+      priority: parsePriorityOrThrow(draft.priority),
+      show_as_popup: draft.showAsPopup,
+      starts_at: startsAt,
+      status: draft.status,
+      title: draft.title.trim(),
+    },
   };
 };
 
@@ -278,16 +356,22 @@ const saveClubAnnouncementAsync = async ({
   draft,
   userId,
 }: ClubAnnouncementMutationVariables): Promise<ClubAnnouncementMutationResult> => {
-  const payload = buildAnnouncementPayload(draft, userId);
+  const payload = await buildAnnouncementPayload(draft, userId);
 
   if (draft.announcementId === null) {
     const { data, error } = await supabase
       .from("announcements")
-      .insert(payload)
+      .insert(payload.row)
       .select("id")
       .single<{ id: string }>();
 
     if (error !== null) {
+      await removePublicStorageObjectByUrlAsync({
+        bucketId: announcementMediaBucketId,
+        context: `failed club ${draft.clubId} announcement image publish rollback`,
+        publicUrl: payload.publishedImageUrl,
+      });
+
       throw new Error(`Failed to create club announcement for ${draft.clubId}: ${error.message}`);
     }
 
@@ -298,31 +382,18 @@ const saveClubAnnouncementAsync = async ({
     };
   }
 
-  const { data, error } = await supabase
+  const { data: existingAnnouncement, error: existingError } = await supabase
     .from("announcements")
-    .update({
-      audience: payload.audience,
-      body: payload.body,
-      cta_label: payload.cta_label,
-      cta_url: payload.cta_url,
-      ends_at: payload.ends_at,
-      image_url: payload.image_url,
-      priority: payload.priority,
-      show_as_popup: payload.show_as_popup,
-      starts_at: payload.starts_at,
-      status: payload.status,
-      title: payload.title,
-    })
+    .select("id,image_url,image_staging_path")
     .eq("id", draft.announcementId)
     .eq("club_id", draft.clubId)
-    .select("id")
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; image_staging_path: string | null; image_url: string | null }>();
 
-  if (error !== null) {
-    throw new Error(`Failed to update club announcement ${draft.announcementId}: ${error.message}`);
+  if (existingError !== null) {
+    throw new Error(`Failed to load current image for club announcement ${draft.announcementId}: ${existingError.message}`);
   }
 
-  if (data === null) {
+  if (existingAnnouncement === null) {
     return {
       announcementId: null,
       message: "Announcement was not updated. It may be outside this organizer account.",
@@ -330,9 +401,139 @@ const saveClubAnnouncementAsync = async ({
     };
   }
 
+  const { data, error } = await supabase
+    .from("announcements")
+    .update({
+      audience: payload.row.audience,
+      body: payload.row.body,
+      cta_label: payload.row.cta_label,
+      cta_url: payload.row.cta_url,
+      ends_at: payload.row.ends_at,
+      image_staging_path: payload.row.image_staging_path,
+      image_url: payload.row.image_url,
+      priority: payload.row.priority,
+      show_as_popup: payload.row.show_as_popup,
+      starts_at: payload.row.starts_at,
+      status: payload.row.status,
+      title: payload.row.title,
+    })
+    .eq("id", draft.announcementId)
+    .eq("club_id", draft.clubId)
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `failed announcement ${draft.announcementId} image publish rollback`,
+      publicUrl: payload.publishedImageUrl,
+    });
+
+    throw new Error(`Failed to update club announcement ${draft.announcementId}: ${error.message}`);
+  }
+
+  if (data === null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `not-updated announcement ${draft.announcementId} image publish rollback`,
+      publicUrl: payload.publishedImageUrl,
+    });
+
+    return {
+      announcementId: null,
+      message: "Announcement was not updated. It may be outside this organizer account.",
+      status: "NOOP",
+    };
+  }
+
+  await removeReplacedPublicStorageObjectAsync({
+    bucketId: announcementMediaBucketId,
+    context: `announcement ${draft.announcementId}`,
+    newPublicUrl: payload.row.image_url,
+    oldPublicUrl: existingAnnouncement.image_url,
+  });
+
+  if (
+    draft.status !== "DRAFT" &&
+    existingAnnouncement.image_staging_path !== null
+  ) {
+    const { error: removeStagingError } = await supabase.storage
+      .from(mediaStagingBucketName)
+      .remove([existingAnnouncement.image_staging_path]);
+
+    if (removeStagingError !== null) {
+      throw new Error(`Failed to remove old staged announcement image ${existingAnnouncement.image_staging_path}: ${removeStagingError.message}`);
+    }
+  }
+
   return {
     announcementId: data.id,
     message: "Announcement updated successfully.",
+    status: "SUCCESS",
+  };
+};
+
+const deleteClubAnnouncementAsync = async ({
+  announcementId,
+  clubId,
+}: ClubAnnouncementDeleteVariables): Promise<ClubAnnouncementMutationResult> => {
+  const { data: announcement, error: selectError } = await supabase
+    .from("announcements")
+    .select("id,image_url,image_staging_path")
+    .eq("id", announcementId)
+    .eq("club_id", clubId)
+    .maybeSingle<{ id: string; image_staging_path: string | null; image_url: string | null }>();
+
+  if (selectError !== null) {
+    throw new Error(`Failed to load club announcement ${announcementId} before deletion: ${selectError.message}`);
+  }
+
+  if (announcement === null) {
+    return {
+      announcementId: null,
+      message: "Announcement was not deleted. It may be outside this organizer account.",
+      status: "NOOP",
+    };
+  }
+
+  await removePublicStorageObjectByUrlAsync({
+    bucketId: announcementMediaBucketId,
+    context: `announcement ${announcementId}`,
+    publicUrl: announcement.image_url,
+  });
+  if (announcement.image_staging_path !== null) {
+    const { error: removeStagingError } = await supabase.storage
+      .from(mediaStagingBucketName)
+      .remove([announcement.image_staging_path]);
+
+    if (removeStagingError !== null) {
+      throw new Error(`Failed to remove staged announcement image ${announcement.image_staging_path}: ${removeStagingError.message}`);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("announcements")
+    .delete()
+    .eq("id", announcementId)
+    .eq("club_id", clubId)
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (error !== null) {
+    throw new Error(`Failed to delete club announcement ${announcementId}: ${error.message}`);
+  }
+
+  if (data === null) {
+    return {
+      announcementId: null,
+      message: "Announcement was not deleted. It may be outside this organizer account.",
+      status: "NOOP",
+    };
+  }
+
+  return {
+    announcementId: data.id,
+    message: "Announcement deleted successfully.",
     status: "SUCCESS",
   };
 };
@@ -417,6 +618,34 @@ export const useArchiveClubAnnouncementMutation = (): UseMutationResult<
 
   return useMutation({
     mutationFn: archiveClubAnnouncementAsync,
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: clubAnnouncementsQueryRoot,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: clubDashboardQueryKey(variables.userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: announcementFeedQueryKey(variables.userId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: activeAnnouncementsQueryKey(variables.userId),
+        }),
+      ]);
+    },
+  });
+};
+
+export const useDeleteClubAnnouncementMutation = (): UseMutationResult<
+  ClubAnnouncementMutationResult,
+  Error,
+  ClubAnnouncementDeleteVariables
+> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteClubAnnouncementAsync,
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({

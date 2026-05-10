@@ -7,6 +7,12 @@ import { supabase } from "@/lib/supabase";
 
 const nativeGoogleRedirectUri = "omaleima://auth/callback";
 
+type AppleFullName = {
+  familyName: string | null;
+  givenName: string | null;
+  middleName: string | null;
+};
+
 if (typeof window !== "undefined") {
   void WebBrowser.maybeCompleteAuthSession();
 }
@@ -104,4 +110,82 @@ export const signInWithGoogleAsync = async (): Promise<void> => {
   }
 
   await completeNativeOAuthCallbackAsync(result.url);
+};
+
+const createAppleFullName = (fullName: AppleFullName | null): string | null => {
+  if (fullName === null) {
+    return null;
+  }
+
+  const nameParts: string[] = [
+    fullName.givenName,
+    fullName.middleName,
+    fullName.familyName,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+  if (nameParts.length === 0) {
+    return null;
+  }
+
+  return nameParts.join(" ");
+};
+
+const isAppleCancelError = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+
+  return (error as { code: unknown }).code === "ERR_REQUEST_CANCELED";
+};
+
+export const signInWithAppleAsync = async (): Promise<void> => {
+  if (Platform.OS !== "ios") {
+    throw new Error("Apple sign-in is only available on iOS.");
+  }
+
+  const AppleAuthentication = await import("expo-apple-authentication");
+
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    if (typeof credential.identityToken !== "string" || credential.identityToken.length === 0) {
+      throw new Error("Apple sign-in returned without an identity token.");
+    }
+
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: "apple",
+      token: credential.identityToken,
+    });
+
+    if (error !== null) {
+      throw new Error(error.message);
+    }
+
+    const fullName = createAppleFullName(credential.fullName);
+
+    if (fullName !== null) {
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          family_name: credential.fullName?.familyName ?? null,
+          full_name: fullName,
+          given_name: credential.fullName?.givenName ?? null,
+        },
+      });
+
+      if (updateError !== null) {
+        throw new Error(updateError.message);
+      }
+    }
+  } catch (error) {
+    if (isAppleCancelError(error)) {
+      throw new Error("Apple sign-in was cancelled.");
+    }
+
+    throw error;
+  }
 };

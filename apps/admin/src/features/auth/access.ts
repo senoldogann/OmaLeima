@@ -1,4 +1,7 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { createServerComponentClient } from "@/lib/supabase/server";
 
 type ProfileRole =
   | "STUDENT"
@@ -190,3 +193,9 @@ export const resolveAdminAccessAsync = async (supabase: SupabaseClient): Promise
 
   return resolveAdminAccessByUserIdAsync(supabase, userId);
 };
+
+export const resolveCurrentAdminAccessAsync = cache(async (): Promise<AdminAccess> => {
+  const supabase = await createServerComponentClient();
+
+  return resolveAdminAccessAsync(supabase);
+});

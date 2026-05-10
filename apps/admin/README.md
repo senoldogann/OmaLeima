@@ -34,6 +34,7 @@ npm run build
 npm run smoke:auth
 npm run smoke:business-applications
 npm run smoke:browser-admin-review
+npm run smoke:dashboard-browser
 npm run apply:supabase-auth-url-config
 npm run audit:custom-domain-cutover
 npm run audit:hosted-setup
@@ -60,6 +61,10 @@ npm run smoke:supabase-auth-url-config-audit
 Repo root Phase 6 core entry point:
 
 ```bash
+npx --yes supabase@2.98.2 start
+npx --yes supabase@2.98.2 migration up --local
+docker restart supabase_auth_omaleima
+docker exec -i supabase_db_omaleima psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/seed.sql
 npm run qa:phase6-core
 ```
 
@@ -125,6 +130,7 @@ npm run check:hosted-env
 ```
 
 `npm run smoke:routes` expects a running local admin app at `http://localhost:3001` by default. Override with `ADMIN_APP_BASE_URL` when needed.
+`npm run smoke:dashboard-browser` expects the same local admin app and seeded local Supabase stack. It signs in with seeded admin and organizer accounts, clicks dashboard navigation, switches dashboard locale in-browser, checks for framework overlays/runtime console errors, and signs out.
 Route-backed smokes that hit Edge Functions also expect the local function server to be running with secrets loaded:
 
 ```bash

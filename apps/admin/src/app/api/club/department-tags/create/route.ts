@@ -9,10 +9,18 @@ import {
   parseClubDepartmentTagCreatePayloadOrThrow,
 } from "@/features/club-department-tags/validation";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireClubDepartmentTagEditorAccessAsync(supabase);
 
@@ -34,6 +42,12 @@ export async function POST(request: Request) {
           status: 401,
         }
       );
+    }
+
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "club-department-tag-create");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const body = parseClubDepartmentTagCreatePayloadOrThrow(

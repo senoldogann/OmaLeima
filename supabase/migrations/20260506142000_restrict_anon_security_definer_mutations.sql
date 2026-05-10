@@ -37,7 +37,12 @@ revoke execute on function public.register_event_atomic(uuid, uuid) from public,
 revoke execute on function public.reject_business_application_atomic(uuid, uuid, text) from public, anon;
 revoke execute on function public.rename_business_scanner_device(uuid, text) from public, anon;
 revoke execute on function public.revoke_business_scanner_device(uuid) from public, anon;
-revoke execute on function public.rls_auto_enable() from public, anon;
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable() from public, anon;
+  end if;
+end $$;
 revoke execute on function public.set_business_scanner_device_pin(uuid, text) from public, anon;
 revoke execute on function public.sync_department_tag_profile_links() from public, anon;
 revoke execute on function public.sync_profile_department_tags_for_profile() from public, anon;
@@ -84,7 +89,12 @@ grant execute on function public.register_event_atomic(uuid, uuid) to authentica
 grant execute on function public.reject_business_application_atomic(uuid, uuid, text) to authenticated, service_role;
 grant execute on function public.rename_business_scanner_device(uuid, text) to authenticated, service_role;
 grant execute on function public.revoke_business_scanner_device(uuid) to authenticated, service_role;
-grant execute on function public.rls_auto_enable() to authenticated, service_role;
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    grant execute on function public.rls_auto_enable() to authenticated, service_role;
+  end if;
+end $$;
 grant execute on function public.set_business_scanner_device_pin(uuid, text) to authenticated, service_role;
 grant execute on function public.sync_department_tag_profile_links() to authenticated, service_role;
 grant execute on function public.sync_profile_department_tags_for_profile() to authenticated, service_role;

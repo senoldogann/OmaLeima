@@ -3,7 +3,7 @@ import type { NavIconName } from "@/features/dashboard/components/nav-icon";
 export type DashboardSection = {
   title: string;
   items: string[];
-  tone: "neutral" | "accent" | "warning";
+  tone: "neutral" | "accent" | "warning" | "urgent";
 };
 
 export type DashboardNavItem = {
@@ -15,6 +15,6 @@ export type DashboardNavItem = {
 export type DashboardOverviewMetric = {
   description: string;
   label: string;
-  tone: "neutral" | "accent" | "warning";
+  tone: "neutral" | "accent" | "warning" | "urgent";
   value: string;
 };

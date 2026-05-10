@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const lastModified = new Date("2026-05-05T00:00:00.000Z");
+const lastModified = new Date("2026-05-06T00:00:00.000Z");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en",
           fi: "https://omaleima.fi",
+          "x-default": "https://omaleima.fi",
         },
       },
       changeFrequency: "weekly",
@@ -21,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en",
           fi: "https://omaleima.fi",
+          "x-default": "https://omaleima.fi",
         },
       },
       changeFrequency: "weekly",
@@ -33,6 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/privacy",
           fi: "https://omaleima.fi/privacy",
+          "x-default": "https://omaleima.fi/privacy",
         },
       },
       changeFrequency: "monthly",
@@ -45,6 +48,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/terms",
           fi: "https://omaleima.fi/terms",
+          "x-default": "https://omaleima.fi/terms",
         },
       },
       changeFrequency: "monthly",
@@ -57,6 +61,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/privacy",
           fi: "https://omaleima.fi/privacy",
+          "x-default": "https://omaleima.fi/privacy",
         },
       },
       changeFrequency: "monthly",
@@ -69,6 +74,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/terms",
           fi: "https://omaleima.fi/terms",
+          "x-default": "https://omaleima.fi/terms",
         },
       },
       changeFrequency: "monthly",
@@ -81,6 +87,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/contact",
           fi: "https://omaleima.fi/contact",
+          "x-default": "https://omaleima.fi/contact",
         },
       },
       changeFrequency: "monthly",
@@ -93,6 +100,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/contact",
           fi: "https://omaleima.fi/contact",
+          "x-default": "https://omaleima.fi/contact",
         },
       },
       changeFrequency: "monthly",
@@ -105,6 +113,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/apply",
           fi: "https://omaleima.fi/apply",
+          "x-default": "https://omaleima.fi/apply",
         },
       },
       changeFrequency: "monthly",
@@ -117,6 +126,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: {
           en: "https://omaleima.fi/en/apply",
           fi: "https://omaleima.fi/apply",
+          "x-default": "https://omaleima.fi/apply",
         },
       },
       changeFrequency: "monthly",

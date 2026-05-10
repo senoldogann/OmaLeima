@@ -109,7 +109,7 @@ En düşük maliyet ve en az operasyon yükü için ilk production V1 mimarisi:
 | Katman | Seçim | Neden |
 |---|---|---|
 | Mobile App | React Native Expo | Tek kod tabanı, iOS + Android, hızlı geliştirme |
-| Native build | EAS Development Build + EAS Build | Expo Go yerine production-grade native build |
+| Native build | Expo native build; EAS Build optional | Expo Go yerine production-grade native build. EAS pratik yoldur, ama Xcode/Gradle local release build + manuel store upload da kabul edilir |
 | Backend Core | Supabase | Auth, PostgreSQL, Realtime, Edge Functions aynı yerde |
 | Database | Supabase PostgreSQL | Transaction, unique constraint, relational model |
 | Auth | Supabase Auth + Google Sign-In | Firebase ayrı servis maliyetini ve karmaşıklığını azaltır |
@@ -118,7 +118,7 @@ En düşük maliyet ve en az operasyon yükü için ilk production V1 mimarisi:
 | Push notifications | Expo Notifications / Expo Push Service | Expo app ile düşük maliyetli ve pratik |
 | Admin panel | Next.js | Web admin için hızlı ve ucuz |
 | Admin hosting | Vercel / Cloudflare Pages / Netlify | Başlangıçta ücretsiz veya çok düşük maliyet |
-| Monitoring | Sentry free tier veya self-host later | Crash/error takibi |
+| Monitoring | Vercel/Supabase logs + optional Sentry/equivalent | Sentry zorunlu degildir; crash/error takibi icin Sentry, baska bir provider veya baslangicta manuel log takibi secilebilir |
 | Analytics | PostHog free/self-host optional | Ürün analitiği |
 | Payments | V1'de yok | Maliyet ve regülasyon karmaşıklığını azaltır |
 
@@ -2445,7 +2445,7 @@ Platform admin can see everything.
 ```txt
 Supabase Free project
 Expo local development
-EAS development build when native features needed
+EAS development build or local native build when native features needed
 Next.js admin locally
 GitHub repository
 ```
@@ -2454,11 +2454,11 @@ GitHub repository
 
 ```txt
 Supabase Pro or equivalent production plan
-Expo EAS for builds
+Expo EAS for builds, or local Xcode/Gradle release builds when EAS quota is unavailable
 Expo Push Service
 Next.js admin on Vercel/Cloudflare Pages
 Custom domain
-Sentry free/low tier
+Optional Sentry/equivalent observability, or Vercel/Supabase logs for private pilot
 ```
 
 ### 22.3 Unavoidable external costs

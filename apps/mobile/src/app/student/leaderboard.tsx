@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useIsFocused } from "@react-navigation/native";
+import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
+import { SkeletonCard } from "@/components/skeleton-block";
 import { StatusBadge } from "@/components/status-badge";
 import { getEventCoverSource } from "@/features/events/event-visuals";
 import { LeaderboardEntryCard } from "@/features/leaderboard/components/leaderboard-entry-card";
@@ -16,7 +18,6 @@ import {
   useStudentLeaderboardOverviewQuery,
 } from "@/features/leaderboard/student-leaderboard";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useStudentEventLeaderboardRealtime } from "@/features/realtime/student-realtime";
 import { useSession } from "@/providers/session-provider";
 import { useActiveAppState, useCurrentTime } from "@/features/qr/student-qr";
@@ -123,7 +124,7 @@ export default function StudentLeaderboardScreen() {
   const isFocused = useIsFocused();
   const isAppActive = useActiveAppState();
   const { session } = useSession();
-  const { copy, language, localeTag } = useUiPreferences();
+  const { copy, language, localeTag, theme } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const formatter = useMemo(() => createDateTimeFormatter(localeTag), [localeTag]);
   const dateFormatter = useMemo(() => createDateFormatter(localeTag), [localeTag]);
@@ -256,7 +257,6 @@ export default function StudentLeaderboardScreen() {
           <Text style={styles.screenTitle}>{copy.common.leaderboard}</Text>
           <Text style={styles.screenMeta}>{screenMeta}</Text>
         </View>
-        <StudentProfileHeaderAction />
       </View>
 
       {overviewState !== "ready" ? (
@@ -290,15 +290,18 @@ export default function StudentLeaderboardScreen() {
                 : "Loading public leaderboards and your own ranking context."}
             </Text>
           ) : (
-            <Text selectable style={styles.bodyText}>
-              {registeredEventCount === 0
-                ? language === "fi"
-                  ? "Yhtaan julkista tulostaulua ei ole saatavilla juuri nyt."
-                  : "No public leaderboard is available right now."
-                : language === "fi"
-                  ? "Sinulla on ilmoittautumisia, mutta mikään niistä ei julkaise tulostaulua juuri nyt."
-                  : "You still have registrations, but none of those events expose a public leaderboard right now."}
-            </Text>
+            <View style={{ alignItems: "flex-start", flexDirection: "row", gap: 12 }}>
+              <AppIcon color={theme.colors.textMuted} name="star" size={16} />
+              <Text selectable style={[styles.bodyText, { flex: 1 }]}>
+                {registeredEventCount === 0
+                  ? language === "fi"
+                    ? "Yhtaan julkista tulostaulua ei ole saatavilla juuri nyt."
+                    : "No public leaderboard is available right now."
+                  : language === "fi"
+                    ? "Sinulla on ilmoittautumisia, mutta mikään niistä ei julkaise tulostaulua juuri nyt."
+                    : "You still have registrations, but none of those events expose a public leaderboard right now."}
+              </Text>
+            </View>
           )}
         </InfoCard>
       ) : null}
@@ -338,31 +341,38 @@ export default function StudentLeaderboardScreen() {
             </View>
 
             {dateFilterOptions.length > 2 ? (
-              <ScrollView
-                contentContainerStyle={styles.dateFilterRow}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-              >
-                {dateFilterOptions.map((option) => (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => setSelectedDateFilter(option.key)}
-                    style={[
-                      styles.dateChip,
-                      selectedDateFilter === option.key ? styles.selectedDateChip : null,
-                    ]}
-                  >
-                    <Text
+              <View style={styles.dateFilterContainer}>
+                <ScrollView
+                  contentContainerStyle={styles.dateFilterRow}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {dateFilterOptions.map((option) => (
+                    <Pressable
+                      key={option.key}
+                      onPress={() => setSelectedDateFilter(option.key)}
                       style={[
-                        styles.dateChipText,
-                        selectedDateFilter === option.key ? styles.selectedDateChipText : null,
+                        styles.dateChip,
+                        selectedDateFilter === option.key ? styles.selectedDateChip : null,
                       ]}
                     >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+                      <Text
+                        style={[
+                          styles.dateChipText,
+                          selectedDateFilter === option.key ? styles.selectedDateChipText : null,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+                <View pointerEvents="none" style={styles.dateFilterFadeRight}>
+                  {[0.0, 0.25, 0.55, 0.85].map((opacity, index) => (
+                    <View key={index} style={[styles.dateFilterFadeStep, { opacity }]} />
+                  ))}
+                </View>
+              </View>
             ) : null}
 
             <ScrollView
@@ -423,33 +433,29 @@ export default function StudentLeaderboardScreen() {
         </>
       ) : null}
 
-      {rankingState === "loading" || rankingState === "error" || rankingState === "empty" ? (
+      {rankingState === "loading" ? (
+        <SkeletonCard rows={5} hasHeader />
+      ) : null}
+
+      {rankingState === "error" || rankingState === "empty" ? (
         <InfoCard
-          eyebrow={rankingState === "error" ? copy.common.error : rankingState === "loading" ? copy.common.loading : copy.common.standby}
+          eyebrow={rankingState === "error" ? copy.common.error : copy.common.standby}
           title={
             rankingState === "error"
               ? language === "fi"
                 ? "Sijoitusta ei voitu ladata"
                 : "Could not load ranking"
-              : rankingState === "loading"
-                ? language === "fi"
-                  ? "Ladataan sijoitusta"
-                  : "Loading ranking"
-                : language === "fi"
-                  ? "Lista on vielä tyhjä"
-                  : "Standings are still empty"
+              : language === "fi"
+                ? "Lista on vielä tyhjä"
+                : "Standings are still empty"
           }
         >
           <Text style={styles.bodyText}>
             {rankingState === "error"
               ? rankingErrorBody
-              : rankingState === "loading"
-                ? language === "fi"
-                  ? "Haetaan tämän tapahtuman top 10."
-                  : "Fetching the live top 10 for this event."
-                : language === "fi"
-                  ? "Tähän tapahtumaan ei ole vielä kertynyt näkyviä sijoituksia."
-                  : "No visible leaderboard entries yet for this event."}
+              : language === "fi"
+                ? "Tähän tapahtumaan ei ole vielä kertynyt näkyviä sijoituksia."
+                : "No visible leaderboard entries yet for this event."}
           </Text>
           {rankingState === "error" ? (
             <Pressable onPress={() => void leaderboardQuery.refetch()} style={styles.retryButton}>
@@ -461,6 +467,39 @@ export default function StudentLeaderboardScreen() {
 
       {rankingState === "ready" ? (
         <>
+          {currentUser !== null ? (
+            <View style={styles.rankBanner}>
+              <AppIcon color={theme.colors.lime} name="star" size={13} />
+              <Text style={styles.rankBannerText} numberOfLines={1}>
+                {currentUserSpotlightTitle ?? (language === "fi" ? "Sinun sijasi" : "Your rank")}
+              </Text>
+              <View style={styles.rankBannerPill}>
+                <Text style={styles.rankBannerPillText}>
+                  {currentUser.stampCount} {language === "fi" ? "leimaa" : "stamps"}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          {top10.length >= 3 ? (
+            <View style={styles.podiumRow}>
+              <View style={[styles.podiumPillar, styles.podiumPillarSecond]}>
+                <Text style={styles.podiumPillarRank}>2</Text>
+                <Text numberOfLines={1} style={styles.podiumPillarName}>{top10[1].displayName ?? "—"}</Text>
+                <Text style={styles.podiumPillarStamps}>{top10[1].stampCount}</Text>
+              </View>
+              <View style={[styles.podiumPillar, styles.podiumPillarFirst]}>
+                <Text style={styles.podiumPillarRank}>1</Text>
+                <Text numberOfLines={1} style={styles.podiumPillarName}>{top10[0].displayName ?? "—"}</Text>
+                <Text style={styles.podiumPillarStamps}>{top10[0].stampCount}</Text>
+              </View>
+              <View style={[styles.podiumPillar, styles.podiumPillarThird]}>
+                <Text style={styles.podiumPillarRank}>3</Text>
+                <Text numberOfLines={1} style={styles.podiumPillarName}>{top10[2].displayName ?? "—"}</Text>
+                <Text style={styles.podiumPillarStamps}>{top10[2].stampCount}</Text>
+              </View>
+            </View>
+          ) : null}
+
           {top10.length > 0 ? (
             <View style={styles.standingsBlock}>
               <View style={styles.standingsList}>
@@ -526,11 +565,59 @@ const createStyles = (theme: MobileTheme) =>
       gap: 8,
       paddingRight: 8,
     },
+    rankBanner: {
+      alignItems: "center",
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      borderRadius: 999,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    rankBannerPill: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      marginLeft: "auto",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    rankBannerPillText: {
+      color: theme.colors.actionPrimaryText,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    rankBannerText: {
+      color: theme.colors.lime,
+      flex: 1,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    dateFilterContainer: {
+      overflow: "hidden",
+      position: "relative",
+    },
+    dateFilterFadeRight: {
+      bottom: 0,
+      flexDirection: "row",
+      pointerEvents: "none" as const,
+      position: "absolute",
+      right: 0,
+      top: 0,
+      width: 40,
+    },
+    dateFilterFadeStep: {
+      backgroundColor: theme.colors.screenBase,
+      flex: 1,
+    },
     currentUserBlock: {
       backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.limeBorder,
       borderRadius: theme.radius.scene,
-      borderWidth: theme.mode === "light" ? 1 : 0,
+      borderWidth: 1,
       overflow: "hidden",
       position: "relative",
     },
@@ -587,7 +674,7 @@ const createStyles = (theme: MobileTheme) =>
       borderColor: theme.colors.borderDefault,
       borderRadius: theme.radius.card,
       borderWidth: 1,
-      minWidth: 228,
+      minWidth: 240,
       overflow: "hidden",
     },
     eventChipContent: {
@@ -618,7 +705,7 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
     },
     eventChipVisual: {
-      minHeight: 164,
+      minHeight: 190,
       position: "relative",
     },
     eventSelector: {
@@ -678,8 +765,8 @@ const createStyles = (theme: MobileTheme) =>
     screenTitle: {
       color: theme.colors.textPrimary,
       fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.title,
-      lineHeight: theme.typography.lineHeights.title,
+      fontSize: theme.typography.sizes.titleLarge,
+      lineHeight: theme.typography.lineHeights.titleLarge,
     },
     screenMeta: {
       color: theme.colors.textMuted,
@@ -693,7 +780,7 @@ const createStyles = (theme: MobileTheme) =>
       backgroundColor: theme.colors.lime,
       borderRadius: theme.radius.button,
       justifyContent: "center",
-      minHeight: 40,
+      minHeight: 44,
       paddingHorizontal: 14,
       paddingVertical: 10,
     },
@@ -712,5 +799,51 @@ const createStyles = (theme: MobileTheme) =>
     },
     standingsList: {
       gap: 10,
+    },
+    podiumRow: {
+      alignItems: "flex-end",
+      flexDirection: "row",
+      gap: 8,
+    },
+    podiumPillar: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flex: 1,
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 14,
+    },
+    podiumPillarFirst: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
+      paddingVertical: 22,
+    },
+    podiumPillarSecond: {
+      paddingVertical: 17,
+    },
+    podiumPillarThird: {
+      paddingVertical: 12,
+    },
+    podiumPillarRank: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.subtitle,
+      lineHeight: theme.typography.lineHeights.subtitle,
+    },
+    podiumPillarName: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    podiumPillarStamps: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

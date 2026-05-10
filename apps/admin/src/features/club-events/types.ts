@@ -17,6 +17,7 @@ export type ClubEventRecord = {
   city: string;
   clubId: string;
   clubName: string;
+  coverImageStagingPath: string;
   coverImageUrl: string | null;
   createdAt: string;
   createdByEmail: string | null;
@@ -33,6 +34,7 @@ export type ClubEventRecord = {
   slug: string;
   startAt: string;
   status: "ACTIVE" | "CANCELLED" | "COMPLETED" | "DRAFT" | "PUBLISHED";
+  ticketUrl: string | null;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
 };
 
@@ -53,6 +55,7 @@ export type ClubEventCreationPayload = {
   city: string;
   clubId: string;
   country: string;
+  coverImageStagingPath: string;
   coverImageUrl: string;
   description: string;
   endAt: string;
@@ -62,11 +65,13 @@ export type ClubEventCreationPayload = {
   name: string;
   rulesJson: string;
   startAt: string;
+  ticketUrl: string;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
 };
 
 export type ClubEventUpdatePayload = {
   city: string;
+  coverImageStagingPath: string;
   coverImageUrl: string;
   description: string;
   endAt: string;
@@ -78,6 +83,7 @@ export type ClubEventUpdatePayload = {
   rulesJson: string;
   startAt: string;
   status: "ACTIVE" | "DRAFT" | "PUBLISHED";
+  ticketUrl: string;
   visibility: "PRIVATE" | "PUBLIC" | "UNLISTED";
 };
 

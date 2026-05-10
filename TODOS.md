@@ -2,6 +2,1022 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Main Release Merge + Low-cost Release Policy)
+
+- [x] Re-read required docs and inspect git/release script state.
+- [x] Clarify Sentry as optional and document the low-cost observability baseline.
+- [x] Add local native release mode for store readiness when EAS is unavailable.
+- [ ] Run final validation with local native release mode.
+- [ ] Commit the feature branch with the required trailer.
+- [ ] Merge to `main`, push GitHub, and inspect triggered release/deploy checks.
+- [ ] Delete safe merged local branches and update final handoff.
+
+## Current Todos (Production Ready Final Sweep)
+
+- [x] Re-read required project docs after compact and record the final production sweep scope.
+- [x] Run subagent-backed admin, student mobile, business mobile, Supabase/RLS/Edge, and release infrastructure review.
+- [x] Verify subagent P0/P1 claims against the repository and separate false positives from actionable fixes.
+- [x] Patch admin web production guards, generic error surfaces, login CSRF, and CSP baseline.
+- [x] Patch mobile student/business stale push routing, QR retry, scanner event context, scanner route guard, and bounded opportunity reads.
+- [x] Patch Edge push payload recipient binding and shared error-detail sanitization.
+- [x] Add release infrastructure CI/env/gitignore/runbook/checklist hardening.
+- [x] Run admin/mobile/Deno/diff validation and redeploy changed Supabase Edge Function bundles.
+- [x] Update final production review handoff.
+
+## Current Todos (Organization Release Rollout + Mobile Smoke)
+
+- [x] Re-read required project docs and inspect available mobile/Supabase/release tooling.
+- [x] Add and run a focused mobile organizer event edit/save RPC smoke.
+- [x] Run Supabase hosted migration push and deploy changed Edge Functions if needed.
+- [x] Update QA/release notes with the organization hardening production changelog line.
+- [x] Run final diff/validation and update `PROGRESS.md` handoff.
+
+## Current Todos (Per-business Venue Limit + Session Bootstrap Stabilization)
+
+- [x] Re-open and verify the affected event limit and session bootstrap files without changing unrelated product surfaces.
+- [x] Make `get_event_per_business_stamp_limit` support 1-5 clamped per-business limits instead of hardcoded 1.
+- [x] Update admin club-event rule builder and validation to accept 1-5 limits.
+- [x] Update mobile organizer event create/edit limit options to 1-5 and normalize mutation payload.
+- [x] Update `SessionProvider` bootstrap to avoid uncaught getSession/getBearer flow failures and to harden invalid refresh-token cleanup.
+- [x] Add a forward migration file for recovery path.
+- [x] Run local migration update and execute the function on linked remote DB.
+- [x] Verify function returns 1 for invalid/missing limits and clamps string/number values correctly.
+- [x] Reconcile migration history divergence (`supabase migration list` remote/local gap) in a clean sync.
+- [x] Run admin organizer limit editing smoke tests for club-events and department-tag paths.
+
+## Current Todos (Organization Operations Parity + RLS Hardening)
+
+- [x] Re-read required project docs after compact and retrieve organization web/RLS/test review outputs.
+- [x] Record organization operation review and REASONS plan before code changes.
+- [x] Add Supabase RPCs for club event update/cancel and department tag update/delete.
+- [x] Wire web and mobile event mutations through the new event RPCs.
+- [x] Add web department tag update/delete API routes, client helpers, validation, and UI controls.
+- [x] Extend organization smoke tests for event update/cancel and department tag update/delete.
+- [x] Run Supabase/admin/mobile validation and update PROGRESS handoff.
+
+## Current Todos (P1/P2 Core Security Hardening)
+
+- [x] Re-read required project docs and inspect the reported P1/P2 files.
+- [x] Record focused REVIEW/PLAN/TODOS context and REASONS prompt before code edits.
+- [x] Sanitize shared Edge error response details so internal UUID/provider/DB details are not exposed.
+- [x] Add endpoint-layer throttling before expensive push recipient expansion/send flows.
+- [x] Stabilize business scanner submission around an immutable selected event context snapshot.
+- [x] Reduce mobile QR refresh cadence to backend-driven intervals instead of aggressive first retry loops.
+- [x] Run Deno/admin/mobile/Supabase validation and update PROGRESS handoff.
+
+## Current Todos (Ignored Local Artifact Cleanup)
+
+- [x] Record the cleanup scope in REVIEW/PLAN/TODOS.
+- [x] Delete the repo-ignored local artifact directories under `outputs/` and `tmp/`.
+- [x] Run targeted git/rg validation to confirm the artifact paths are gone.
+- [x] Update `PROGRESS.md` handoff with the cleanup result.
+
+## Current Todos (City/Event Scoped Announcements + Business History)
+
+- [x] Convert business history to business-staff scoped RPC instead of operator-only rows.
+- [x] Add announcement `target_city` schema support and city-aware read visibility.
+- [x] Allow event-scoped announcements for `ALL`, `STUDENTS`, and `BUSINESSES` while blocking event-scoped `CLUBS`.
+- [x] Wire `targetCity` through admin validation, create/update transport, and read-model.
+- [x] Add admin compose controls for city and event scoping.
+- [x] Make announcement push recipient expansion respect event and city scopes.
+- [x] Update business history copy to describe business-wide history.
+- [x] Run validation and deploy Supabase/Vercel after explicit approval.
+- [x] Smoke production organizer announcement form in Chrome and fix leftover hosted announcement scope constraints.
+- [x] Enforce organizer announcements as event-scoped and event-city scoped only.
+- [x] Diagnose mobile EAS Android bundle failure and include production fallback PNG assets in the EAS archive.
+- [x] Restart Android production build after the archive fix.
+- [ ] Complete iOS production build after interactive Apple distribution certificate validation.
+
+## Current Todos (Organizer Reward Claim Visibility)
+
+- [x] Re-read required project docs after compact.
+- [x] Inspect web and mobile organizer reward claim read models and screens.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add read-only under-threshold reward progress rows to web/mobile snapshots.
+- [x] Render organizer-visible progress rows without enabling invalid claim.
+- [x] Add scoped student display-name lookup for organizer claim rows.
+- [x] Add mobile event filter for claimable/progress/recent handoff rows.
+- [x] Run admin/mobile/Supabase validation and update handoff.
+
+## Current Todos (Security Findings Hardening)
+
+- [x] Re-read required project docs and Codex Security fix-finding guidance.
+- [x] Inspect reported Edge, DB, mobile session/router, and scanner log paths.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add DB/RLS helper and promotion push atomic limiter migration.
+- [x] Patch Edge functions for recipient scope, reward HTTP semantics, audit, payload binding, and scanner log reduction.
+- [x] Patch mobile notification/session handling for recipient binding and local sign-out cleanup.
+- [x] Run Supabase/Deno/mobile/admin validation and update handoff.
+
+## Current Todos (Reward Path + Tiedotteet Ticket Polish)
+
+- [x] Re-read required project docs after compact and inspect current student event/announcement owners.
+- [x] Record focused review and REASONS plan for the UI polish slice.
+- [x] Compact the event detail reward path spacing and controls.
+- [x] Convert Yhteisö announcement rail cards toward the Approt ticket card language.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Event-Centered Student Rewards Navigation)
+
+- [x] Re-read required project docs and inspect student event/reward/navigation owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add reward progress state to Approt event cards.
+- [x] Render reward progress and handoff state inline on event detail.
+- [x] Restore Profile as bottom tab and hide Rewards from visible tabs.
+- [x] Remove duplicated student header profile buttons and update reward push routing.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Push Payload Session Boundary + Scanner Error Sanitization)
+
+- [x] Re-read required project docs and inspect the reported notification/scanner files.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Clear queued notification payloads across authenticated user changes.
+- [x] Sanitize scanner transport errors for unknown or non-JSON response bodies.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Store Polish, Localized Apple Login, Live Leima Consistency)
+
+- [x] Re-read required project docs and relevant frontend/Expo skills.
+- [x] Inspect login, Apple auth, community, leima pass, student query freshness, and startup auth logs.
+- [x] Redesign login while preserving the slider and app language controls.
+- [x] Force Sign in with Apple button copy to use Finnish/English app localization.
+- [x] Redesign the student community/club directory presentation.
+- [x] Fix leima pass slot count and student query freshness after event metadata updates.
+- [x] Quiet invalid refresh-token startup cleanup without hiding real auth errors.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Event Create Constraint + Mobile UI Polish)
+
+- [x] Re-read required project docs and inspect reported admin/mobile surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix admin event creation so empty optional ticket URLs persist as `null`.
+- [x] Keep same-venue stamp limit unchanged and document why it is currently `1`.
+- [x] Polish student Approt card/header layout for date, location, join, and profile access.
+- [x] Reduce Yhteisö announcement card height and make club email footer tappable.
+- [x] Simplify login hero/panel language and text density.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Cached Egress + Approt Ticket Cards)
+
+- [x] Re-read required project docs and inspect cached egress/media/card owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Extend future public media upload cache headers for immutable assets.
+- [x] Redesign student Approt event cards with ticket styling and aligned actions.
+- [x] Replace Approt `OmaLeima` header with screen title/subtitle.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Login Role Selector Polish)
+
+- [x] Re-read active project handoff/docs and inspect login screen owners.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Replace the student role selector Google icon with a neutral role icon.
+- [x] Move the slider language toggle slightly upward.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Physical iOS Xcode Build Fix)
+
+- [x] Re-read required project docs and inspect branch/native iOS state.
+- [x] Reproduce the Xcode build failure with signing disabled to separate compile/link errors from provisioning.
+- [x] Identify the Debug iPhoneOS linker failure source in React Native prebuilt core/debug renderer symbols.
+- [x] Switch the iOS native build to source-built React Native core and regenerate pods.
+- [x] Re-run mobile validation and Xcode Debug iPhoneOS build.
+- [x] Run signing-enabled build if possible and document any remaining provisioning-only issue.
+- [x] Update handoff with exact build evidence.
+
+## Current Todos (Store Release Prep + Apple Sign-In)
+
+- [x] Re-read required project docs and inspect current production gaps / git state.
+- [x] Mark owner-confirmed physical QR scanning as tested without closing unrelated push/TestFlight proof.
+- [x] Review and tidy the uncommitted notification setup card change.
+- [x] Run mobile validation and diff checks for the cleanup.
+- [x] Commit the cleanup slice.
+- [x] Create a clean Apple Sign in feature branch for store release work.
+- [x] Open App Store Connect / Apple Developer path with user login and record the exact external setup state.
+- [x] Enable Sign in with Apple capability for the `fi.omaleima.mobile` App ID in Apple Developer.
+- [x] Add native Expo Apple authentication wiring and the iOS-only student login button.
+- [x] Extend store-release audit coverage for the Apple sign-in source/config contract.
+- [ ] Confirm hosted Supabase Apple auth provider settings and run a physical iOS/TestFlight Apple sign-in smoke.
+
+## Current Todos (Notification Completion)
+
+- [x] Re-read required project docs and inspect notification registration/routing/reminder/reward flows.
+- [x] Add automatic token registration for already-granted native notification permission.
+- [x] Add business and club notification setup controls.
+- [x] Route all existing notification push payloads to appropriate mobile screens.
+- [x] Remove duplicate local reward-unlock notifications while keeping stock-change local alerts.
+- [x] Check hosted token counts without printing tokens and document remaining background proof gaps.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Organizer Live Event Name Lock Parity)
+
+- [x] Re-read required project docs and inspect organizer web/mobile event-edit parity.
+- [x] Lock active event name editing in both organizer web and mobile forms.
+- [x] Enforce the same active-name lock in both update transport/mutation layers.
+- [x] Run web/mobile validation and update handoff.
+
+## Current Todos (Club Event Update Error Cleanup)
+
+- [x] Re-read required project docs and inspect the reported organizer save errors.
+- [x] Normalize the fixed same-venue stamp limit in the mobile event mutation layer.
+- [x] Stop unchanged invalid legacy published cover URLs from blocking event edits.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Mobile Organizer Edit + Student Header/Rewards UX)
+
+- [x] Re-read required project docs and inspect the reported mobile screens.
+- [x] Fix organizer Approt edit so the selected event opens in the edit form with existing values.
+- [x] Fix student rewards hero count clipping on the right-side badge.
+- [x] Improve student profile header button tap reliability without changing layout semantics.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Role/Security Flow Completion)
+
+- [x] Re-read required project docs after compaction and user clarification.
+- [x] Spawn role, Supabase security, UI flow, and production gap subagents.
+- [x] Record focused REVIEW/PLAN/TODOS context before code changes.
+- [x] Add shared mobile user-safe error copy and replace raw role-surface error messages.
+- [x] Make student join and club reward handoff pending states item-scoped.
+- [x] Sanitize scanner/role Edge Function DB/provider error responses.
+- [x] Add forward migration for leave role parity and SECURITY DEFINER search_path hardening.
+- [x] Run validation, update PROGRESS, and commit the sweep.
+
+## Current Todos (QR Rate Limit Hosted Apply + UX)
+
+- [x] Re-read required project docs and inspect active QR error rendering.
+- [x] Record focused REVIEW/PLAN/TODOS context for QR hosted apply and UX.
+- [x] Add localized calm `QR_RATE_LIMITED` copy on the active QR screen.
+- [x] Apply the QR limiter migration and deploy `generate-qr-token` with Supabase CLI, or document the blocker.
+- [x] Run validation, update handoff, and commit the follow-up slice.
+
+## Current Todos (QR Generation Rate-Limit Tuning)
+
+- [x] Re-read required project docs and inspect the real QR refresh cadence.
+- [x] Add focused REVIEW/PLAN/TODOS context for the QR tuning slice.
+- [x] Replace the generic dashboard limiter with a QR-specific Supabase burst limiter.
+- [x] Run targeted Deno/Supabase validation and diff checks.
+- [x] Commit the QR tuning slice with a focused message.
+
+## Current Todos (Production Gap Report + Git Cleanup)
+
+- [x] Re-read required project docs and inspect current git/dirty state.
+- [x] Add focused REVIEW/PLAN/TODOS context for this cleanup slice.
+- [x] Create a clear remaining production gaps report file.
+- [x] Apply safe in-repo fixes that do not require Apple/Sentry/provider setup.
+- [x] Ignore generated local artifacts instead of committing screenshots/output folders.
+- [x] Run targeted validation gates for touched surfaces.
+- [x] Commit intentional changes in logical groups with the required co-author trailer.
+- [x] Update PROGRESS handoff with the final state and remaining external blockers.
+
+## Current Todos (Final Production Readiness Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Record final production-readiness review and REASONS plan before new edits.
+- [x] Spawn focused subagents for security, DB/RLS, TypeScript/mobile-web, and QA evidence.
+- [x] Re-run admin, mobile, Supabase, and Edge validation gates.
+- [x] Re-run Chrome skill path and admin Playwright smoke fallback as needed.
+- [x] Collect Computer, Expo, iOS, and Android simulator evidence.
+- [x] Fix any newly verified production blockers with minimal focused changes.
+- [x] Update handoff with command evidence, subagent findings, and remaining risks.
+
+## Current Todos (Full Production Verification Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Record full production verification review and REASONS plan before edits.
+- [x] Spawn focused subagents for security, DB, TypeScript/UI, and QA evidence.
+- [x] Run broad admin/mobile/Supabase/Edge validation gates.
+- [x] Retry Chrome admin panel workflow and record exact result.
+- [x] Run Computer/Expo/iOS/Android feasible simulator checks.
+- [x] Fix high-confidence blockers found during review.
+- [x] Update handoff with command evidence, subagent findings, and remaining risks.
+
+## Current Todos (P2 Durable Push/Media/Index Backlog)
+
+- [x] Re-read required project docs after compaction.
+- [x] Inspect announcement push attempt lifecycle, media staging triggers, and FK index backlog.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add durable push delivery attempt schema and FK indexes.
+- [x] Update `send-announcement-push` to create attempt rows before Expo send and update outcomes.
+- [x] Add DB-level media staging owner membership validation.
+- [x] Run Supabase/Edge/admin validation gates.
+- [x] Run approved Chrome admin panel smoke and `npx serve-sim`.
+- [x] Update handoff with user-confirmed real-device tests and remaining risks.
+
+## Current Todos (Production Hardening Sweep)
+
+- [x] Re-read required project docs and requested plugin skill workflows.
+- [x] Record production hardening review and REASONS plan.
+- [x] Inspect published event/announcement media transport and Supabase media guards.
+- [x] Block caller-supplied public URL replacement for published media.
+- [x] Add rollback cleanup on DB update errors after publish-copy.
+- [x] Add forward DB guard for expected published media buckets.
+- [x] Run targeted admin/Supabase validation for media hardening.
+- [x] Spawn scoped subagents for media hardening, CSRF guard, security/database review, and QA.
+- [x] Run baseline validation and inspect high-risk admin/mobile/Supabase surfaces.
+- [x] Implement and integrate high-confidence hardening fixes.
+- [x] Run rendered web QA with Chrome path or documented fallback.
+- [x] Run native simulator checks with Computer/iOS/Android tooling where practical.
+- [x] Re-run targeted validation gates and update handoff.
+
+## Current Todos (Production Code Review + Refactor Sweep)
+
+- [x] Re-read required project docs and requested plugin/skill guidance.
+- [x] Spawn focused review subagents for recent slice verification, TS, DB, security, and QA.
+- [x] Run broad baseline admin/mobile/Supabase validation.
+- [x] Fix high-confidence blockers from subagent/local review.
+- [x] Run targeted validation after fixes.
+- [x] Use Chrome/Computer/native tooling for practical rendered smoke evidence.
+- [x] Collect remaining subagent results.
+- [x] Update production handoff.
+
+## Current Todos (Business Event Detail + Repeatable Announcement Push)
+
+- [x] Re-read required project docs and inspect support, push, and business event surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make support history modal visibly self-scrolling.
+- [x] Make announcement push sends repeatable and no-token-safe.
+- [x] Update admin announcement push availability/copy.
+- [x] Add business event detail route and route cards to it.
+- [x] Run relevant validation.
+- [x] Update handoff.
+
+## Current Todos (Club Event Cancel Confirm + Announcement Acknowledgement)
+
+- [x] Re-read required project docs after the new runtime report.
+- [x] Inspect club event cancel buttons and mobile announcement acknowledgement flow.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add localized event-cancel confirmation on web organizer panel.
+- [x] Add localized event-cancel confirmation on mobile organizer form.
+- [x] Add and apply atomic announcement acknowledgement RPC.
+- [x] Update mobile acknowledgement mutation and popup error handling.
+- [x] Run admin/mobile/Supabase validation.
+- [x] Document Apple login requirement and update handoff.
+
+## Current Todos (Release Candidate Bug Fix Slice)
+
+- [x] Re-read required project docs and Chrome skill guidance.
+- [x] Inspect admin organization account RPC, announcement update validation, student profile navigation, and manual account optional fields.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add hosted-safe RPC republish migration and schema reload.
+- [x] Lock event-scoped announcement update payloads to `STUDENTS`.
+- [x] Make student profile header navigation repeatable from Approt.
+- [x] Run admin/mobile validation and targeted Supabase verification where available.
+- [x] Update handoff with release/store next steps and push-token interpretation.
+
+## Current Todos (Native Simulator Completion + Login Sheet Fix)
+
+- [x] Re-read required project docs and load Browser/Computer/native simulator guidance.
+- [x] Inspect Android login screenshot against the current auth/login layout.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix login sheet layout so language selector cannot hide sign-in controls.
+- [x] Apply city-scope migration to hosted Supabase and verify runtime objects.
+- [x] Re-run mobile/admin validation and native simulator smoke where available.
+- [x] Use Browser and Computer Use for visible smoke/inspection evidence.
+- [x] Update handoff with SimCam/browser-simulator limits and remaining real-device checks.
+
+## Current Todos (City Scope + Runtime Warning + Simulator QA)
+
+- [x] Re-read required project docs and load Browser/Computer/native QA guidance.
+- [x] Inspect student profile navigation, announcement realtime, event city, and Supabase custom-domain surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix student profile header navigation regression.
+- [x] Replace noisy announcement realtime invalidation with a non-redbox/non-warning freshness path.
+- [x] Add DB-level city eligibility for business event joins and organizer event creation/update.
+- [x] Prioritize student local-city events without hiding other cities.
+- [x] Document Supabase custom-domain setup for branded Auth/Storage URLs.
+- [x] Run local Supabase, admin/mobile validation, and simulator/browser smoke where available.
+- [x] Update handoff with evidence, remaining DNS/setup tasks, and real-device checks.
+
+## Current Todos (Private Media Staging + Mobile Edge Protection)
+
+- [x] Re-read required project docs and load Codex Security guidance.
+- [x] Inspect existing public media upload, persistence, cleanup, and release review state.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add private staging bucket, RLS policies, staging DB columns, and DB invariants.
+- [x] Update admin web event/announcement uploads, payloads, transport publish-copy, and read-model signed previews.
+- [x] Update mobile event/announcement uploads, draft types, mutations publish-copy, and signed previews.
+- [x] Add Cloudflare/mobile security boundary docs or audit guard.
+- [x] Apply hosted migration and verify staging/public invariants.
+- [x] Run admin/mobile/security validation and perform focused code-review.
+- [x] Update `REVIEW_RESULT.md` and handoff.
+
+## Current Todos (Public Draft Media Guard)
+
+- [x] Re-read required project docs and inspect current release-review handoff.
+- [x] Inspect public media bucket posture and event/announcement upload flows.
+- [x] Add DB trigger guard and draft-media cleanup migration.
+- [x] Block admin/organizer web draft media uploads and validation.
+- [x] Update mobile event/announcement mutations to avoid persisting draft public media and clean uploaded objects.
+- [x] Run admin/mobile typecheck and lint validation.
+- [x] Try Supabase migration validation/apply path and document any environment blocker.
+- [x] Update release handoff with fixed scope and remaining private-staging risk.
+
+## Current Todos (Native Simulator QA Gate Consolidation)
+
+- [x] Re-read required project docs and inspect current native simulator smoke wrappers.
+- [x] Confirm the root QA wrapper still stopped at static wiring checks.
+- [x] Add the executable Android/iOS simulator launch smoke to the root QA command.
+- [x] Update testing, launch runbook, and production checklist wording.
+- [x] Run the consolidated root QA command and final diff check.
+
+## Current Todos (Executable Native Simulator Smoke)
+
+- [x] Re-read required project docs and load Expo/Android/iOS simulator guidance.
+- [x] Inspect current native simulator audit and local SDK/simulator availability.
+- [x] Add repeatable Android emulator + iOS simulator launch-smoke script.
+- [x] Wire the smoke command into package scripts and static audit expectations.
+- [x] Update testing, launch runbook, and production checklist docs.
+- [x] Run static validation, Android emulator smoke, and iOS simulator smoke.
+- [x] Update handoff with artifacts, limitations, and next physical-device checks.
+
+## Current Todos (Mobile Stale Build Enforcement)
+
+- [x] Re-read required project docs and inspect P1-8 stale/offline scope.
+- [x] Confirm event-day manual fallback runbook already exists for scanner outages.
+- [x] Add Supabase mobile release requirements table and hosted seed rows.
+- [x] Add Expo config build numbers and store URL handoff values.
+- [x] Add mobile release gate provider and wire it before session/app flows.
+- [x] Extend store readiness audit and production checklist for stale build gate.
+- [x] Run mobile validation, hosted verification, and update review handoff.
+
+## Current Todos (Production Test Checklist + Performance Gates)
+
+- [x] Re-read required project docs and inspect remaining high-value `REVIEW_RESULT.md` items.
+- [x] Inspect current public event queries, push recipient resolution, bundle scripts, and media bucket posture.
+- [x] Add a single final production test checklist document.
+- [x] Bound student public event discovery query.
+- [x] Batch announcement push recipient DB lookups.
+- [x] Add and wire a mobile web bundle budget audit.
+- [x] Run admin/mobile/function validation and update review checklist/handoff.
+
+## Current Todos (Mutation Rate Limit + Scanner PIN Lockout)
+
+- [x] Re-read required project docs and inspect `REVIEW_RESULT.md` next open items.
+- [x] Inspect current admin/organizer mutation routes and scanner PIN RPC boundary.
+- [x] Add DB-backed authenticated dashboard mutation rate limit.
+- [x] Wire rate limit helper into high-risk admin/organizer mutation routes.
+- [x] Add scanner device PIN failed-attempt counters and lockout to `scan_stamp_atomic`.
+- [x] Add Edge Function and mobile scanner status/copy for `SCANNER_PIN_LOCKED`.
+- [x] Run admin/mobile/Supabase validation and simulator-capable checks.
+- [x] Tick completed `REVIEW_RESULT.md` items and update handoff.
+
+## Current Todos (Production Review Result Closure)
+
+- [x] Re-read required project docs and inspect `REVIEW_RESULT.md`.
+- [x] Reproduce the failing mobile store and realtime audits.
+- [x] Update mobile audit scripts for the current safe native audio and local sign-out contracts.
+- [x] Fix mobile touch target and disabled-state accessibility findings.
+- [x] Restore visible web focus indicators where outlines were removed.
+- [x] Remove mobile lint warnings from business and organizer home/events screens.
+- [x] Guard destructive hosted showcase scripts and local seed execution against accidental production damage.
+- [x] Tick completed items in `REVIEW_RESULT.md` with validation evidence.
+- [x] Continue next slice with authenticated mutation rate limiting and scanner PIN lockout.
+
+## Current Todos (Student Event Detail Debug Rules + Announcement Push Tap)
+
+- [x] Inspect student event detail rules rendering and dark-mode conditionals.
+- [x] Hide technical event rule keys from student-facing detail UI.
+- [x] Remove leftover light-mode branches from that screen and stale theme storage constant.
+- [x] Trace admin/organizer announcement push sender, Edge Function recipient filtering, Expo payload, and mobile notification tap router.
+- [x] Run mobile/admin validation and push readiness audits.
+- [x] Update handoff with physical-device push tap smoke notes.
+
+## Current Todos (Stamp Card Cap + Empty Leima Reset)
+
+- [x] Re-read required docs and inspect reported duplicate tag and scan cap surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make custom department tag creation retry when duplicate slugs are hidden/unattachable.
+- [x] Add DB-level full stamp card guard before QR/stamp inserts.
+- [x] Add `STAMP_CARD_FULL` Edge Function and mobile scanner copy/status handling.
+- [x] Apply the scan cap migration to hosted Supabase.
+- [x] Clear hosted leima/progress data and verify zero counts.
+- [x] Run admin/mobile validation and focused diff checks.
+- [x] Update handoff with hosted reset and manual retest notes.
+
+## Current Todos (Mobile Runtime Recovery + Expanded Demo Accounts)
+
+- [x] Re-read required docs and inspect reported runtime error surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make custom department tag creation recover from duplicate slug conflicts.
+- [x] Prevent stale native builds from loading `expo-audio` when `ExpoAudio` is absent.
+- [x] Clear invalid local refresh-token sessions without redboxing.
+- [x] Add DB-level default OmaLeima logo trigger for businesses and apply it hosted.
+- [x] Expand hosted demo events, venues, registrations, stamps, rewards, and announcements.
+- [x] Run mobile/admin validation and hosted count checks.
+- [x] Update handoff with device test notes.
+
+## Current Todos (Store Screenshot Demo Reset + Stale Native Audio Guard)
+
+- [x] Re-read required docs and inspect scan feedback/language profile surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Harden scan audio feedback against stale native builds.
+- [x] Align mobile language icon styling with profile rows.
+- [x] Inspect hosted schema dependencies for destructive event/demo cleanup.
+- [x] Add and run repeatable screenshot/demo seed against hosted Supabase.
+- [x] Run mobile validation and focused diff checks.
+- [x] Update handoff with seeded data, validation, and physical-device smoke checklist.
+
+## Current Todos (Full Release Readiness Review)
+
+- [x] Re-read required project docs and load requested security/ECC/Expo/iOS/Android/web guidance.
+- [x] Start focused subagent reviews for security, web/admin, mobile, database, and QA coverage.
+- [x] Build repository release-gate inventory and identify executable validation commands.
+- [x] Run non-destructive admin/web/mobile/Supabase/native readiness validation.
+- [x] Review high-risk trust boundaries: QR scan, rewards, admin account creation, support replies, storage, deletion, push, auth/session.
+- [x] Collect subagent findings and validate any reportable blockers against repository evidence.
+- [x] Produce store/web readiness decision with blockers, residual risks, and exact next actions.
+- [x] Update handoff.
+
+## Current Todos (Mobile QR Scan Feedback + Icon Completeness)
+
+- [x] Re-read required docs and inspect QR scanner/student stamp/icon surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add shared safe scan sound/haptic feedback.
+- [x] Trigger feedback from business scanner results and student stamp celebration.
+- [x] Complete missing store icon size assets and audit checks.
+- [x] Run mobile validation/prebuild checks and update handoff.
+
+## Current Todos (Mobile Community Club Detail Modal Scroll)
+
+- [x] Re-read required docs and inspect community club detail modal.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Constrain club detail sheet to safe viewport height.
+- [x] Make modal body scroll internally with sticky close/header behavior.
+- [x] Harden long contact/link/announcement text overflow.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Mobile App Icon + Notification Branding)
+
+- [x] Re-read required docs and inspect Expo config/native icon assets.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Point iOS app icon config away from the default Expo icon asset.
+- [x] Replace Android monochrome/themed icon with an OmaLeima stamp asset.
+- [x] Add and wire a valid Android notification tray icon.
+- [x] Run Expo prebuild/resource validation and mobile checks.
+- [x] Update handoff.
+
+## Current Todos (Admin Manual Organization Account Creation)
+
+- [x] Re-read required docs after compact and inspect manual business account creation.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add an atomic Supabase RPC for admin-created organization owner accounts.
+- [x] Add the admin-only organization account creation API route with auth rollback.
+- [x] Add the localized manual organization account form to the admin manual account tab.
+- [x] Run Supabase/admin validation and update handoff.
+
+## Current Todos (Native Share Guard + Organizer Profile Polish)
+
+- [x] Re-read required docs and inspect native share, business event detail, organizer reports, and profile surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Harden leima-card capture/save/share against stale native modules and export-shape differences.
+- [x] Make business active event preview long details scroll reliably.
+- [x] Redesign mobile organizer reports to match the business ROI quality bar.
+- [x] Add web organizer profile page/API with phone and address editing.
+- [x] Run mobile/admin validation and update handoff.
+
+## Current Todos (Hosted Club Contact + Native Share Build Gate)
+
+- [x] Re-read required docs after compact and load Expo/iOS/Android guidance.
+- [x] Verify hosted Supabase `clubs` contact columns are present in production.
+- [x] Spawn focused subagent reviews for mobile share/QR, security, release readiness, and Supabase migration.
+- [x] Replace top-level share native imports with action-time dynamic imports and explicit stale-build errors.
+- [x] Keep QR screenshot protection active through the QR-to-LEIMA flip transition.
+- [x] Remove bearer/QR tokens from React Query keys and clear QR token/SVG cache when QR is not active.
+- [x] Strengthen store-readiness audit for native share module declarations and generated iOS linking.
+- [x] Run Expo prebuild + pod install so local iOS generated graph includes `ExpoMediaLibrary`, `ExpoSharing`, and `react-native-view-shot`.
+- [x] Cancel earlier queued EAS builds and submit fresh Android/iOS development builds with the final patch.
+- [x] Run mobile validation, Expo Doctor, web export, and iOS Release simulator compile.
+- [x] Document real-device save/share/QR screenshot smoke checklist.
+
+## Current Todos (Dashboard Locale + Claims Smoke + Student Reward Detail)
+
+- [x] Re-read required docs and inspect dashboard locale, claims, smoke, and student event detail surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix dashboard locale switch to use the server cookie redirect route.
+- [x] Move student event rewards into a top gift action/modal and remove buried duplicates.
+- [x] Start/seed local Supabase and run local credentialed `/admin` + `/club` dashboard smoke.
+- [x] Verify `/club/claims` event visibility and route behavior locally/hosted where credentials allow.
+- [x] Run admin/mobile validation and update handoff.
+- [x] Report physical-device/dev-client smoke status honestly.
+
+## Current Todos (Mobile Student/Business UX Fix Pack)
+
+- [x] Re-read required docs and inspect affected mobile surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix business event preview modal scroll for long details.
+- [x] Redesign/localize business ROI report cards and event rows.
+- [x] Stop student QR hero from auto-sliding after selected event changes.
+- [x] Standardize the shared language dropdown icon/text visual treatment.
+- [x] Add visible community club detail action and richer club detail modal.
+- [x] Add safe leima-card save/share flow without sharing active QR tokens.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Student/Business Mobile + Public Web Surface Sweep)
+
+- [x] Re-read required docs and inspect student/business mobile and public-web surfaces.
+- [x] Identify concrete student/business presentation and flow issues.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Localize all typed student join/cancel status presentations.
+- [x] Replace raw map/ticket/business transport errors with localized action copy.
+- [x] Align business active event labels and reward type labels.
+- [x] Run mobile validation.
+- [x] Localize public business application server and field error presentation.
+- [x] Localize public contact form server field error presentation.
+- [x] Re-run admin validation and update handoff.
+
+## Current Todos (Mobile Organizer Announcement Notice Sweep)
+
+- [x] Inspect organizer mobile announcement mutation and notice surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Localize common announcement validation errors.
+- [x] Localize announcement update/archive/delete not-allowed notices.
+- [x] Replace hardcoded club picker eyebrow with localized copy.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Mobile Organizer Copy Consistency Sweep)
+
+- [x] Re-read required docs after compact and inspect organizer mobile copy/message surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Align mobile organizer `LIVE` Finnish labels.
+- [x] Localize organizer event action success notices and block non-success payloads from success UI.
+- [x] Localize common organizer event lifecycle/ticket URL errors.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Admin/Organizer Cross-Surface QA Sweep)
+
+- [x] Re-read required docs and inspect admin/organizer web/mobile route surfaces.
+- [x] Identify concrete next issues from the cross-surface review.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add organizer reports to credentialed dashboard browser smoke coverage.
+- [x] Localize mobile organizer reports row metrics and status labels.
+- [x] Run focused admin/mobile validation.
+- [x] Update handoff.
+
+## Current Todos (Web Login Legal Links + Dashboard Locale Polish)
+
+- [x] Re-read required docs and load relevant web/Supabase guidance.
+- [x] Inspect admin login, dashboard shortcut/navigation, organizer event rules, and deploy notes.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add admin login legal, privacy, support, and Instagram links.
+- [x] Fix dashboard shortcut card layout so badges/images cannot cover copy.
+- [x] Localize organizer event rules builder and dashboard badge/navigation labels.
+- [x] Run admin validation and focused diff checks.
+- [x] Deploy hosted Supabase report/re-engagement migration/function where possible.
+- [x] Update handoff.
+
+## Current Todos (Ticket URL + Organizer/Business Reports)
+
+- [x] Re-read required working docs and load reporting/frontend/Expo/E2E guidance.
+- [x] Spawn focused read-only agents for DB, web, mobile, and re-engagement surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add generic ticket URL schema, validation, event create/update, and student CTA.
+- [x] Add scoped organizer and business report RPCs with indexes and RLS-safe access checks.
+- [x] Add organizer web reports screen and event-scoped post-event announcement composer.
+- [x] Add organizer mobile reports screen and business mobile ROI report screen.
+- [x] Run Supabase/admin/mobile validation and update handoff.
+
+## Current Todos (Business Onboarding + Organizer Profile Exit)
+
+- [x] Re-read required docs and inspect business home/profile, club profile, assets, and existing storage patterns.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Remove business home top-right profile shortcut.
+- [x] Add organizer profile sign-out button.
+- [x] Add reusable business onboarding modal with localized photo slides.
+- [x] Show onboarding once on first business home entry and add profile reopen action.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Mobile/Admin Runtime Fix Slice)
+
+- [x] Re-read required docs after compact and inspect affected mobile/admin/SQL surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Move app-owned React Native Animated surfaces off the native animated event channel.
+- [x] Remove redundant registered-push profile summary text.
+- [x] Add admin manual business `Y-tunnus` input and persist owner name as mobile responsible person.
+- [x] Add organizer mobile visible event delete action while preserving published/active event history.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Android Release Smoke + Hosted Login Content Gate)
+
+- [x] Re-read required docs and requested plugin guidance.
+- [x] Boot Android emulator with SDK-local adb/emulator and install release APK.
+- [x] Verify release APK launches, privacy modal appears, and accepting it reaches login.
+- [x] Add hosted mobile login slide content hygiene to store-readiness audit.
+- [x] Clean the current hosted placeholder login slide content.
+- [x] Re-run mobile store/native validation and update handoff.
+
+## Current Todos (iOS Native Release Sync Gate)
+
+- [x] Re-read required docs and requested plugin guidance.
+- [x] Inspect current Expo config, generated iOS privacy manifest, Xcode workspace, and simulator availability.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Extend store-readiness audit for generated iOS privacy manifest alignment.
+- [x] Update store/native testing docs.
+- [x] Sync generated iOS project with Expo prebuild and run iOS Release simulator build.
+- [x] Run final validation and update handoff.
+
+## Current Todos (iOS Privacy Manifest Source-Of-Truth)
+
+- [x] Re-read required docs and requested plugin guidance.
+- [x] Verify current Apple privacy manifest and Expo config support.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add iOS privacy manifest collected-data disclosure to Expo config.
+- [x] Extend mobile store-readiness audit for iOS native privacy manifest coverage.
+- [x] Run mobile/admin validation and update handoff.
+
+## Current Todos (Store Permission Hygiene Sweep)
+
+- [x] Re-read required project docs and requested ECC/security/Expo/iOS/Android plugin guidance.
+- [x] Inspect Expo config, Android manifest, iOS plist, store-readiness audit, and launch docs.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Remove Android overlay permission and disable Android backup at source and checked-in manifest level.
+- [x] Extend the mobile store-readiness audit to enforce sensitive-permission hygiene.
+- [x] Update store-readiness documentation and runbook notes.
+- [x] Align Expo SDK 55 package patch versions reported by Expo Doctor.
+- [x] Run mobile validation and native environment probes.
+- [x] Update handoff.
+
+## Current Todos (Mobile Login Slider Target Fix)
+
+- [x] Re-read required docs and inspect web/mobile login slider wiring.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Restore web admin login to static fallback slide.
+- [x] Add mobile active login slide read helper.
+- [x] Render active login slides in mobile login hero with localized copy and explicit error state.
+- [x] Run admin/mobile validation.
+- [x] Update handoff.
+
+## Current Todos (Dashboard Browser Smoke Coverage)
+
+- [x] Re-read required docs and ECC browser/e2e guidance.
+- [x] Inspect existing browser smoke helpers and admin/organizer dashboard routes.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Stabilize browser sign-in helper against mutable login slide copy and missing locale cookie.
+- [x] Add credentialed admin/organizer dashboard browser smoke.
+- [x] Document and expose the new smoke command.
+- [x] Run browser smoke and admin validation.
+- [x] Update handoff.
+
+## Current Todos (Supabase Lint + Local QA Hygiene)
+
+- [x] Re-read required project docs and requested plugin skill guidance.
+- [x] Reproduce the remaining local Supabase lint warning.
+- [x] Inspect the owner-access RPC definition and local testing documentation.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add a behavior-preserving corrective migration for the unused owner profile variable.
+- [x] Update local QA documentation for the pinned Supabase CLI setup path.
+- [x] Re-run Supabase/admin/mobile validation and native environment probes.
+- [x] Update handoff.
+
+## Current Todos (Local Migration Parser Unblock)
+
+- [x] Re-read required docs and confirm local Supabase DB is behind current migrations.
+- [x] Reproduce the local migration parser failure.
+- [x] Inspect the failing migration function boundaries.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Replace parser-fragile custom function dollar tags without changing SQL logic.
+- [x] Split parser-fragile scanner function/grant DDL into immediate follow-up migrations.
+- [x] Split the owner-access function grant into an immediate follow-up migration.
+- [x] Guard optional `rls_auto_enable()` ACL changes in the anon RPC restriction migration.
+- [x] Make local seed smoke auth users compatible with the current local Auth schema.
+- [x] Re-run local migration up and verify current schema objects.
+- [x] Re-run admin route smoke against the local dev server.
+- [x] Update handoff.
+
+## Current Todos (Smoke Auth Env Bootstrap)
+
+- [x] Re-read required docs and confirm local Supabase stack status.
+- [x] Reproduce `smoke:auth` env bootstrap failure.
+- [x] Inspect the import/env parse order.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Move eager app access import behind env bootstrap.
+- [x] Run `smoke:auth` and admin validation.
+- [x] Update handoff.
+
+## Current Todos (PostCSS Advisory Hardening)
+
+- [x] Re-read required docs and run plugin-guided release/security checks.
+- [x] Run admin/mobile npm audit and identify the PostCSS advisory.
+- [x] Confirm `npm audit fix --force` would take an unsafe framework downgrade path.
+- [x] Record focused review and REASONS plan before dependency edits.
+- [x] Add safe PostCSS overrides for admin and mobile workspaces.
+- [x] Regenerate package locks and verify dependency resolution.
+- [x] Re-run audit/type/lint gates and update handoff.
+
+## Current Todos (Route Smoke Harness Guard)
+
+- [x] Re-read required docs and plugin guidance for security, Expo/native readiness, Android, iOS, and web validation.
+- [x] Run mobile lint/typecheck and reproduce the route smoke failure.
+- [x] Inspect route smoke prerequisites and testing documentation.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add local-target guards and `/login` preflight to `smoke:routes`.
+- [x] Validate the improved failure mode and run admin validation.
+- [x] Update handoff with remaining credential/device smoke blockers.
+
+## Current Todos (Release Gate Security Hardening)
+
+- [x] Re-read required working docs and load the requested security, Expo, iOS, Android, and web guidance.
+- [x] Run repo-owned mobile release/readiness audits that do not require private store credentials or physical devices.
+- [x] Run admin smoke checks and separate environment/credential blockers from code defects.
+- [x] Search high-risk owner-access, recovery-link, service-role, URL, redirect, and media-rendering surfaces.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fail-close the legacy recovery-link owner access Edge Function and remove unused web caller/types.
+- [x] Tighten admin login-slide URL validation to web-safe schemes.
+- [x] Run admin validation and focused diff checks.
+- [x] Deploy/apply changed hosted surfaces where practical and update handoff.
+
+## Current Todos (Dashboard Navigation Latency)
+
+- [x] Re-read required working docs and inspect dashboard shell, locale route, layouts, pages, and access/context helpers.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add a cached current dashboard access resolver and use it in admin/club layouts and pages.
+- [x] Remove avoidable locale-switch redirect by replacing it with client cookie + router refresh.
+- [x] Run admin validation and focused diff checks.
+- [x] Deploy web runtime changes and update handoff.
+
+## Current Todos (Organizer Mobile Actions + Localized Login Slides)
+
+- [x] Re-read required working docs and inspect organizer mobile events, announcements, profile language dropdown, and admin login-slide flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix organizer mobile safe draft-delete visibility in the event action sheet.
+- [x] Center organizer mobile events/announcements circular `+` glyphs.
+- [x] Remove nested border/alignment issue from the mobile language dropdown.
+- [x] Add localized Finnish/English login-slide schema, read-model, admin form, and login rendering.
+- [x] Run mobile/admin validation, apply/deploy hosted changes if needed, and update handoff.
+
+## Current Todos (Release Smoke + Cookie Consent Persistence)
+
+- [x] Re-read required working docs and load frontend/browser testing guidance.
+- [x] Reproduce the production cookie consent accept-all persistence bug in a rendered browser.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix cookie consent hydration/persistence so accepted choices survive reload/navigation.
+- [x] Run admin/mobile release checks that do not require private credentials or physical devices.
+- [x] Re-test cookie consent in rendered browser and update handoff.
+
+## Current Todos (Mobile Privacy Modal + Language Dropdown + Organizer Edit Route)
+
+- [x] Re-read required working docs and inspect affected mobile legal, preference, and organizer event flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Convert mobile legal acknowledgement into a popup/modal and remove persistent bottom legal cards.
+- [x] Add reusable language dropdown and use it on login/profile preference surfaces.
+- [x] Fix organizer upcoming edit route so the event edit form opens reliably.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Organizer Delete + Media Cleanup + Login Slides)
+
+- [x] Re-read required working docs and inspect affected mobile/admin/storage flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add shared owned-storage cleanup helpers for mobile and admin image replacement/delete flows.
+- [x] Add organizer-mobile announcement delete action and event safe-delete action to dropdowns.
+- [x] Apply old-image cleanup to mobile announcement, event, club profile, and business profile image updates.
+- [x] Apply old-image cleanup to admin announcement/event replacement flows and login slider deletes.
+- [x] Add login slider Supabase schema, storage policies, admin management UI, and login-page rendering.
+- [x] Run validation, apply/deploy hosted changes if possible, and update handoff.
+
+## Current Todos (Mobile Haptics Crash Fix)
+
+- [x] Re-read required working docs and Expo dev-client guidance.
+- [x] Confirm direct `expo-haptics` calls caused the organizer event creation redbox.
+- [x] Replace direct haptics calls with the existing safe wrapper across mobile role screens.
+- [x] Run mobile typecheck, lint, export/web, and direct-haptics search.
+
+## Current Todos (Full Surface QA Sweep)
+
+- [x] Re-read required working docs and load relevant E2E/frontend/Expo skills.
+- [x] Spawn parallel audit agents for admin web, organizer web, student mobile, organizer mobile, and business/scanner mobile.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Run admin web validation: typecheck, lint, build, route/API smoke, and rendered browser smoke where practical.
+- [x] Run mobile validation: typecheck, lint, export/web, native/readiness audits, and focused route/action code audit.
+- [x] Triage subagent findings and implement minimal fixes for confirmed broken buttons, no-op flows, logic errors, or missing guards.
+- [x] Re-run impacted validation, deploy hosted changes if production code changes, and update handoff.
+
+## Current Todos (Claims/Fraud/Announcement/Reward Delete Lifecycle)
+
+- [x] Re-read required working docs and inspect claims, fraud, announcements, rewards, push, and storage flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make organizer reward claims selected-event behavior explicit and verify queue/recent sections remain tied to the selected event.
+- [x] Add clear fraud-review explanation for what is detected and how review statuses work.
+- [x] Make announcement push no-recipient/preference failures actionable instead of misleading.
+- [x] Add announcement delete action that removes the announcement row and owned bucket image.
+- [x] Add reward-tier delete lifecycle for organizer/admin-safe management without breaking claim history.
+- [x] Run validation, apply/deploy hosted changes, and update handoff.
+
+## Current Todos (Admin Pagination + Support Push + Account Deletion)
+
+- [x] Re-read required working docs and inspect affected admin/mobile/support flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add internal pagination and search to `/admin/users`.
+- [x] Add internal pagination to mobile support and contact submissions panels.
+- [x] Add safe admin account deletion/anonymization action without breaking audit/leima history.
+- [x] Send push notifications when admins reply to mobile support requests.
+- [x] Run validation, apply/deploy hosted changes, and update handoff.
+
+## Current Todos (Admin Mobile Support Inbox + Replies)
+
+- [x] Re-read required working docs and inspect current mobile support/admin patterns.
+- [x] Confirm previous admin operations items were implemented and validated in the last slice.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add atomic admin support reply RPC and realtime publication for support requests.
+- [x] Add admin support requests inbox page, read model, reply API, navigation, and localized copy.
+- [x] Refresh mobile support history when admin replies arrive.
+- [x] Run admin/mobile/Supabase validation, deploy/apply hosted changes, and update handoff.
+
+## Current Todos (Admin Operations Reliability + User Management)
+
+- [x] Re-read required working docs and inspect reported flows.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix apply form false-error after successful submission.
+- [x] Fix department-tag merge profile-link sync order.
+- [x] Stabilize admin/organizer dashboard locale persistence.
+- [x] Add manual admin business owner/account creation form and route.
+- [x] Add admin users table and active/suspended status mutation.
+- [x] Add mobile realtime profile suspension sign-out.
+- [x] Run validation, apply/deploy hosted changes, and update handoff.
+
+## Current Todos (Store Legal Links + Transient Form Success)
+
+- [x] Re-read required working docs and inspect current store-compliance surfaces.
+- [x] Verify current Apple/Google policy requirements from official sources.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add mobile privacy/terms links to login and role profile surfaces.
+- [x] Keep contact/apply forms visible after success and auto-clear success after three seconds.
+- [x] Auto-clear high-visibility admin/mobile success notices after three seconds.
+- [x] Extend store readiness audit/docs for in-app legal links and web deletion resource.
+- [x] Run admin/mobile/store validation and update handoff.
+
+## Current Todos (Admin Login Crash Recovery)
+
+- [x] Re-read required working docs and inspect production admin error logs.
+- [x] Identify the `/admin` crash as an ambiguous `business_staff -> profiles` embed.
+- [x] Identify the login lockout as stale Supabase refresh-token cookies throwing in proxy.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Fix the explicit owner profile relationship in the admin read-model.
+- [x] Add stale auth cookie cleanup and login redirect in the Supabase proxy.
+- [x] Run admin validation and update handoff.
+
+## Current Todos (Store Compliance + Leima Limit Semantics)
+
+- [x] Re-read working docs and official Apple/Google store policy references.
+- [x] Inspect current scan limit behavior, mobile profile support flow, public legal copy, and store readiness audit.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Clarify one-scan-one-leima copy across organizer, student, and scanner surfaces.
+- [x] Add in-app account/data deletion request initiation through the mobile support sheet.
+- [x] Expand privacy/store readiness docs and audit checks for mobile data/deletion coverage.
+- [x] Run validation and update handoff.
+
+## Current Todos (Mobile Runtime Warning Cleanup)
+
+- [x] Re-read working docs and inspect mobile auth/navigation warning sources.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Add native WebCrypto bridge for Supabase PKCE SHA-256.
+- [x] Add explicit initial routes to mobile navigators.
+- [x] Run mobile validation and update handoff.
+
+## Current Todos (Announcement Partial Push Retry)
+
+- [x] Re-read working docs and inspect announcement push function/admin read-model.
+- [x] Record focused review and REASONS plan before code changes.
+- [x] Make Edge Function retry only unresolved failed recipients.
+- [x] Make admin push delivery status ignore old failures after the same user succeeds.
+- [x] Run admin validation and update handoff.
+
+## Current Todos (Auth Role Entry Cleanup)
+
+- [x] Re-read working docs and inspect admin login plus mobile role guards.
+- [x] Remove Google OAuth from admin web login while preserving password/Turnstile flow.
+- [x] Add persisted mobile role-area preference to session access.
+- [x] Add shared role switch UI to mobile role home screens.
+- [x] Run admin/mobile validation and update handoff.
+
+## Current Todos (Mobile Reward Claim Flow)
+
+- [x] Re-read working docs and inspect current reward claim backend/mobile surfaces.
+- [x] Add a mobile club claims read-model and claim confirmation mutation.
+- [x] Add a hidden organizer claims screen and route links from existing organizer surfaces.
+- [x] Add student claimable reward handoff guidance using the masked student label convention.
+- [x] Run mobile validation and record remaining larger gaps.
+
+## Current Todos (Critical Pre-Release Fixes)
+
+- [x] Read working docs and audit findings before editing.
+- [x] Add Supabase migration for RPC actor binding, direct RPC grant reduction, and event visibility RLS scoping.
+- [x] Add mobile scanner `apikey` header and align scanner duplicate/rate-limit status mapping.
+- [x] Allow registered private/unlisted events in student QR and reward data flows.
+- [x] Scope business joinable opportunities by business city.
+- [x] Hide or disable club event edit/cancel actions for non-manager club memberships.
+- [x] Run mobile/admin/Supabase validation and record remaining larger feature gaps.
+
+## Current Todos (Pre-Release Code Review Refactor Sweep)
+
+- [x] Confirm main is clean after public-site push and Vercel deploy.
+- [x] Create a fresh review/refactor branch from main.
+- [x] Start a code-reviewer subagent for broad correctness/release review.
+- [x] Read Codex Security repository-wide scan guidance and required references.
+- [x] Update working docs with the REASONS review/refactor plan.
+- [x] Build runtime inventory and high-impact security coverage ledger.
+- [x] Run first-pass targeted high-risk searches across mobile, admin, Supabase SQL, and Edge Functions.
+- [ ] Wait for code-reviewer findings and triage reportable issues.
+- [ ] Apply only minimal risk-reducing fixes/refactors.
+- [ ] Run full validation suite for touched surfaces.
+
 ## Current Todos (Public Gallery Polish)
 
 - [x] Re-read AGENTS, master plan, progress, todos, plan, and review before touching the worktree.
@@ -840,7 +1856,94 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Remove redundant leaderboard explanatory text while preserving state handling.
 - [x] Run typecheck, scoped ESLint, visual smoke, and update handoff.
 
+## Current Todos (Cookie Consent + Public SEO)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and review.
+- [x] Check current legal pages, metadata, sitemap, robots, web auth cookies, and mobile login/legal storage patterns.
+- [x] Confirm current Finnish/EU cookie consent expectations from official guidance.
+- [x] Update working docs for the cookie consent and SEO slice.
+- [x] Add web cookie preference banner, settings trigger, CSS, and privacy copy.
+- [x] Add mobile first-run privacy/app-data acknowledgement before login.
+- [x] Strengthen public SEO metadata, structured data, robots, sitemap, and extractable FAQ content.
+- [x] Run web/mobile validation, deploy web, and update handoff.
+
+## Current Todos (Organizer + Business Finnish Sales Decks)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and review.
+- [x] Load imagegen and Presentations plugin guidance.
+- [x] Inspect existing presentation assets and confirm `omaleima-pictures` is represented by project image folders.
+- [x] Plan separate organizer and business deck narratives.
+- [x] Build editable artifact-tool PPTX decks with project image assets.
+- [x] Generate previews/contact sheets and validate deck structure.
+- [x] Update working docs and progress handoff.
+
 ## Next Queue
+
+## Current Todos (Business Announcement Push Delivery)
+
+- [x] Inspect mobile push handling, announcement visibility, and send-push recipient resolution for business vs student paths.
+- [x] Update working docs for the business push delivery slice.
+- [x] Add mobile foreground announcement push invalidation.
+- [x] Add club-scoped business announcement visibility migration.
+- [x] Include joined business staff in club-scoped business/all push recipients.
+- [x] Run validation, deploy Supabase migration/function, and update handoff.
+
+## Current Todos (Announcement Realtime Regression + Profile Panel Cleanup)
+
+- [x] Inspect realtime announcement hook, popup/feed image rendering, and organizer profile panel ownership.
+- [x] Update working docs for the regression fix slice.
+- [x] Give each announcement realtime hook instance a unique channel topic.
+- [x] Render popup announcement fallback image when no custom image exists.
+- [x] Remove duplicated organizer profile intro panel below the page header.
+- [x] Run mobile/admin validation, deploy admin, and update handoff.
+
+## Current Todos (Hosted Event + Realtime Refresh Fixes)
+
+- [x] Inspect event ticket URL transport, announcement mutation messages, post-event follow-up timing, announcement realtime invalidation, and shared manual refresh behavior.
+- [x] Update working docs for the hosted release fix slice.
+- [x] Normalize admin event update ticket URLs before persistence.
+- [x] Remove user-facing UUIDs from announcement mutation success messages.
+- [x] Make post-event follow-up announcements start immediately and invalidate mobile feeds through Supabase realtime.
+- [x] Add a shared manual refresh timeout guard for all screens using `useManualRefresh`.
+- [x] Run admin/mobile validation, deploy admin to Vercel, and update handoff.
+
+## Current Todos (Profile Typography + Collapsible Scanner)
+
+- [x] Inspect business profile notification setup, typography tokens, and scanner event selector.
+- [x] Update working docs for the current UI/typography slice.
+- [x] Align business profile notification row with other preference rows.
+- [x] Make business scanner multi-event selector collapsible.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Final Mobile UI Micro Polish)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and frontend-design skill.
+- [x] Inspect student club directory, business events, ROI, and reward handoff owners.
+- [x] Update working docs for the current micro-polish slice.
+- [x] Move student club count to the top-right and neutralize the email icon button.
+- [x] Add business events rail breathing room and reduce ROI bottom padding.
+- [x] Show student display name in reward handoff and soften the handoff background.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Business Surfaces + History Filter Sheet)
+
+- [x] Re-read project rules, master plan, progress, todos, plan, and frontend-design skill.
+- [x] Inspect business events, ROI, history, and student club directory owners.
+- [x] Update working docs for the current UI polish slice.
+- [x] Remove nested card backgrounds from business Approt/events surfaces.
+- [x] Redesign business ROI dashboard surfaces.
+- [x] Simplify student club summary and switch email action to icon-only.
+- [x] Move business history filters into one filter sheet.
+- [x] Run focused mobile validation and update handoff.
+
+## Current Todos (Community Ticket Cards + Business Notification Icon)
+
+- [x] Re-read project rules, master plan, progress, todos, and plan.
+- [x] Inspect Yhteisö header, announcement cards, club cards, and business notification setup card.
+- [x] Update working docs for the current polish slice.
+- [x] Convert Yhteisö header and cards to the Approt visual language.
+- [x] Align the business profile notification icon with other profile icons.
+- [x] Run focused mobile validation and update handoff.
 
 - [ ] Physical iPhone smoke: student community tab opens tiedotteet + clubs, profile header icon opens profile, and event discovery no longer duplicates these sections.
 - [ ] Physical iPhone smoke: student profile `Ainejärjestötagit` modal keeps the custom-tag input visible above the keyboard and the create button remains tappable.

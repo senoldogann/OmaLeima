@@ -3,6 +3,7 @@ import {
   FunctionsRelayError,
   type SupabaseClient,
 } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 
 import { resolveAdminAccessAsync } from "@/features/auth/access";
 import type {
@@ -10,6 +11,11 @@ import type {
   AnnouncementMutationResponse,
   AnnouncementStatus,
 } from "@/features/announcements/types";
+import {
+  removePublicStorageObjectByUrlAsync,
+  removeReplacedPublicStorageObjectAsync,
+} from "@/features/media/storage-cleanup";
+import { mediaStagingBucketName, publishStagedMediaAsync } from "@/features/media/staged-media";
 
 type AnnouncementTransportResult = {
   response: AnnouncementMutationResponse;
@@ -18,6 +24,66 @@ type AnnouncementTransportResult = {
 
 type AnnouncementInsertRow = {
   id: string;
+};
+
+type AnnouncementDeleteRow = {
+  club_id: string | null;
+  id: string;
+  image_staging_path: string | null;
+  image_url: string | null;
+};
+
+type AnnouncementMediaLookupRow = {
+  id: string;
+  image_staging_path: string | null;
+  image_url: string | null;
+};
+
+const announcementMediaBucketId = "announcement-media";
+const announcementArchiveSuccessMessage = "Announcement archived.";
+const announcementCreateSuccessMessage = "Announcement saved.";
+const announcementDeleteSuccessMessage = "Announcement deleted.";
+const announcementDeleteNotFoundMessage = "Announcement was not deleted. It may already be removed or outside this organizer account.";
+const announcementUpdateNotFoundMessage = "Announcement was not updated. It may already be removed or outside this organizer account.";
+const announcementArchiveNotFoundMessage = "Announcement was not archived. It may already be removed or outside this organizer account.";
+const announcementUpdateSuccessMessage = "Announcement updated.";
+
+const readStorageExtension = (path: string): string => {
+  const extension = path.split(".").pop()?.toLowerCase();
+
+  if (extension === "jpeg" || extension === "jpg" || extension === "png" || extension === "webp") {
+    return extension;
+  }
+
+  throw new Error(`Unsupported announcement staging path extension: ${path}`);
+};
+
+const createPublishedAnnouncementImagePath = ({
+  announcementId,
+  clubId,
+  stagingPath,
+}: {
+  announcementId: string;
+  clubId: string | null;
+  stagingPath: string;
+}): string => {
+  const fileName = `announcement-${announcementId}-${Date.now()}.${readStorageExtension(stagingPath)}`;
+
+  return clubId === null ? `platform/${fileName}` : `clubs/${clubId}/${fileName}`;
+};
+
+const resolveExistingAnnouncementImageUrl = ({
+  existingImageUrl,
+  submittedImageUrl,
+}: {
+  existingImageUrl: string | null;
+  submittedImageUrl: string | null;
+}): string | null => {
+  if (submittedImageUrl === null || submittedImageUrl.trim().length === 0) {
+    return null;
+  }
+
+  return existingImageUrl;
 };
 
 export const requireAnnouncementAccessAsync = async (
@@ -38,6 +104,106 @@ export const requireAnnouncementAccessAsync = async (
   };
 };
 
+export const deleteAnnouncementAsync = async (
+  supabase: SupabaseClient,
+  payload: {
+    announcementId: string;
+    clubId: string | null;
+  }
+): Promise<AnnouncementTransportResult> => {
+  const selectQuery = supabase
+    .from("announcements")
+    .select("id,club_id,image_url,image_staging_path")
+    .eq("id", payload.announcementId);
+  const scopedSelectQuery = payload.clubId === null ? selectQuery.is("club_id", null) : selectQuery.eq("club_id", payload.clubId);
+  const { data: announcement, error: selectError } =
+    await scopedSelectQuery.maybeSingle<AnnouncementDeleteRow>();
+
+  if (selectError !== null) {
+    return {
+      response: {
+        message: selectError.message,
+        status: "DELETE_LOOKUP_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (announcement === null) {
+    return {
+      response: {
+        message: announcementDeleteNotFoundMessage,
+        status: "ANNOUNCEMENT_NOT_FOUND",
+      },
+      status: 404,
+    };
+  }
+
+  try {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `announcement ${announcement.id}`,
+      publicUrl: announcement.image_url,
+      supabase,
+    });
+    if (announcement.image_staging_path !== null) {
+      const { error: stagingRemoveError } = await supabase.storage
+        .from(mediaStagingBucketName)
+        .remove([announcement.image_staging_path]);
+
+      if (stagingRemoveError !== null) {
+        throw new Error(`Failed to delete staged announcement image ${announcement.image_staging_path}: ${stagingRemoveError.message}`);
+      }
+    }
+  } catch (error) {
+    return {
+      response: {
+        message: error instanceof Error ? error.message : "Failed to delete announcement image.",
+        status: "IMAGE_DELETE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  const deleteQuery = supabase
+    .from("announcements")
+    .delete()
+    .eq("id", announcement.id);
+  const scopedDeleteQuery = payload.clubId === null ? deleteQuery.is("club_id", null) : deleteQuery.eq("club_id", payload.clubId);
+  const { data, error } = await scopedDeleteQuery.select("id").maybeSingle<AnnouncementInsertRow>();
+
+  if (error !== null) {
+    return {
+      response: {
+        message: error.message,
+        status: "DELETE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (data === null) {
+    return {
+      response: {
+        message: `Announcement ${announcement.id} was not deleted.`,
+        status: "ANNOUNCEMENT_NOT_FOUND",
+      },
+      status: 404,
+    };
+  }
+
+  return {
+    response: {
+      message:
+        announcement.image_url === null
+          ? announcementDeleteSuccessMessage
+          : "Announcement deleted and its owned image cleanup completed.",
+      status: "SUCCESS",
+    },
+    status: 200,
+  };
+};
+
 export const createAnnouncementAsync = async (
   supabase: SupabaseClient,
   payload: {
@@ -48,16 +214,46 @@ export const createAnnouncementAsync = async (
     ctaLabel: string | null;
     ctaUrl: string | null;
     endsAt: string | null;
+    eventId: string | null;
+    imageStagingPath: string | null;
     imageUrl: string | null;
     priority: number;
     startsAt: string;
     status: AnnouncementStatus;
+    targetCity: string | null;
     title: string;
   }
 ): Promise<AnnouncementTransportResult> => {
-  const { data, error } = await supabase
+  const normalizedStagingPath =
+    payload.imageStagingPath === null || payload.imageStagingPath.trim().length === 0
+      ? null
+      : payload.imageStagingPath.trim();
+  const announcementId = randomUUID();
+  const publishedImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : await publishStagedMediaAsync({
+        context: `announcement ${announcementId}`,
+        destinationBucketId: announcementMediaBucketId,
+        destinationPath:
+          normalizedStagingPath === null
+            ? ""
+            : createPublishedAnnouncementImagePath({
+              announcementId,
+              clubId: payload.clubId,
+              stagingPath: normalizedStagingPath,
+            }),
+        stagingPath: normalizedStagingPath,
+        supabase,
+      });
+  const nextImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : publishedImageUrl;
+  const { error } = await supabase
     .from("announcements")
     .insert({
+      id: announcementId,
       audience: payload.audience,
       body: payload.body,
       club_id: payload.clubId,
@@ -65,16 +261,26 @@ export const createAnnouncementAsync = async (
       cta_label: payload.ctaLabel,
       cta_url: payload.ctaUrl,
       ends_at: payload.endsAt,
-      image_url: payload.imageUrl,
+      event_id: payload.eventId,
+      image_staging_path: payload.status === "DRAFT" ? normalizedStagingPath : null,
+      image_url: nextImageUrl,
       priority: payload.priority,
       starts_at: payload.startsAt,
       status: payload.status,
+      target_city: payload.targetCity,
       title: payload.title,
     })
     .select("id")
     .single<AnnouncementInsertRow>();
 
   if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `failed announcement ${announcementId} image publish rollback`,
+      publicUrl: publishedImageUrl,
+      supabase,
+    });
+
     return {
       response: {
         message: error.message,
@@ -86,7 +292,7 @@ export const createAnnouncementAsync = async (
 
   return {
     response: {
-      message: `Announcement ${data.id} saved successfully.`,
+      message: announcementCreateSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,
@@ -103,13 +309,74 @@ export const updateAnnouncementAsync = async (
     ctaLabel: string | null;
     ctaUrl: string | null;
     endsAt: string | null;
+    eventId: string | null;
+    imageStagingPath: string | null;
     imageUrl: string | null;
     priority: number;
     startsAt: string;
     status: AnnouncementStatus;
+    targetCity: string | null;
     title: string;
   }
 ): Promise<AnnouncementTransportResult> => {
+  const selectQuery = supabase
+    .from("announcements")
+    .select("id,image_url,image_staging_path")
+    .eq("id", payload.announcementId);
+  const scopedSelectQuery = payload.clubId === null ? selectQuery.is("club_id", null) : selectQuery.eq("club_id", payload.clubId);
+  const { data: existingAnnouncement, error: existingError } =
+    await scopedSelectQuery.maybeSingle<AnnouncementMediaLookupRow>();
+
+  if (existingError !== null) {
+    return {
+      response: {
+        message: existingError.message,
+        status: "UPDATE_LOOKUP_ERROR",
+      },
+      status: 502,
+    };
+  }
+
+  if (existingAnnouncement === null) {
+    return {
+      response: {
+        message: announcementUpdateNotFoundMessage,
+        status: "ANNOUNCEMENT_NOT_FOUND",
+      },
+      status: 404,
+    };
+  }
+
+  const normalizedStagingPath =
+    payload.imageStagingPath === null || payload.imageStagingPath.trim().length === 0
+      ? null
+      : payload.imageStagingPath.trim();
+  const publishedImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : await publishStagedMediaAsync({
+        context: `announcement ${payload.announcementId}`,
+        destinationBucketId: announcementMediaBucketId,
+        destinationPath:
+          normalizedStagingPath === null
+            ? ""
+            : createPublishedAnnouncementImagePath({
+              announcementId: payload.announcementId,
+              clubId: payload.clubId,
+              stagingPath: normalizedStagingPath,
+            }),
+        stagingPath: normalizedStagingPath,
+        supabase,
+      });
+  const nextImageUrl =
+    payload.status === "DRAFT"
+      ? null
+      : publishedImageUrl ?? resolveExistingAnnouncementImageUrl({
+        existingImageUrl: existingAnnouncement.image_url,
+        submittedImageUrl: payload.imageUrl,
+      });
+  const nextImageStagingPath = payload.status === "DRAFT" ? normalizedStagingPath : null;
+
   const updateQuery = supabase
     .from("announcements")
     .update({
@@ -118,10 +385,13 @@ export const updateAnnouncementAsync = async (
       cta_label: payload.ctaLabel,
       cta_url: payload.ctaUrl,
       ends_at: payload.endsAt,
-      image_url: payload.imageUrl,
+      event_id: payload.eventId,
+      image_staging_path: nextImageStagingPath,
+      image_url: nextImageUrl,
       priority: payload.priority,
       starts_at: payload.startsAt,
       status: payload.status,
+      target_city: payload.targetCity,
       title: payload.title,
     })
     .eq("id", payload.announcementId);
@@ -130,6 +400,13 @@ export const updateAnnouncementAsync = async (
   const { data, error } = await scopedQuery.select("id").maybeSingle<AnnouncementInsertRow>();
 
   if (error !== null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `failed announcement ${payload.announcementId} image publish rollback`,
+      publicUrl: publishedImageUrl,
+      supabase,
+    });
+
     return {
       response: {
         message: error.message,
@@ -140,18 +417,57 @@ export const updateAnnouncementAsync = async (
   }
 
   if (data === null) {
+    await removePublicStorageObjectByUrlAsync({
+      bucketId: announcementMediaBucketId,
+      context: `not-updated announcement ${payload.announcementId} image publish rollback`,
+      publicUrl: publishedImageUrl,
+      supabase,
+    });
+
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not updated.`,
+        message: announcementUpdateNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
     };
   }
 
+  try {
+    await removeReplacedPublicStorageObjectAsync({
+      bucketId: announcementMediaBucketId,
+      context: `announcement ${payload.announcementId}`,
+      newPublicUrl: nextImageUrl,
+      oldPublicUrl: existingAnnouncement.image_url,
+      supabase,
+    });
+    if (
+      existingAnnouncement.image_staging_path !== null &&
+      existingAnnouncement.image_staging_path !== nextImageStagingPath
+    ) {
+      const { error: stagingRemoveError } = await supabase.storage
+        .from(mediaStagingBucketName)
+        .remove([existingAnnouncement.image_staging_path]);
+
+      if (stagingRemoveError !== null) {
+        throw new Error(
+          `Failed to delete staged announcement image ${existingAnnouncement.image_staging_path}: ${stagingRemoveError.message}`
+        );
+      }
+    }
+  } catch (error) {
+    return {
+      response: {
+        message: error instanceof Error ? error.message : "Announcement image replacement cleanup failed.",
+        status: "IMAGE_REPLACEMENT_DELETE_ERROR",
+      },
+      status: 502,
+    };
+  }
+
   return {
     response: {
-      message: `Announcement ${data.id} updated successfully.`,
+      message: announcementUpdateSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,
@@ -188,7 +504,7 @@ export const archiveAnnouncementAsync = async (
   if (data === null) {
     return {
       response: {
-        message: `Announcement ${payload.announcementId} was not archived.`,
+        message: announcementArchiveNotFoundMessage,
         status: "ANNOUNCEMENT_NOT_FOUND",
       },
       status: 404,
@@ -197,7 +513,7 @@ export const archiveAnnouncementAsync = async (
 
   return {
     response: {
-      message: `Announcement ${data.id} archived successfully.`,
+      message: announcementArchiveSuccessMessage,
       status: "SUCCESS",
     },
     status: 200,

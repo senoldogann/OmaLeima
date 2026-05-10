@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { getCookieConsentCopy } from "@/features/privacy/cookie-consent";
+import { CookieSettingsButton } from "@/features/privacy/cookie-settings-button";
 import type { PublicLandingContent } from "@/features/public-site/content";
 import {
   BuildingIcon,
@@ -15,6 +17,9 @@ type PublicFooterProps = {
 };
 
 export const PublicFooter = ({ content }: PublicFooterProps) => {
+  const locale = content.localeLabel === "FI" ? "fi" : "en";
+  const cookieCopy = getCookieConsentCopy(locale);
+
   return (
     <footer className="public-footer-band">
       <div className="public-footer-inner">
@@ -84,6 +89,7 @@ export const PublicFooter = ({ content }: PublicFooterProps) => {
                   {item.label}
                 </Link>
               ))}
+              <CookieSettingsButton label={cookieCopy.footerSettingsLabel} />
             </div>
           </div>
         </div>

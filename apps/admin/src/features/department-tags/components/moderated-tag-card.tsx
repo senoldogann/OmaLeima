@@ -19,7 +19,7 @@ export const ModeratedTagCard = ({ locale, tag }: ModeratedTagCardProps) => (
     <div className="stack-md">
       <div className="review-card-header">
         <div className="stack-sm">
-          <div className="eyebrow">{locale === "fi" ? "Viimeisin moderointi" : "Recent moderation"}</div>
+          <div className="eyebrow">{locale === "fi" ? "Viimeisin käsittely" : "Recent moderation"}</div>
           <p className="card-title">{tag.title}</p>
           <p className="muted-text">{formatDepartmentTagMeta(tag, locale)}</p>
         </div>
@@ -33,7 +33,7 @@ export const ModeratedTagCard = ({ locale, tag }: ModeratedTagCardProps) => (
 
       <dl className="detail-grid">
         <div className="detail-item">
-          <dt className="field-label">{locale === "fi" ? "Paivitetty" : "Updated"}</dt>
+          <dt className="field-label">{locale === "fi" ? "Päivitetty" : "Updated"}</dt>
           <dd>{formatDepartmentTagDateTime(tag.updatedAt)}</dd>
         </div>
         <div className="detail-item">
@@ -44,7 +44,7 @@ export const ModeratedTagCard = ({ locale, tag }: ModeratedTagCardProps) => (
 
       {tag.mergedIntoTitle !== null ? (
         <p className="review-note">
-          {locale === "fi" ? `Yhdistetty tagiin ${tag.mergedIntoTitle}` : `Merged into ${tag.mergedIntoTitle}`}
+          {locale === "fi" ? `Yhdistetty tunnisteeseen ${tag.mergedIntoTitle}` : `Merged into ${tag.mergedIntoTitle}`}
         </p>
       ) : null}
     </div>

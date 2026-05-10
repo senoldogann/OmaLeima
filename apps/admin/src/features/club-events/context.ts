@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { resolveAdminAccessAsync } from "@/features/auth/access";
+import { resolveCurrentAdminAccessAsync } from "@/features/auth/access";
+import type { AdminAccess } from "@/features/auth/access";
 import type { ClubMembershipRole, ClubMembershipSummary } from "@/features/club-events/types";
 
 type ClubMembershipRow = {
@@ -16,7 +17,7 @@ type ClubRow = {
 };
 
 export type ClubEventContext = {
-  access: Awaited<ReturnType<typeof resolveAdminAccessAsync>>;
+  access: AdminAccess;
   memberships: ClubMembershipSummary[];
 };
 
@@ -60,7 +61,7 @@ const fetchClubsByIdsAsync = async (supabase: SupabaseClient, clubIds: string[])
 export const fetchClubEventContextAsync = async (
   supabase: SupabaseClient
 ): Promise<ClubEventContext> => {
-  const access = await resolveAdminAccessAsync(supabase);
+  const access = await resolveCurrentAdminAccessAsync();
 
   if (access.area !== "club" || access.userId === null) {
     return {

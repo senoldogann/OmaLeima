@@ -52,7 +52,7 @@ export const PublicLegalPage = ({ documentType, locale }: PublicLegalPageProps) 
         navItems={navItems}
       />
 
-      <section className="public-shell public-page-hero public-page-hero-compact">
+      <section className="public-shell public-page-hero public-page-hero-compact public-page-hero-legal">
         <div className="public-page-hero-copy">
           <p className="eyebrow">
             {locale === "fi" ? "Yleinen tieto" : "Public information"}

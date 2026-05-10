@@ -9,10 +9,19 @@ import {
   parseClubEventUpdatePayloadOrThrow,
   parseIsoDateTimeOrThrow,
 } from "@/features/club-events/validation";
+import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireClubEventCreatorAccessAsync(supabase);
 
@@ -22,11 +31,25 @@ export async function POST(request: Request) {
       });
     }
 
+    const userId = await resolveAuthenticatedRouteUserIdAsync(supabase);
+
+    if (userId === null) {
+      return NextResponse.json({ message: "Sign in again before updating events.", status: "AUTH_REQUIRED" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "club-event-update");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
+
     const body = parseClubEventUpdatePayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
     const result = await updateClubEventAsync(supabase, {
+      actorUserId: userId,
       city: body.city,
+      coverImageStagingPath: body.coverImageStagingPath,
       coverImageUrl: body.coverImageUrl,
       description: body.description,
       endAtIso: parseIsoDateTimeOrThrow(body.endAt, "endAt"),
@@ -38,6 +61,7 @@ export async function POST(request: Request) {
       rules: body.parsedRules,
       startAtIso: parseIsoDateTimeOrThrow(body.startAt, "startAt"),
       status: body.status,
+      ticketUrl: body.ticketUrl,
       visibility: body.visibility,
     });
 

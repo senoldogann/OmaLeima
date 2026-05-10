@@ -21,12 +21,16 @@ type RaceFixture = {
   eventVenueId: string;
   scannerEmail: string;
   scannerProfileId: string;
+  scannerDeviceIdA: string;
+  scannerDeviceIdB: string;
 };
 
 const seedRaceFixtureAsync = async (suffix: string): Promise<RaceFixture> => {
   const eventId = randomUUID();
   const eventVenueId = randomUUID();
   const scannerProfileId = randomUUID();
+  const scannerDeviceIdA = randomUUID();
+  const scannerDeviceIdB = randomUUID();
   const scannerEmail = `scan-race-${suffix.toLowerCase()}@example.test`;
   const eventSlug = `scan-race-event-${suffix.toLowerCase()}`;
   const sql = `
@@ -107,6 +111,32 @@ const seedRaceFixtureAsync = async (suffix: string): Promise<RaceFixture> => {
       'ACTIVE'
     );
 
+    insert into public.business_scanner_devices (
+      id,
+      business_id,
+      installation_id,
+      label,
+      platform,
+      status,
+      created_by
+    ) values (
+      '${scannerDeviceIdA}',
+      '${seededBusinessId}',
+      'inst-a-${suffix}',
+      'Race Test Scanner A',
+      'WEB',
+      'ACTIVE',
+      '${seededScannerProfileId}'
+    ), (
+      '${scannerDeviceIdB}',
+      '${seededBusinessId}',
+      'inst-b-${suffix}',
+      'Race Test Scanner B',
+      'WEB',
+      'ACTIVE',
+      '${scannerProfileId}'
+    );
+
     insert into public.events (
       id,
       club_id,
@@ -133,7 +163,7 @@ const seedRaceFixtureAsync = async (suffix: string): Promise<RaceFixture> => {
       now() - interval '75 minutes',
       'ACTIVE',
       'PUBLIC',
-      1,
+      '1',
       '${seededOrganizerProfileId}'
     );
 
@@ -175,6 +205,8 @@ const seedRaceFixtureAsync = async (suffix: string): Promise<RaceFixture> => {
     eventVenueId,
     scannerEmail,
     scannerProfileId,
+    scannerDeviceIdA,
+    scannerDeviceIdB,
   };
 };
 
@@ -200,6 +232,9 @@ const cleanupRaceFixtureAsync = async (fixture: RaceFixture): Promise<void> => {
 
     delete from public.events
     where id = '${fixture.eventId}'::uuid;
+
+    delete from public.business_scanner_devices
+    where id in ('${fixture.scannerDeviceIdA}'::uuid, '${fixture.scannerDeviceIdB}'::uuid);
 
     delete from public.business_staff
     where user_id = '${fixture.scannerProfileId}'::uuid;
@@ -252,14 +287,14 @@ const run = async (): Promise<void> => {
         eventId: fixture.eventId,
         eventVenueId: fixture.eventVenueId,
         qrToken,
-        scannerDeviceId: null,
+        scannerDeviceId: fixture.scannerDeviceIdA,
       }),
       invokeFunctionAsync("scan-qr", secondScannerAccessToken, {
         businessId: seededBusinessId,
         eventId: fixture.eventId,
         eventVenueId: fixture.eventVenueId,
         qrToken,
-        scannerDeviceId: null,
+        scannerDeviceId: fixture.scannerDeviceIdB,
       }),
     ]);
 

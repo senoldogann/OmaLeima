@@ -1,6 +1,12 @@
 .DS_Store
 .playwright-mcp/
 tmp/
+outputs/
+/omaleima-*.png
+
+*-pilot-operator-credentials.txt
+*-credentials.txt
+*.credentials
 
 *.log
 *.tsbuildinfo

@@ -3,11 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import type {
   AnnouncementClubOption,
+  AnnouncementEventOption,
   AnnouncementRecord,
   AnnouncementSnapshot,
   AnnouncementStatus,
   AnnouncementAudience,
 } from "@/features/announcements/types";
+import { createSignedStagedMediaUrlAsync } from "@/features/media/staged-media";
 
 type AnnouncementRow = {
   audience: AnnouncementAudience;
@@ -18,11 +20,14 @@ type AnnouncementRow = {
   cta_label: string | null;
   cta_url: string | null;
   ends_at: string | null;
+  event_id: string | null;
   id: string;
+  image_staging_path: string | null;
   image_url: string | null;
   priority: number;
   starts_at: string;
   status: AnnouncementStatus;
+  target_city: string | null;
   title: string;
   club: {
     name: string;
@@ -39,6 +44,18 @@ type NotificationRow = {
     announcementId?: string;
   } | null;
   status: "FAILED" | "READ" | "SENT";
+  user_id: string | null;
+};
+
+type AnnouncementEventRow = {
+  city: string;
+  club_id: string;
+  id: string;
+  name: string;
+};
+
+type CityRow = {
+  city: string | null;
 };
 
 const latestAnnouncementLimit = 12;
@@ -70,16 +87,24 @@ const readNotificationAnnouncementId = (payload: NotificationRow["payload"]): st
 const buildPushDeliveryStatusByAnnouncementId = (
   notificationRows: NotificationRow[]
 ): Map<string, AnnouncementRecord["pushDeliveryStatus"]> => {
-  const deliveryStateByAnnouncementId = new Map<string, { hasFailure: boolean; hasSuccess: boolean }>();
+  const deliveryStateByAnnouncementId = new Map<
+    string,
+    Map<string, { hasFailure: boolean; hasSuccess: boolean }>
+  >();
 
-  notificationRows.forEach((row) => {
+  notificationRows.forEach((row, index) => {
     const announcementId = readNotificationAnnouncementId(row.payload);
 
     if (announcementId === null) {
       return;
     }
 
-    const currentState = deliveryStateByAnnouncementId.get(announcementId) ?? {
+    const userStateById = deliveryStateByAnnouncementId.get(announcementId) ?? new Map<
+      string,
+      { hasFailure: boolean; hasSuccess: boolean }
+    >();
+    const userStateKey = row.user_id ?? `legacy-notification-${index}`;
+    const currentState = userStateById.get(userStateKey) ?? {
       hasFailure: false,
       hasSuccess: false,
     };
@@ -92,11 +117,23 @@ const buildPushDeliveryStatusByAnnouncementId = (
       currentState.hasFailure = true;
     }
 
-    deliveryStateByAnnouncementId.set(announcementId, currentState);
+    userStateById.set(userStateKey, currentState);
+    deliveryStateByAnnouncementId.set(announcementId, userStateById);
   });
 
   return new Map<string, AnnouncementRecord["pushDeliveryStatus"]>(
-    Array.from(deliveryStateByAnnouncementId.entries()).map(([announcementId, deliveryState]) => {
+    Array.from(deliveryStateByAnnouncementId.entries()).map(([announcementId, userStateById]) => {
+      const deliveryState = Array.from(userStateById.values()).reduce(
+        (currentState, userState) => ({
+          hasFailure: currentState.hasFailure || (!userState.hasSuccess && userState.hasFailure),
+          hasSuccess: currentState.hasSuccess || userState.hasSuccess,
+        }),
+        {
+          hasFailure: false,
+          hasSuccess: false,
+        }
+      );
+
       if (deliveryState.hasSuccess && deliveryState.hasFailure) {
         return [announcementId, "PARTIAL"];
       }
@@ -113,6 +150,7 @@ const buildPushDeliveryStatusByAnnouncementId = (
 const mapRows = (
   rows: AnnouncementRow[],
   creatorEmails: Map<string, string>,
+  signedUrlByStagingPath: Map<string, string>,
   pushDeliveryStatusByAnnouncementId: Map<string, AnnouncementRecord["pushDeliveryStatus"]>
 ): AnnouncementRecord[] =>
   rows.map((row) => ({
@@ -126,13 +164,43 @@ const mapRows = (
     ctaLabel: row.cta_label,
     ctaUrl: row.cta_url,
     endsAt: row.ends_at,
-    imageUrl: row.image_url,
+    eventId: row.event_id,
+    imageStagingPath: row.image_staging_path ?? "",
+    imageUrl:
+      row.image_url ??
+      (row.image_staging_path === null ? null : signedUrlByStagingPath.get(row.image_staging_path) ?? null),
     priority: row.priority,
     pushDeliveryStatus: pushDeliveryStatusByAnnouncementId.get(row.id) ?? "NOT_SENT",
     startsAt: row.starts_at,
     status: row.status,
+    targetCity: row.target_city,
     title: row.title,
   }));
+
+const createSignedUrlByStagingPathAsync = async (
+  supabase: SupabaseClient,
+  rows: AnnouncementRow[]
+): Promise<Map<string, string>> => {
+  const stagingPaths = Array.from(
+    new Set(
+      rows
+        .map((row) => row.image_staging_path)
+        .filter((value): value is string => value !== null && value.trim().length > 0)
+    )
+  );
+
+  const entries = await Promise.all(
+    stagingPaths.map(async (stagingPath): Promise<[string, string]> => [
+      stagingPath,
+      await createSignedStagedMediaUrlAsync({
+        stagingPath,
+        supabase,
+      }),
+    ])
+  );
+
+  return new Map(entries);
+};
 
 const fetchAnnouncementsAsync = async (
   supabase: SupabaseClient,
@@ -151,10 +219,13 @@ const fetchAnnouncementsAsync = async (
       cta_label,
       cta_url,
       image_url,
+      image_staging_path,
       status,
       priority,
       starts_at,
       ends_at,
+      event_id,
+      target_city,
       created_at,
       club:clubs(name)
     `
@@ -180,6 +251,7 @@ const fetchAnnouncementsAsync = async (
     supabase,
     Array.from(new Set<string>(data.map((row) => row.created_by)))
   );
+  const signedUrlByStagingPath = await createSignedUrlByStagingPathAsync(supabase, data);
   const announcementIds = data.map((row) => row.id);
   const pushDeliveryStatusByAnnouncementId =
     announcementIds.length === 0
@@ -187,7 +259,7 @@ const fetchAnnouncementsAsync = async (
       : await (async (): Promise<Map<string, AnnouncementRecord["pushDeliveryStatus"]>> => {
         const { data: notificationRows, error: notificationError } = await supabase
           .from("notifications")
-          .select("status,payload")
+          .select("status,payload,user_id")
           .eq("type", "ANNOUNCEMENT")
           .in("status", ["FAILED", "SENT", "READ"])
           .returns<NotificationRow[]>();
@@ -199,16 +271,112 @@ const fetchAnnouncementsAsync = async (
         return buildPushDeliveryStatusByAnnouncementId(notificationRows);
       })();
 
-  return mapRows(data, creatorEmails, pushDeliveryStatusByAnnouncementId);
+  return mapRows(data, creatorEmails, signedUrlByStagingPath, pushDeliveryStatusByAnnouncementId);
+};
+
+const fetchAnnouncementEventOptionsAsync = async (
+  supabase: SupabaseClient,
+  clubIds: string[] | null
+): Promise<AnnouncementEventOption[]> => {
+  let query = supabase
+    .from("events")
+    .select("id,club_id,name,city")
+    .order("start_at", { ascending: false })
+    .limit(150);
+
+  if (clubIds !== null) {
+    if (clubIds.length === 0) {
+      return [];
+    }
+
+    query = query.in("club_id", clubIds);
+  }
+
+  const { data, error } = await query.returns<AnnouncementEventRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load announcement event options: ${error.message}`);
+  }
+
+  return data.map((event) => ({
+    city: event.city,
+    clubId: event.club_id,
+    eventId: event.id,
+    eventName: event.name,
+  }));
+};
+
+const fetchCityOptionsAsync = async (
+  supabase: SupabaseClient,
+  eventOptions: AnnouncementEventOption[],
+  clubOptions: AnnouncementClubOption[],
+  includePlatformCities: boolean
+): Promise<string[]> => {
+  if (!includePlatformCities) {
+    return Array.from(
+      new Set(
+        [
+          ...eventOptions.map((event) => event.city),
+          ...clubOptions.flatMap((club) => (club.city === null ? [] : [club.city])),
+        ]
+          .map((city) => city.trim())
+          .filter((city) => city.length > 0)
+      )
+    ).sort((left, right) => left.localeCompare(right));
+  }
+
+  const [
+    { data: businessRows, error: businessError },
+    { data: clubRows, error: clubError },
+  ] = await Promise.all([
+    supabase
+      .from("businesses")
+      .select("city")
+      .eq("status", "ACTIVE")
+      .returns<CityRow[]>(),
+    supabase
+      .from("clubs")
+      .select("city")
+      .eq("status", "ACTIVE")
+      .returns<CityRow[]>(),
+  ]);
+
+  if (businessError !== null) {
+    throw new Error(`Failed to load announcement city options: ${businessError.message}`);
+  }
+
+  if (clubError !== null) {
+    throw new Error(`Failed to load announcement club city options: ${clubError.message}`);
+  }
+
+  return Array.from(
+    new Set(
+      [
+        ...eventOptions.map((event) => event.city),
+        ...clubOptions.flatMap((club) => (club.city === null ? [] : [club.city])),
+        ...businessRows.flatMap((business) => (business.city === null ? [] : [business.city])),
+        ...clubRows.flatMap((club) => (club.city === null ? [] : [club.city])),
+      ]
+        .map((city) => city.trim())
+        .filter((city) => city.length > 0)
+    )
+  ).sort((left, right) => left.localeCompare(right));
 };
 
 export const fetchAdminAnnouncementsSnapshotAsync = async (
   supabase: SupabaseClient
-): Promise<AnnouncementSnapshot> => ({
-  announcements: await fetchAnnouncementsAsync(supabase, null),
-  clubOptions: [],
-  scope: "ADMIN",
-});
+): Promise<AnnouncementSnapshot> => {
+  const eventOptions = await fetchAnnouncementEventOptionsAsync(supabase, null);
+  const clubOptions: AnnouncementClubOption[] = [];
+
+  return {
+    announcements: await fetchAnnouncementsAsync(supabase, null),
+    cityOptions: await fetchCityOptionsAsync(supabase, eventOptions, clubOptions, true),
+    clubOptions,
+    eventOptions,
+    scope: "ADMIN",
+  };
+};
 
 export const fetchClubAnnouncementsSnapshotAsync = async (
   supabase: SupabaseClient
@@ -217,16 +385,23 @@ export const fetchClubAnnouncementsSnapshotAsync = async (
   const clubOptions: AnnouncementClubOption[] = context.memberships
     .filter((membership) => membership.canCreateEvents)
     .map((membership) => ({
+      city: membership.city,
       clubId: membership.clubId,
       clubName: membership.clubName,
     }));
+  const eventOptions = await fetchAnnouncementEventOptionsAsync(
+    supabase,
+    clubOptions.map((club) => club.clubId)
+  );
 
   return {
     announcements: await fetchAnnouncementsAsync(
       supabase,
       clubOptions.map((club) => club.clubId)
     ),
+    cityOptions: await fetchCityOptionsAsync(supabase, eventOptions, clubOptions, false),
     clubOptions,
+    eventOptions,
     scope: "CLUB",
   };
 };

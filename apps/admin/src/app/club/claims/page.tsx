@@ -22,7 +22,7 @@ export default async function ClubClaimsPage() {
       locale={locale}
       navigationItems={getClubDashboardNavigationItems(canManageRewards)}
       roleLabel={context.access.primaryRole}
-      subtitle="Confirm physical reward handoff for eligible students without exposing extra student profile data."
+      subtitle="Confirm physical reward handoff for eligible students and track per-event reward progress."
       title="Reward claims"
       userEmail={context.access.userEmail}
     >

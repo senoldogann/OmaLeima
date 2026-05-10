@@ -83,12 +83,14 @@ begin
     return jsonb_build_object('status', 'STUDENT_NOT_REGISTERED');
   end if;
 
-  select * into v_event_venue
-  from public.event_venues
-  where id = p_event_venue_id
-    and event_id = p_event_id
-    and business_id = p_business_id
-    and status = 'JOINED';
+  select ev.* into v_event_venue
+  from public.event_venues ev
+  join public.businesses b on b.id = ev.business_id
+  where ev.id = p_event_venue_id
+    and ev.event_id = p_event_id
+    and ev.business_id = p_business_id
+    and ev.status = 'JOINED'
+    and b.status = 'ACTIVE';
 
   if not found then
     return jsonb_build_object('status', 'EVENT_CONTEXT_MISMATCH');

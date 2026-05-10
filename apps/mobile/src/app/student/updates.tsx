@@ -5,7 +5,6 @@ import { AnnouncementFeedSection } from "@/features/announcements/announcement-f
 import { PublicClubDirectorySection } from "@/features/club/public-club-directory-section";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { StudentProfileHeaderAction } from "@/features/profile/components/student-profile-header-action";
 import { useSession } from "@/providers/session-provider";
 
 export default function StudentUpdatesScreen() {
@@ -16,12 +15,18 @@ export default function StudentUpdatesScreen() {
 
   return (
     <AppScreen>
-      <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
-          <Text style={styles.screenEyebrow}>{language === "fi" ? "Leima" : "OmaLeima"}</Text>
-          <Text style={styles.screenTitle}>{language === "fi" ? "Yhteisö" : "Community"}</Text>
+      <View style={styles.appHeader}>
+        <View style={styles.topBar}>
+          <View style={styles.topBarCopy}>
+            <Text style={styles.screenEyebrow}>{language === "fi" ? "OmaLeima-verkosto" : "OmaLeima network"}</Text>
+            <Text style={styles.screenTitle}>{language === "fi" ? "Yhteisö" : "Community"}</Text>
+          </View>
         </View>
-        <StudentProfileHeaderAction />
+        <Text style={styles.screenSubtitle}>
+          {language === "fi"
+            ? "Tiedotteet, opiskelijaklubit ja tapahtumien taustalla olevat järjestäjät yhdessä paikassa."
+            : "Updates, student clubs, and the organizers behind your event nights in one place."}
+        </Text>
       </View>
 
       <AnnouncementFeedSection
@@ -42,6 +47,10 @@ export default function StudentUpdatesScreen() {
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
+    appHeader: {
+      gap: 14,
+      paddingTop: 4,
+    },
     screenEyebrow: {
       color: theme.colors.lime,
       fontFamily: theme.typography.families.bold,
@@ -60,10 +69,16 @@ const createStyles = (theme: MobileTheme) =>
       alignItems: "flex-start",
       flexDirection: "row",
       gap: 12,
-      marginBottom: 4,
     },
     topBarCopy: {
       flex: 1,
       gap: 4,
+    },
+    screenSubtitle: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.regular,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
+      maxWidth: 420,
     },
   });

@@ -7,7 +7,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $create_business_owner_access_atomic$
+as $$
 declare
   v_business public.businesses%rowtype;
   v_owner_profile public.profiles%rowtype;
@@ -106,6 +106,4 @@ begin
     'ownerUserId', p_owner_user_id
   );
 end;
-$create_business_owner_access_atomic$;
-
-grant execute on function public.create_business_owner_access_atomic(uuid, uuid, uuid) to authenticated;
+$$;

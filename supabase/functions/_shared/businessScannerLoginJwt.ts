@@ -1,6 +1,8 @@
 import * as jose from "jsr:@panva/jose@6";
 
 export const businessScannerLoginTokenType = "LEIMA_BUSINESS_SCANNER_LOGIN_QR";
+const businessScannerLoginTokenIssuer = "omaleima.supabase.generate-business-scanner-login";
+const businessScannerLoginTokenAudience = "omaleima.mobile.business-scanner-login";
 export const businessScannerLoginTokenTtlSeconds = 90;
 export const businessScannerLoginRefreshAfterSeconds = 55;
 
@@ -11,6 +13,8 @@ export type BusinessScannerLoginTokenPayload = {
   iat: number;
   exp: number;
   jti: string;
+  iss: typeof businessScannerLoginTokenIssuer;
+  aud: typeof businessScannerLoginTokenAudience;
 };
 
 export type VerifiedBusinessScannerLoginToken =
@@ -36,7 +40,9 @@ const isBusinessScannerLoginTokenPayload = (
   payload.typ === businessScannerLoginTokenType &&
   typeof payload.iat === "number" &&
   typeof payload.exp === "number" &&
-  typeof payload.jti === "string";
+  typeof payload.jti === "string" &&
+  payload.iss === businessScannerLoginTokenIssuer &&
+  payload.aud === businessScannerLoginTokenAudience;
 
 export const signBusinessScannerLoginToken = async (
   qrSigningSecret: string,
@@ -53,6 +59,8 @@ export const signBusinessScannerLoginToken = async (
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(ownerUserId)
+    .setIssuer(businessScannerLoginTokenIssuer)
+    .setAudience(businessScannerLoginTokenAudience)
     .setIssuedAt(issuedAt)
     .setExpirationTime(expiresAt)
     .setJti(jti)
@@ -72,7 +80,9 @@ export const verifyBusinessScannerLoginToken = async (
   try {
     const { payload } = await jose.jwtVerify(token, getSecretKey(qrSigningSecret), {
       algorithms: ["HS256"],
+      audience: businessScannerLoginTokenAudience,
       clockTolerance: 5,
+      issuer: businessScannerLoginTokenIssuer,
     });
 
     if (payload.typ !== businessScannerLoginTokenType) {
@@ -107,7 +117,7 @@ export const verifyBusinessScannerLoginToken = async (
     return {
       ok: false,
       status: "INVALID_QR",
-      message: `Business scanner QR is invalid or modified: ${error instanceof Error ? error.message : "unknown error"}`,
+      message: "Business scanner QR is invalid or modified.",
     };
   }
 };

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { BusinessApplicationForm } from "@/features/public-site/business-application-form";
 import {
   getBusinessApplicationContent,
@@ -69,10 +70,10 @@ export const BusinessApplicationPage = ({ locale }: BusinessApplicationPageProps
             <article className="public-page-note-card">
               <BuildingIcon className="public-card-icon" />
               <div>
-                <h2>{locale === "fi" ? "Admin-polku" : "Admin flow"}</h2>
+                <h2>{locale === "fi" ? "Hakemusprosessi" : "Admin flow"}</h2>
                 <p>
                   {locale === "fi"
-                    ? "Hakemus, hyväksyntä ja yritysprofiili hoidetaan samassa virrassa."
+                    ? "Hakemus, hyväksyntä ja yritysprofiilin luominen hoituvat samassa prosessissa."
                     : "Application, approval, and business profile setup happen in one flow."}
                 </p>
               </div>
@@ -80,7 +81,7 @@ export const BusinessApplicationPage = ({ locale }: BusinessApplicationPageProps
             <article className="public-page-note-card">
               <MapPinIcon className="public-card-icon" />
               <div>
-                <h2>{locale === "fi" ? "Scannerit" : "Scanners"}</h2>
+                <h2>{locale === "fi" ? "Skannaajat" : "Scanners"}</h2>
                 <p>
                   {locale === "fi"
                     ? "Tunnukset ja käyttöönotto toimitetaan hyväksynnän jälkeen."
@@ -97,6 +98,16 @@ export const BusinessApplicationPage = ({ locale }: BusinessApplicationPageProps
                 </p>
               </div>
             </article>
+
+            <div className="public-page-aside-visual">
+              <Image
+                alt={locale === "fi" ? "Tule mukaan OmaLeima-verkostoon" : "Join the OmaLeima network"}
+                className="public-page-aside-img"
+                height={480}
+                src="/images/public/hero-apply-lahde-mukaan.png"
+                width={480}
+              />
+            </div>
           </aside>
 
           <div className="public-page-form-panel">

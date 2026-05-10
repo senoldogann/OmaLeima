@@ -1,6 +1,8 @@
 import * as jose from "jsr:@panva/jose@6";
 
 export const qrTokenType = "LEIMA_STAMP_QR";
+const qrTokenIssuer = "omaleima.supabase.generate-qr-token";
+const qrTokenAudience = "omaleima.supabase.scan-qr";
 export const qrTokenTtlSeconds = 45;
 export const qrRefreshAfterSeconds = 30;
 
@@ -11,6 +13,8 @@ export type QrTokenPayload = {
   iat: number;
   exp: number;
   jti: string;
+  iss: typeof qrTokenIssuer;
+  aud: typeof qrTokenAudience;
 };
 
 export type VerifiedQrToken =
@@ -34,7 +38,9 @@ const isQrTokenPayload = (payload: jose.JWTPayload): payload is QrTokenPayload =
   payload.typ === qrTokenType &&
   typeof payload.iat === "number" &&
   typeof payload.exp === "number" &&
-  typeof payload.jti === "string";
+  typeof payload.jti === "string" &&
+  payload.iss === qrTokenIssuer &&
+  payload.aud === qrTokenAudience;
 
 export const signQrToken = async (
   qrSigningSecret: string,
@@ -51,6 +57,8 @@ export const signQrToken = async (
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(studentId)
+    .setIssuer(qrTokenIssuer)
+    .setAudience(qrTokenAudience)
     .setIssuedAt(issuedAt)
     .setExpirationTime(expiresAt)
     .setJti(jti)
@@ -70,7 +78,9 @@ export const verifyQrToken = async (
   try {
     const { payload } = await jose.jwtVerify(token, getSecretKey(qrSigningSecret), {
       algorithms: ["HS256"],
+      audience: qrTokenAudience,
       clockTolerance: 5,
+      issuer: qrTokenIssuer,
     });
 
     if (payload.typ !== qrTokenType) {
@@ -105,7 +115,7 @@ export const verifyQrToken = async (
     return {
       ok: false,
       status: "INVALID_QR",
-      message: `QR code is invalid or has been modified: ${error instanceof Error ? error.message : "unknown error"}`,
+      message: "QR code is invalid or has been modified.",
     };
   }
 };

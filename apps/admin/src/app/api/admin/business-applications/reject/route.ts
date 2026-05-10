@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { invokeReviewEdgeFunctionAsync, requireAdminReviewAccessAsync } from "@/features/business-applications/review-transport";
+import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
 import { isUuid } from "@/features/business-applications/validation";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 type RejectRequestBody = {
@@ -36,6 +39,12 @@ const parseRejectRequestBody = async (
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireAdminReviewAccessAsync(supabase);
 
@@ -43,6 +52,18 @@ export async function POST(request: Request) {
       return NextResponse.json(accessError.response, {
         status: accessError.status,
       });
+    }
+
+    const userId = await resolveAuthenticatedRouteUserIdAsync(supabase);
+
+    if (userId === null) {
+      return NextResponse.json({ message: "Sign in again before rejecting applications.", status: "AUTH_REQUIRED" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "admin-business-application-reject");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
     }
 
     const body = await parseRejectRequestBody(request);

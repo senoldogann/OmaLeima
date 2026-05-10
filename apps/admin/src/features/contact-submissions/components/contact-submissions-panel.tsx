@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { paginateItems } from "@/features/shared/pagination";
+import { PaginationControls, type PaginationControlsCopy } from "@/features/shared/pagination-controls";
 import { createClient } from "@/lib/supabase/client";
 import type {
   ContactSubmissionRecord,
@@ -29,7 +31,7 @@ const subjectLabelsByLocale: Record<DashboardLocale, Record<ContactSubmissionSub
   },
   fi: {
     business_signup: "Yrityshakemus",
-    collaboration: "Yhteistyo",
+    collaboration: "Yhteistyö",
     pilot: "Pilotti / testi",
     press: "Media",
     other: "Muu",
@@ -45,7 +47,7 @@ const statusLabelsByLocale: Record<DashboardLocale, Record<ContactSubmissionStat
   },
   fi: {
     new: "Uusi",
-    in_review: "Kasittelyssa",
+    in_review: "Käsittelyssä",
     closed: "Suljettu",
     spam: "Roska",
   },
@@ -53,7 +55,7 @@ const statusLabelsByLocale: Record<DashboardLocale, Record<ContactSubmissionStat
 
 const statusOrder: ContactSubmissionStatus[] = ["new", "in_review", "closed", "spam"];
 
-type ContactSubmissionsCopy = {
+type ContactSubmissionsCopy = PaginationControlsCopy & {
   attachment: string;
   all: string;
   detailEmpty: string;
@@ -73,6 +75,8 @@ type ContactSubmissionsCopy = {
   subject: string;
 };
 
+const contactSubmissionsPageSize = 12;
+
 const copyByLocale: Record<DashboardLocale, ContactSubmissionsCopy> = {
   en: {
     attachment: "Attachment",
@@ -82,12 +86,17 @@ const copyByLocale: Record<DashboardLocale, ContactSubmissionsCopy> = {
     empty: "No submissions match this filter.",
     language: "Language",
     message: "Message",
+    next: "Next",
     noOrganization: "No organization",
+    of: "of",
     openAttachment: "Open file in a new tab",
     organization: "Organization",
+    page: "Page",
+    previous: "Previous",
     refresh: "Refresh",
     refreshing: "Refreshing...",
     searchPlaceholder: "Search: name, email, organization, message",
+    showing: "Showing",
     status: "Status",
     statusUpdateFailed: "Could not update status",
     submissionCounters: "Submission counters",
@@ -97,19 +106,24 @@ const copyByLocale: Record<DashboardLocale, ContactSubmissionsCopy> = {
     attachment: "Liite",
     all: "Kaikki",
     detailEmpty: "Valitse hakemus nähdäksesi tarkemmat tiedot.",
-    email: "Sahkoposti",
-    empty: "Talla suodattimella ei loydy hakemuksia.",
+    email: "Sähköposti",
+    empty: "Tällä suodattimella ei löydy viestejä.",
     language: "Kieli",
     message: "Viesti",
+    next: "Seuraava",
     noOrganization: "Ei organisaatiota",
-    openAttachment: "Avaa tiedosto uudessa valilehdessa",
+    of: "/",
+    openAttachment: "Avaa tiedosto uudessa välilehdessä",
     organization: "Organisaatio",
-    refresh: "Paivita",
-    refreshing: "Paivitetaan...",
-    searchPlaceholder: "Hae: nimi, sahkoposti, organisaatio, viesti",
+    page: "Sivu",
+    previous: "Edellinen",
+    refresh: "Päivitä",
+    refreshing: "Päivitetään\u2026",
+    searchPlaceholder: "Hae: nimi, sähköposti, organisaatio, viesti",
+    showing: "Näytetään",
     status: "Tila",
-    statusUpdateFailed: "Tilan paivitys epaonnistui",
-    submissionCounters: "Hakemuslaskurit",
+    statusUpdateFailed: "Tilan päivitys epäonnistui",
+    submissionCounters: "Yhteydenotot yhteensä",
     subject: "Aihe",
   },
 };
@@ -133,6 +147,7 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState<string>("");
   const [activeId, setActiveId] = useState<string | null>(snapshot.records[0]?.id ?? null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefreshing, startRefresh] = useTransition();
@@ -155,12 +170,14 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
     });
   }, [filter, search, snapshot.records]);
 
+  const paginatedRecords = paginateItems(filteredRecords, currentPage, contactSubmissionsPageSize);
+
   const activeRecord = useMemo<ContactSubmissionRecord | null>(() => {
     if (activeId === null) {
-      return filteredRecords[0] ?? null;
+      return paginatedRecords.items[0] ?? null;
     }
-    return filteredRecords.find((record) => record.id === activeId) ?? filteredRecords[0] ?? null;
-  }, [activeId, filteredRecords]);
+    return paginatedRecords.items.find((record) => record.id === activeId) ?? paginatedRecords.items[0] ?? null;
+  }, [activeId, paginatedRecords.items]);
 
   const handleStatusChangeAsync = async (
     recordId: string,
@@ -192,7 +209,11 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
       <header className="contact-submissions__summary" role="group" aria-label={copy.submissionCounters}>
         <button
           className={`contact-submissions__counter${filter === "all" ? " is-active" : ""}`}
-          onClick={() => setFilter("all")}
+          onClick={() => {
+            setFilter("all");
+            setActiveId(null);
+            setCurrentPage(1);
+          }}
           type="button"
         >
           <span className="contact-submissions__counter-value">{snapshot.counts.total}</span>
@@ -212,7 +233,11 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
               key={status}
               className={`contact-submissions__counter${filter === status ? " is-active" : ""}`}
               data-status={status}
-              onClick={() => setFilter(status)}
+              onClick={() => {
+                setFilter(status);
+                setActiveId(null);
+                setCurrentPage(1);
+              }}
               type="button"
             >
               <span className="contact-submissions__counter-value">{value}</span>
@@ -225,7 +250,11 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
       <div className="contact-submissions__toolbar">
         <input
           className="contact-submissions__search"
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setActiveId(null);
+            setCurrentPage(1);
+          }}
           placeholder={copy.searchPlaceholder}
           type="search"
           value={search}
@@ -255,7 +284,7 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
           {filteredRecords.length === 0 ? (
             <li className="contact-submissions__empty">{copy.empty}</li>
           ) : (
-            filteredRecords.map((record) => {
+            paginatedRecords.items.map((record) => {
               const isActive = activeRecord?.id === record.id;
               return (
                 <li key={record.id}>
@@ -286,6 +315,20 @@ export const ContactSubmissionsPanel = ({ locale, snapshot }: ContactSubmissions
               );
             })
           )}
+          <li className="contact-submissions__pagination">
+            <PaginationControls
+              copy={copy}
+              currentPage={paginatedRecords.currentPage}
+              endItem={paginatedRecords.endItem}
+              onPageChange={(page) => {
+                setActiveId(null);
+                setCurrentPage(page);
+              }}
+              startItem={paginatedRecords.startItem}
+              totalItems={paginatedRecords.totalItems}
+              totalPages={paginatedRecords.totalPages}
+            />
+          </li>
         </ol>
 
         <aside className="contact-submissions__detail" aria-live="polite">

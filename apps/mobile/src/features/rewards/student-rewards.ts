@@ -240,7 +240,6 @@ const fetchRewardEventsAsync = async (eventIds: string[]): Promise<EventRow[]> =
     .select("id,name,city,cover_image_url,start_at,end_at,status,minimum_stamps_required")
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE", "COMPLETED"])
-    .eq("visibility", "PUBLIC")
     .returns<EventRow[]>();
 
   if (error !== null) {
@@ -362,6 +361,10 @@ export const useStudentRewardOverviewQuery = ({
     queryKey: studentRewardOverviewQueryKey(studentId),
     queryFn: async () => fetchStudentRewardOverviewAsync(studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
 export const useStudentRewardEventQuery = ({
@@ -373,4 +376,8 @@ export const useStudentRewardEventQuery = ({
     queryKey: studentRewardEventQueryKey(eventId, studentId),
     queryFn: async () => fetchStudentRewardEventProgressAsync(eventId, studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });

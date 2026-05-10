@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
+import { getPreferredMobileRoleAreaAsync, type MobileRoleArea } from "@/features/auth/mobile-role-preference";
 import { supabase } from "@/lib/supabase";
 
 type ProfileRow = {
@@ -28,7 +29,7 @@ type ClubRow = {
   id: string;
 };
 
-export type SessionAccessArea = "student" | "business" | "club" | "unsupported";
+export type SessionAccessArea = MobileRoleArea | "unsupported";
 
 export type SessionAccess = {
   userId: string;
@@ -39,6 +40,8 @@ export type SessionAccess = {
   businessMembershipCount: number;
   clubMembershipCount: number;
   isBusinessScannerOnly: boolean;
+  availableAreas: MobileRoleArea[];
+  preferredArea: MobileRoleArea | null;
 };
 
 type UseSessionAccessQueryParams = {
@@ -130,11 +133,69 @@ const fetchActiveClubsAsync = async (clubIds: string[]): Promise<ClubRow[]> => {
   return data;
 };
 
+const getHomeHrefForArea = (
+  area: MobileRoleArea,
+  isBusinessScannerOnly: boolean
+): SessionAccess["homeHref"] => {
+  if (area === "business") {
+    return isBusinessScannerOnly ? "/business/scanner" : "/business/home";
+  }
+
+  if (area === "club") {
+    return "/club/home";
+  }
+
+  return "/student/events";
+};
+
+const chooseAccessArea = (
+  availableAreas: MobileRoleArea[],
+  preferredArea: MobileRoleArea | null
+): MobileRoleArea | null => {
+  if (preferredArea !== null && availableAreas.includes(preferredArea)) {
+    return preferredArea;
+  }
+
+  return availableAreas[0] ?? null;
+};
+
+const createSessionAccess = ({
+  activeArea,
+  availableAreas,
+  businessMembershipCount,
+  clubMembershipCount,
+  isBusinessScannerOnly,
+  preferredArea,
+  profile,
+  userId,
+}: {
+  activeArea: MobileRoleArea;
+  availableAreas: MobileRoleArea[];
+  businessMembershipCount: number;
+  clubMembershipCount: number;
+  isBusinessScannerOnly: boolean;
+  preferredArea: MobileRoleArea | null;
+  profile: ProfileRow;
+  userId: string;
+}): SessionAccess => ({
+  userId,
+  area: activeArea,
+  homeHref: getHomeHrefForArea(activeArea, isBusinessScannerOnly),
+  primaryRole: profile.primary_role,
+  profileStatus: profile.status,
+  businessMembershipCount,
+  clubMembershipCount,
+  isBusinessScannerOnly,
+  availableAreas,
+  preferredArea,
+});
+
 export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAccess> => {
-  const [profile, businessMemberships, clubMemberships] = await Promise.all([
+  const [profile, businessMemberships, clubMemberships, preferredArea] = await Promise.all([
     fetchProfileAsync(userId),
     fetchBusinessMembershipsAsync(userId),
     fetchClubMembershipsAsync(userId),
+    getPreferredMobileRoleAreaAsync(),
   ]);
 
   if (profile === null) {
@@ -169,46 +230,42 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
       businessMembershipCount: activeBusinessMembershipCount,
       clubMembershipCount: activeClubMembershipCount,
       isBusinessScannerOnly,
+      availableAreas: [],
+      preferredArea,
     };
   }
 
-  if (activeBusinessMembershipCount > 0) {
-    return {
-      userId,
-      area: "business",
-      homeHref: isBusinessScannerOnly ? "/business/scanner" : "/business/home",
-      primaryRole: profile.primary_role,
-      profileStatus: profile.status,
+  if (isBusinessScannerOnly) {
+    return createSessionAccess({
+      activeArea: "business",
+      availableAreas: ["business"],
       businessMembershipCount: activeBusinessMembershipCount,
       clubMembershipCount: activeClubMembershipCount,
       isBusinessScannerOnly,
-    };
+      preferredArea,
+      profile,
+      userId,
+    });
   }
 
-  if (activeClubMembershipCount > 0) {
-    return {
-      userId,
-      area: "club",
-      homeHref: "/club/home",
-      primaryRole: profile.primary_role,
-      profileStatus: profile.status,
-      businessMembershipCount: 0,
-      clubMembershipCount: activeClubMembershipCount,
-      isBusinessScannerOnly: false,
-    };
-  }
+  const availableAreas: MobileRoleArea[] = [
+    ...(activeBusinessMembershipCount > 0 ? (["business"] as const) : []),
+    ...(activeClubMembershipCount > 0 ? (["club"] as const) : []),
+    ...(profile.primary_role === "STUDENT" ? (["student"] as const) : []),
+  ];
+  const activeArea = chooseAccessArea(availableAreas, preferredArea);
 
-  if (profile.primary_role === "STUDENT") {
-    return {
-      userId,
-      area: "student",
-      homeHref: "/student/events",
-      primaryRole: profile.primary_role,
-      profileStatus: profile.status,
-      businessMembershipCount: 0,
+  if (activeArea !== null) {
+    return createSessionAccess({
+      activeArea,
+      availableAreas,
+      businessMembershipCount: activeBusinessMembershipCount,
       clubMembershipCount: activeClubMembershipCount,
       isBusinessScannerOnly: false,
-    };
+      preferredArea,
+      profile,
+      userId,
+    });
   }
 
   return {
@@ -220,6 +277,8 @@ export const fetchSessionAccessAsync = async (userId: string): Promise<SessionAc
     businessMembershipCount: 0,
     clubMembershipCount: activeClubMembershipCount,
     isBusinessScannerOnly: false,
+    availableAreas: [],
+    preferredArea,
   };
 };
 

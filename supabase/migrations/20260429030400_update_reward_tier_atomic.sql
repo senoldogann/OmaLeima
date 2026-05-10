@@ -56,6 +56,10 @@ begin
     return jsonb_build_object('status', 'REWARD_TIER_NOT_FOUND');
   end if;
 
+  if v_reward_tier.status = 'DELETED' then
+    return jsonb_build_object('status', 'REWARD_TIER_DELETED');
+  end if;
+
   select *
   into v_event
   from public.events

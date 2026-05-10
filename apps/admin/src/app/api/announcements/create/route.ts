@@ -5,16 +5,27 @@ import {
   requireAnnouncementAccessAsync,
 } from "@/features/announcements/transport";
 import {
+  assertAnnouncementScopeAllowedForAccessOrThrow,
   AnnouncementValidationError,
   parseAnnouncementCreatePayloadOrThrow,
 } from "@/features/announcements/validation";
+import { resolveAdminAccessAsync } from "@/features/auth/access";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireAnnouncementAccessAsync(supabase);
+    const access = await resolveAdminAccessAsync(supabase);
 
     if (accessError !== null) {
       return NextResponse.json(accessError.response, {
@@ -36,9 +47,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "announcement-create");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
+
     const body = parseAnnouncementCreatePayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
+    assertAnnouncementScopeAllowedForAccessOrThrow(access.area, body);
     const result = await createAnnouncementAsync(supabase, {
       audience: body.audienceValue,
       body: body.body,
@@ -47,10 +65,13 @@ export async function POST(request: Request) {
       ctaLabel: body.ctaLabel.length === 0 ? null : body.ctaLabel,
       ctaUrl: body.ctaUrl.length === 0 ? null : body.ctaUrl,
       endsAt: body.endsAtValue,
+      eventId: body.eventIdValue,
+      imageStagingPath: body.imageStagingPathValue,
       imageUrl: body.imageUrlValue,
       priority: body.priorityValue,
       startsAt: body.startsAtValue,
       status: body.statusValue,
+      targetCity: body.targetCityValue,
       title: body.title,
     });
 

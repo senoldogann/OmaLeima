@@ -29,6 +29,10 @@ const commands = [
     label: "apps/mobile audit:native-simulator-smoke",
     command: ["npm", "--prefix", "apps/mobile", "run", "audit:native-simulator-smoke"],
   },
+  {
+    label: "apps/mobile smoke:native-simulators",
+    command: ["npm", "--prefix", "apps/mobile", "run", "smoke:native-simulators"],
+  },
 ];
 
 for (const { label, command } of commands) {

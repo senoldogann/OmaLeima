@@ -2,12 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import type { ClubEventRecord, ClubEventsSnapshot, EventRules } from "@/features/club-events/types";
+import { createSignedStagedMediaUrlAsync } from "@/features/media/staged-media";
 
 const latestEventLimit = 8;
 
 type EventRow = {
   city: string;
   club_id: string;
+  cover_image_staging_path: string | null;
   cover_image_url: string | null;
   created_at: string;
   created_by: string;
@@ -22,6 +24,7 @@ type EventRow = {
   slug: string;
   start_at: string;
   status: ClubEventRecord["status"];
+  ticket_url: string | null;
   visibility: ClubEventRecord["visibility"];
 };
 
@@ -61,7 +64,7 @@ const fetchEventsByClubIdsAsync = async (
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,club_id,name,slug,description,city,cover_image_url,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules,created_by,created_at"
+      "id,club_id,name,slug,description,city,cover_image_url,cover_image_staging_path,start_at,end_at,join_deadline_at,status,visibility,max_participants,minimum_stamps_required,rules,ticket_url,created_by,created_at"
     )
     .in("club_id", clubIds)
     .order("created_at", {
@@ -224,13 +227,17 @@ const mapEventRecords = (
   rows: EventRow[],
   clubNames: Map<string, string>,
   creatorEmails: Map<string, string>,
+  signedUrlByStagingPath: Map<string, string>,
   operationalCounts: Map<string, EventOperationalCounts>
 ): ClubEventRecord[] =>
   rows.map((row) => ({
     city: row.city,
     clubId: row.club_id,
     clubName: clubNames.get(row.club_id) ?? "Unknown club",
-    coverImageUrl: row.cover_image_url,
+    coverImageStagingPath: row.cover_image_staging_path ?? "",
+    coverImageUrl:
+      row.cover_image_url ??
+      (row.cover_image_staging_path === null ? null : signedUrlByStagingPath.get(row.cover_image_staging_path) ?? null),
     createdAt: row.created_at,
     createdByEmail: creatorEmails.get(row.created_by) ?? null,
     description: row.description,
@@ -246,8 +253,34 @@ const mapEventRecords = (
     slug: row.slug,
     startAt: row.start_at,
     status: row.status,
+    ticketUrl: row.ticket_url,
     visibility: row.visibility,
   }));
+
+const createSignedUrlByStagingPathAsync = async (
+  supabase: SupabaseClient,
+  rows: EventRow[]
+): Promise<Map<string, string>> => {
+  const stagingPaths = Array.from(
+    new Set(
+      rows
+        .map((row) => row.cover_image_staging_path)
+        .filter((value): value is string => value !== null && value.trim().length > 0)
+    )
+  );
+
+  const entries = await Promise.all(
+    stagingPaths.map(async (stagingPath): Promise<[string, string]> => [
+      stagingPath,
+      await createSignedStagedMediaUrlAsync({
+        stagingPath,
+        supabase,
+      }),
+    ])
+  );
+
+  return new Map(entries);
+};
 
 export const fetchClubEventsSnapshotAsync = async (
   supabase: SupabaseClient
@@ -274,10 +307,11 @@ export const fetchClubEventsSnapshotAsync = async (
     fetchEventVenuesByEventIdsAsync(supabase, eventIds),
   ]);
   const operationalCounts = mapOperationalCountsByEventId(registrations, venues);
+  const signedUrlByStagingPath = await createSignedUrlByStagingPathAsync(supabase, eventRows);
 
   return {
     memberships: context.memberships,
-    recentEvents: mapEventRecords(eventRows, clubNames, creatorEmails, operationalCounts),
+    recentEvents: mapEventRecords(eventRows, clubNames, creatorEmails, signedUrlByStagingPath, operationalCounts),
     summary: {
       creatableClubCount: context.memberships.filter((membership) => membership.canCreateEvents).length,
       latestEventLimit,

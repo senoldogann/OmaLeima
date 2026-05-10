@@ -1,4 +1,3 @@
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useMemo } from "react";
 
 import { useSessionAccessQuery } from "@/features/auth/session-access";
@@ -16,6 +15,7 @@ import {
   scheduleLocalNotificationAtAsync,
 } from "@/lib/push";
 import { useUiPreferences } from "@/features/preferences/ui-preferences-provider";
+import { deviceStorage } from "@/lib/device-storage";
 import { useSession } from "@/providers/session-provider";
 
 const eventReminderLeadMs = 60 * 60 * 1000;
@@ -45,7 +45,7 @@ const isReminderCandidate = (event: StudentEventSummary): boolean =>
   event.registrationState === "REGISTERED" && event.timelineState === "UPCOMING";
 
 const readFiredReminderRecordAsync = async (): Promise<FiredReminderRecord> => {
-  const rawValue = await SecureStore.getItemAsync(eventReminderStoreKey);
+  const rawValue = await deviceStorage.getItemAsync(eventReminderStoreKey);
 
   if (rawValue === null) {
     return {};
@@ -69,7 +69,7 @@ const readFiredReminderRecordAsync = async (): Promise<FiredReminderRecord> => {
 };
 
 const writeFiredReminderRecordAsync = async (record: FiredReminderRecord): Promise<void> => {
-  await SecureStore.setItemAsync(eventReminderStoreKey, JSON.stringify(record));
+  await deviceStorage.setItemAsync(eventReminderStoreKey, JSON.stringify(record));
 };
 
 const logReminderWarning = (code: string, detail: Record<string, unknown>): void => {
@@ -86,7 +86,7 @@ const clearStudentReminderStateAsync = async (): Promise<void> => {
       .map((identifier) => cancelScheduledNotificationAsync(identifier))
   );
 
-  await SecureStore.deleteItemAsync(eventReminderStoreKey);
+  await deviceStorage.deleteItemAsync(eventReminderStoreKey);
 };
 
 const syncFutureReminderSchedulesAsync = async (

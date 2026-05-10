@@ -64,7 +64,7 @@ const ThemedRootContent = () => {
 
   return (
     <ThemeProvider value={theme.mode === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack initialRouteName="index" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="student" />

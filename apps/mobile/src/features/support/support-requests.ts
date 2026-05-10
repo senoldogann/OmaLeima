@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
@@ -18,6 +19,7 @@ type SupportRequestRow = {
   status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   admin_reply: string | null;
   created_at: string;
+  updated_at: string;
   resolved_at: string | null;
   business: {
     name: string;
@@ -33,8 +35,17 @@ type UseSupportRequestsQueryParams = {
   isEnabled: boolean;
 };
 
+type SupportRequestRealtimeInvalidationParams = {
+  area: SupportRequestArea;
+  isEnabled: boolean;
+  userId: string;
+};
+
 export const supportRequestsQueryKey = (userId: string, area: SupportRequestArea) =>
   ["support-requests", userId, area] as const;
+
+const createSupportRealtimeInstanceId = (): string =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
 const mapSupportRequests = (rows: SupportRequestRow[]): SupportRequestSummary[] =>
   rows.map((row) => ({
@@ -69,6 +80,7 @@ const fetchSupportRequestsAsync = async (
       status,
       admin_reply,
       created_at,
+      updated_at,
       resolved_at,
       business:businesses(name),
       club:clubs(name)
@@ -76,7 +88,7 @@ const fetchSupportRequestsAsync = async (
     )
     .eq("user_id", userId)
     .eq("area", area)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(5)
     .returns<SupportRequestRow[]>();
 
@@ -118,6 +130,7 @@ const createSupportRequestAsync = async ({
       status,
       admin_reply,
       created_at,
+      updated_at,
       resolved_at,
       business:businesses(name),
       club:clubs(name)
@@ -150,6 +163,62 @@ export const useSupportRequestsQuery = ({
     queryFn: async () => fetchSupportRequestsAsync(userId, area),
     enabled: isEnabled,
   });
+
+export const useSupportRequestRealtimeInvalidation = ({
+  area,
+  isEnabled,
+  userId,
+}: SupportRequestRealtimeInvalidationParams): void => {
+  const queryClient = useQueryClient();
+  const channelInstanceIdRef = useRef<string>(createSupportRealtimeInstanceId());
+
+  useEffect(() => {
+    if (!isEnabled || userId.length === 0) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`support-requests:${userId}:${area}:${channelInstanceIdRef.current}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          filter: `user_id=eq.${userId}`,
+          schema: "public",
+          table: "support_requests",
+        },
+        () => {
+          void queryClient
+            .invalidateQueries({
+              queryKey: supportRequestsQueryKey(userId, area),
+            })
+            .catch((error: unknown) => {
+              console.warn("support_request_realtime_invalidation_failed", {
+                area,
+                userId,
+                message: error instanceof Error ? error.message : String(error),
+              });
+            });
+        }
+      )
+      .subscribe((status, error) => {
+        if (status !== "CHANNEL_ERROR" && status !== "TIMED_OUT") {
+          return;
+        }
+
+        console.warn("support_request_realtime_channel_warning", {
+          area,
+          status,
+          userId,
+          message: error?.message ?? null,
+        });
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [area, isEnabled, queryClient, userId]);
+};
 
 export const useCreateSupportRequestMutation = (): UseMutationResult<
   SupportRequestSummary,

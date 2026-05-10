@@ -1,4 +1,5 @@
 import type { DashboardShortcut } from "@/features/dashboard/components/dashboard-shortcuts-grid";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import type { DashboardNavItem, DashboardSection } from "@/features/dashboard/types";
 
 export const adminDashboardNavigationItems: DashboardNavItem[] = [
@@ -18,6 +19,11 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     label: "Business applications",
   },
   {
+    href: "/admin/users",
+    iconName: "settings",
+    label: "Users",
+  },
+  {
     href: "/admin/department-tags",
     iconName: "tags",
     label: "Department tags",
@@ -28,9 +34,24 @@ export const adminDashboardNavigationItems: DashboardNavItem[] = [
     label: "Announcements",
   },
   {
+    href: "/admin/login-slides",
+    iconName: "settings",
+    label: "Login slides",
+  },
+  {
+    href: "/admin/rewards",
+    iconName: "rewards",
+    label: "Reward tiers",
+  },
+  {
     href: "/admin/contact-submissions",
     iconName: "inbox",
     label: "Contact submissions",
+  },
+  {
+    href: "/admin/support-requests",
+    iconName: "inbox",
+    label: "Mobile support",
   },
 ];
 
@@ -45,6 +66,16 @@ export const getClubDashboardNavigationItems = (canManageRewards: boolean): Dash
       href: "/club/events",
       iconName: "events" as const,
       label: "Club events",
+    },
+    {
+      href: "/club/reports",
+      iconName: "audit" as const,
+      label: "Reports",
+    },
+    {
+      href: "/club/profile",
+      iconName: "settings" as const,
+      label: "Profile",
     },
     canManageRewards
       ? {
@@ -111,51 +142,72 @@ type AdminDashboardShortcutCounts = {
 
 const formatBadgeCount = (value: number): string => (value > 99 ? "99+" : String(value));
 
-export const buildAdminDashboardShortcuts = (counts: AdminDashboardShortcutCounts): DashboardShortcut[] => [
+const formatLocalizedBadge = (
+  value: number,
+  locale: DashboardLocale,
+  englishLabel: string,
+  finnishLabel: string
+): string => `${formatBadgeCount(value)} ${locale === "fi" ? finnishLabel : englishLabel}`;
+
+export const buildAdminDashboardShortcuts = (counts: AdminDashboardShortcutCounts, locale: DashboardLocale): DashboardShortcut[] => [
   {
     badgeTone: "accent",
-    badgeValue: `${formatBadgeCount(counts.operationalEventCount)} live`,
-    description: "Active clubs, operational events, audit trail, and fraud snapshot in one surface.",
+    badgeValue: formatLocalizedBadge(counts.operationalEventCount, locale, "live", "käynnissä"),
+    description: locale === "fi"
+      ? "Aktiiviset klubit, käynnissä olevat tapahtumat, valvontaloki ja väärinkäyttöyhteenveto yhdessä näkymässä."
+      : "Active clubs, operational events, audit trail, and fraud snapshot in one surface.",
     href: "/admin/oversight",
     iconName: "oversight",
-    title: "Platform oversight",
+    title: locale === "fi" ? "Alustan valvonta" : "Platform oversight",
   },
   {
     badgeTone: counts.pendingBusinessApplicationCount > 0 ? "warning" : "neutral",
-    badgeValue: `${formatBadgeCount(counts.pendingBusinessApplicationCount)} pending`,
-    description: "Approve or reject incoming business applications with a clear operator reason.",
+    badgeValue: formatLocalizedBadge(counts.pendingBusinessApplicationCount, locale, "pending", "odottaa"),
+    description: locale === "fi"
+      ? "Hyväksy tai hylkää saapuneet yrityshakemukset selkeällä perustelulla."
+      : "Approve or reject incoming business applications with a clear operator reason.",
     href: "/admin/business-applications",
     iconName: "applications",
-    title: "Business applications",
+    title: locale === "fi" ? "Yrityshakemukset" : "Business applications",
+    urgent: counts.pendingBusinessApplicationCount > 0,
   },
   {
-    description: "Merge duplicate department tags into canonical labels or block low-quality ones.",
+    description: locale === "fi"
+      ? "Yhdistä päällekkäiset opiskelualojen tunnisteet tai estä heikkolaatuiset."
+      : "Merge duplicate department tags into canonical labels or block low-quality ones.",
     href: "/admin/department-tags",
     iconName: "tags",
-    title: "Department tags",
+    title: locale === "fi" ? "Opiskelualojen tunnisteet" : "Department tags",
   },
   {
     badgeTone: "accent",
-    badgeValue: `${formatBadgeCount(counts.announcementCount)} live`,
-    description: "Publish platform-wide in-app messages students and organizers can rely on.",
+    badgeValue: formatLocalizedBadge(counts.announcementCount, locale, "live", "aktiivista"),
+    description: locale === "fi"
+      ? "Julkaise koko alustan sisäisiä tiedotteita, joihin opiskelijat ja järjestäjät voivat luottaa."
+      : "Publish platform-wide in-app messages students and organizers can rely on.",
     href: "/admin/announcements",
     iconName: "announcements",
-    title: "Announcements",
+    title: locale === "fi" ? "Tiedotteet" : "Announcements",
   },
   {
     badgeTone: counts.openFraudSignalCount > 0 ? "warning" : "neutral",
-    badgeValue: `${formatBadgeCount(counts.openFraudSignalCount)} open`,
-    description: "Drill into the latest open fraud signals from the same oversight surface.",
+    badgeValue: formatLocalizedBadge(counts.openFraudSignalCount, locale, "open", "avoinna"),
+    description: locale === "fi"
+      ? "Tarkista viimeisimmät avoimet väärinkäyttösignaalit valvontanäkymästä."
+      : "Drill into the latest open fraud signals from the same oversight surface.",
     href: "/admin/oversight",
     iconName: "fraud",
-    title: "Fraud signals",
+    title: locale === "fi" ? "Väärinkäyttösignaalit" : "Fraud signals",
+    urgent: counts.openFraudSignalCount > 0,
   },
   {
     badgeValue: `${formatBadgeCount(counts.recentAuditCount)} 24h`,
-    description: "Audit log activity recorded by the backend in the last operational window.",
+    description: locale === "fi"
+      ? "Järjestelmän kirjaamat tapahtumat viimeisimmältä toimintajaksolta."
+      : "Audit log activity recorded by the backend in the last operational window.",
     href: "/admin/oversight",
     iconName: "audit",
-    title: "Audit trail",
+    title: locale === "fi" ? "Valvontaloki" : "Audit trail",
   },
 ];
 
@@ -170,67 +222,81 @@ type ClubDashboardShortcutCounts = {
   visibleEventCount: number;
 };
 
-export const buildClubDashboardShortcuts = (counts: ClubDashboardShortcutCounts): DashboardShortcut[] => {
+export const buildClubDashboardShortcuts = (counts: ClubDashboardShortcutCounts, locale: DashboardLocale): DashboardShortcut[] => {
   const shortcuts: DashboardShortcut[] = [
     {
       badgeTone: "accent",
-      badgeValue: `${formatBadgeCount(counts.visibleEventCount)} listed`,
-      description: "Draft, publish, or update club-owned events and edit event-day settings.",
+      badgeValue: formatLocalizedBadge(counts.visibleEventCount, locale, "listed", "listattu"),
+      description: locale === "fi"
+        ? "Luo luonnos, julkaise tai päivitä klubin tapahtumia ja tapahtumapäivän asetuksia."
+        : "Draft, publish, or update club-owned events and edit event-day settings.",
       href: "/club/events",
       iconName: "events",
-      title: "Club events",
+      title: locale === "fi" ? "Tapahtumat" : "Club events",
     },
     {
       badgeTone: counts.claimableCandidateCount > 0 ? "warning" : "neutral",
-      badgeValue: `${formatBadgeCount(counts.claimableCandidateCount)} ready`,
-      description: "Confirm physical reward handoff for eligible students without exposing extra data.",
+      badgeValue: formatLocalizedBadge(counts.claimableCandidateCount, locale, "ready", "valmis"),
+      description: locale === "fi"
+        ? "Vahvista palkinnon luovutus opiskelijoille, joiden leimaraja on täyttynyt."
+        : "Confirm physical reward handoff for eligible students without exposing extra data.",
       href: "/club/claims",
       iconName: "claims",
-      title: "Reward claims",
+      title: locale === "fi" ? "Palkintoluovutukset" : "Reward claims",
     },
     {
       badgeTone: counts.openFraudSignalCount > 0 ? "warning" : "neutral",
-      badgeValue: `${formatBadgeCount(counts.openFraudSignalCount)} open`,
-      description: "Review event-scoped fraud warnings, confirm real issues, or dismiss false positives.",
+      badgeValue: formatLocalizedBadge(counts.openFraudSignalCount, locale, "open", "avoinna"),
+      description: locale === "fi"
+        ? "Tarkista tapahtumakohtaiset väärinkäyttöilmoitukset ja merkitse todelliset tai väärät hälytykset."
+        : "Review event-scoped fraud warnings, confirm real issues, or dismiss false positives.",
       href: "/club/fraud",
       iconName: "fraud",
-      title: "Fraud review",
+      title: locale === "fi" ? "Väärinkäyttötarkistus" : "Fraud review",
     },
     {
       badgeTone: "accent",
-      badgeValue: `${formatBadgeCount(counts.announcementCount)} live`,
-      description: "Send organizer-scoped announcements to your students before each event window.",
+      badgeValue: formatLocalizedBadge(counts.announcementCount, locale, "live", "aktiivista"),
+      description: locale === "fi"
+        ? "Lähetä järjestäjäkohtaisia tiedotteita opiskelijoillesi ennen tapahtumaikkunaa."
+        : "Send organizer-scoped announcements to your students before each event window.",
       href: "/club/announcements",
       iconName: "announcements",
-      title: "Announcements",
+      title: locale === "fi" ? "Tiedotteet" : "Announcements",
     },
   ];
 
   if (counts.canManageRewards) {
     shortcuts.push(
       {
-        badgeValue: `${formatBadgeCount(counts.officialDepartmentTagCount)} official`,
-        description: "Publish canonical study labels students see first when they edit their profile tags.",
+        badgeValue: formatLocalizedBadge(counts.officialDepartmentTagCount, locale, "official", "virallista"),
+        description: locale === "fi"
+          ? "Julkaise viralliset opiskelualojen tunnisteet, jotka opiskelijat näkevät profiilissaan ensimmäisenä."
+          : "Publish canonical study labels students see first when they edit their profile tags.",
         href: "/club/department-tags",
         iconName: "tags",
-        title: "Department tags",
+        title: locale === "fi" ? "Opiskelualojen tunnisteet" : "Department tags",
       },
       {
-        badgeValue: `${formatBadgeCount(counts.rewardTierCount)} tiers`,
-        description: "Manage event reward thresholds, stock visibility, and claim handoff instructions.",
+        badgeValue: formatLocalizedBadge(counts.rewardTierCount, locale, "tiers", "tasoa"),
+        description: locale === "fi"
+          ? "Hallinnoi tapahtumien palkintorajoja, varastomääriä ja luovutusohjeita."
+          : "Manage event reward thresholds, stock visibility, and claim handoff instructions.",
         href: "/club/rewards",
         iconName: "rewards",
-        title: "Reward tiers",
+        title: locale === "fi" ? "Palkintotasot" : "Reward tiers",
       }
     );
   }
 
   shortcuts.unshift({
-    badgeValue: `${formatBadgeCount(counts.managedClubCount)} clubs`,
-    description: "Active clubs currently visible in this organizer session.",
+    badgeValue: formatLocalizedBadge(counts.managedClubCount, locale, "clubs", "klubia"),
+    description: locale === "fi"
+      ? "Tässä järjestäjäistunnossa näkyvät aktiiviset klubit."
+      : "Active clubs currently visible in this organizer session.",
     href: "/club/events",
     iconName: "venues",
-    title: "Managed clubs",
+    title: locale === "fi" ? "Hallinnoidut klubit" : "Managed clubs",
   });
 
   return shortcuts;

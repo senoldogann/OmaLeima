@@ -6,7 +6,6 @@ import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import {
-  useAcknowledgeAnnouncementMutation,
   useAnnouncementFeedQuery,
   useAnnouncementRealtimeInvalidation,
   useRecordAnnouncementImpressionsMutation,
@@ -40,7 +39,10 @@ const maxRecordedAnnouncementIds = 200;
 const formatFeedDate = (localeTag: string, value: string): string =>
   new Intl.DateTimeFormat(localeTag, {
     day: "numeric",
-    month: "short",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 
 export const AnnouncementFeedSection = ({
@@ -62,7 +64,6 @@ export const AnnouncementFeedSection = ({
     isEnabled: userId !== null,
     userId: userId ?? "",
   });
-  const acknowledgeMutation = useAcknowledgeAnnouncementMutation();
   const preferenceMutation = useSetAnnouncementNotificationPreferenceMutation();
   const impressionMutation = useRecordAnnouncementImpressionsMutation();
   const recordedAnnouncementIdsRef = useRef<Set<string>>(new Set<string>());
@@ -91,15 +92,18 @@ export const AnnouncementFeedSection = ({
         : "New updates appear here when a club or OmaLeima publishes them.",
     eyebrow: language === "fi" ? "Tiedotteet" : "Updates",
     loading: language === "fi" ? "Haetaan tiedotteita." : "Loading updates.",
-    markRead: language === "fi" ? "Merkitse luetuksi" : "Mark read",
-    new: language === "fi" ? "Uusi" : "New",
     notificationsOff: language === "fi" ? "Ilmoitukset pois" : "Push off",
     notificationsOn: language === "fi" ? "Ilmoitukset päällä" : "Push on",
     platform: "OmaLeima",
-    read: language === "fi" ? "Luettu" : "Read",
     retry: language === "fi" ? "Yritä uudelleen" : "Retry",
     viewAll: viewAllLabel ?? (language === "fi" ? "Avaa koko feed" : "Open full feed"),
   };
+  const resolvedTitle =
+    title.trim().toLowerCase() === labels.eyebrow.toLowerCase()
+      ? language === "fi"
+        ? `${title} virta`
+        : `${title} feed`
+      : title;
 
   const rememberAnnouncementId = (announcementId: string): void => {
     recordedAnnouncementIdsRef.current.add(announcementId);
@@ -145,28 +149,6 @@ export const AnnouncementFeedSection = ({
         });
       });
   }, [impressionMutation, userId, visibleAnnouncementIds]);
-
-  const handleMarkReadPress = async (announcement: AnnouncementFeedItem): Promise<void> => {
-    if (userId === null || announcement.isRead) {
-      return;
-    }
-
-    setInteractionError(null);
-
-    try {
-      await acknowledgeMutation.mutateAsync({
-        announcementId: announcement.announcementId,
-        userId,
-      });
-    } catch (error) {
-      console.warn("announcement_feed_cta_open_failed", {
-        announcementId: announcement.announcementId,
-        ctaUrl: announcement.ctaUrl,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      setInteractionError(error instanceof Error ? error.message : labels.retry);
-    }
-  };
 
   const handleCtaPress = async (announcement: AnnouncementFeedItem): Promise<void> => {
     if (announcement.ctaUrl === null) {
@@ -226,44 +208,41 @@ export const AnnouncementFeedSection = ({
   }
 
   const renderAnnouncementCard = (announcement: AnnouncementFeedItem) => {
-    const shouldShowMarkReadButton = announcement.isRead === false;
-    const shouldShowActionRow = shouldShowMarkReadButton || announcement.ctaUrl !== null;
-
     return (
       <View
         key={announcement.announcementId}
-        style={[
-          styles.feedItem,
-          typeof detailPathname === "undefined" ? null : styles.feedItemInteractive,
-          presentation === "rail" ? styles.feedItemRail : null,
-        ]}
+        style={[styles.feedItem, typeof detailPathname === "undefined" ? null : styles.feedItemInteractive]}
       >
         <Pressable
-          accessibilityLabel={`${announcement.title}. ${announcement.isRead ? labels.read : labels.new}. ${announcement.clubName ?? labels.platform}`}
+          accessibilityLabel={`${announcement.title}. ${announcement.clubName ?? labels.platform}`}
           accessibilityRole={typeof detailPathname === "undefined" ? undefined : "button"}
           accessibilityState={{ selected: false }}
           disabled={typeof detailPathname === "undefined"}
           onPress={typeof detailPathname === "undefined" ? undefined : () => handleAnnouncementPress(announcement)}
-          style={({ pressed }) => [styles.feedTouchableArea, pressed ? styles.feedItemPressed : null]}
+          style={({ pressed }) => [
+            styles.feedTouchableArea,
+            pressed ? styles.feedItemPressed : null,
+          ]}
         >
           <CoverImageSurface
             fallbackSource={getFallbackCoverSource("eventDiscovery")}
             source={announcement.imageUrl === null ? null : { uri: announcement.imageUrl }}
-            style={[styles.feedImage, presentation === "rail" ? styles.feedImageRail : null]}
-          >
-            <View style={styles.feedImageOverlay} />
-          </CoverImageSurface>
-          <View style={styles.feedHeader}>
-            <View style={styles.sourceRow}>
+            style={styles.feedImage}
+          />
+          <View style={styles.feedMain}>
+            <View style={styles.feedHeader}>
+              <View style={styles.sourceRow}>
               <View style={styles.sourceCopy}>
                 <Text numberOfLines={1} style={styles.sourceName}>
                   {announcement.clubName ?? labels.platform}
                 </Text>
-                <Text style={styles.dateText}>{formatFeedDate(localeTag, announcement.startsAt)}</Text>
+                <View style={styles.dateRow}>
+                  <AppIcon color={theme.colors.textMuted} name="calendar" size={13} />
+                  <Text style={styles.dateText}>{formatFeedDate(localeTag, announcement.startsAt)}</Text>
+                </View>
               </View>
             </View>
-            <View style={styles.headerActions}>
-              <Pressable
+            <Pressable
                 accessibilityLabel={announcement.isPushEnabled ? labels.notificationsOn : labels.notificationsOff}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: preferenceMutation.isPending, selected: announcement.isPushEnabled }}
@@ -278,52 +257,43 @@ export const AnnouncementFeedSection = ({
                 <AppIcon
                   color={announcement.isPushEnabled ? theme.colors.lime : theme.colors.textMuted}
                   name="bell"
-                  size={15}
+                  size={14}
                 />
               </Pressable>
-              <View style={[styles.readPill, announcement.isRead ? styles.readPillMuted : null]}>
-                <Text style={[styles.readPillText, announcement.isRead ? styles.readPillTextMuted : null]}>
-                  {announcement.isRead ? labels.read : labels.new}
-                </Text>
-              </View>
             </View>
-          </View>
 
-          <View style={styles.feedCopy}>
-            <Text selectable numberOfLines={compact ? 2 : 3} style={styles.feedTitle}>
-              {announcement.title}
-            </Text>
-            <Text selectable numberOfLines={compact ? 3 : 5} style={styles.feedBody}>
-              {announcement.body}
-            </Text>
+            <View style={styles.feedCopy}>
+              <Text selectable numberOfLines={1} style={styles.feedTitle}>
+                {announcement.title}
+              </Text>
+              <Text selectable numberOfLines={3} style={styles.feedBody}>
+                {announcement.body}
+              </Text>
+            </View>
+
+            {announcement.ctaUrl !== null ? (
+              <View style={styles.actionRow}>
+                <Pressable onPress={() => void handleCtaPress(announcement)} style={styles.ctaButton}>
+                  <Text style={styles.ctaButtonText}>{announcement.ctaLabel ?? labels.ctaFallback}</Text>
+                  <AppIcon color={theme.colors.lime} name="chevron-right" size={15} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.ctaButtonPlaceholder} />
+            )}
           </View>
         </Pressable>
-
-        {shouldShowActionRow ? (
-          <View style={styles.actionRow}>
-            {shouldShowMarkReadButton ? (
-              <Pressable
-                disabled={acknowledgeMutation.isPending}
-                onPress={() => void handleMarkReadPress(announcement)}
-                style={[styles.ackButton, acknowledgeMutation.isPending ? styles.disabledButton : null]}
-              >
-                <Text style={styles.ackButtonText}>{labels.markRead}</Text>
-              </Pressable>
-            ) : null}
-            {announcement.ctaUrl !== null ? (
-              <Pressable onPress={() => void handleCtaPress(announcement)} style={styles.ctaButton}>
-                <Text style={styles.ctaButtonText}>{announcement.ctaLabel ?? labels.ctaFallback}</Text>
-                <AppIcon color={theme.colors.actionPrimaryText} name="chevron-right" size={15} />
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
       </View>
     );
   };
 
   return (
-    <InfoCard eyebrow={labels.eyebrow} title={title} variant={compact ? "subtle" : "card"}>
+    <InfoCard
+      eyebrow={labels.eyebrow}
+      showBorder={false}
+      title={resolvedTitle}
+      variant={compact ? "subtle" : "card"}
+    >
       {feedQuery.isLoading ? (
         <Text style={styles.bodyText}>{labels.loading}</Text>
       ) : null}
@@ -352,6 +322,7 @@ export const AnnouncementFeedSection = ({
             keyExtractor={(announcement: AnnouncementFeedItem) => announcement.announcementId}
             railStyle={styles.feedRail}
             renderItem={(announcement: AnnouncementFeedItem) => renderAnnouncementCard(announcement)}
+            shouldAdaptHeight={false}
             showsIndicators={false}
           />
         ) : (
@@ -359,9 +330,6 @@ export const AnnouncementFeedSection = ({
         )
       ) : null}
 
-      {acknowledgeMutation.error ? (
-        <Text selectable style={styles.errorText}>{acknowledgeMutation.error.message}</Text>
-      ) : null}
       {preferenceMutation.error ? (
         <Text selectable style={styles.errorText}>{preferenceMutation.error.message}</Text>
       ) : null}
@@ -375,29 +343,14 @@ export const AnnouncementFeedSection = ({
   );
 };
 
-const createStyles = (theme: MobileTheme) =>
-  StyleSheet.create({
-    ackButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 16,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      justifyContent: "center",
-      minHeight: 42,
-      paddingHorizontal: 14,
-    },
-    ackButtonText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-      textAlign: "center",
-    },
+  const createStyles = (theme: MobileTheme) =>
+    StyleSheet.create({
     actionRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
+      alignItems: "center",
+      gap: 8,
+      minHeight: 34,
+      paddingTop: 2,
     },
     bodyText: {
       color: theme.colors.textSecondary,
@@ -407,27 +360,33 @@ const createStyles = (theme: MobileTheme) =>
     },
     ctaButton: {
       alignItems: "center",
-      backgroundColor: theme.colors.lime,
+      alignSelf: "stretch",
+      backgroundColor: theme.colors.surfaceL2,
       borderRadius: 16,
       flexDirection: "row",
       gap: 6,
       justifyContent: "center",
-      minHeight: 42,
-      paddingHorizontal: 14,
+      minHeight: 34,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
     },
     ctaButtonText: {
-      color: theme.colors.actionPrimaryText,
+      color: theme.colors.lime,
       flexShrink: 1,
       fontFamily: theme.typography.families.bold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
       textAlign: "center",
     },
+    ctaButtonPlaceholder: {
+      minHeight: 34,
+      width: "100%",
+    },
     dateText: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     disabledButton: {
       opacity: 0.56,
@@ -450,23 +409,20 @@ const createStyles = (theme: MobileTheme) =>
     feedHeader: {
       alignItems: "center",
       flexDirection: "row",
-      gap: 10,
+      gap: 8,
       justifyContent: "space-between",
     },
     feedImage: {
       borderRadius: theme.radius.inner,
-      height: 148,
+      height: 160,
+      width: "100%",
       overflow: "hidden",
     },
-    feedImageRail: {
-      height: 132,
-    },
-    feedImageOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.mode === "light" ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)",
-    },
     feedItemInteractive: {
-      borderColor: theme.colors.borderDefault,
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
     },
     feedItemPressed: {
       opacity: 0.9,
@@ -484,16 +440,13 @@ const createStyles = (theme: MobileTheme) =>
       paddingHorizontal: 0,
     },
     feedItem: {
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 12,
-      padding: 14,
-    },
-    feedItemRail: {
-      height: 392,
-      justifyContent: "space-between",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderStrong,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      height: 330,
+      gap: 8,
+      padding: 10,
     },
     feedStack: {
       gap: 12,
@@ -504,79 +457,35 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
     },
-    feedTouchableArea: {
-      gap: 12,
+    feedMain: {
+      gap: 10,
+      justifyContent: "space-between",
+      minHeight: 158,
     },
-    headerActions: {
-      alignItems: "center",
-      flexDirection: "row",
-      flexShrink: 0,
+    feedTouchableArea: {
       gap: 8,
     },
     iconBubble: {
       alignItems: "center",
       backgroundColor: theme.colors.limeSurface,
       borderRadius: 999,
-      height: 34,
+      height: 44,
       justifyContent: "center",
-      width: 34,
+      width: 44,
     },
     preferenceIconButton: {
       alignItems: "center",
-      backgroundColor: theme.colors.limeSurface,
+      backgroundColor: theme.mode === "light" ? theme.colors.limeSurface : theme.colors.surfaceL2,
       borderColor: theme.colors.limeBorder,
       borderRadius: 999,
-      borderWidth: 1,
-      height: 34,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      height: 32,
       justifyContent: "center",
-      width: 34,
+      width: 32,
     },
     preferenceIconButtonMuted: {
       backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
-    },
-    preferenceButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.limeSurface,
-      borderRadius: 16,
-      flexDirection: "row",
-      gap: 6,
-      justifyContent: "center",
-      minHeight: 42,
-      paddingHorizontal: 12,
-    },
-    preferenceButtonMuted: {
-      backgroundColor: theme.colors.surfaceL1,
-    },
-    preferenceButtonText: {
-      color: theme.colors.lime,
-      flexShrink: 1,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-      textAlign: "center",
-    },
-    preferenceButtonTextMuted: {
-      color: theme.colors.textMuted,
-    },
-    readPill: {
-      backgroundColor: theme.colors.limeSurface,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    readPillMuted: {
-      backgroundColor: theme.colors.surfaceL1,
-    },
-    readPillText: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.caption,
-      lineHeight: theme.typography.lineHeights.caption,
-      textTransform: "uppercase",
-    },
-    readPillTextMuted: {
-      color: theme.colors.textMuted,
     },
     secondaryButton: {
       alignItems: "center",
@@ -598,6 +507,11 @@ const createStyles = (theme: MobileTheme) =>
     sourceCopy: {
       flex: 1,
       gap: 2,
+    },
+    dateRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
     },
     sourceName: {
       color: theme.colors.textPrimary,

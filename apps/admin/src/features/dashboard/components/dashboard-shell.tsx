@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { DashboardLocaleSwitch } from "@/features/dashboard/components/dashboard-locale-switch";
+import { DashboardProfileStatusWatcher } from "@/features/dashboard/components/dashboard-profile-status-watcher";
 import { NavIcon } from "@/features/dashboard/components/nav-icon";
 import { PageHeader } from "@/features/dashboard/components/page-header";
 import {
@@ -47,11 +49,11 @@ export const DashboardShell = async ({
     title,
   });
   const alternateLocale = getAlternateDashboardLocale(resolvedLocale);
-  const localeSwitchHref = `/api/dashboard-locale?locale=${alternateLocale}&returnTo=${encodeURIComponent(activeHref)}`;
   const translatedNavigationItems = translateDashboardNavigationItems(navigationItems, resolvedLocale);
 
   return (
     <div className="shell">
+      <DashboardProfileStatusWatcher />
       <aside className="sidebar">
         <div className="stack-lg">
           <div className="brand-lockup">
@@ -69,10 +71,11 @@ export const DashboardShell = async ({
             <strong>{userEmail ?? shellCopy.sessionFallback}</strong>
           </div>
 
-          <Link className="dashboard-locale-switch" href={localeSwitchHref} hrefLang={alternateLocale}>
-            <span>{shellCopy.localeSwitchTitle}</span>
-            <strong>{shellCopy.localeSwitchLabel}</strong>
-          </Link>
+          <DashboardLocaleSwitch
+            hrefLang={alternateLocale}
+            label={shellCopy.localeSwitchLabel}
+            title={shellCopy.localeSwitchTitle}
+          />
         </div>
 
         <nav aria-label={`${shellCopy.areaLabel} navigation`} className="stack-sm sidebar-nav">

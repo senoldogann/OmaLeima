@@ -19,12 +19,16 @@ export default async function ClubFraudReviewPage() {
       ? {
         emptyText: "Klubeillesi ei ole nyt nakyvissa fraud-signaaleja.",
         eyebrow: "Integrity",
+        rule: "Nykyinen tunnistus luo signaalin, kun leimaskannaus on yli 300 metria yrityksen sijainnista. Vakavuus nousee 750 m ja 1,5 km kohdalla.",
+        review: "Tarkista skannauksen konteksti ja merkitse signaali tarkistetuksi, vahvista todellinen ongelma tai hylkaa virhehalytys. Toimi kirjataan audit-lokiin.",
         meta: `Naytetaan ${snapshot.fraudSignals.length} / ${snapshot.openFraudSignalCount} avointa signaalia. Uusimman listan raja: ${snapshot.latestFraudLimit}.`,
         title: "Avoimet tapahtumavaroitukset",
       }
       : {
         emptyText: "No event fraud signals are visible for your clubs right now.",
         eyebrow: "Integrity",
+        rule: "Current detection creates a signal when a stamp scan is more than 300 meters from the business location. Severity increases at 750 m and 1.5 km.",
+        review: "Check the scan context, then mark it reviewed, confirm a real issue, or dismiss a false positive. The action is written to the audit log.",
         meta: `Showing ${snapshot.fraudSignals.length} of ${snapshot.openFraudSignalCount} open signals visible to your club memberships. Latest list limit: ${snapshot.latestFraudLimit}.`,
         title: "Open event warnings",
       };
@@ -45,6 +49,8 @@ export default async function ClubFraudReviewPage() {
           <div className="eyebrow">{copy.eyebrow}</div>
           <h3 className="section-title">{copy.title}</h3>
           <p className="muted-text">{copy.meta}</p>
+          <p className="review-note">{copy.rule}</p>
+          <p className="review-note">{copy.review}</p>
         </div>
 
         <FraudSignalReviewList

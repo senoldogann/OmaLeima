@@ -4,12 +4,14 @@ import { fetchClubEventContextAsync } from "@/features/club-events/context";
 import type {
   ClubClaimCandidateRecord,
   ClubClaimEventRecord,
+  ClubClaimProgressRecord,
   ClubClaimsSnapshot,
   ClubRecentRewardClaimRecord,
 } from "@/features/club-claims/types";
 
 const operationalEventLimit = 6;
 const visibleCandidateLimit = 30;
+const visibleProgressLimit = 30;
 const visibleRecentClaimLimit = 20;
 
 type EventRow = {
@@ -52,10 +54,24 @@ type StampRow = {
   student_id: string;
 };
 
+type StudentLabelRow = {
+  display_name: string | null;
+  event_id: string;
+  student_id: string;
+};
+
 const createCandidateKey = (eventId: string, rewardTierId: string, studentId: string): string =>
   `${eventId}:${rewardTierId}:${studentId}`;
 
 const createMaskedStudentLabel = (studentId: string): string => `Student ...${studentId.slice(-4)}`;
+
+const createStudentLabelKey = (eventId: string, studentId: string): string => `${eventId}:${studentId}`;
+
+const createStudentLabel = (
+  labelsByStudentEvent: Map<string, string>,
+  eventId: string,
+  studentId: string
+): string => labelsByStudentEvent.get(createStudentLabelKey(eventId, studentId)) ?? createMaskedStudentLabel(studentId);
 
 const fetchOperationalEventsAsync = async (
   supabase: SupabaseClient,
@@ -176,6 +192,27 @@ const fetchRewardClaimsAsync = async (
   return data;
 };
 
+const fetchStudentLabelsAsync = async (
+  supabase: SupabaseClient,
+  eventIds: string[]
+): Promise<StudentLabelRow[]> => {
+  if (eventIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .rpc("get_club_claim_student_labels", {
+      p_event_ids: eventIds,
+    })
+    .returns<StudentLabelRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load student labels for club claims: ${error.message}`);
+  }
+
+  return (data ?? []) as unknown as StudentLabelRow[];
+};
+
 const buildStampCounts = (rows: StampRow[]): Map<string, number> => {
   const counts = new Map<string, number>();
 
@@ -188,7 +225,11 @@ const buildStampCounts = (rows: StampRow[]): Map<string, number> => {
 };
 
 const buildExistingClaims = (rows: RewardClaimRow[]): Map<string, RewardClaimRow> =>
-  new Map(rows.map((row) => [createCandidateKey(row.event_id, row.reward_tier_id, row.student_id), row] as const));
+  new Map(
+    rows
+      .filter((row) => row.status === "CLAIMED")
+      .map((row) => [createCandidateKey(row.event_id, row.reward_tier_id, row.student_id), row] as const)
+  );
 
 const buildRewardTierById = (rows: RewardTierRow[]): Map<string, RewardTierRow> =>
   new Map(rows.map((row) => [row.id, row] as const));
@@ -215,6 +256,15 @@ const buildRegistrationsByEvent = (rows: RegistrationRow[]): Map<string, Registr
   return rowsByEvent;
 };
 
+const buildStudentLabelsByEvent = (rows: StudentLabelRow[]): Map<string, string> =>
+  new Map(
+    rows.flatMap((row) => {
+      const label = row.display_name?.trim() ?? "";
+
+      return label.length > 0 ? [[createStudentLabelKey(row.event_id, row.student_id), label] as const] : [];
+    })
+  );
+
 const compareEvents = (left: EventRow, right: EventRow): number => {
   if (left.status !== right.status) {
     return left.status === "ACTIVE" ? -1 : 1;
@@ -239,12 +289,29 @@ const compareCandidates = (left: ClubClaimCandidateRecord, right: ClubClaimCandi
   return left.studentLabel.localeCompare(right.studentLabel);
 };
 
+const compareProgress = (left: ClubClaimProgressRecord, right: ClubClaimProgressRecord): number => {
+  if (left.eventId !== right.eventId) {
+    return left.eventName.localeCompare(right.eventName);
+  }
+
+  if (left.missingStampCount !== right.missingStampCount) {
+    return left.missingStampCount - right.missingStampCount;
+  }
+
+  if (left.stampCount !== right.stampCount) {
+    return right.stampCount - left.stampCount;
+  }
+
+  return left.studentLabel.localeCompare(right.studentLabel);
+};
+
 const createClaimableCandidates = (
   events: EventRow[],
   rewardTiersByEvent: Map<string, RewardTierRow[]>,
   registrationsByEvent: Map<string, RegistrationRow[]>,
   stampCounts: Map<string, number>,
-  existingClaims: Map<string, RewardClaimRow>
+  existingClaims: Map<string, RewardClaimRow>,
+  labelsByStudentEvent: Map<string, string>
 ): ClubClaimCandidateRecord[] =>
   events
     .flatMap((event) => {
@@ -286,7 +353,7 @@ const createClaimableCandidates = (
               requiredStampCount: rewardTier.required_stamp_count,
               stampCount,
               studentId: registration.student_id,
-              studentLabel: createMaskedStudentLabel(registration.student_id),
+              studentLabel: createStudentLabel(labelsByStudentEvent, event.id, registration.student_id),
             },
           ];
         });
@@ -294,10 +361,64 @@ const createClaimableCandidates = (
     })
     .sort(compareCandidates);
 
+const createProgressRecords = (
+  events: EventRow[],
+  rewardTiersByEvent: Map<string, RewardTierRow[]>,
+  registrationsByEvent: Map<string, RegistrationRow[]>,
+  stampCounts: Map<string, number>,
+  existingClaims: Map<string, RewardClaimRow>,
+  labelsByStudentEvent: Map<string, string>
+): ClubClaimProgressRecord[] =>
+  events
+    .flatMap((event) => {
+      const rewardTiers = rewardTiersByEvent.get(event.id) ?? [];
+      const registrations = registrationsByEvent.get(event.id) ?? [];
+
+      return registrations.flatMap((registration) => {
+        const stampCount = stampCounts.get(`${event.id}:${registration.student_id}`) ?? 0;
+
+        return rewardTiers.flatMap((rewardTier) => {
+          const claimKey = createCandidateKey(event.id, rewardTier.id, registration.student_id);
+          const existingClaim = existingClaims.get(claimKey) ?? null;
+          const inventoryRemaining =
+            rewardTier.inventory_total === null
+              ? null
+              : Math.max(rewardTier.inventory_total - rewardTier.inventory_claimed, 0);
+
+          if (existingClaim !== null) {
+            return [];
+          }
+
+          if (stampCount >= rewardTier.required_stamp_count) {
+            return [];
+          }
+
+          return [
+            {
+              eventId: event.id,
+              eventName: event.name,
+              inventoryRemaining,
+              inventoryTotal: rewardTier.inventory_total,
+              missingStampCount: rewardTier.required_stamp_count - stampCount,
+              rewardTierId: rewardTier.id,
+              rewardTitle: rewardTier.title,
+              rewardType: rewardTier.reward_type,
+              requiredStampCount: rewardTier.required_stamp_count,
+              stampCount,
+              studentId: registration.student_id,
+              studentLabel: createStudentLabel(labelsByStudentEvent, event.id, registration.student_id),
+            },
+          ];
+        });
+      });
+    })
+    .sort(compareProgress);
+
 const createRecentClaims = (
   claims: RewardClaimRow[],
   eventById: Map<string, EventRow>,
-  rewardTierById: Map<string, RewardTierRow>
+  rewardTierById: Map<string, RewardTierRow>,
+  labelsByStudentEvent: Map<string, string>
 ): ClubRecentRewardClaimRecord[] =>
   claims
     .map((claim) => {
@@ -314,11 +435,30 @@ const createRecentClaims = (
         rewardTitle: rewardTier?.title ?? `Reward ...${claim.reward_tier_id.slice(-4)}`,
         status: claim.status,
         studentId: claim.student_id,
-        studentLabel: createMaskedStudentLabel(claim.student_id),
+        studentLabel: createStudentLabel(labelsByStudentEvent, claim.event_id, claim.student_id),
       };
     })
-    .sort((left, right) => new Date(right.claimedAt).getTime() - new Date(left.claimedAt).getTime())
-    .slice(0, visibleRecentClaimLimit);
+    .sort((left, right) => new Date(right.claimedAt).getTime() - new Date(left.claimedAt).getTime());
+
+const takeVisibleRowsByEvent = <TRecord>(
+  records: TRecord[],
+  limitPerEvent: number,
+  selectEventId: (record: TRecord) => string
+): TRecord[] => {
+  const visibleCountByEvent = new Map<string, number>();
+
+  return records.filter((record) => {
+    const eventId = selectEventId(record);
+    const currentCount = visibleCountByEvent.get(eventId) ?? 0;
+
+    if (currentCount >= limitPerEvent) {
+      return false;
+    }
+
+    visibleCountByEvent.set(eventId, currentCount + 1);
+    return true;
+  });
+};
 
 export const fetchClubClaimsSnapshotAsync = async (
   supabase: SupabaseClient
@@ -327,33 +467,67 @@ export const fetchClubClaimsSnapshotAsync = async (
   const clubIds = context.memberships.map((membership) => membership.clubId);
   const eventRows = (await fetchOperationalEventsAsync(supabase, clubIds)).sort(compareEvents);
   const eventIds = eventRows.map((event) => event.id);
-  const [registrationRows, rewardTierRows, stampRows, rewardClaimRows] = await Promise.all([
+  const [registrationRows, rewardTierRows, stampRows, rewardClaimRows, studentLabelRows] = await Promise.all([
     fetchRegisteredStudentsAsync(supabase, eventIds),
     fetchActiveRewardTiersAsync(supabase, eventIds),
     fetchValidStampsAsync(supabase, eventIds),
     fetchRewardClaimsAsync(supabase, eventIds),
+    fetchStudentLabelsAsync(supabase, eventIds),
   ]);
   const rewardTiersByEvent = buildRewardTiersByEvent(rewardTierRows);
   const registrationsByEvent = buildRegistrationsByEvent(registrationRows);
   const stampCounts = buildStampCounts(stampRows);
   const existingClaims = buildExistingClaims(rewardClaimRows);
+  const labelsByStudentEvent = buildStudentLabelsByEvent(studentLabelRows);
   const candidates = createClaimableCandidates(
     eventRows,
     rewardTiersByEvent,
     registrationsByEvent,
     stampCounts,
-    existingClaims
+    existingClaims,
+    labelsByStudentEvent
+  );
+  const progress = createProgressRecords(
+    eventRows,
+    rewardTiersByEvent,
+    registrationsByEvent,
+    stampCounts,
+    existingClaims,
+    labelsByStudentEvent
   );
   const eventById = new Map(eventRows.map((row) => [row.id, row] as const));
   const rewardTierById = buildRewardTierById(rewardTierRows);
-  const recentClaims = createRecentClaims(rewardClaimRows, eventById, rewardTierById);
+  const recentClaims = createRecentClaims(rewardClaimRows, eventById, rewardTierById, labelsByStudentEvent);
+  const visibleCandidates = takeVisibleRowsByEvent(
+    candidates,
+    visibleCandidateLimit,
+    (candidate) => candidate.eventId
+  );
+  const visibleProgress = takeVisibleRowsByEvent(
+    progress,
+    visibleProgressLimit,
+    (record) => record.eventId
+  );
+  const visibleRecentClaims = takeVisibleRowsByEvent(
+    recentClaims,
+    visibleRecentClaimLimit,
+    (claim) => claim.eventId
+  );
   const claimableCandidateCountByEvent = new Map<string, number>();
+  const progressCandidateCountByEvent = new Map<string, number>();
   const recentClaimCountByEvent = new Map<string, number>();
 
   candidates.forEach((candidate) => {
     claimableCandidateCountByEvent.set(
       candidate.eventId,
       (claimableCandidateCountByEvent.get(candidate.eventId) ?? 0) + 1
+    );
+  });
+
+  progress.forEach((record) => {
+    progressCandidateCountByEvent.set(
+      record.eventId,
+      (progressCandidateCountByEvent.get(record.eventId) ?? 0) + 1
     );
   });
 
@@ -365,7 +539,7 @@ export const fetchClubClaimsSnapshotAsync = async (
   });
 
   return {
-    candidates: candidates.slice(0, visibleCandidateLimit),
+    candidates: visibleCandidates,
     events: eventRows.map((event) => ({
       activeRewardTierCount: (rewardTiersByEvent.get(event.id) ?? []).length,
       city: event.city,
@@ -376,16 +550,20 @@ export const fetchClubClaimsSnapshotAsync = async (
       eventId: event.id,
       eventStatus: event.status,
       name: event.name,
+      progressCandidateCount: progressCandidateCountByEvent.get(event.id) ?? 0,
       recentClaimCount: recentClaimCountByEvent.get(event.id) ?? 0,
       startAt: event.start_at,
     })),
-    recentClaims,
+    progress: visibleProgress,
+    recentClaims: visibleRecentClaims,
     summary: {
       claimableCandidateCount: candidates.length,
       operationalEventCount: eventRows.length,
+      progressCandidateCount: progress.length,
       recentClaimCount: rewardClaimRows.length,
-      visibleCandidateCount: Math.min(candidates.length, visibleCandidateLimit),
-      visibleClaimCount: recentClaims.length,
+      visibleCandidateCount: visibleCandidates.length,
+      visibleClaimCount: visibleRecentClaims.length,
+      visibleProgressCount: visibleProgress.length,
     },
   };
 };

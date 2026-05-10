@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
+import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
 import { getClubDashboardNavigationItems } from "@/features/dashboard/sections";
 import { ClubDepartmentTagsPanel } from "@/features/club-department-tags/components/club-department-tags-panel";
 import { fetchClubDepartmentTagsSnapshotAsync } from "@/features/club-department-tags/read-model";
@@ -16,18 +17,20 @@ export default async function ClubDepartmentTagsPage() {
   }
 
   const snapshot = await fetchClubDepartmentTagsSnapshotAsync(supabase);
+  const locale = await getDashboardLocaleAsync();
 
   return (
     <DashboardShell
       activeHref="/club/department-tags"
       areaLabel="Club operations"
+      locale={locale}
       navigationItems={getClubDashboardNavigationItems(canManageDepartmentTags)}
       roleLabel={context.access.primaryRole}
       subtitle="Publish official study labels for your community so students see canonical department tags before custom ones."
       title="Department tags"
       userEmail={context.access.userEmail}
     >
-      <ClubDepartmentTagsPanel snapshot={snapshot} />
+      <ClubDepartmentTagsPanel locale={locale} snapshot={snapshot} />
     </DashboardShell>
   );
 }

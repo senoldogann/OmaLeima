@@ -5,12 +5,15 @@ import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
 import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
+import { useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading, session } = useSession();
   const isScannerProvisioningActive = useIsScannerProvisioningActive();
+  const { language } = useUiPreferences();
   const accessQuery = useSessionAccessQuery({
     userId: session?.user.id ?? "",
     isEnabled: isAuthenticated && session !== null && !isScannerProvisioningActive,
@@ -19,9 +22,14 @@ export default function AuthLayout() {
   if (isLoading) {
     return (
       <AppScreen>
-        <InfoCard eyebrow="Auth" title="Checking session">
+        <InfoCard
+          eyebrow="Auth"
+          title={language === "fi" ? "Tarkistetaan istuntoa" : "Checking session"}
+        >
           <Text selectable style={styles.bodyText}>
-            Restoring the Supabase session before showing the login flow.
+            {language === "fi"
+              ? "Palautetaan istuntoa ennen kirjautumisnäkymää."
+              : "Restoring the Supabase session before showing the login flow."}
           </Text>
         </InfoCard>
       </AppScreen>
@@ -36,9 +44,14 @@ export default function AuthLayout() {
     if (accessQuery.isLoading) {
       return (
         <AppScreen>
-          <InfoCard eyebrow="Auth" title="Resolving destination">
+          <InfoCard
+            eyebrow="Auth"
+            title={language === "fi" ? "Haetaan kohdetta" : "Resolving destination"}
+          >
             <Text selectable style={styles.bodyText}>
-              This authenticated user is signed in. OmaLeima is choosing the correct mobile area now.
+              {language === "fi"
+                ? "Kirjauduttu sisään. Valitaan oikeaa mobiilialuetta."
+                : "This authenticated user is signed in. OmaLeima is choosing the correct mobile area now."}
             </Text>
           </InfoCard>
         </AppScreen>
@@ -49,9 +62,9 @@ export default function AuthLayout() {
       return (
         <AppScreen>
           <AccessIssueCard
-            title="Access check failed"
-            detail={accessQuery.error.message}
-            retryLabel="Retry access check"
+            title={language === "fi" ? "Käyttöoikeuden tarkistus epäonnistui" : "Access check failed"}
+            detail={createUserSafeErrorMessage(accessQuery.error, language, "access")}
+            retryLabel={language === "fi" ? "Yritä uudelleen" : "Retry access check"}
             onRetry={() => void accessQuery.refetch()}
           />
         </AppScreen>
@@ -65,8 +78,12 @@ export default function AuthLayout() {
     return (
       <AppScreen>
         <AccessIssueCard
-          title="This account is not allowed here"
-          detail="This authenticated account cannot enter the shared mobile auth flow because it does not have an active student, business, or club mobile role."
+          title={language === "fi" ? "Tiliä ei voi käyttää" : "This account is not allowed here"}
+          detail={
+            language === "fi"
+              ? "Tällä tilillä ei ole aktiivista opiskelija-, yritys- tai klubiroolia mobiilisovelluksessa."
+              : "This authenticated account cannot enter the shared mobile auth flow because it does not have an active student, business, or club mobile role."
+          }
           retryLabel={null}
           onRetry={null}
         />

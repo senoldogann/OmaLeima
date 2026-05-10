@@ -1,11 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
+import { AppIcon } from "@/components/app-icon";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { createBusinessEventRequestErrorBody } from "@/features/business/business-event-errors";
 import {
   useJoinBusinessEventMutation,
   useLeaveBusinessEventMutation,
@@ -19,9 +21,12 @@ import type {
 } from "@/features/business/types";
 import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
 import { findOverlappingEvents } from "@/features/events/event-overlaps";
+import { hapticImpact, ImpactStyle } from "@/features/foundation/safe-haptics";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import type { MobileTheme } from "@/features/foundation/theme";
 import { interactiveSurfaceShadowStyle } from "@/features/foundation/theme";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/foundation/use-transient-success-key";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -30,16 +35,6 @@ type FeedbackState = {
   title: string;
   message: string;
 };
-
-type EventPreview =
-  | {
-    event: BusinessJoinedEventSummary;
-    kind: "joined";
-  }
-  | {
-    event: BusinessOpportunitySummary;
-    kind: "opportunity";
-  };
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
@@ -50,16 +45,13 @@ const getJoinedEventBadge = (
 ): { label: string; state: "pending" | "ready" | "warning" } => {
   switch (event.timelineState) {
     case "ACTIVE":
-      return { label: language === "fi" ? "Live" : "Live", state: "ready" };
+      return { label: language === "fi" ? "Käynnissä" : "Live", state: "ready" };
     case "UPCOMING":
       return { label: language === "fi" ? "Tulossa" : "Upcoming", state: "pending" };
     case "COMPLETED":
       return { label: language === "fi" ? "Päättynyt" : "Completed", state: "warning" };
   }
 };
-
-const getPreviewEvent = (preview: EventPreview): BusinessJoinedEventSummary | BusinessOpportunitySummary =>
-  preview.event;
 
 const createJoinResultMessages = (
   language: "fi" | "en"
@@ -80,10 +72,18 @@ const createJoinResultMessages = (
     language === "fi"
       ? "Tapahtumaa ei voi liittää yritykselle juuri nyt."
       : "This event is not available for business joining.",
+  EVENT_CITY_MISMATCH:
+    language === "fi"
+      ? "Yritys voi liittyä vain oman kaupunkinsa tapahtumiin."
+      : "A business can only join events in its own city.",
   EVENT_JOIN_CLOSED:
     language === "fi"
       ? "Liittymisikkuna on jo sulkeutunut."
       : "Join window has already closed for this event.",
+  BUSINESS_CITY_REQUIRED:
+    language === "fi"
+      ? "Yritykseltä puuttuu kaupunki. Lisää sijainti profiiliin ennen tapahtumaan liittymistä."
+      : "The business city is missing. Add the location in the profile before joining events.",
   BUSINESS_NOT_ACTIVE:
     language === "fi"
       ? "Valittu yritys ei ole enää aktiivinen."
@@ -170,20 +170,26 @@ const createFeedback = (
 ): FeedbackState | null => {
   if (typeof joinStatus !== "undefined") {
     const messages = createJoinResultMessages(language);
+    const isSuccess = joinStatus === "SUCCESS" || joinStatus === "ALREADY_JOINED";
 
     return {
-      tone: joinStatus === "SUCCESS" || joinStatus === "ALREADY_JOINED" ? "ready" : "warning",
-      title: joinStatus,
+      tone: isSuccess ? "ready" : "warning",
+      title: isSuccess
+        ? (language === "fi" ? "Liittyminen onnistui" : "Joined successfully")
+        : (language === "fi" ? "Liittyminen epäonnistui" : "Could not join"),
       message: messages[joinStatus],
     };
   }
 
   if (typeof leaveStatus !== "undefined") {
     const messages = createLeaveResultMessages(language);
+    const isSuccess = leaveStatus === "SUCCESS";
 
     return {
-      tone: leaveStatus === "SUCCESS" ? "ready" : "warning",
-      title: leaveStatus,
+      tone: isSuccess ? "ready" : "warning",
+      title: isSuccess
+        ? (language === "fi" ? "Poistuminen onnistui" : "Left successfully")
+        : (language === "fi" ? "Poistuminen epäonnistui" : "Could not leave"),
       message: messages[leaveStatus],
     };
   }
@@ -197,7 +203,7 @@ export default function BusinessEventsScreen() {
   const { session } = useSession();
   const { copy, language, localeTag, theme } = useUiPreferences();
   const userId = session?.user.id ?? null;
-  const [preview, setPreview] = useState<EventPreview | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const formatter = useMemo(
     () =>
@@ -239,14 +245,6 @@ export default function BusinessEventsScreen() {
           ? "Tällä yrityksellä ei ole vielä päättyneitä liittyneitä tapahtumia."
           : "This business does not have past joined events yet.",
       endedAt: language === "fi" ? "Päättyi" : "Ended",
-      closePreview: language === "fi" ? "Sulje" : "Close",
-      eventPreview: language === "fi" ? "Tapahtuman tiedot" : "Event details",
-      description: language === "fi" ? "Kuvaus" : "Description",
-      noDescription:
-        language === "fi"
-          ? "Tälle tapahtumalle ei ole vielä lisätty kuvausta."
-          : "No description has been added for this event yet.",
-      venue: language === "fi" ? "Piste" : "Venue",
       openScanner: copy.business.openScanner,
       openHistory: copy.business.history,
       leaveEvent: language === "fi" ? "Poistu tapahtumasta" : "Leave event",
@@ -266,10 +264,22 @@ export default function BusinessEventsScreen() {
   const joinMutation = useJoinBusinessEventMutation(userId ?? "");
   const leaveMutation = useLeaveBusinessEventMutation(userId ?? "");
 
-  const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
-  const upcomingJoinedEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
-  const completedJoinedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
-  const cityOpportunities = homeOverviewQuery.data?.cityOpportunities ?? [];
+  const activeJoinedEvents = useMemo(
+    () => homeOverviewQuery.data?.joinedActiveEvents ?? [],
+    [homeOverviewQuery.data?.joinedActiveEvents]
+  );
+  const upcomingJoinedEvents = useMemo(
+    () => homeOverviewQuery.data?.joinedUpcomingEvents ?? [],
+    [homeOverviewQuery.data?.joinedUpcomingEvents]
+  );
+  const completedJoinedEvents = useMemo(
+    () => homeOverviewQuery.data?.joinedCompletedEvents ?? [],
+    [homeOverviewQuery.data?.joinedCompletedEvents]
+  );
+  const cityOpportunities = useMemo(
+    () => homeOverviewQuery.data?.cityOpportunities ?? [],
+    [homeOverviewQuery.data?.cityOpportunities]
+  );
   const canManageEventMemberships =
     homeOverviewQuery.data?.memberships.some((membership) => membership.role !== "SCANNER") ?? false;
   const overlappingEvents = useMemo(
@@ -305,23 +315,69 @@ export default function BusinessEventsScreen() {
     () => createFeedback(language, joinMutation.data?.status, leaveMutation.data?.status),
     [joinMutation.data?.status, language, leaveMutation.data?.status]
   );
-  const previewEvent = preview === null ? null : getPreviewEvent(preview);
-  const previewBadge =
-    preview === null
-      ? null
-      : preview.kind === "joined"
-        ? getJoinedEventBadge(preview.event, language)
-        : { label: language === "fi" ? "Liityttävissä" : "Joinable", state: "pending" as const };
+
+  useTransientSuccessKey(
+    feedback?.tone === "ready" ? feedback.message : null,
+    () => {
+      joinMutation.reset();
+      leaveMutation.reset();
+    },
+    successNoticeDurationMs
+  );
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredActiveJoinedEvents = useMemo(
+    () =>
+      normalizedSearch === ""
+        ? activeJoinedEvents
+        : activeJoinedEvents.filter((e) => e.eventName.toLowerCase().includes(normalizedSearch)),
+    [activeJoinedEvents, normalizedSearch]
+  );
+  const filteredUpcomingJoinedEvents = useMemo(
+    () =>
+      normalizedSearch === ""
+        ? upcomingJoinedEvents
+        : upcomingJoinedEvents.filter((e) => e.eventName.toLowerCase().includes(normalizedSearch)),
+    [upcomingJoinedEvents, normalizedSearch]
+  );
+  const filteredCompletedJoinedEvents = useMemo(
+    () =>
+      normalizedSearch === ""
+        ? completedJoinedEvents
+        : completedJoinedEvents.filter((e) => e.eventName.toLowerCase().includes(normalizedSearch)),
+    [completedJoinedEvents, normalizedSearch]
+  );
+  const filteredCityOpportunities = useMemo(
+    () =>
+      normalizedSearch === ""
+        ? cityOpportunities
+        : cityOpportunities.filter((e) => e.eventName.toLowerCase().includes(normalizedSearch)),
+    [cityOpportunities, normalizedSearch]
+  );
 
   const renderJoinedEventCard = (
     event: BusinessJoinedEventSummary,
     primaryAction: ReactNode
   ) => {
     const badge = getJoinedEventBadge(event, language);
+    const dotColor =
+      badge.state === "ready"
+        ? theme.colors.lime
+        : badge.state === "pending"
+          ? theme.colors.warning
+          : theme.colors.textMuted;
 
     return (
       <View key={event.eventVenueId} style={styles.railCard}>
-        <Pressable onPress={() => setPreview({ event, kind: "joined" })} style={styles.cardPreviewButton}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/business/event-detail",
+              params: { businessId: event.businessId, eventId: event.eventId },
+            })
+          }
+          style={styles.cardPreviewButton}
+        >
           <CoverImageSurface
             fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
@@ -330,7 +386,10 @@ export default function BusinessEventsScreen() {
           >
             <View style={styles.cardCoverOverlay} />
             <View style={styles.cardCoverContent}>
-              <StatusBadge label={badge.label} state={badge.state} />
+              <View style={styles.cardStatusRow}>
+                <View style={[styles.cardStatusDot, { backgroundColor: dotColor }]} />
+                <Text style={styles.cardStatusLabel}>{badge.label}</Text>
+              </View>
               <Text numberOfLines={2} style={styles.coverTitle}>{event.eventName}</Text>
             </View>
           </CoverImageSurface>
@@ -357,7 +416,15 @@ export default function BusinessEventsScreen() {
 
     return (
       <View key={joinKey} style={styles.railCard}>
-        <Pressable onPress={() => setPreview({ event, kind: "opportunity" })} style={styles.cardPreviewButton}>
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/business/event-detail",
+              params: { businessId: event.businessId, eventId: event.eventId },
+            })
+          }
+          style={styles.cardPreviewButton}
+        >
           <CoverImageSurface
             fallbackSource={getFallbackCoverSource("eventDiscovery")}
             imageStyle={styles.cardCoverImage}
@@ -366,7 +433,10 @@ export default function BusinessEventsScreen() {
           >
             <View style={styles.cardCoverOverlay} />
             <View style={styles.cardCoverContent}>
-              <StatusBadge label={language === "fi" ? "Liityttävissä" : "Joinable"} state="pending" />
+              <View style={styles.cardStatusRow}>
+                <View style={[styles.cardStatusDot, { backgroundColor: theme.colors.warning }]} />
+                <Text style={styles.cardStatusLabel}>{language === "fi" ? "Liityttävissä" : "Joinable"}</Text>
+              </View>
               <Text numberOfLines={2} style={styles.coverTitle}>{event.eventName}</Text>
             </View>
           </CoverImageSurface>
@@ -384,11 +454,12 @@ export default function BusinessEventsScreen() {
               return;
             }
 
+            hapticImpact(ImpactStyle.Medium);
             void joinMutation.mutateAsync({
               eventId: event.eventId,
               businessId: event.businessId,
               staffUserId: userId,
-            });
+            }).catch(() => undefined);
           }}
           style={[styles.primaryButton, isPending ? styles.disabledButton : null]}
         >
@@ -411,11 +482,21 @@ export default function BusinessEventsScreen() {
       }
     >
       <View style={styles.topBar}>
-        <View style={styles.topBarCopy}>
-          <Text style={styles.topBarEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
-          <Text style={styles.screenTitle}>{copy.common.events}</Text>
-          <Text style={styles.metaText}>{copy.business.eventsMeta}</Text>
+        <View style={styles.businessBrand}>
+          <AppIcon color={theme.colors.lime} name="zap" size={18} />
+          <Text style={styles.businessBrandTitle}>OmaLeima</Text>
         </View>
+      </View>
+
+      <View style={styles.searchBar}>
+        <AppIcon color={theme.colors.textMuted} name="search" size={16} />
+        <TextInput
+          onChangeText={setSearchQuery}
+          placeholder={language === "fi" ? "Hae tapahtumia..." : "Search events..."}
+          placeholderTextColor={theme.colors.textMuted}
+          style={styles.searchInput}
+          value={searchQuery}
+        />
       </View>
 
       {homeOverviewQuery.isLoading ? (
@@ -426,7 +507,7 @@ export default function BusinessEventsScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "business")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -436,7 +517,7 @@ export default function BusinessEventsScreen() {
       {joinMutation.isError || leaveMutation.isError ? (
         <InfoCard eyebrow={copy.common.error} title={labels.requestFailedTitle}>
           <Text style={styles.bodyText}>
-            {joinMutation.error?.message ?? leaveMutation.error?.message}
+            {createBusinessEventRequestErrorBody(joinMutation.error ?? leaveMutation.error, language)}
           </Text>
         </InfoCard>
       ) : null}
@@ -444,7 +525,10 @@ export default function BusinessEventsScreen() {
       {feedback ? (
         <InfoCard eyebrow={labels.updateEyebrow} title={feedback.title}>
           <View style={styles.feedbackRow}>
-            <StatusBadge label={feedback.tone} state={feedback.tone} />
+            <StatusBadge
+              label={feedback.tone === "ready" ? (language === "fi" ? "Valmis" : "Ready") : (language === "fi" ? "Huomio" : "Warning")}
+              state={feedback.tone}
+            />
             <Text style={styles.bodyText}>{feedback.message}</Text>
           </View>
         </InfoCard>
@@ -456,30 +540,33 @@ export default function BusinessEventsScreen() {
           title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
           variant="subtle"
         >
-          <Text style={styles.bodyText}>
-            {language === "fi"
-              ? "Kun samaan aikaan on useita tapahtumia, valitse skannerissa aina oikea tapahtumapiste ennen leiman antamista. QR ja skannaus sidotaan tapahtumaan."
-              : "When multiple events overlap, choose the correct event venue in the scanner before stamping. QR scans stay tied to the event."}
-          </Text>
+      <Text style={styles.overlappingNoticeText}>
+        {language === "fi"
+          ? "Kun samaan aikaan on useita tapahtumia, valitse skannerissa aina oikea tapahtumapiste ennen leiman antamista. QR ja skannaus sidotaan tapahtumaan."
+          : "When multiple events overlap, choose the correct event venue in the scanner before stamping. QR scans stay tied to the event."}
+      </Text>
         </InfoCard>
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{copy.business.live}</Text>
-            <Text style={styles.sectionTitle}>{copy.business.scannerQueue}</Text>
+            <View style={styles.sectionHeaderLeft}>
+              <AppIcon color={theme.colors.lime} name="zap" size={14} />
+              <Text style={styles.sectionTitle}>{copy.business.scannerQueue}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{filteredActiveJoinedEvents.length}</Text>
           </View>
-          {activeJoinedEvents.length === 0 ? (
+          {filteredActiveJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.queueEmptyBody}</Text>
           ) : (
             <ScrollView
-              contentContainerStyle={activeJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              contentContainerStyle={filteredActiveJoinedEvents.length === 1 ? styles.railScrollSingle : null}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              <View style={[styles.railContent, activeJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
-                {activeJoinedEvents.map((event) =>
+              <View style={[styles.railContent, filteredActiveJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
+                {filteredActiveJoinedEvents.map((event) =>
                   renderJoinedEventCard(
                     event,
                     <View style={styles.actionRow}>
@@ -512,19 +599,22 @@ export default function BusinessEventsScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{copy.business.upcoming}</Text>
-            <Text style={styles.sectionTitle}>{copy.business.joinedNext}</Text>
+            <View style={styles.sectionHeaderLeft}>
+              <AppIcon color={theme.colors.textMuted} name="calendar" size={14} />
+              <Text style={styles.sectionTitle}>{copy.business.joinedNext}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{filteredUpcomingJoinedEvents.length}</Text>
           </View>
-          {upcomingJoinedEvents.length === 0 ? (
+          {filteredUpcomingJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.joinedNextEmptyBody}</Text>
           ) : (
             <ScrollView
-              contentContainerStyle={upcomingJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              contentContainerStyle={filteredUpcomingJoinedEvents.length === 1 ? styles.railScrollSingle : null}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              <View style={[styles.railContent, upcomingJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
-                {upcomingJoinedEvents.map((event) => {
+              <View style={[styles.railContent, filteredUpcomingJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
+                {filteredUpcomingJoinedEvents.map((event) => {
                   const leaveKey = `${event.businessId}:${event.eventId}`;
                   const isLeaving = leaveMutation.isPending && activeLeaveKey === leaveKey;
 
@@ -538,11 +628,12 @@ export default function BusinessEventsScreen() {
                             return;
                           }
 
+                          hapticImpact(ImpactStyle.Medium);
                           void leaveMutation.mutateAsync({
                             eventId: event.eventId,
                             businessId: event.businessId,
                             staffUserId: userId,
-                          });
+                          }).catch(() => undefined);
                         }}
                         style={[styles.secondaryButton, isLeaving ? styles.disabledButton : null]}
                       >
@@ -562,19 +653,22 @@ export default function BusinessEventsScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && canManageEventMemberships ? (
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{copy.common.manage}</Text>
-            <Text style={styles.sectionTitle}>{copy.business.availableToJoin}</Text>
+            <View style={styles.sectionHeaderLeft}>
+              <AppIcon color={theme.colors.textMuted} name="check-circle" size={14} />
+              <Text style={styles.sectionTitle}>{copy.business.availableToJoin}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{filteredCityOpportunities.length}</Text>
           </View>
-          {cityOpportunities.length === 0 ? (
+          {filteredCityOpportunities.length === 0 ? (
             <Text style={styles.bodyText}>{labels.availableEmptyBody}</Text>
           ) : (
             <ScrollView
-              contentContainerStyle={cityOpportunities.length === 1 ? styles.railScrollSingle : null}
+              contentContainerStyle={filteredCityOpportunities.length === 1 ? styles.railScrollSingle : null}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              <View style={[styles.railContent, cityOpportunities.length === 1 ? styles.railContentSingle : null]}>
-                {cityOpportunities.map((event) => renderOpportunityCard(event))}
+              <View style={[styles.railContent, filteredCityOpportunities.length === 1 ? styles.railContentSingle : null]}>
+                {filteredCityOpportunities.map((event) => renderOpportunityCard(event))}
               </View>
             </ScrollView>
           )}
@@ -582,75 +676,29 @@ export default function BusinessEventsScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
-        <InfoCard eyebrow={copy.business.history} title={labels.pastJoinedTitle}>
-          {completedJoinedEvents.length === 0 ? (
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <AppIcon color={theme.colors.textMuted} name="history" size={14} />
+              <Text style={styles.sectionTitle}>{labels.pastJoinedTitle}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{filteredCompletedJoinedEvents.length}</Text>
+          </View>
+          {filteredCompletedJoinedEvents.length === 0 ? (
             <Text style={styles.bodyText}>{labels.pastJoinedEmptyBody}</Text>
           ) : (
             <ScrollView
-              contentContainerStyle={completedJoinedEvents.length === 1 ? styles.railScrollSingle : null}
+              contentContainerStyle={filteredCompletedJoinedEvents.length === 1 ? styles.railScrollSingle : null}
               horizontal
               showsHorizontalScrollIndicator={false}
             >
-              <View style={[styles.railContent, completedJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
-                {completedJoinedEvents.map((event) => renderJoinedEventCard(event, null))}
+              <View style={[styles.railContent, filteredCompletedJoinedEvents.length === 1 ? styles.railContentSingle : null]}>
+                {filteredCompletedJoinedEvents.map((event) => renderJoinedEventCard(event, null))}
               </View>
             </ScrollView>
           )}
-        </InfoCard>
+        </View>
       ) : null}
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setPreview(null)}
-        transparent
-        visible={preview !== null}
-      >
-        <Pressable onPress={() => setPreview(null)} style={styles.modalBackdrop}>
-          {previewEvent !== null && previewBadge !== null ? (
-            <Pressable onPress={() => undefined} style={styles.modalSheet}>
-              <CoverImageSurface
-                fallbackSource={getFallbackCoverSource("eventDiscovery")}
-                imageStyle={styles.modalCoverImage}
-                source={getEventCoverSource(
-                  previewEvent.coverImageUrl,
-                  `${previewEvent.eventId}:${previewEvent.eventName}`
-                )}
-                style={styles.modalCover}
-              >
-                <View style={styles.modalCoverOverlay} />
-                <View style={styles.modalCoverContent}>
-                  <View style={styles.eventStatusRow}>
-                    <Text style={styles.eyebrow}>{labels.eventPreview}</Text>
-                    <StatusBadge label={previewBadge.label} state={previewBadge.state} />
-                  </View>
-                  <Text numberOfLines={2} style={styles.modalTitle}>{previewEvent.eventName}</Text>
-                  <Text numberOfLines={1} style={styles.coverMeta}>{previewEvent.city}</Text>
-                </View>
-              </CoverImageSurface>
-              <View style={styles.modalContent}>
-                <View style={styles.detailGrid}>
-                  <View style={styles.detailPill}>
-                    <Text style={styles.detailLabel}>{language === "fi" ? "Alkaa" : "Starts"}</Text>
-                    <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.startAt)}</Text>
-                  </View>
-                  <View style={styles.detailPill}>
-                    <Text style={styles.detailLabel}>{language === "fi" ? "Päättyy" : "Ends"}</Text>
-                    <Text style={styles.detailValue}>{formatDateTime(formatter, previewEvent.endAt)}</Text>
-                  </View>
-                </View>
-                <Text style={styles.sectionLabel}>{labels.description}</Text>
-                <Text style={styles.bodyText}>
-                  {previewEvent.description !== null && previewEvent.description.trim().length > 0
-                    ? previewEvent.description.trim()
-                    : labels.noDescription}
-                </Text>
-                <Pressable onPress={() => setPreview(null)} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>{labels.closePreview}</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          ) : null}
-        </Pressable>
-      </Modal>
     </AppScreen>
   );
 }
@@ -671,6 +719,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     cardTitle: {
       color: theme.colors.textPrimary,
@@ -796,6 +850,10 @@ const createStyles = (theme: MobileTheme) =>
       gap: 14,
       padding: 16,
     },
+    modalScrollContent: {
+      flexGrow: 1,
+      paddingBottom: 28,
+    },
     modalCover: {
       height: 220,
       overflow: "hidden",
@@ -857,9 +915,9 @@ const createStyles = (theme: MobileTheme) =>
       padding: 14,
     },
     railCard: {
-      backgroundColor: theme.colors.surfaceL2,
+      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
+      borderRadius: theme.radius.card,
       borderWidth: 1,
       gap: 10,
       height: 302,
@@ -896,22 +954,26 @@ const createStyles = (theme: MobileTheme) =>
       textTransform: "uppercase",
     },
     sectionCard: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: 1,
       gap: 14,
-      padding: 18,
+      marginHorizontal: 2,
+      paddingHorizontal: 2,
+      paddingVertical: 4,
+    },
+    sectionCount: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     sectionHeader: {
-      gap: 4,
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
     },
-    sectionEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
+    sectionHeaderLeft: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -955,8 +1017,51 @@ const createStyles = (theme: MobileTheme) =>
       gap: 12,
       marginBottom: 4,
     },
-    topBarCopy: {
-      flex: 1,
+    businessBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    businessBrandTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 20,
+      letterSpacing: -0.5,
+      lineHeight: 26,
+    },
+    cardStatusDot: {
+      borderRadius: 999,
+      flexShrink: 0,
+      height: 7,
+      width: 7,
+    },
+    cardStatusLabel: {
+      color: "rgba(255,255,255,0.9)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+    },
+    cardStatusRow: {
+      alignItems: "center",
+      flexDirection: "row",
       gap: 6,
+    },
+    searchBar: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.button,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+    },
+    searchInput: {
+      color: theme.colors.textPrimary,
+      flex: 1,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
   });

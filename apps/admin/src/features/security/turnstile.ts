@@ -36,6 +36,16 @@ export const readOptionalServerEnv = (name: string): string | null => {
   return value;
 };
 
+export const readRequiredServerEnv = (name: string, context: string): string => {
+  const value = readOptionalServerEnv(name);
+
+  if (value === null) {
+    throw new Error(`${name} is required for ${context}.`);
+  }
+
+  return value;
+};
+
 const readTurnstileSecret = (context: string): string | null => {
   const secret = readOptionalServerEnv("TURNSTILE_SECRET_KEY");
 

@@ -1,5 +1,5 @@
 import { Redirect, Tabs, usePathname } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AppScreen } from "@/components/app-screen";
 import { InfoCard } from "@/components/info-card";
@@ -8,6 +8,7 @@ import { useSessionAccessQuery } from "@/features/auth/session-access";
 import { GlassTabBarBackground } from "@/features/foundation/components/glass-tab-bar-background";
 import { TabIcon } from "@/features/foundation/components/tab-icon";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
@@ -19,8 +20,8 @@ const getBusinessTabIconName = (routeName: string) => {
       return { ios: "sparkles.rectangle.stack.fill", android: "event", web: "event" } as const;
     case "scanner":
       return { ios: "qrcode.viewfinder", android: "qr-code-scanner", web: "qr-code-scanner" } as const;
-    case "history":
-      return { ios: "clock.arrow.circlepath", android: "history", web: "history" } as const;
+    case "reports":
+      return { ios: "chart.bar.xaxis", android: "analytics", web: "analytics" } as const;
     default:
       return { ios: "person.crop.circle.fill", android: "account-circle", web: "account-circle" } as const;
   }
@@ -70,7 +71,7 @@ export default function BusinessLayout() {
       <AppScreen>
         <AccessIssueCard
           title={copy.business.accessResolving}
-          detail={accessQuery.error.message}
+          detail={createUserSafeErrorMessage(accessQuery.error, language, "access")}
           retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />
@@ -100,7 +101,7 @@ export default function BusinessLayout() {
   }
 
   const isBusinessScannerOnly = accessQuery.data.isBusinessScannerOnly;
-  const isScannerOnlyPathAllowed = pathname === "/business/scanner" || pathname === "/business/history";
+  const isScannerOnlyPathAllowed = pathname.startsWith("/business/scanner") || pathname.startsWith("/business/history");
 
   if (isBusinessScannerOnly && !isScannerOnlyPathAllowed) {
     return <Redirect href="/business/scanner" />;
@@ -108,6 +109,7 @@ export default function BusinessLayout() {
 
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.textPrimary,
@@ -127,6 +129,7 @@ export default function BusinessLayout() {
           bottom: 0,
           height: 78,
           left: 16,
+          overflow: "visible",
           paddingBottom: 8,
           paddingTop: 8,
           position: "absolute",
@@ -149,12 +152,38 @@ export default function BusinessLayout() {
         name="events"
         options={{ href: isBusinessScannerOnly ? null : undefined, title: copy.common.events }}
       />
-      <Tabs.Screen name="scanner" options={{ title: language === "fi" ? "Skanneri" : "Scanner" }} />
-      <Tabs.Screen name="history" options={{ title: language === "fi" ? "Historia" : "History" }} />
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          title: language === "fi" ? "Skanneri" : "Scanner",
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.scannerTabButton}>
+              <TabIcon
+                color={focused ? theme.colors.actionPrimaryText : theme.colors.actionPrimaryText}
+                focused={focused}
+                name={getBusinessTabIconName("scanner")}
+                size={26}
+              />
+            </View>
+          ),
+          tabBarItemStyle: {
+            paddingTop: 0,
+          },
+          tabBarLabelStyle: {
+            display: "none",
+          },
+        }}
+      />
+      <Tabs.Screen
+        name="reports"
+        options={{ href: isBusinessScannerOnly ? null : undefined, title: language === "fi" ? "ROI" : "ROI" }}
+      />
       <Tabs.Screen
         name="profile"
         options={{ href: isBusinessScannerOnly ? null : undefined, title: copy.common.profile }}
       />
+      <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="event-detail" options={{ href: null }} />
       <Tabs.Screen name="updates" options={{ href: null }} />
       <Tabs.Screen name="announcement-detail" options={{ href: null }} />
     </Tabs>
@@ -167,5 +196,15 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.textSecondary,
       fontSize: 14,
       lineHeight: 20,
+    },
+    scannerTabButton: {
+      alignItems: "center",
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      bottom: 8,
+      height: 56,
+      justifyContent: "center",
+      position: "relative",
+      width: 56,
     },
   });

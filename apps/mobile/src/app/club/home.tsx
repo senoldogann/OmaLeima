@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,13 +16,16 @@ import { AppScreen } from "@/components/app-screen";
 import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
 import { StatusBadge } from "@/components/status-badge";
+import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
 import { useClubDashboardQuery } from "@/features/club/club-dashboard";
 import { ClubEventPreviewModal } from "@/features/club/components/club-event-preview-modal";
 import { sortClubEventsForOrganizer } from "@/features/club/event-ordering";
 import type { ClubDashboardEventSummary, ClubDashboardTimelineState } from "@/features/club/types";
 import { getEventCoverSourceWithFallback, prefetchEventCoverUrls } from "@/features/events/event-visuals";
 import { findOverlappingEvents } from "@/features/events/event-overlaps";
+import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from "@/features/foundation/safe-haptics";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useManualRefresh } from "@/features/foundation/use-manual-refresh";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { supabase } from "@/lib/supabase";
@@ -60,6 +64,7 @@ export default function ClubHomeScreen() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [isConfirmingSignOut, setIsConfirmingSignOut] = useState<boolean>(false);
   const [previewEvent, setPreviewEvent] = useState<ClubDashboardEventSummary | null>(null);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const dashboardQuery = useClubDashboardQuery({
@@ -105,6 +110,12 @@ export default function ClubHomeScreen() {
       stamps: language === "fi" ? "Leimat" : "Stamps",
       rewards: language === "fi" ? "Palkinnot" : "Rewards",
       claims: language === "fi" ? "Luovutettu" : "Claimed",
+      rewardHandoff: language === "fi" ? "Palkintojen luovutus" : "Reward handoff",
+      rewardHandoffBody:
+        language === "fi"
+          ? "Kun opiskelija näyttää valmiin palkinnon, vahvista luovutus mobiilissa heti paikan päällä."
+          : "When a student shows a ready reward, confirm the handoff on mobile at the desk.",
+      openRewardHandoff: language === "fi" ? "Avaa luovutusjono" : "Open handoff queue",
       minimum: language === "fi" ? "Minimi" : "Minimum",
       starts: language === "fi" ? "Alkaa" : "Starts",
       ends: language === "fi" ? "Päättyy" : "Ends",
@@ -112,7 +123,7 @@ export default function ClubHomeScreen() {
         CANCELLED: language === "fi" ? "Peruttu" : "Cancelled",
         COMPLETED: language === "fi" ? "Päättynyt" : "Completed",
         DRAFT: language === "fi" ? "Luonnos" : "Draft",
-        LIVE: language === "fi" ? "Live" : "Live",
+        LIVE: language === "fi" ? "Käynnissä" : "Live",
         UPCOMING: language === "fi" ? "Tulossa" : "Upcoming",
       } satisfies Record<ClubDashboardTimelineState, string>,
     }),
@@ -155,15 +166,45 @@ export default function ClubHomeScreen() {
       ),
     [nextEvents]
   );
-  const primaryClub = dashboardQuery.data?.memberships[0] ?? null;
-
+  const upcomingCount = useMemo(
+    () => nextEvents.filter((event) => event.timelineState === "UPCOMING").length,
+    [nextEvents]
+  );
+  const livePulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (liveEvents.length === 0) {
+      livePulseAnim.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePulseAnim, { toValue: 0.2, duration: 600, useNativeDriver: false }),
+        Animated.timing(livePulseAnim, { toValue: 1, duration: 600, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [liveEvents.length, livePulseAnim]);
   useEffect(() => {
     if (dashboardQuery.data) {
       void prefetchEventCoverUrls(dashboardQuery.data.events.map((event) => event.coverImageUrl));
     }
   }, [dashboardQuery.data]);
 
+  const handleSignOutConfirmPress = (): void => {
+    hapticImpact(ImpactStyle.Light);
+    setIsConfirmingSignOut(true);
+    setSignOutError(null);
+  };
+
+  const handleSignOutCancelPress = (): void => {
+    hapticImpact(ImpactStyle.Light);
+    setIsConfirmingSignOut(false);
+    setSignOutError(null);
+  };
+
   const handleSignOutPress = async (): Promise<void> => {
+    hapticNotification(NotificationType.Warning);
     setIsSigningOut(true);
     setSignOutError(null);
 
@@ -172,6 +213,7 @@ export default function ClubHomeScreen() {
     if (error !== null) {
       setSignOutError(error.message);
       setIsSigningOut(false);
+      setIsConfirmingSignOut(false);
       return;
     }
 
@@ -197,27 +239,49 @@ export default function ClubHomeScreen() {
       }
     >
       <View style={styles.headerRow}>
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerEyebrow}>{language === "fi" ? "Organisaattori" : "Organizer"}</Text>
-          <Text style={styles.screenTitle}>{primaryClub?.clubName ?? labels.title}</Text>
-          <Text style={styles.metaText}>{labels.subtitle}</Text>
-          {primaryClub !== null ? (
-            <Text style={styles.clubHeaderMeta}>
-              {[primaryClub.city, primaryClub.membershipRole].filter(Boolean).join(" · ")}
-            </Text>
-          ) : null}
+        <View style={styles.clubHeader}>
+          <View style={styles.clubBrand}>
+            <AppIcon color={theme.colors.lime} name="star" size={18} />
+            <Text style={styles.clubBrandTitle}>OmaLeima</Text>
+          </View>
+          <Text style={styles.clubBrandSub}>
+            {language === "fi" ? "Järjestäjänäkymä" : "Organizer view"}
+          </Text>
         </View>
-        <Pressable
-          disabled={isSigningOut}
-          onPress={() => void handleSignOutPress()}
-          style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
-        >
-          {isSigningOut ? (
-            <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-          ) : (
+        {isConfirmingSignOut ? (
+          <View style={styles.signOutConfirmRow}>
+            <Pressable
+              accessibilityHint={language === "fi" ? "Kirjautuu ulos tililtä" : "Signs out of the account"}
+              accessibilityLabel={language === "fi" ? "Kyllä, kirjaudu ulos" : "Yes, sign out"}
+              disabled={isSigningOut}
+              onPress={() => void handleSignOutPress()}
+              style={[styles.iconButtonDanger, isSigningOut ? styles.disabledButton : null]}
+            >
+              {isSigningOut ? (
+                <ActivityIndicator color={theme.colors.danger} size="small" />
+              ) : (
+                <AppIcon color={theme.colors.danger} name="logout" size={17} />
+              )}
+            </Pressable>
+            <Pressable
+              accessibilityLabel={language === "fi" ? "Peruuta" : "Cancel"}
+              disabled={isSigningOut}
+              onPress={handleSignOutCancelPress}
+              style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
+            >
+              <AppIcon color={theme.colors.textPrimary} name="x" size={17} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityHint={language === "fi" ? "Pyytää kirjautumisesta ulos vahvistuksen" : "Asks for sign-out confirmation"}
+            accessibilityLabel={language === "fi" ? "Kirjaudu ulos" : "Sign out"}
+            onPress={handleSignOutConfirmPress}
+            style={styles.iconButton}
+          >
             <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
-          )}
-        </Pressable>
+          </Pressable>
+        )}
       </View>
 
       {signOutError !== null ? <Text style={styles.errorText}>{signOutError}</Text> : null}
@@ -230,7 +294,7 @@ export default function ClubHomeScreen() {
 
       {dashboardQuery.error ? (
         <InfoCard eyebrow="Club" title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{dashboardQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(dashboardQuery.error, language, "clubDashboard")}</Text>
           <Pressable onPress={() => void dashboardQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{language === "fi" ? "Yritä uudelleen" : "Retry"}</Text>
           </Pressable>
@@ -245,24 +309,48 @@ export default function ClubHomeScreen() {
 
       {!dashboardQuery.isLoading && !dashboardQuery.error && dashboardQuery.data ? (
         <>
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.liveEventCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.live}</Text>
+          <MobileRoleSwitchCard currentArea="club" />
+
+          <View style={styles.statsRow}>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{dashboardQuery.data.summary.liveEventCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Käynnissä" : "Live"}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.registeredParticipantCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.participants}</Text>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{upcomingCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Tulossa" : "Upcoming"}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.joinedVenueCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.venues}</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryValue}>{dashboardQuery.data.summary.validStampCount}</Text>
-              <Text style={styles.summaryLabel}>{labels.stamps}</Text>
+            <View style={styles.statTile}>
+              <Text style={styles.statValue}>{dashboardQuery.data.summary.registeredParticipantCount}</Text>
+              <Text style={styles.statLabel}>{language === "fi" ? "Osallistujat" : "Participants"}</Text>
             </View>
           </View>
+
+          <ScrollView contentContainerStyle={styles.actionChipsRow} horizontal showsHorizontalScrollIndicator={false}>
+            <Pressable onPress={() => router.push("/club/events")} style={styles.actionChip}>
+              <AppIcon color={theme.colors.textPrimary} name="calendar" size={15} />
+              <Text style={styles.actionChipText}>{language === "fi" ? "Luo tapahtuma" : "Create event"}</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push("/club/announcements")} style={styles.actionChip}>
+              <AppIcon color={theme.colors.textPrimary} name="bell" size={15} />
+              <Text style={styles.actionChipText}>{language === "fi" ? "Tiedotteet" : "Announcements"}</Text>
+            </Pressable>
+            {dashboardQuery.data.summary.rewardTierCount > 0 ? (
+              <Pressable onPress={() => router.push("/club/claims")} style={styles.actionChip}>
+                <AppIcon color={theme.colors.textPrimary} name="check" size={15} />
+                <Text style={styles.actionChipText}>{language === "fi" ? "Palkintojen luovutus" : "Reward handoff"}</Text>
+              </Pressable>
+            ) : null}
+          </ScrollView>
+
+          {dashboardQuery.data.summary.rewardTierCount > 0 || dashboardQuery.data.summary.claimedRewardCount > 0 ? (
+            <InfoCard eyebrow={labels.rewards} title={labels.rewardHandoff} variant="subtle">
+              <Text style={styles.bodyText}>{labels.rewardHandoffBody}</Text>
+              <Pressable onPress={() => router.push("/club/claims")} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>{labels.openRewardHandoff}</Text>
+              </Pressable>
+            </InfoCard>
+          ) : null}
 
           {overlappingEvents.length > 1 ? (
             <InfoCard
@@ -270,7 +358,7 @@ export default function ClubHomeScreen() {
               title={language === "fi" ? "Samanaikaisia tapahtumia" : "Overlapping events"}
               variant="subtle"
             >
-              <Text style={styles.bodyText}>
+              <Text style={styles.overlappingNoticeText}>
                 {language === "fi"
                   ? "Jos klubilla on useita tapahtumia samaan aikaan, tarkista rastit ja viestintä ennen julkaisua. QR-skannaus on tapahtumakohtainen."
                   : "If your club has overlapping events, verify venues and messaging before publishing. QR scanning remains event-specific."}
@@ -333,9 +421,10 @@ export default function ClubHomeScreen() {
           )}
 
           <View style={styles.eventsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEyebrow}>{labels.upcoming}</Text>
+            <View style={styles.sectionIconHeader}>
+              <AppIcon color={theme.colors.lime} name="calendar" size={16} />
               <Text style={styles.sectionTitle}>{labels.eventsTitle}</Text>
+              {nextEvents.length > 0 ? <Text style={styles.sectionCount}>{nextEvents.length}</Text> : null}
             </View>
             <View style={styles.sectionHeaderAction}>
               <Text style={styles.bodyText}>
@@ -371,7 +460,14 @@ export default function ClubHomeScreen() {
                             <Text numberOfLines={1} style={styles.eventCardTitle}>
                               {event.name}
                             </Text>
-                            <StatusBadge label={badge.label} state={badge.state} />
+                            <View style={styles.eventStatusRow}>
+                              {badge.state === "ready" ? (
+                                <Animated.View style={[styles.statusDot, styles.statusDotReady, { opacity: livePulseAnim }]} />
+                              ) : (
+                                <View style={[styles.statusDot, badge.state === "warning" ? styles.statusDotWarning : styles.statusDotPending]} />
+                              )}
+                              <Text style={styles.statusDotLabel}>{badge.label}</Text>
+                            </View>
                           </View>
                           <Text numberOfLines={1} style={styles.eventCardMeta}>
                             {timeLabel} {formatDateTime(formatter, event.timelineState === "LIVE" ? event.endAt : event.startAt)}
@@ -409,6 +505,12 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.body,
       lineHeight: theme.typography.lineHeights.body,
+    },
+    overlappingNoticeText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     clubChip: {
       backgroundColor: theme.colors.surfaceL2,
@@ -583,6 +685,20 @@ const createStyles = (theme: MobileTheme) =>
       justifyContent: "center",
       width: 44,
     },
+    iconButtonDanger: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.danger,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 44,
+      justifyContent: "center",
+      width: 44,
+    },
+    signOutConfirmRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
     livePressable: {
       borderRadius: 30,
     },
@@ -701,6 +817,28 @@ const createStyles = (theme: MobileTheme) =>
       fontSize: theme.typography.sizes.title,
       lineHeight: theme.typography.lineHeights.title,
     },
+    actionChipsRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingRight: 4,
+    },
+    actionChip: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: theme.mode === "light" ? 1 : 0,
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    actionChipText: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+    },
     textButton: {
       alignItems: "center",
       alignSelf: "flex-start",
@@ -713,5 +851,94 @@ const createStyles = (theme: MobileTheme) =>
       fontFamily: theme.typography.families.extrabold,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
+    },
+    clubHeader: {
+      gap: 4,
+    },
+    clubBrand: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    clubBrandTitle: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 22,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    clubBrandSub: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
+      marginLeft: 26,
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    statTile: {
+      alignItems: "center",
+      backgroundColor: theme.colors.surfaceL1,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: theme.radius.inner,
+      borderWidth: 1,
+      flex: 1,
+      gap: 2,
+      paddingVertical: 14,
+    },
+    statValue: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 26,
+      lineHeight: 30,
+    },
+    statLabel: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    sectionIconHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    sectionCount: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderRadius: 10,
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+    },
+    statusDot: {
+      borderRadius: 4,
+      height: 8,
+      width: 8,
+    },
+    statusDotReady: {
+      backgroundColor: theme.colors.lime,
+    },
+    statusDotWarning: {
+      backgroundColor: theme.colors.danger,
+    },
+    statusDotPending: {
+      backgroundColor: theme.colors.textMuted,
+    },
+    eventStatusRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 5,
+    },
+    statusDotLabel: {
+      color: "rgba(255,255,255,0.85)",
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.caption,
+      lineHeight: theme.typography.lineHeights.caption,
     },
   });

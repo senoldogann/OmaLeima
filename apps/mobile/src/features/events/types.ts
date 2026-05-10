@@ -31,6 +31,7 @@ export type StudentEventSummary = {
   country: string;
   coverImageUrl: string | null;
   startAt: string;
+  ticketUrl: string | null;
   endAt: string;
   joinDeadlineAt: string;
   maxParticipants: number | null;
@@ -84,6 +85,7 @@ export type StudentEventDetail = {
   startAt: string;
   endAt: string;
   joinDeadlineAt: string;
+  ticketUrl: string | null;
   status: "PUBLISHED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   visibility: "PUBLIC" | "PRIVATE" | "UNLISTED";
   coverImageUrl: string | null;

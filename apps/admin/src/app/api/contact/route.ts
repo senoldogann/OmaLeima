@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { contactSubjectValues } from "@/features/public-site/contact-content";
+import { isHostedRuntime, readOptionalServerEnv, readRequiredServerEnv } from "@/features/security/turnstile";
 import { publicEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -93,31 +94,8 @@ type TurnstileSiteverifyResponse = {
   success?: boolean;
 };
 
-const isHostedRuntime = (): boolean =>
-  process.env.VERCEL === "1" || process.env.REQUIRE_CONTACT_TURNSTILE === "1";
-
-const readRequiredServerEnv = (name: string): string => {
-  const value = process.env[name];
-
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${name} is required for the public contact form backend.`);
-  }
-
-  return value;
-};
-
-const readOptionalServerEnv = (name: string): string | null => {
-  const value = process.env[name];
-
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  return value;
-};
-
 const buildServiceRoleClient = (): SupabaseClient =>
-  createClient(publicEnv.NEXT_PUBLIC_SUPABASE_URL, readRequiredServerEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+  createClient(publicEnv.NEXT_PUBLIC_SUPABASE_URL, readRequiredServerEnv("SUPABASE_SERVICE_ROLE_KEY", "the public contact form backend"), {
     auth: {
       persistSession: false,
     },
@@ -138,7 +116,7 @@ const stripControlChars = (value: string): string =>
 
 const hashIp = (ip: string): string => {
   const secret = readOptionalServerEnv("CONTACT_IP_HASH_SECRET");
-  const salt = secret ?? (isHostedRuntime() ? readRequiredServerEnv("CONTACT_IP_HASH_SECRET") : "local-development");
+  const salt = secret ?? (isHostedRuntime() ? readRequiredServerEnv("CONTACT_IP_HASH_SECRET", "the public contact form backend") : "local-development");
 
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 };

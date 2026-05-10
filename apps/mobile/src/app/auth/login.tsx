@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
-import { InfoCard } from "@/components/info-card";
 import { AuthLoadingPanel } from "@/features/auth/components/auth-loading-panel";
+import { AppleSignInButton } from "@/features/auth/components/apple-sign-in-button";
 import { BusinessPasswordSignIn } from "@/features/auth/components/business-password-sign-in";
 import { GoogleSignInButton } from "@/features/auth/components/google-sign-in-button";
 import { LoginHero } from "@/features/auth/components/login-hero";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
+import { MobileConsentCard } from "@/features/legal/mobile-consent-card";
+import { readMobileLegalConsentAsync } from "@/features/legal/mobile-consent";
 import { useAppTheme, useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useIsScannerProvisioningActive } from "@/features/scanner/scanner-provisioning-state";
 import { useSession } from "@/providers/session-provider";
@@ -19,7 +22,7 @@ type LoginMode = "student" | "business";
 
 export default function LoginScreen() {
   const theme = useAppTheme();
-  const { copy, language, setLanguage } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const isScannerProvisioningActive = useIsScannerProvisioningActive();
@@ -28,14 +31,58 @@ export default function LoginScreen() {
     isEnabled: isAuthenticated && session !== null && !isScannerProvisioningActive,
   });
   const [mode, setMode] = useState<LoginMode>("student");
-  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState<boolean>(false);
+  const [isLegalConsentAccepted, setIsLegalConsentAccepted] = useState<boolean>(false);
+  const [isLegalConsentLoading, setIsLegalConsentLoading] = useState<boolean>(true);
+  const [legalConsentError, setLegalConsentError] = useState<string | null>(null);
   const isResolvingAccess = !isLoading && isAuthenticated && !isScannerProvisioningActive && accessQuery.isLoading;
+  const titleText =
+    mode === "student"
+      ? language === "fi" ? "Opiskelija" : "Student"
+      : language === "fi" ? "Yritys" : "Business";
+  const helperText =
+    mode === "student"
+      ? language === "fi" ? "Jatka tapahtumiin ja leimapassiin." : "Continue to events and your leima pass."
+      : language === "fi" ? "Kirjaudu scanneriin ja hallintaan." : "Sign in to scanner and tools.";
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadLegalConsentAsync = async (): Promise<void> => {
+      try {
+        const storedConsent = await readMobileLegalConsentAsync();
+
+        if (!isActive) {
+          return;
+        }
+
+        setIsLegalConsentAccepted(storedConsent !== null);
+        setLegalConsentError(null);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setIsLegalConsentAccepted(false);
+        setLegalConsentError(createUserSafeErrorMessage(error, language, "legalConsent"));
+      } finally {
+        if (isActive) {
+          setIsLegalConsentLoading(false);
+        }
+      }
+    };
+
+    void loadLegalConsentAsync();
+
+    return () => {
+      isActive = false;
+    };
+  }, [language]);
 
   if (!isScannerProvisioningActive && !isLoading && isAuthenticated && accessQuery.data?.homeHref !== null && typeof accessQuery.data !== "undefined") {
     return <Redirect href={accessQuery.data.homeHref} />;
   }
 
-  if (isLoading || isResolvingAccess) {
+  if (isLoading || isResolvingAccess || isLegalConsentLoading) {
     return (
       <AppScreen>
         <LoginHero />
@@ -48,77 +95,23 @@ export default function LoginScreen() {
   }
 
   return (
-    <AppScreen>
+    <AppScreen contentContainerStyle={styles.screenContent}>
       <LoginHero />
 
-      <InfoCard
-        eyebrow={copy.auth.continueEyebrow}
-        motionIndex={1}
-        title={mode === "student" ? copy.auth.studentSignIn : copy.auth.businessSignIn}
-      >
-        <View style={styles.utilityRow}>
-          <View style={styles.languageMenuWrap}>
-            <Pressable
-              onPress={() => setIsLanguageMenuOpen((currentState) => !currentState)}
-              style={({ pressed }) => [styles.languageTrigger, pressed ? styles.languageTriggerPressed : null]}
-            >
-              <AppIcon color={theme.colors.textPrimary} name="globe" size={16} />
-              <Text style={styles.languageTriggerText}>{language === "fi" ? "FI" : "EN"}</Text>
-              <AppIcon color={theme.colors.textMuted} name="chevron-down" size={14} />
-            </Pressable>
-
-            {isLanguageMenuOpen ? (
-              <View style={styles.languageDropdown}>
-                <Text style={styles.languageMenuTitle}>{copy.common.language}</Text>
-                <Pressable
-                  onPress={() => {
-                    void setLanguage("fi");
-                    setIsLanguageMenuOpen(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.languageMenuOption,
-                    language === "fi" ? styles.languageMenuOptionActive : null,
-                    pressed ? styles.languageMenuOptionPressed : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.languageMenuOptionText,
-                      language === "fi" ? styles.languageMenuOptionTextActive : null,
-                    ]}
-                  >
-                    {copy.common.finnish}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    void setLanguage("en");
-                    setIsLanguageMenuOpen(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.languageMenuOption,
-                    language === "en" ? styles.languageMenuOptionActive : null,
-                    pressed ? styles.languageMenuOptionPressed : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.languageMenuOptionText,
-                      language === "en" ? styles.languageMenuOptionTextActive : null,
-                    ]}
-                  >
-                    {copy.common.english}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
+      <View style={styles.authPanel}>
+        <View style={styles.panelGlow} />
+        <View style={styles.panelTopRow}>
+          <View style={styles.panelTitleGroup}>
+            <Text style={styles.panelEyebrow}>{copy.auth.continueEyebrow}</Text>
+            <Text style={styles.cardTitle}>{titleText}</Text>
           </View>
         </View>
+
+        <Text numberOfLines={2} style={styles.cardSubtitle}>{helperText}</Text>
 
         <View style={styles.modeSelector}>
           <Pressable
             onPress={() => {
-              setIsLanguageMenuOpen(false);
               setMode("student");
             }}
             style={({ pressed }) => [
@@ -127,14 +120,13 @@ export default function LoginScreen() {
               pressed ? styles.modeButtonPressed : null,
             ]}
           >
-            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="google" size={18} />
+            <AppIcon color={mode === "student" ? theme.colors.screenBase : theme.colors.textPrimary} name="id-card" size={18} />
             <Text style={[styles.modeButtonText, mode === "student" ? styles.modeButtonTextActive : null]}>
               {copy.common.student}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => {
-              setIsLanguageMenuOpen(false);
               setMode("business");
             }}
             style={({ pressed }) => [
@@ -150,107 +142,76 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.helperText}>
-          {mode === "student" ? copy.auth.studentHelper : copy.auth.businessHelper}
-        </Text>
-        {mode === "student" ? <GoogleSignInButton /> : <BusinessPasswordSignIn />}
-      </InfoCard>
+        <View style={styles.authActionStage}>
+          {legalConsentError !== null ? <Text style={styles.errorText}>{legalConsentError}</Text> : null}
+          {isLegalConsentAccepted ? (
+            mode === "student" ? (
+              <View style={styles.studentAuthActions}>
+                <GoogleSignInButton />
+                <AppleSignInButton />
+              </View>
+            ) : <BusinessPasswordSignIn />
+          ) : null}
+        </View>
+      </View>
+
+      {!isLegalConsentAccepted ? (
+        <MobileConsentCard
+          language={language}
+          onAccepted={() => {
+            setIsLegalConsentAccepted(true);
+            setLegalConsentError(null);
+          }}
+        />
+      ) : null}
+
     </AppScreen>
   );
 }
 
 const createStyles = (theme: MobileTheme) =>
   StyleSheet.create({
-    helperText: {
+    authActionStage: {
+      gap: 12,
+    },
+    authPanel: {
+      backgroundColor: theme.mode === "dark" ? "rgba(12, 17, 12, 0.92)" : "rgba(255, 255, 255, 0.94)",
+      borderColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.18)" : theme.colors.borderDefault,
+      borderRadius: 22,
+      borderWidth: 1,
+      gap: 16,
+      overflow: "hidden",
+      padding: 18,
+    },
+    cardSubtitle: {
       color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    languageDropdown: {
-      backgroundColor: theme.colors.surfaceL1,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.card,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 6,
-      padding: 10,
-      position: "absolute",
-      right: 0,
-      top: 48,
-      width: 164,
-      zIndex: 20,
-    },
-    languageMenuOption: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.button,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      justifyContent: "center",
-      minHeight: 40,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    languageMenuOptionActive: {
-      backgroundColor: theme.colors.limeSurface,
-      borderColor: theme.colors.limeBorder,
-    },
-    languageMenuOptionPressed: {
-      transform: [{ translateY: 1 }, { scale: 0.992 }],
-    },
-    languageMenuOptionText: {
+    cardTitle: {
       color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-      textAlign: "center",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: theme.typography.sizes.title,
+      lineHeight: theme.typography.lineHeights.title,
     },
-    languageMenuOptionTextActive: {
-      color: theme.colors.textPrimary,
-    },
-    languageMenuTitle: {
-      color: theme.colors.textMuted,
+    errorText: {
+      color: theme.colors.danger,
       fontFamily: theme.typography.families.semibold,
       fontSize: theme.typography.sizes.caption,
       lineHeight: theme.typography.lineHeights.caption,
-      paddingHorizontal: 2,
-    },
-    languageMenuWrap: {
-      position: "relative",
-    },
-    languageTrigger: {
-      alignItems: "center",
-      alignSelf: "flex-end",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: 999,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      flexDirection: "row",
-      gap: 8,
-      minHeight: 42,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    languageTriggerPressed: {
-      transform: [{ translateY: 1 }, { scale: 0.992 }],
-    },
-    languageTriggerText: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.bodySmall,
-      letterSpacing: 0.4,
-      lineHeight: theme.typography.lineHeights.bodySmall,
     },
     modeButton: {
       alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderRadius: theme.radius.card,
+      backgroundColor: "transparent",
+      borderRadius: 999,
       flex: 1,
       flexDirection: "row",
       gap: 8,
       justifyContent: "center",
+      minHeight: 46,
       paddingHorizontal: 12,
-      paddingVertical: 14,
+      paddingVertical: 11,
     },
     modeButtonActive: {
       backgroundColor: theme.colors.lime,
@@ -268,10 +229,46 @@ const createStyles = (theme: MobileTheme) =>
       color: theme.colors.actionPrimaryText,
     },
     modeSelector: {
+      backgroundColor: theme.colors.surfaceL2,
+      borderColor: theme.colors.borderDefault,
+      borderRadius: 999,
+      borderWidth: 1,
       flexDirection: "row",
-      gap: 10,
+      gap: 4,
+      padding: 4,
     },
-    utilityRow: {
-      alignItems: "flex-end",
+    panelEyebrow: {
+      color: theme.colors.lime,
+      fontFamily: theme.typography.families.bold,
+      fontSize: theme.typography.sizes.eyebrow,
+      lineHeight: theme.typography.lineHeights.eyebrow,
+      textTransform: "uppercase",
+    },
+    panelGlow: {
+      backgroundColor: theme.colors.limeSurface,
+      borderRadius: 999,
+      height: 156,
+      opacity: theme.mode === "dark" ? 0.4 : 0.72,
+      position: "absolute",
+      right: -92,
+      top: -96,
+      width: 156,
+    },
+    panelTitleGroup: {
+      flex: 1,
+      gap: 3,
+      minWidth: 0,
+    },
+    panelTopRow: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      gap: 12,
+      justifyContent: "space-between",
+    },
+    screenContent: {
+      gap: 16,
+    },
+    studentAuthActions: {
+      gap: 10,
     },
   });

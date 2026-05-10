@@ -5,6 +5,7 @@ process.loadEnvFile?.(".env.local");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const appBaseUrl = process.env.ADMIN_APP_BASE_URL ?? "http://localhost:3001";
+const allowNonLocalRouteSmoke = process.env.ADMIN_ROUTE_SMOKE_ALLOW_NON_LOCAL === "1";
 
 if (typeof supabaseUrl !== "string" || supabaseUrl.length === 0) {
   throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL for admin route smoke script.");
@@ -30,6 +31,57 @@ type RouteSmokeCase = {
     | "/club/events"
     | "/club/rewards"
     | "/login";
+};
+
+const localHostnames = new Set<string>(["localhost", "127.0.0.1", "::1"]);
+
+const parseUrlOrThrow = (value: string, label: string): URL => {
+  try {
+    return new URL(value);
+  } catch (error) {
+    throw new Error(`${label} must be a valid absolute URL. ${error instanceof Error ? error.message : "Unknown URL parse error."}`);
+  }
+};
+
+const assertLocalUrlOrThrow = (value: string, label: string): void => {
+  if (allowNonLocalRouteSmoke) {
+    return;
+  }
+
+  const parsedUrl = parseUrlOrThrow(value, label);
+
+  if (localHostnames.has(parsedUrl.hostname)) {
+    return;
+  }
+
+  throw new Error(
+    `${label} must point to localhost for smoke:routes. This script uses local seeded accounts. ` +
+      `Use smoke:hosted-admin-access for hosted checks, or set ADMIN_ROUTE_SMOKE_ALLOW_NON_LOCAL=1 intentionally.`
+  );
+};
+
+const assertLoginPageReachableAsync = async (): Promise<void> => {
+  let response: Response;
+
+  try {
+    response = await fetch(`${appBaseUrl}/login`, {
+      method: "GET",
+      redirect: "manual",
+    });
+  } catch (error) {
+    throw new Error(
+      `Could not reach ${appBaseUrl}/login before route smoke: ` +
+        `${error instanceof Error ? error.message : "unknown fetch error"}. ` +
+        "Start the admin app with `npm --prefix apps/admin run dev -- --hostname 127.0.0.1 --port 3001` or set ADMIN_APP_BASE_URL."
+    );
+  }
+
+  if (response.status !== 200) {
+    throw new Error(
+      `Expected ${appBaseUrl}/login to return 200 before route smoke, got ${response.status}. ` +
+        "Start the admin app with `npm --prefix apps/admin run dev -- --hostname 127.0.0.1 --port 3001` or set ADMIN_APP_BASE_URL."
+    );
+  }
 };
 
 const routeSmokeCases: RouteSmokeCase[] = [
@@ -191,6 +243,10 @@ const createCookieBackedClient = () => {
 
 const run = async (): Promise<void> => {
   const outputs: string[] = [];
+
+  assertLocalUrlOrThrow(appBaseUrl, "ADMIN_APP_BASE_URL");
+  assertLocalUrlOrThrow(supabaseUrl, "NEXT_PUBLIC_SUPABASE_URL");
+  await assertLoginPageReachableAsync();
 
   for (const routeSmokeCase of routeSmokeCases) {
     const client = createCookieBackedClient();

@@ -22,6 +22,25 @@ type ContactFormProps = {
     turnstileSiteKey: string | null;
 };
 
+type FieldName =
+    | "attachment"
+    | "consent"
+    | "email"
+    | "elapsedMs"
+    | "locale"
+    | "message"
+    | "name"
+    | "organization"
+    | "subject"
+    | "turnstileToken"
+    | "website";
+
+type FieldErrorMap = Partial<Record<FieldName, string>>;
+
+type ServerValidationResponse = {
+    fieldErrors?: FieldErrorMap;
+};
+
 type TurnstileApi = {
     reset: () => void;
 };
@@ -40,6 +59,47 @@ const allowedMimeTypes: ReadonlyArray<string> = [
 
 const maxAttachmentBytes = 5 * 1024 * 1024;
 const turnstileAction = "contact_form";
+
+const isFieldErrorMap = (value: unknown): value is FieldErrorMap =>
+    typeof value === "object" && value !== null;
+
+const isServerValidationResponse = (value: unknown): value is ServerValidationResponse =>
+    typeof value === "object" && value !== null;
+
+const createContactFieldErrorMessage = (
+    fieldName: FieldName,
+    content: ContactPageContent,
+): string => {
+    const messages: Record<FieldName, string> = {
+        attachment: content.attachmentHint,
+        consent: content.requiredHint,
+        email: content.emailHint,
+        elapsedMs: content.errorValidation,
+        locale: content.errorValidation,
+        message: content.messageHint,
+        name: content.requiredHint,
+        organization: content.organizationHint,
+        subject: content.subjectHint,
+        turnstileToken: content.errorVerification,
+        website: content.errorValidation,
+    };
+
+    return messages[fieldName];
+};
+
+const createLocalizedContactFieldErrors = (
+    serverFieldErrors: FieldErrorMap,
+    content: ContactPageContent,
+): FieldErrorMap => {
+    const result: FieldErrorMap = {};
+    const fieldNames = Object.keys(serverFieldErrors) as FieldName[];
+
+    for (const fieldName of fieldNames) {
+        result[fieldName] = createContactFieldErrorMessage(fieldName, content);
+    }
+
+    return result;
+};
 
 export const ContactForm = ({
     apiPath,
@@ -60,12 +120,26 @@ export const ContactForm = ({
 
     const [state, setState] = useState<SubmissionState>({ kind: "idle" });
     const [attachmentName, setAttachmentName] = useState<string | null>(null);
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [consentChecked, setConsentChecked] = useState<boolean>(false);
     const [subjectValue, setSubjectValue] = useState<ContactSubjectValue | "">("");
 
     const hasTurnstileSiteKey = typeof turnstileSiteKey === "string" && turnstileSiteKey.length > 0;
     const isProtectionUnavailable = isProtectionRequired && !hasTurnstileSiteKey;
+
+    useEffect(() => {
+        if (state.kind !== "success") {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setState({ kind: "idle" });
+        }, 3000);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [state.kind]);
 
     const resetTurnstile = (): void => {
         window.turnstile?.reset();
@@ -183,11 +257,14 @@ export const ContactForm = ({
             }
 
             if (response.status === 400) {
-                const payload = (await response.json().catch(() => null)) as
-                    | { fieldErrors?: Record<string, string> }
-                    | null;
+                const payload = await response.json().catch(() => null) as unknown;
+                const validationResponse = isServerValidationResponse(payload) ? payload : {};
 
-                setFieldErrors(payload?.fieldErrors ?? {});
+                setFieldErrors(
+                    isFieldErrorMap(validationResponse.fieldErrors)
+                        ? createLocalizedContactFieldErrors(validationResponse.fieldErrors, content)
+                        : {},
+                );
                 resetTurnstile();
                 setState({ kind: "error", message: content.errorValidation });
                 return;
@@ -203,6 +280,7 @@ export const ContactForm = ({
             setAttachmentName(null);
             setConsentChecked(false);
             setSubjectValue("");
+            startedAtRef.current = Date.now();
             resetTurnstile();
             setState({ kind: "success" });
         } catch {
@@ -210,15 +288,6 @@ export const ContactForm = ({
             setState({ kind: "error", message: content.errorGeneric });
         }
     };
-
-    if (state.kind === "success") {
-        return (
-            <div className="contact-success" role="status">
-                <h2>{content.successTitle}</h2>
-                <p>{content.successBody}</p>
-            </div>
-        );
-    }
 
     const isSubmitting = state.kind === "submitting";
 
@@ -414,6 +483,13 @@ export const ContactForm = ({
                 <p className="contact-error" role="alert">
                     {state.message}
                 </p>
+            ) : null}
+
+            {state.kind === "success" ? (
+                <div className="contact-success" role="status">
+                    <h2>{content.successTitle}</h2>
+                    <p>{content.successBody}</p>
+                </div>
             ) : null}
 
             {hasTurnstileSiteKey ? (

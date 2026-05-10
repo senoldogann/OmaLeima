@@ -25,7 +25,21 @@ import type {
   ClubEventRecord,
   ClubEventUpdatePayload,
   ClubEventsSnapshot,
+  ClubMembershipSummary,
 } from "@/features/club-events/types";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
+
+const formatEventStatus = (status: string, locale: DashboardLocale): string => {
+  if (locale !== "fi") return status;
+  const map: Record<string, string> = {
+    ACTIVE: "Aktiivinen",
+    PUBLISHED: "Julkaistu",
+    DRAFT: "Luonnos",
+    CANCELLED: "Peruutettu",
+    ENDED: "Päättynyt",
+  };
+  return map[status] ?? status;
+};
 
 type ClubEventsPanelProps = {
   locale: DashboardLocale;
@@ -36,6 +50,8 @@ const copyByLocale = {
   en: {
     activeMemberships: "Active memberships",
     cancel: "Cancel",
+    cancelConfirm:
+      "Cancel this event? It will be hidden from active views, but registrations, leimas, rewards, and audit history will stay intact.",
     cancelling: "Cancelling...",
     canCreateEvents: "Can create events",
     city: "City",
@@ -79,6 +95,8 @@ const copyByLocale = {
     selectedEvent: "Selected event",
     start: "Start",
     status: "Status",
+    ticketUrl: "Ticket URL",
+    ticketUrlHint: "Optional link to Kide, another ticket platform, or your own ticket page.",
     updateEventBody: "Keep published details current without deleting registrations, stamps, or reward history.",
     updateEventTitle: "Update the selected event",
     uploadCover: "Upload cover from computer",
@@ -90,6 +108,8 @@ const copyByLocale = {
   fi: {
     activeMemberships: "Omat jäsenyydet",
     cancel: "Peru tapahtuma",
+    cancelConfirm:
+      "Perutaanko tämä tapahtuma? Se piilotetaan aktiivisista näkymistä, mutta ilmoittautumiset, leimat, palkinnot ja audit-historia säilyvät.",
     cancelling: "Peruutetaan...",
     canCreateEvents: "Voi luoda tapahtumia",
     city: "Kaupunki",
@@ -125,7 +145,7 @@ const copyByLocale = {
     recentEvents: "Viimeisimmät",
     recentEventsBodyPrefix: "Näytetään viimeisimmät",
     recentEventsBodySuffix: "tapahtumaa, jotka ovat tämän tilin oikeuksilla näkyvissä.",
-    recentEventsEmpty: "Klubitapahtumia ei vielä näy. Luo ensimmäinen luonnos aloittaaksesi työnkulun.",
+    recentEventsEmpty: "Klubitapahtumia ei vielä näy. Luo ensimmäinen luonnos aloittaaksesi.",
     recentEventsTitle: "Viimeisimmät näkyvät tapahtumat",
     registered: "mukana",
     saveEvent: "Tallenna",
@@ -133,20 +153,23 @@ const copyByLocale = {
     selectedEvent: "Valittu tapahtuma",
     start: "Alkaa",
     status: "Tila",
+    ticketUrl: "Lippulinkki",
+    ticketUrlHint: "Valinnainen linkki Kideen, toiseen lipunmyyntiin tai omaan lippusivuun.",
     updateEventBody: "Pidä julkaistut tiedot ajan tasalla poistamatta ilmoittautumisia, leimoja tai palkintohistoriaa.",
     updateEventTitle: "Päivitä tiedot",
     uploadCover: "Lataa kuva koneelta",
     uploadingCover: "Ladataan kuvaa...",
     visibility: "Näkyvyys",
-    visibleEventsBody: "Luonnokset, julkaistut, aktiiviset, päättyneet ja perutut tapahtumat, jotka RLS sallii lukea.",
+    visibleEventsBody: "Luonnokset, julkaistut, aktiiviset, päättyneet ja perutut tapahtumat tässä näkymässä.",
     visibleEventsLabel: "Näkyvät tapahtumat",
   },
 } as const satisfies Record<DashboardLocale, Record<string, string>>;
 
-const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
-  city: "",
+const createInitialPayload = (clubId: string, city: string | null): ClubEventCreationPayload => ({
+  city: city ?? "",
   clubId,
   country: "Finland",
+  coverImageStagingPath: "",
   coverImageUrl: "",
   description: "",
   endAt: "",
@@ -156,8 +179,12 @@ const createInitialPayload = (clubId: string): ClubEventCreationPayload => ({
   name: "",
   rulesJson: JSON.stringify({ stampPolicy: { perBusinessLimit: 1 } }, null, 2),
   startAt: "",
+  ticketUrl: "",
   visibility: "PUBLIC",
 });
+
+const findMembershipCity = (memberships: ClubMembershipSummary[], clubId: string): string | null =>
+  memberships.find((membership) => membership.clubId === clubId)?.city ?? null;
 
 const toLocalDateTimeInput = (value: string): string => {
   const date = new Date(value);
@@ -169,6 +196,7 @@ const toLocalDateTimeInput = (value: string): string => {
 
 const createUpdatePayload = (event: ClubEventRecord): ClubEventUpdatePayload => ({
   city: event.city,
+  coverImageStagingPath: event.coverImageStagingPath,
   coverImageUrl: event.coverImageUrl ?? "",
   description: event.description ?? "",
   endAt: toLocalDateTimeInput(event.endAt),
@@ -180,11 +208,14 @@ const createUpdatePayload = (event: ClubEventRecord): ClubEventUpdatePayload => 
   rulesJson: event.rulesJson,
   startAt: toLocalDateTimeInput(event.startAt),
   status: event.status === "ACTIVE" || event.status === "PUBLISHED" ? event.status : "DRAFT",
+  ticketUrl: event.ticketUrl ?? "",
   visibility: event.visibility,
 });
 
 const canEditEvent = (event: ClubEventRecord): boolean =>
   event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED";
+
+const canEditEventName = (event: ClubEventRecord): boolean => event.status !== "ACTIVE";
 
 const canCancelEvent = (event: ClubEventRecord): boolean =>
   event.status === "ACTIVE" || event.status === "DRAFT" || event.status === "PUBLISHED";
@@ -204,15 +235,23 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
     () => snapshot.memberships.filter((membership) => membership.canCreateEvents),
     [snapshot.memberships]
   );
+  const manageableClubIds = useMemo(
+    () => new Set(creatableMemberships.map((membership) => membership.clubId)),
+    [creatableMemberships]
+  );
+  const canManageEvent = (event: ClubEventRecord): boolean => manageableClubIds.has(event.clubId);
   const [payload, setPayload] = useState<ClubEventCreationPayload>(
-    createInitialPayload(creatableMemberships[0]?.clubId ?? "")
+    createInitialPayload(creatableMemberships[0]?.clubId ?? "", creatableMemberships[0]?.city ?? null)
   );
   const [actionState, setActionState] = useState<ClubEventActionState>({
     code: null,
     message: null,
     tone: "idle",
   });
-  const initialSelectedEvent = snapshot.recentEvents.find(canEditEvent) ?? snapshot.recentEvents[0] ?? null;
+  const initialSelectedEvent =
+    snapshot.recentEvents.find((event) => canManageEvent(event) && canEditEvent(event)) ??
+    snapshot.recentEvents[0] ??
+    null;
   const [selectedEventId, setSelectedEventId] = useState<string>(
     initialSelectedEvent?.eventId ?? ""
   );
@@ -221,7 +260,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
     [selectedEventId, snapshot.recentEvents]
   );
   const [updatePayload, setUpdatePayload] = useState<ClubEventUpdatePayload | null>(
-    initialSelectedEvent === null || !canEditEvent(initialSelectedEvent)
+    initialSelectedEvent === null || !canManageEvent(initialSelectedEvent) || !canEditEvent(initialSelectedEvent)
       ? null
       : createUpdatePayload(initialSelectedEvent)
   );
@@ -235,15 +274,33 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
+  useTransientSuccessKey(
+    updateActionState.tone === "success" ? updateActionState.message : null,
+    () => setUpdateActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
+  useTransientSuccessKey(
+    cancelActionState.tone === "success" ? cancelActionState.message : null,
+    () => setCancelActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isUpdatePending, setIsUpdatePending] = useState<boolean>(false);
   const [isCancelPending, setIsCancelPending] = useState<boolean>(false);
   const [isCoverUploading, setIsCoverUploading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"memberships" | "create-event" | "manage-events">("memberships");
+  const [isEditFormOpen, setIsEditFormOpen] = useState<boolean>(false);
 
   const handleSelectEvent = (event: ClubEventRecord): void => {
     setSelectedEventId(event.eventId);
-    setUpdatePayload(canEditEvent(event) ? createUpdatePayload(event) : null);
+    setIsEditFormOpen(true);
+    setUpdatePayload(canManageEvent(event) && canEditEvent(event) ? createUpdatePayload(event) : null);
     setUpdateActionState({
       code: null,
       message: null,
@@ -277,7 +334,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
       if (response.status !== null && clubEventRefreshableStatuses.has(response.status)) {
         router.refresh();
-        setPayload(createInitialPayload(payload.clubId));
+        setPayload(createInitialPayload(payload.clubId, findMembershipCity(creatableMemberships, payload.clubId)));
       }
     } catch (error) {
       setActionState({
@@ -314,11 +371,12 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
       setPayload((currentPayload) => ({
         ...currentPayload,
-        coverImageUrl: uploadedImage.publicUrl,
+        coverImageStagingPath: uploadedImage.stagingPath,
+        coverImageUrl: uploadedImage.previewUrl,
       }));
       setActionState({
-        code: "IMAGE_UPLOADED",
-        message: "Event cover image uploaded successfully.",
+        code: "IMAGE_STAGED",
+        message: "Event cover image staged privately. Save the event to keep it as a draft preview.",
         tone: "success",
       });
     } catch (error) {
@@ -336,7 +394,16 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
     const selectedFile = event.target.files?.[0] ?? null;
     event.target.value = "";
 
-    if (selectedFile === null || selectedEvent === null) {
+    if (selectedFile === null) {
+      return;
+    }
+
+    if (selectedEvent === null || !canManageEvent(selectedEvent)) {
+      setUpdateActionState({
+        code: "CLUB_NOT_ALLOWED",
+        message: "This account cannot manage the selected event.",
+        tone: "error",
+      });
       return;
     }
 
@@ -359,12 +426,13 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
           ? null
           : {
             ...currentPayload,
-            coverImageUrl: uploadedImage.publicUrl,
+            coverImageStagingPath: uploadedImage.stagingPath,
+            coverImageUrl: uploadedImage.previewUrl,
           }
       );
       setUpdateActionState({
-        code: "IMAGE_UPLOADED",
-        message: "Event cover image uploaded successfully. Save the event to publish the new image.",
+        code: "IMAGE_STAGED",
+        message: "Event cover image staged privately. Save as draft to keep it private or publish to make it public.",
         tone: "success",
       });
     } catch (error) {
@@ -381,7 +449,12 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
   const handleUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
-    if (updatePayload === null) {
+    if (updatePayload === null || selectedEvent === null || !canManageEvent(selectedEvent)) {
+      setUpdateActionState({
+        code: "CLUB_NOT_ALLOWED",
+        message: "This account cannot manage the selected event.",
+        tone: "error",
+      });
       return;
     }
 
@@ -417,6 +490,19 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
   };
 
   const handleCancelEvent = async (event: ClubEventRecord): Promise<void> => {
+    if (!canManageEvent(event)) {
+      setCancelActionState({
+        code: "CLUB_NOT_ALLOWED",
+        message: "This account cannot manage the selected event.",
+        tone: "error",
+      });
+      return;
+    }
+
+    if (!window.confirm(copy.cancelConfirm)) {
+      return;
+    }
+
     setIsCancelPending(true);
     setCancelActionState({
       code: null,
@@ -536,12 +622,15 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                   <select
                     className="field-input"
                     disabled={isPending}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextClubId = event.target.value;
+                      const nextCity = findMembershipCity(creatableMemberships, nextClubId);
                       setPayload((currentPayload) => ({
                         ...currentPayload,
-                        clubId: event.target.value,
-                      }))
-                    }
+                        city: nextCity ?? "",
+                        clubId: nextClubId,
+                      }));
+                    }}
                     value={payload.clubId}
                   >
                     {creatableMemberships.map((membership) => (
@@ -572,13 +661,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     <span className="field-label">{copy.city}</span>
                     <input
                       className="field-input"
-                      disabled={isPending}
-                      onChange={(event) =>
-                        setPayload((currentPayload) => ({
-                          ...currentPayload,
-                          city: event.target.value,
-                        }))
-                      }
+                      disabled
                       value={payload.city}
                     />
                   </label>
@@ -631,6 +714,25 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     }
                     value={payload.description}
                   />
+                </label>
+
+                <label className="field">
+                  <span className="field-label">{copy.ticketUrl}</span>
+                  <input
+                    className="field-input"
+                    disabled={isPending}
+                    inputMode="url"
+                    onChange={(event) =>
+                      setPayload((currentPayload) => ({
+                        ...currentPayload,
+                        ticketUrl: event.target.value,
+                      }))
+                    }
+                    placeholder="https://"
+                    type="url"
+                    value={payload.ticketUrl}
+                  />
+                  <span className="field-help">{copy.ticketUrlHint}</span>
                 </label>
 
                 <div className="detail-grid">
@@ -751,6 +853,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
                 <EventRulesBuilder
                   disabled={isPending}
+                  locale={locale}
                   onChange={(value) =>
                     setPayload((currentPayload) => ({
                       ...currentPayload,
@@ -770,15 +873,23 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
         </div>
       </section>
 
-      <section className="panel" style={{ display: activeTab !== "manage-events" ? "none" : undefined }}>
+      <section className="panel" style={{ display: activeTab !== "manage-events" || !isEditFormOpen ? "none" : undefined }}>
         <div className="review-card-header">
           <div className="stack-sm">
+            <button
+              className="button button-ghost"
+              onClick={() => setIsEditFormOpen(false)}
+              style={{ alignSelf: "flex-start", marginBottom: 4 }}
+              type="button"
+            >
+              {locale === "fi" ? "← Takaisin tapahtumiin" : "← Back to events"}
+            </button>
             <div className="eyebrow">{copy.manageEvent}</div>
             <h3 className="section-title">{copy.updateEventTitle}</h3>
             <p className="muted-text">{copy.updateEventBody}</p>
           </div>
           {selectedEvent !== null ? (
-            <span className={getClubEventStatusClassName(selectedEvent.status)}>{selectedEvent.status}</span>
+            <span className={getClubEventStatusClassName(selectedEvent.status)}>{formatEventStatus(selectedEvent.status, locale)}</span>
           ) : null}
         </div>
 
@@ -802,7 +913,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                   value={selectedEvent.eventId}
                 >
                   {snapshot.recentEvents.map((event) => (
-                    <option disabled={!canEditEvent(event)} key={event.eventId} value={event.eventId}>
+                    <option disabled={!canManageEvent(event) || !canEditEvent(event)} key={event.eventId} value={event.eventId}>
                       {event.name}
                     </option>
                   ))}
@@ -813,9 +924,13 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
             {updatePayload === null ? (
               <article className="panel panel-warning">
                 <p className="muted-text">
-                  {locale === "fi"
-                    ? "Päättyneet ja perutut tapahtumat näkyvät täällä historiassa, mutta niitä ei voi enää muokata."
-                    : "Completed and cancelled events stay visible here for history, but they can no longer be edited."}
+                  {selectedEvent !== null && !canManageEvent(selectedEvent)
+                    ? locale === "fi"
+                      ? "Tapahtuma näkyy tässä jäsenyydessä, mutta tällä tilillä ei ole järjestäjäoikeutta sen muokkaamiseen."
+                      : "This event is visible through your membership, but this account does not have organizer access to edit it."
+                    : locale === "fi"
+                      ? "Päättyneet ja perutut tapahtumat näkyvät täällä historiassa, mutta niitä ei voi enää muokata."
+                      : "Completed and cancelled events stay visible here for history, but they can no longer be edited."}
                 </p>
               </article>
             ) : (
@@ -873,7 +988,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                     <span className="field-label">{copy.name}</span>
                     <input
                       className="field-input"
-                      disabled={isUpdatePending}
+                      disabled={isUpdatePending || !canEditEventName(selectedEvent)}
                       onChange={(event) =>
                         setUpdatePayload((currentPayload) =>
                           currentPayload === null
@@ -886,23 +1001,20 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                       }
                       value={updatePayload.name}
                     />
+                    {!canEditEventName(selectedEvent) ? (
+                      <span className="field-help">
+                        {locale === "fi"
+                          ? "Käynnissä olevan tapahtuman nimeä ei voi enää muuttaa."
+                          : "Active event names can no longer be changed."}
+                      </span>
+                    ) : null}
                   </label>
 
                   <label className="field">
                     <span className="field-label">{copy.city}</span>
                     <input
                       className="field-input"
-                      disabled={isUpdatePending}
-                      onChange={(event) =>
-                        setUpdatePayload((currentPayload) =>
-                          currentPayload === null
-                            ? null
-                            : {
-                              ...currentPayload,
-                              city: event.target.value,
-                            }
-                        )
-                      }
+                      disabled
                       value={updatePayload.city}
                     />
                   </label>
@@ -925,6 +1037,29 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
                 }
                 value={updatePayload.description}
               />
+            </label>
+
+            <label className="field">
+              <span className="field-label">{copy.ticketUrl}</span>
+              <input
+                className="field-input"
+                disabled={isUpdatePending}
+                inputMode="url"
+                onChange={(event) =>
+                  setUpdatePayload((currentPayload) =>
+                    currentPayload === null
+                      ? null
+                      : {
+                        ...currentPayload,
+                        ticketUrl: event.target.value,
+                      }
+                  )
+                }
+                placeholder="https://"
+                type="url"
+                value={updatePayload.ticketUrl}
+              />
+              <span className="field-help">{copy.ticketUrlHint}</span>
             </label>
 
             <div className="detail-grid">
@@ -1069,6 +1204,7 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
 
                 <EventRulesBuilder
                   disabled={isUpdatePending}
+                  locale={locale}
                   onChange={(value) =>
                     setUpdatePayload((currentPayload) =>
                       currentPayload === null
@@ -1121,65 +1257,67 @@ export const ClubEventsPanel = ({ locale, snapshot }: ClubEventsPanelProps) => {
             <p className="muted-text">{copy.recentEventsEmpty}</p>
           </article>
         ) : (
-          <div className="content-grid">
-            {snapshot.recentEvents.map((event) => (
-              <article
-                key={event.eventId}
-                className={`panel review-card-compact event-management-card ${event.eventId === selectedEventId ? "event-management-card-active" : ""}`}
-              >
-                <div className="stack-sm">
-                  <div className="review-card-header">
-                    <div className="stack-sm">
-                      <p className="card-title">{event.name}</p>
-                      <p className="muted-text">{formatClubEventMeta(event)}</p>
-                    </div>
-                    <span className={getClubEventStatusClassName(event.status)}>{event.status}</span>
-                  </div>
-                  <div className="event-stat-row">
-                    <span className="event-stat">
-                      <strong>{event.registeredParticipantCount}</strong>
-                      <span>{copy.registered}</span>
-                    </span>
-                    <span className="event-stat">
-                      <strong>{event.joinedVenueCount}</strong>
-                      <span>venues</span>
-                    </span>
-                    <span className="event-stat">
-                      <strong>{event.minimumStampsRequired}</strong>
-                      <span>stamps</span>
-                    </span>
-                  </div>
-                  <p className="muted-text">
-                    {formatClubEventDateTime(event.startAt)} to {formatClubEventDateTime(event.endAt)}
-                  </p>
-                  <p className="muted-text">
-                    Join deadline {formatClubEventDateTime(event.joinDeadlineAt)}
-                  </p>
-                  <p className="muted-text">
-                    {event.maxParticipants === null ? "Unlimited capacity" : `${event.maxParticipants} max participants`}
-                    {event.createdByEmail !== null ? ` · Created by ${event.createdByEmail}` : ""}
-                  </p>
-                  <div className="button-row">
-                    <button
-                      className="button button-secondary"
-                      disabled={!canEditEvent(event)}
-                      onClick={() => handleSelectEvent(event)}
-                      type="button"
-                    >
-                      Edit details
-                    </button>
-                    <button
-                      className="button button-danger"
-                      disabled={!canCancelEvent(event) || isCancelPending}
-                      onClick={() => void handleCancelEvent(event)}
-                      type="button"
-                    >
-                      {copy.cancel}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
+          <div className="panel-table-wrap">
+            <table className="panel-table">
+              <thead>
+                <tr>
+                  <th>{locale === "fi" ? "Tapahtuma" : "Event"}</th>
+                  <th>{locale === "fi" ? "Tila" : "Status"}</th>
+                  <th>{locale === "fi" ? "Osallistujat" : "Participants"}</th>
+                  <th>{locale === "fi" ? "Rastit / leimat" : "Venues / stamps"}</th>
+                  <th>{locale === "fi" ? "Ajankohta" : "Date range"}</th>
+                  <th>{locale === "fi" ? "Toiminnot" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.recentEvents.map((event) => (
+                  <tr key={event.eventId} className={event.eventId === selectedEventId ? "panel-table-row-active" : undefined}>
+                    <td>
+                      <span>{event.name}</span>
+                      <span className="record-meta">{formatClubEventMeta(event)}</span>
+                      {event.createdByEmail !== null ? (
+                        <span className="record-meta">{locale === "fi" ? "Luonut" : "By"} {event.createdByEmail}</span>
+                      ) : null}
+                    </td>
+                    <td>
+                      <span className={getClubEventStatusClassName(event.status)}>{formatEventStatus(event.status, locale)}</span>
+                    </td>
+                    <td className="record-meta">
+                      {event.registeredParticipantCount} {locale === "fi" ? "ilm." : "reg."}
+                      {event.maxParticipants !== null ? ` / ${event.maxParticipants}` : ""}
+                    </td>
+                    <td className="record-meta">
+                      {event.joinedVenueCount} {locale === "fi" ? "rastia" : "venues"} · {event.minimumStampsRequired} {locale === "fi" ? "leimaa" : "stamps"}
+                    </td>
+                    <td className="record-meta">
+                      <span>{formatClubEventDateTime(event.startAt)}</span>
+                      <span> – {formatClubEventDateTime(event.endAt)}</span>
+                      <span className="record-meta">{locale === "fi" ? "Viim." : "Deadline"} {formatClubEventDateTime(event.joinDeadlineAt)}</span>
+                    </td>
+                    <td>
+                      <div className="admin-users-actions">
+                        <button
+                          className="button button-secondary"
+                          disabled={!canManageEvent(event) || !canEditEvent(event)}
+                          onClick={() => handleSelectEvent(event)}
+                          type="button"
+                        >
+                          {locale === "fi" ? "Muokkaa" : "Edit"}
+                        </button>
+                        <button
+                          className="button button-danger"
+                          disabled={!canManageEvent(event) || !canCancelEvent(event) || isCancelPending}
+                          onClick={() => void handleCancelEvent(event)}
+                          type="button"
+                        >
+                          {copy.cancel}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

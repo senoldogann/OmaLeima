@@ -22,6 +22,14 @@ export class ClubRewardValidationError extends Error {}
 
 export const isUuid = (value: string): boolean => uuidPattern.test(value);
 
+export const parseRewardTierIdOrThrow = (value: unknown): string => {
+  if (typeof value !== "string" || !isUuid(value)) {
+    throw new ClubRewardValidationError("rewardTierId must be a valid UUID.");
+  }
+
+  return value;
+};
+
 const parseInventoryTotalOrThrow = (value: string): number | null => {
   if (value.trim().length === 0) {
     return null;
@@ -102,9 +110,7 @@ export const parseRewardTierUpdatePayloadOrThrow = (
   inventoryTotalValue: number | null;
   requiredStampCountValue: number;
 } => {
-  if (typeof body.rewardTierId !== "string" || !isUuid(body.rewardTierId)) {
-    throw new ClubRewardValidationError("rewardTierId must be a valid UUID.");
-  }
+  const rewardTierId = parseRewardTierIdOrThrow(body.rewardTierId);
 
   if (
     typeof body.title !== "string" ||
@@ -129,7 +135,7 @@ export const parseRewardTierUpdatePayloadOrThrow = (
     inventoryTotalValue: parseInventoryTotalOrThrow(body.inventoryTotal),
     requiredStampCount: body.requiredStampCount,
     requiredStampCountValue: parseRequiredStampCountOrThrow(body.requiredStampCount),
-    rewardTierId: body.rewardTierId,
+    rewardTierId,
     rewardType: assertRewardTypeOrThrow(body.rewardType),
     status: assertRewardStatusOrThrow(body.status),
     title: body.title,

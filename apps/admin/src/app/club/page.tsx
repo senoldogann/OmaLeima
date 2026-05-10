@@ -9,6 +9,8 @@ import { fetchClubEventsSnapshotAsync } from "@/features/club-events/read-model"
 import { fetchClubRewardsSnapshotAsync } from "@/features/club-rewards/read-model";
 import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
 import { DashboardShortcutsGrid } from "@/features/dashboard/components/dashboard-shortcuts-grid";
+import { getDashboardLocaleAsync } from "@/features/dashboard/i18n";
+import type { DashboardLocale } from "@/features/dashboard/i18n";
 import {
   buildClubDashboardShortcuts,
   getClubDashboardNavigationItems,
@@ -25,28 +27,28 @@ type ClubOverviewSource = {
   visibleEventCount: number;
 };
 
-const buildClubOverviewMetrics = (source: ClubOverviewSource): DashboardOverviewMetric[] => [
+const buildClubOverviewMetrics = (source: ClubOverviewSource, locale: DashboardLocale): DashboardOverviewMetric[] => [
   {
-    description: "Active clubs visible to this organizer session.",
-    label: "Managed clubs",
+    description: locale === "fi" ? "Tässä järjestäjäistunnossa näkyvät aktiiviset klubit." : "Active clubs visible to this organizer session.",
+    label: locale === "fi" ? "Hallinnoidut klubit" : "Managed clubs",
     tone: "accent",
     value: String(source.managedClubCount),
   },
   {
-    description: "Operational events currently listed for your clubs.",
-    label: "Listed events",
+    description: locale === "fi" ? "Klubeillesi parhaillaan listatut tapahtumat." : "Operational events currently listed for your clubs.",
+    label: locale === "fi" ? "Listatut tapahtumat" : "Listed events",
     tone: "neutral",
     value: String(source.visibleEventCount),
   },
   {
-    description: "Students eligible to physically claim a reward right now.",
-    label: "Reward claims ready",
+    description: locale === "fi" ? "Opiskelijat, jotka voivat lunastaa palkinnon heti." : "Students eligible to physically claim a reward right now.",
+    label: locale === "fi" ? "Palkinnon lunastus valmis" : "Reward claims ready",
     tone: source.claimableCandidateCount > 0 ? "warning" : "neutral",
     value: String(source.claimableCandidateCount),
   },
   {
-    description: "Open fraud signals scoped to your club events.",
-    label: "Open fraud signals",
+    description: locale === "fi" ? "Klubisi tapahtumiin kohdistuvat avoimet väärinkäyttösignaalit." : "Open fraud signals scoped to your club events.",
+    label: locale === "fi" ? "Väärinkäyttösignaalit" : "Open fraud signals",
     tone: source.openFraudSignalCount > 0 ? "warning" : "neutral",
     value: String(source.openFraudSignalCount),
   },
@@ -54,7 +56,10 @@ const buildClubOverviewMetrics = (source: ClubOverviewSource): DashboardOverview
 
 export default async function ClubPage() {
   const supabase = await createServerComponentClient();
-  const context = await fetchClubEventContextAsync(supabase);
+  const [context, locale] = await Promise.all([
+    fetchClubEventContextAsync(supabase),
+    getDashboardLocaleAsync(),
+  ]);
   const canManageRewards = context.memberships.some((membership) => membership.canCreateEvents);
 
   const [
@@ -82,7 +87,7 @@ export default async function ClubPage() {
     openFraudSignalCount: fraudSnapshot.openFraudSignalCount,
     rewardTierCount: rewardsSnapshot === null ? 0 : rewardsSnapshot.summary.totalTierCount,
     visibleEventCount: eventsSnapshot.summary.visibleEventCount,
-  });
+  }, locale);
 
   const metrics = buildClubOverviewMetrics({
     canManageRewards,
@@ -90,12 +95,13 @@ export default async function ClubPage() {
     managedClubCount: eventsSnapshot.summary.managedClubCount,
     openFraudSignalCount: fraudSnapshot.openFraudSignalCount,
     visibleEventCount: eventsSnapshot.summary.visibleEventCount,
-  });
+  }, locale);
 
   return (
     <DashboardShell
       activeHref="/club"
       areaLabel="Club operations"
+      locale={locale}
       navigationItems={getClubDashboardNavigationItems(canManageRewards)}
       roleLabel={context.access.primaryRole}
       subtitle="Configure club-owned events, track reward flow, and keep organizer-facing moderation surfaces in one place."

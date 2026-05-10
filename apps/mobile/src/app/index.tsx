@@ -6,11 +6,12 @@ import { AccessIssueCard } from "@/features/auth/components/access-issue-card";
 import { InfoCard } from "@/components/info-card";
 import { useSessionAccessQuery } from "@/features/auth/session-access";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
 import { useSession } from "@/providers/session-provider";
 
 export default function IndexRoute() {
-  const { copy } = useUiPreferences();
+  const { copy, language } = useUiPreferences();
   const styles = useThemeStyles(createStyles);
   const { isAuthenticated, isLoading, session } = useSession();
   const accessQuery = useSessionAccessQuery({
@@ -51,7 +52,7 @@ export default function IndexRoute() {
       <AppScreen>
         <AccessIssueCard
           title={copy.student.accessChecking}
-          detail={accessQuery.error.message}
+          detail={createUserSafeErrorMessage(accessQuery.error, language, "access")}
           retryLabel={copy.common.retry}
           onRetry={() => void accessQuery.refetch()}
         />

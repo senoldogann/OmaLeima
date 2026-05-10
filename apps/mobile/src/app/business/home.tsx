@@ -1,50 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
 import { AppScreen } from "@/components/app-screen";
-import { CoverImageSurface } from "@/components/cover-image-surface";
 import { InfoCard } from "@/components/info-card";
-import { StatusBadge } from "@/components/status-badge";
 import { AnnouncementFeedSection } from "@/features/announcements/announcement-feed-section";
+import { MobileRoleSwitchCard } from "@/features/auth/components/mobile-role-switch-card";
+import {
+  markBusinessOnboardingSeenAsync,
+  readBusinessOnboardingSeenAsync,
+} from "@/features/business/business-onboarding";
+import { BusinessOnboardingModal } from "@/features/business/components/business-onboarding-modal";
 import { useBusinessHomeOverviewQuery } from "@/features/business/business-home";
-import type { BusinessJoinedEventSummary } from "@/features/business/types";
-import { getEventCoverSource, getFallbackCoverSource } from "@/features/events/event-visuals";
-import { AutoAdvancingRail } from "@/features/foundation/components/auto-advancing-rail";
 import type { MobileTheme } from "@/features/foundation/theme";
+import { createUserSafeErrorMessage } from "@/features/foundation/user-safe-error";
 import { useThemeStyles, useUiPreferences } from "@/features/preferences/ui-preferences-provider";
-import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/session-provider";
 
 const formatDateTime = (formatter: Intl.DateTimeFormat, value: string): string =>
   formatter.format(new Date(value));
 
-const getTimelineBadge = (
-  event: BusinessJoinedEventSummary,
-  liveLabel: string,
-  upcomingLabel: string,
-  completedLabel: string
-): { label: string; state: "ready" | "pending" | "warning" } => {
-  switch (event.timelineState) {
-    case "ACTIVE":
-      return { label: liveLabel, state: "ready" };
-    case "UPCOMING":
-      return { label: upcomingLabel, state: "pending" };
-    case "COMPLETED":
-      return { label: completedLabel, state: "warning" };
-  }
-};
-
 export default function BusinessHomeScreen() {
   const router = useRouter();
-  const { width: windowWidth } = useWindowDimensions();
   const styles = useThemeStyles(createStyles);
   const { copy, language, localeTag, theme } = useUiPreferences();
   const { session } = useSession();
   const userId = session?.user.id ?? null;
-  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [isBusinessOnboardingVisible, setIsBusinessOnboardingVisible] = useState<boolean>(false);
 
   const formatter = useMemo(
     () =>
@@ -94,70 +77,83 @@ export default function BusinessHomeScreen() {
     isEnabled: userId !== null,
   });
 
+  useEffect(() => {
+    if (userId === null) {
+      setIsBusinessOnboardingVisible(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    readBusinessOnboardingSeenAsync(userId)
+      .then((hasSeenOnboarding) => {
+        if (!isMounted || hasSeenOnboarding) {
+          return;
+        }
+
+        setIsBusinessOnboardingVisible(true);
+      })
+      .catch((error: unknown) => {
+        console.warn("Failed to read business onboarding state.", { error, userId });
+        if (isMounted) {
+          setIsBusinessOnboardingVisible(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
+
   const activeJoinedEvents = homeOverviewQuery.data?.joinedActiveEvents ?? [];
   const joinedUpcomingEvents = homeOverviewQuery.data?.joinedUpcomingEvents ?? [];
   const joinedCompletedEvents = homeOverviewQuery.data?.joinedCompletedEvents ?? [];
   const joinedEvents = [...activeJoinedEvents, ...joinedUpcomingEvents, ...joinedCompletedEvents.slice(0, 2)];
-  const eventRailWidth = Math.min(340, Math.max(260, windowWidth - 96));
-  const eventRailContentStyle = [
-    styles.eventRailContent,
-    joinedEvents.length === 1 ? styles.eventRailContentSingle : null,
-  ];
 
-  const handleSignOutPress = async (): Promise<void> => {
-    setIsSigningOut(true);
-    setSignOutError(null);
+  const handleBusinessOnboardingDismissAsync = async (): Promise<void> => {
+    setIsBusinessOnboardingVisible(false);
 
-    const { error } = await supabase.auth.signOut();
-
-    if (error !== null) {
-      setSignOutError(error.message);
-      setIsSigningOut(false);
+    if (userId === null) {
       return;
     }
 
-    setIsSigningOut(false);
+    try {
+      await markBusinessOnboardingSeenAsync(userId);
+    } catch (error: unknown) {
+      console.warn("Failed to save business onboarding state.", { error, userId });
+    }
   };
 
   return (
     <AppScreen>
-      <View style={styles.screenHeaderRow}>
-        <View style={styles.screenHeaderCopy}>
-          <Text style={styles.screenEyebrow}>{language === "fi" ? "Yritys" : "Business"}</Text>
-          <Text style={styles.screenTitle}>{copy.common.business}</Text>
-          <Text style={styles.metaText}>{copy.business.homeMeta}</Text>
+      {/* App header bar */}
+      <View style={styles.businessHeader}>
+        <View style={styles.businessBrand}>
+          <AppIcon color={theme.colors.lime} name="zap" size={18} />
+          <Text style={styles.businessBrandTitle}>OmaLeima</Text>
         </View>
-        <View style={styles.headerActions}>
-          <Pressable onPress={() => router.push("/business/profile")} style={styles.headerButton}>
-            <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
-            <Text style={styles.headerButtonText}>{copy.business.profileButton}</Text>
-          </Pressable>
-          <Pressable
-            disabled={isSigningOut}
-            onPress={() => void handleSignOutPress()}
-            style={[styles.iconButton, isSigningOut ? styles.disabledButton : null]}
-          >
-            {isSigningOut ? (
-              <ActivityIndicator color={theme.colors.textPrimary} size="small" />
-            ) : (
-              <AppIcon color={theme.colors.textPrimary} name="logout" size={18} />
-            )}
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => router.push("/business/profile" as never)}
+          style={styles.headerIconBtn}
+        >
+          <AppIcon color={theme.colors.textPrimary} name="user" size={18} />
+        </Pressable>
       </View>
-      {signOutError !== null ? <Text style={styles.errorText}>{signOutError}</Text> : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={styles.summaryStrip}>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.lime} name="scan" size={18} />
             <Text style={styles.summaryLabel}>{copy.business.live}</Text>
             <Text style={styles.summaryValue}>{activeJoinedEvents.length}</Text>
           </View>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.textMuted} name="calendar" size={18} />
             <Text style={styles.summaryLabel}>{copy.business.upcoming}</Text>
             <Text style={styles.summaryValue}>{joinedUpcomingEvents.length}</Text>
           </View>
           <View style={styles.summaryCard}>
+            <AppIcon color={theme.colors.textMuted} name="history" size={18} />
             <Text style={styles.summaryLabel}>{labels.past}</Text>
             <Text style={styles.summaryValue}>{joinedCompletedEvents.length}</Text>
           </View>
@@ -172,7 +168,7 @@ export default function BusinessHomeScreen() {
 
       {homeOverviewQuery.error ? (
         <InfoCard eyebrow={copy.common.error} title={labels.errorTitle}>
-          <Text style={styles.bodyText}>{homeOverviewQuery.error.message}</Text>
+          <Text style={styles.bodyText}>{createUserSafeErrorMessage(homeOverviewQuery.error, language, "business")}</Text>
           <Pressable onPress={() => void homeOverviewQuery.refetch()} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{copy.common.retry}</Text>
           </Pressable>
@@ -180,9 +176,20 @@ export default function BusinessHomeScreen() {
       ) : null}
 
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
+        <MobileRoleSwitchCard currentArea="business" />
+      ) : null}
+
+      {!homeOverviewQuery.isLoading && !homeOverviewQuery.error ? (
         <View style={[styles.scannerCard, activeJoinedEvents.length > 0 ? styles.scannerCardReady : null]}>
           <View style={styles.scannerCardHeader}>
-            <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+            {activeJoinedEvents.length > 0 ? (
+              <View style={styles.scannerEyebrowRow}>
+                <View style={styles.liveDot} />
+                <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+              </View>
+            ) : (
+              <Text style={styles.scannerEyebrow}>{copy.business.scanner}</Text>
+            )}
             <Text style={styles.scannerTitle}>
               {activeJoinedEvents.length > 0
                 ? labels.scannerReadyTitle
@@ -230,80 +237,61 @@ export default function BusinessHomeScreen() {
       {!homeOverviewQuery.isLoading && !homeOverviewQuery.error && joinedEvents.length > 0 ? (
         <View style={styles.eventsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>{copy.common.events}</Text>
-            <Text style={styles.sectionTitle}>{labels.joinedEventsTitle}</Text>
+            <View style={styles.sectionHeaderRow}>
+              <AppIcon color={theme.colors.lime} name="calendar" size={14} />
+              <Text style={styles.sectionTitle}>{labels.joinedEventsTitle}</Text>
+            </View>
+            <Text style={styles.sectionCount}>{joinedEvents.length}</Text>
           </View>
-          <AutoAdvancingRail
-            contentContainerStyle={eventRailContentStyle}
-            intervalMs={3500}
-            itemGap={12}
-            items={joinedEvents}
-            itemWidth={eventRailWidth}
-            keyExtractor={(event: BusinessJoinedEventSummary) => event.eventVenueId}
-            railStyle={styles.eventRail}
-            renderItem={(event: BusinessJoinedEventSummary) => {
-              const timelineBadge = getTimelineBadge(
-                event,
-                copy.business.live,
-                copy.business.upcoming,
-                labels.completedStatus
-              );
-              const timelineLabel =
-                event.timelineState === "ACTIVE"
-                  ? labels.liveEnds
-                  : event.timelineState === "UPCOMING"
-                    ? labels.upcomingStarts
-                    : labels.completedEnded;
+          {joinedEvents.map((event) => {
+            const isActive = event.timelineState === "ACTIVE";
+            const isUpcoming = event.timelineState === "UPCOMING";
+            const accentColor = isActive
+              ? theme.colors.lime
+              : isUpcoming
+                ? theme.colors.warning
+                : theme.colors.textMuted;
+            const statusLabel = isActive
+              ? copy.business.live
+              : isUpcoming
+                ? copy.business.upcoming
+                : labels.completedStatus;
+            const timeLabel = isActive
+              ? `${labels.liveEnds} ${formatDateTime(formatter, event.endAt)}`
+              : isUpcoming
+                ? `${labels.upcomingStarts} ${formatDateTime(formatter, event.startAt)}`
+                : `${labels.completedEnded} ${formatDateTime(formatter, event.endAt)}`;
 
-              return (
-                <Pressable
-                  onPress={() => router.push("/business/events")}
-                  style={({ pressed }) => [
-                    styles.eventVisualCard,
-                    pressed ? styles.eventVisualCardPressed : null,
-                  ]}
-                >
-                  <CoverImageSurface
-                    fallbackSource={getFallbackCoverSource("eventDiscovery")}
-                    imageStyle={styles.eventVisualImage}
-                    source={getEventCoverSource(event.coverImageUrl, `${event.eventId}:${event.eventName}`)}
-                    style={styles.eventVisualHero}
-                  >
-                    <View style={styles.eventVisualOverlay} />
-                    <View style={styles.eventVisualContent}>
-                      <View style={styles.eventVisualHeader}>
-                        <StatusBadge label={timelineBadge.label} state={timelineBadge.state} />
+            return (
+              <Pressable
+                key={event.eventVenueId}
+                onPress={() =>
+                  router.push({
+                    pathname: "/business/event-detail",
+                    params: { businessId: event.businessId, eventId: event.eventId },
+                  })
+                }
+                style={[styles.eventCard, isActive ? styles.eventCardActive : null]}
+              >
+                <View style={[styles.eventCardAccent, { backgroundColor: accentColor }]} />
+                <View style={styles.eventCardInner}>
+                  <View style={styles.eventCardTop}>
+                    {isActive ? (
+                      <View style={styles.eventLiveRow}>
+                        <View style={[styles.eventLiveDot, { backgroundColor: accentColor }]} />
+                        <Text style={[styles.eventStatusLabel, { color: accentColor }]}>{statusLabel}</Text>
                       </View>
-                      <View style={styles.eventVisualCopy}>
-                        <Text numberOfLines={2} style={styles.eventVisualTitle}>
-                          {event.eventName}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.eventVisualMeta}>
-                          {event.businessName} · {event.city}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.eventVisualMeta}>
-                          {timelineLabel}{" "}
-                          {formatDateTime(
-                            formatter,
-                            event.timelineState === "ACTIVE" ? event.endAt : event.startAt
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-                  </CoverImageSurface>
-                  {event.stampLabel ? (
-                    <Text numberOfLines={1} style={styles.eventVisualStamp}>
-                      {event.stampLabel}
-                    </Text>
-                  ) : (
-                    <View style={styles.eventVisualStampSpacer} />
-                  )}
-                </Pressable>
-              );
-            }}
-            showsIndicators={false}
-          />
-
+                    ) : (
+                      <Text style={[styles.eventStatusLabel, { color: accentColor }]}>{statusLabel}</Text>
+                    )}
+                    <AppIcon color={theme.colors.textMuted} name="chevron-right" size={14} />
+                  </View>
+                  <Text numberOfLines={1} style={styles.eventCardTitle}>{event.eventName}</Text>
+                  <Text numberOfLines={1} style={styles.eventCardMeta}>{timeLabel}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
           <Pressable onPress={() => router.push("/business/events")} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>{labels.viewAllEvents}</Text>
           </Pressable>
@@ -322,6 +310,10 @@ export default function BusinessHomeScreen() {
         viewAllLabel={language === "fi" ? "Avaa tiedotevirta" : "Open update feed"}
       />
 
+      <BusinessOnboardingModal
+        isVisible={isBusinessOnboardingVisible}
+        onDismiss={() => void handleBusinessOnboardingDismissAsync()}
+      />
     </AppScreen>
   );
 }
@@ -348,82 +340,59 @@ const createStyles = (theme: MobileTheme) =>
     disabledButton: {
       opacity: 0.62,
     },
-    errorText: {
-      color: theme.colors.danger,
-      fontFamily: theme.typography.families.medium,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-    },
-    eventRail: {
-      marginHorizontal: -2,
-    },
-    eventRailContent: {
-      paddingHorizontal: 2,
-    },
-    eventRailContentSingle: {
-      flexGrow: 1,
-      justifyContent: "center",
-      paddingHorizontal: 0,
-    },
-    eventVisualCard: {
-      backgroundColor: theme.colors.surfaceL2,
+    eventCard: {
+      backgroundColor: theme.colors.surfaceL1,
       borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.inner,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      gap: 10,
-      height: 278,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      flexDirection: "row",
       overflow: "hidden",
-      padding: 10,
     },
-    eventVisualCardPressed: {
-      transform: [{ translateY: 1.5 }, { scale: 0.992 }],
+    eventCardActive: {
+      backgroundColor: theme.colors.limeSurface,
+      borderColor: theme.colors.limeBorder,
     },
-    eventVisualContent: {
+    eventCardAccent: {
+      width: 4,
+    },
+    eventCardInner: {
       flex: 1,
-      justifyContent: "space-between",
-      padding: 14,
-    },
-    eventVisualCopy: {
       gap: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
     },
-    eventVisualHeader: {
-      alignItems: "flex-end",
+    eventCardTop: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
     },
-    eventVisualHero: {
-      borderRadius: theme.radius.inner,
-      height: 214,
-      overflow: "hidden",
-      position: "relative",
+    eventCardTitle: {
+      color: theme.colors.textPrimary,
+      fontFamily: theme.typography.families.semibold,
+      fontSize: theme.typography.sizes.body,
+      lineHeight: theme.typography.lineHeights.body,
     },
-    eventVisualImage: {
-      borderRadius: theme.radius.inner,
-    },
-    eventVisualMeta: {
-      color: "rgba(248, 250, 245, 0.78)",
+    eventCardMeta: {
+      color: theme.colors.textMuted,
       fontFamily: theme.typography.families.medium,
       fontSize: theme.typography.sizes.bodySmall,
       lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    eventVisualOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0, 0, 0, 0.54)",
+    eventLiveRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 5,
     },
-    eventVisualStamp: {
-      color: theme.colors.lime,
+    eventLiveDot: {
+      borderRadius: 999,
+      height: 6,
+      width: 6,
+    },
+    eventStatusLabel: {
       fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.caption,
-      letterSpacing: 1,
-      lineHeight: theme.typography.lineHeights.caption,
+      fontSize: theme.typography.sizes.eyebrow,
+      letterSpacing: 0.8,
       textTransform: "uppercase",
-    },
-    eventVisualStampSpacer: {
-      minHeight: theme.typography.lineHeights.caption,
-    },
-    eventVisualTitle: {
-      color: "#F8FAF5",
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.subtitle,
-      lineHeight: theme.typography.lineHeights.subtitle,
     },
     metaText: {
       color: theme.colors.textMuted,
@@ -446,33 +415,24 @@ const createStyles = (theme: MobileTheme) =>
       lineHeight: theme.typography.lineHeights.body,
       textAlign: "center",
     },
-    headerButton: {
-      alignItems: "center",
-      backgroundColor: theme.colors.surfaceL2,
-      borderColor: theme.colors.borderDefault,
-      borderRadius: theme.radius.button,
-      borderWidth: theme.mode === "light" ? 1 : 0,
-      flexDirection: "row",
-      gap: 8,
-      justifyContent: "center",
-      minHeight: 42,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-    },
-    headerActions: {
+    businessBrand: {
       alignItems: "center",
       flexDirection: "row",
       gap: 8,
     },
-    headerButtonText: {
+    businessBrandTitle: {
       color: theme.colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: theme.typography.families.semibold,
-      fontSize: theme.typography.sizes.bodySmall,
-      lineHeight: theme.typography.lineHeights.bodySmall,
-      textAlign: "center",
+      fontFamily: theme.typography.families.extrabold,
+      fontSize: 20,
+      letterSpacing: -0.5,
+      lineHeight: 26,
     },
-    iconButton: {
+    businessHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    headerIconBtn: {
       alignItems: "center",
       backgroundColor: theme.colors.surfaceL2,
       borderColor: theme.colors.borderDefault,
@@ -481,34 +441,6 @@ const createStyles = (theme: MobileTheme) =>
       height: 42,
       justifyContent: "center",
       width: 42,
-    },
-    screenHeaderCopy: {
-      flex: 1,
-      gap: 6,
-    },
-    screenHeaderRow: {
-      alignItems: "flex-start",
-      flexDirection: "row",
-      gap: 12,
-      marginBottom: 4,
-    },
-    screenHeader: {
-      gap: 6,
-      marginBottom: 4,
-    },
-    screenEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    screenTitle: {
-      color: theme.colors.textPrimary,
-      fontFamily: theme.typography.families.extrabold,
-      fontSize: theme.typography.sizes.titleLarge,
-      letterSpacing: -0.8,
-      lineHeight: theme.typography.lineHeights.titleLarge,
     },
     scannerCard: {
       backgroundColor: theme.colors.surfaceL1,
@@ -519,7 +451,7 @@ const createStyles = (theme: MobileTheme) =>
       padding: 18,
     },
     scannerCardReady: {
-      backgroundColor: theme.mode === "dark" ? "rgba(200, 255, 71, 0.06)" : "rgba(200, 255, 71, 0.12)",
+      backgroundColor: theme.colors.limeSurface,
       borderColor: theme.colors.limeBorder,
     },
     scannerCardHeader: {
@@ -542,15 +474,21 @@ const createStyles = (theme: MobileTheme) =>
     eventsSection: {
       gap: 14,
     },
-    sectionHeader: {
-      gap: 4,
+    sectionCount: {
+      color: theme.colors.textMuted,
+      fontFamily: theme.typography.families.medium,
+      fontSize: theme.typography.sizes.bodySmall,
+      lineHeight: theme.typography.lineHeights.bodySmall,
     },
-    sectionEyebrow: {
-      color: theme.colors.lime,
-      fontFamily: theme.typography.families.bold,
-      fontSize: theme.typography.sizes.eyebrow,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
+    sectionHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    sectionHeaderRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -593,6 +531,17 @@ const createStyles = (theme: MobileTheme) =>
     summaryStrip: {
       flexDirection: "row",
       gap: 10,
+    },
+    scannerEyebrowRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    liveDot: {
+      backgroundColor: theme.colors.lime,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
     },
     summaryValue: {
       color: theme.colors.lime,

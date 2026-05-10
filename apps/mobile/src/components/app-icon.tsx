@@ -1,6 +1,7 @@
 import { Svg, Circle, Path, Rect } from "react-native-svg";
 
 type AppIconName =
+  | "apple"
   | "google"
   | "business"
   | "user"
@@ -8,6 +9,9 @@ type AppIconName =
   | "logout"
   | "bell"
   | "check"
+  | "check-circle"
+  | "circle"
+  | "clock"
   | "mail"
   | "scan"
   | "history"
@@ -17,11 +21,17 @@ type AppIconName =
   | "globe"
   | "support"
   | "send"
+  | "gift"
+  | "star"
   | "tools"
   | "x"
   | "chevron-left"
   | "chevron-right"
-  | "chevron-down";
+  | "chevron-down"
+  | "id-card"
+  | "search"
+  | "filter"
+  | "zap";
 
 type AppIconProps = {
   name: AppIconName;
@@ -31,6 +41,19 @@ type AppIconProps = {
 
 export const AppIcon = ({ name, color, size }: AppIconProps) => {
   switch (name) {
+    case "apple":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M16.2 12.35c-.03-2.18 1.78-3.25 1.86-3.3-1.03-1.5-2.62-1.7-3.17-1.72-1.34-.14-2.64.8-3.32.8-.7 0-1.75-.78-2.88-.75-1.47.02-2.84.87-3.6 2.2-1.55 2.7-.4 6.66 1.1 8.84.75 1.07 1.62 2.27 2.76 2.22 1.1-.05 1.52-.71 2.86-.71 1.33 0 1.72.71 2.88.69 1.2-.03 1.95-1.08 2.67-2.16.86-1.22 1.2-2.42 1.21-2.48-.03-.01-2.34-.9-2.37-3.63Z"
+            fill={color}
+          />
+          <Path
+            d="M14.02 5.9c.6-.73 1-1.74.9-2.75-.86.04-1.93.6-2.55 1.32-.56.64-1.05 1.69-.92 2.67.97.08 1.95-.5 2.57-1.24Z"
+            fill={color}
+          />
+        </Svg>
+      );
     case "google":
       return (
         <Svg height={size} viewBox="0 0 24 24" width={size}>
@@ -411,6 +434,152 @@ export const AppIcon = ({ name, color, size }: AppIconProps) => {
             strokeLinejoin="round"
             strokeWidth="2"
           />
+        </Svg>
+      );
+    case "check-circle":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="12" fill={color} opacity={0.22} r="8" />
+          <Path
+            d="m8.2 12.3 2.35 2.35 5.25-5.25"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </Svg>
+      );
+    case "circle":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "clock":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="12" cy="12" fill={color} opacity={0.14} r="8" />
+          <Path
+            d="M12 7.5v4.75l2.75 1.6"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "gift":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Rect
+            fill={color}
+            height="11"
+            opacity={0.14}
+            rx="2"
+            width="16"
+            x="4"
+            y="9"
+          />
+          <Path
+            d="M4.5 9.5h15v3h-15v-3ZM6 12.5V19a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-6.5M12 9.5V20M12 8.8c-.85-2.65-2.18-4.05-3.67-4.05-.96 0-1.83.68-1.83 1.62 0 1.48 1.93 2.43 5.5 2.43ZM12 8.8c.85-2.65 2.18-4.05 3.67-4.05.96 0 1.83.68 1.83 1.62 0 1.48-1.93 2.43-5.5 2.43Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "star":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M12 2.5l2.63 5.33 5.88.86-4.26 4.15 1.01 5.86L12 15.97l-5.26 2.73 1.01-5.86L3.49 8.69l5.88-.86L12 2.5Z"
+            fill={color}
+            opacity={0.22}
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </Svg>
+      );
+    case "id-card":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Rect fill={color} height="13" opacity={0.13} rx="2.5" width="18" x="3" y="5.5" />
+          <Path
+            d="M5.5 5.5h13A2.5 2.5 0 0 1 21 8v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16V8a2.5 2.5 0 0 1 2.5-2.5Z"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <Circle cx="9" cy="11" fill={color} opacity={0.22} r="2.2" />
+          <Path
+            d="M6 16.5c.4-1.9 1.6-2.8 3-2.8s2.6.9 3 2.8"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+          />
+          <Path
+            d="M14.5 10.5h3M14.5 13.5h2"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
+          />
+        </Svg>
+      );
+    case "search":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Circle cx="11" cy="11" fill="none" r="7" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+          <Path d="M16.5 16.5L21 21" fill="none" stroke={color} strokeLinecap="round" strokeWidth="1.8" />
+        </Svg>
+      );
+    case "filter":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path
+            d="M4.5 7h15M7.5 12h9M10 17h4"
+            fill="none"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.9"
+          />
+        </Svg>
+      );
+    case "zap":
+      return (
+        <Svg height={size} viewBox="0 0 24 24" width={size}>
+          <Path d="M13 2L4.09 12.5H11L10 22l9-11.5H13L13 2Z" fill={color} opacity={0.9} />
         </Svg>
       );
   }

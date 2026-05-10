@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { ContactForm } from "@/features/public-site/contact-form";
 import {
   getContactPageContent,
@@ -97,6 +98,16 @@ export const PublicContactPage = ({ locale }: PublicContactPageProps) => {
                 </p>
               </div>
             </article>
+
+            <div className="public-page-aside-visual">
+              <Image
+                alt={locale === "fi" ? "Otetaan yhteyttä" : "Get in touch"}
+                className="public-page-aside-img"
+                height={480}
+                src="/images/public/hero-contact-ota-yhteytta.png"
+                width={480}
+              />
+            </div>
           </aside>
 
           <div className="public-page-form-panel">

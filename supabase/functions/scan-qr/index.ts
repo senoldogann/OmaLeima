@@ -12,6 +12,10 @@ import { createServiceClient, getAuthenticatedUser } from "../_shared/supabase.t
 import { verifyQrToken } from "../_shared/qrJwt.ts";
 import { isOptionalLatitude, isOptionalLongitude, isOptionalUuid, isString } from "../_shared/validation.ts";
 
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<void>) => void;
+};
+
 type ScannerLocation = {
   latitude: number | null;
   longitude: number | null;
@@ -29,6 +33,10 @@ type ScanQrRequest = {
 
 type BusinessStaffRow = {
   business_id: string;
+};
+
+type BusinessRow = {
+  status: string;
 };
 
 type ScannerDeviceRow = {
@@ -62,6 +70,7 @@ type ScanStampResult = {
   existingStampedAt?: string;
   status: string;
   stampCount?: number;
+  requiredStampCount?: number;
   eventName?: string;
   perBusinessLimit?: number;
   stampId?: string;
@@ -88,10 +97,33 @@ const responseMessages: Record<string, string> = {
   VENUE_JOINED_TOO_LATE: "Venue joined this event too late.",
   BUSINESS_STAFF_NOT_ALLOWED: "Scanner is not allowed to scan for this business.",
   SCANNER_DEVICE_NOT_ALLOWED: "Scanner device is not registered for this business.",
+  SCANNER_DEVICE_REQUIRED: "Scanner device registration is required before scanning.",
   SCANNER_PIN_REQUIRED: "Scanner staff PIN is required.",
   SCANNER_PIN_INVALID: "Scanner staff PIN is invalid.",
+  SCANNER_PIN_LOCKED: "Scanner staff PIN is temporarily locked after too many failed attempts.",
   QR_ALREADY_USED_OR_REPLAYED: "QR code was already used.",
   ALREADY_STAMPED: "Leima is already recorded for this student at this venue.",
+  STAMP_CARD_FULL: "Student already has the maximum leimas for this event.",
+};
+
+const responseHttpStatuses: Record<string, number> = {
+  SUCCESS: 200,
+  EVENT_CONTEXT_REQUIRED: 400,
+  EVENT_CONTEXT_MISMATCH: 409,
+  EVENT_NOT_FOUND: 404,
+  EVENT_NOT_ACTIVE: 423,
+  STUDENT_NOT_REGISTERED: 403,
+  VENUE_NOT_IN_EVENT: 403,
+  VENUE_JOINED_TOO_LATE: 409,
+  BUSINESS_STAFF_NOT_ALLOWED: 403,
+  SCANNER_DEVICE_NOT_ALLOWED: 403,
+  SCANNER_DEVICE_REQUIRED: 403,
+  SCANNER_PIN_REQUIRED: 403,
+  SCANNER_PIN_INVALID: 403,
+  SCANNER_PIN_LOCKED: 423,
+  QR_ALREADY_USED_OR_REPLAYED: 409,
+  ALREADY_STAMPED: 409,
+  STAMP_CARD_FULL: 409,
 };
 
 const createResponseMessage = (result: ScanStampResult): string => {
@@ -183,7 +215,7 @@ const persistRewardUnlockNotificationAsync = async (
   }
 
   console.warn("reward_unlock_notification_record_failed", {
-    ...warningContext,
+    unlockedRewardCount: warningContext.unlockedRewardCount,
     notificationError: error.message,
     notificationErrorCode: error.code,
   });
@@ -210,6 +242,7 @@ const sendRewardUnlockPushAsync = async (
     type: "REWARD_UNLOCKED",
     eventId,
     eventName,
+    recipientUserId: studentId,
     rewardTierIds: unlockedRewardTiers.map((rewardTier) => rewardTier.rewardTierId),
     unlockedRewardTiers,
   };
@@ -448,18 +481,41 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
     }
 
+    const { data: businessRow, error: businessError } = await supabase
+      .from("businesses")
+      .select("status")
+      .eq("id", businessId)
+      .maybeSingle<BusinessRow>();
+
+    if (businessError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to validate business status.", {
+        businessError: businessError.message,
+        businessErrorCode: businessError.code,
+        businessId,
+        scannerUserId: user.id,
+      });
+    }
+
+    if (businessRow === null || businessRow.status !== "ACTIVE") {
+      return errorResponse(403, "BUSINESS_NOT_FOUND", "Business is not active.", {
+        businessId,
+        businessStatus: businessRow?.status ?? null,
+        scannerUserId: user.id,
+      });
+    }
+
     if (typeof body.eventId !== "string" || typeof body.eventVenueId !== "string") {
       return jsonResponse({
         status: "EVENT_CONTEXT_REQUIRED",
         message: responseMessages.EVENT_CONTEXT_REQUIRED,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_REQUIRED);
     }
 
     if (body.eventId !== verifiedQrToken.payload.eventId) {
       return jsonResponse({
         status: "EVENT_CONTEXT_MISMATCH",
         message: responseMessages.EVENT_CONTEXT_MISMATCH,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_MISMATCH);
     }
 
     const { data: selectedEventVenueRow, error: selectedEventVenueError } = await supabase
@@ -486,37 +542,42 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return jsonResponse({
         status: "EVENT_CONTEXT_MISMATCH",
         message: responseMessages.EVENT_CONTEXT_MISMATCH,
-      }, 200);
+      }, responseHttpStatuses.EVENT_CONTEXT_MISMATCH);
     }
 
-    if (body.scannerDeviceId !== null) {
-      const { data: scannerDevice, error: scannerDeviceError } = await supabase
-        .from("business_scanner_devices")
-        .select("scanner_user_id,status")
-        .eq("id", body.scannerDeviceId)
-        .eq("business_id", businessId)
-        .maybeSingle<ScannerDeviceRow>();
+    if (body.scannerDeviceId === null) {
+      return jsonResponse({
+        status: "SCANNER_DEVICE_REQUIRED",
+        message: responseMessages.SCANNER_DEVICE_REQUIRED,
+      }, responseHttpStatuses.SCANNER_DEVICE_REQUIRED);
+    }
 
-      if (scannerDeviceError !== null) {
-        return errorResponse(500, "INTERNAL_ERROR", "Failed to validate scanner device ownership.", {
-          scannerDeviceError: scannerDeviceError.message,
-          scannerDeviceErrorCode: scannerDeviceError.code,
-          scannerUserId: user.id,
-          scannerDeviceId: body.scannerDeviceId,
-          businessId,
-        });
-      }
+    const { data: scannerDevice, error: scannerDeviceError } = await supabase
+      .from("business_scanner_devices")
+      .select("scanner_user_id,status")
+      .eq("id", body.scannerDeviceId)
+      .eq("business_id", businessId)
+      .maybeSingle<ScannerDeviceRow>();
 
-      if (
-        scannerDevice === null ||
-        scannerDevice.status !== "ACTIVE" ||
-        (scannerDevice.scanner_user_id !== null && scannerDevice.scanner_user_id !== user.id)
-      ) {
-        return jsonResponse({
-          status: "SCANNER_DEVICE_NOT_ALLOWED",
-          message: responseMessages.SCANNER_DEVICE_NOT_ALLOWED,
-        }, 200);
-      }
+    if (scannerDeviceError !== null) {
+      return errorResponse(500, "INTERNAL_ERROR", "Failed to validate scanner device ownership.", {
+        scannerDeviceError: scannerDeviceError.message,
+        scannerDeviceErrorCode: scannerDeviceError.code,
+        scannerUserId: user.id,
+        scannerDeviceId: body.scannerDeviceId,
+        businessId,
+      });
+    }
+
+    if (
+      scannerDevice === null ||
+      scannerDevice.status !== "ACTIVE" ||
+      (scannerDevice.scanner_user_id !== null && scannerDevice.scanner_user_id !== user.id)
+    ) {
+      return jsonResponse({
+        status: "SCANNER_DEVICE_NOT_ALLOWED",
+        message: responseMessages.SCANNER_DEVICE_NOT_ALLOWED,
+      }, responseHttpStatuses.SCANNER_DEVICE_NOT_ALLOWED);
     }
 
     const { data: rpcResult, error: rpcError } = await supabase.rpc("scan_stamp_atomic", {
@@ -570,8 +631,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
             );
           } catch (error) {
             console.warn("reward_unlock_push_background_failed", {
-              studentId: verifiedQrToken.payload.sub,
-              eventId: verifiedQrToken.payload.eventId,
               unlockedRewardCount: unlockedRewardTiers.length,
               message: error instanceof Error ? error.message : String(error),
             });
@@ -579,8 +638,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
         })());
       } catch (error) {
         console.warn("reward_unlock_push_schedule_failed", {
-          studentId: verifiedQrToken.payload.sub,
-          eventId: verifiedQrToken.payload.eventId,
           unlockedRewardCount: unlockedRewardTiers.length,
           message: error instanceof Error ? error.message : String(error),
         });
@@ -592,7 +649,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       ...responseResult,
       rewardUnlockPush,
       message: createResponseMessage(responseResult),
-    }, 200);
+    }, responseHttpStatuses[responseResult.status] ?? 500);
   } catch (error) {
     return errorResponse(400, "VALIDATION_ERROR", "Failed to scan QR token.", {
       error: error instanceof Error ? error.message : "unknown error",

@@ -22,6 +22,7 @@ type EventRow = {
   end_at: string;
   join_deadline_at: string;
   status: "PUBLISHED" | "ACTIVE";
+  ticket_url: string | null;
   max_participants: number | null;
   minimum_stamps_required: number;
 };
@@ -31,10 +32,21 @@ type EventRegistrationRow = {
   status: EventRegistrationStatus;
 };
 
+type ProfileDepartmentTagCityRow = {
+  is_primary: boolean;
+  slot: number;
+  department_tag: {
+    city: string | null;
+    status: "ACTIVE" | "BLOCKED" | "MERGED" | "PENDING_REVIEW";
+  } | null;
+};
+
 type UseStudentEventsQueryParams = {
   studentId: string;
   isEnabled: boolean;
 };
+
+const visiblePublicEventsLimit = 80;
 
 export const studentEventsQueryKey = (studentId: string) => ["student-events", studentId] as const;
 
@@ -42,6 +54,8 @@ const createRegistrationMap = (
   registrations: EventRegistrationRow[]
 ): ReadonlyMap<string, EventRegistrationStatus> =>
   new Map(registrations.map((registration) => [registration.event_id, registration.status]));
+
+const normalizeCity = (city: string | null): string => city?.trim().toLocaleLowerCase("fi-FI") ?? "";
 
 const deriveRegistrationState = (
   eventId: string,
@@ -97,6 +111,7 @@ const mapEventSummary = (
     startAt: row.start_at,
     endAt: row.end_at,
     joinDeadlineAt: row.join_deadline_at,
+    ticketUrl: row.ticket_url,
     maxParticipants: row.max_participants,
     minimumStampsRequired: row.minimum_stamps_required,
     timelineState,
@@ -142,15 +157,17 @@ export const rehydrateStudentEventsBuckets = (
   now: number
 ): StudentEventsBuckets => createStudentEventsBuckets(rehydrateStudentEventSummaries(flattenStudentEventsBuckets(buckets), now));
 
-const fetchVisibleEventsAsync = async (): Promise<EventRow[]> => {
+const fetchVisibleEventsAsync = async (nowIso: string): Promise<EventRow[]> => {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required,ticket_url"
     )
     .in("status", ["PUBLISHED", "ACTIVE"])
     .eq("visibility", "PUBLIC")
+    .gte("end_at", nowIso)
     .order("start_at", { ascending: true })
+    .limit(visiblePublicEventsLimit)
     .returns<EventRow[]>();
 
   if (error !== null) {
@@ -168,7 +185,7 @@ const fetchRegisteredEventsAsync = async (eventIds: string[]): Promise<EventRow[
   const { data, error } = await supabase
     .from("events")
     .select(
-      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required"
+      "id,name,slug,description,city,country,cover_image_url,start_at,end_at,join_deadline_at,status,max_participants,minimum_stamps_required,ticket_url"
     )
     .in("id", eventIds)
     .in("status", ["PUBLISHED", "ACTIVE"])
@@ -196,8 +213,46 @@ const fetchStudentRegistrationsAsync = async (studentId: string): Promise<EventR
   return data;
 };
 
+const fetchStudentPrimaryCityAsync = async (studentId: string): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from("profile_department_tags")
+    .select("is_primary,slot,department_tag:department_tags(city,status)")
+    .eq("profile_id", studentId)
+    .order("is_primary", { ascending: false })
+    .order("slot", { ascending: true })
+    .returns<ProfileDepartmentTagCityRow[]>();
+
+  if (error !== null) {
+    throw new Error(`Failed to load student primary city for ${studentId}: ${error.message}`);
+  }
+
+  const primaryCityRow = data.find((row) => row.department_tag?.status === "ACTIVE" && normalizeCity(row.department_tag.city).length > 0);
+
+  return primaryCityRow?.department_tag?.city ?? null;
+};
+
+const compareStudentEvents = (localCity: string | null) => (left: StudentEventSummary, right: StudentEventSummary): number => {
+  const normalizedLocalCity = normalizeCity(localCity);
+
+  if (normalizedLocalCity.length > 0) {
+    const leftIsLocal = normalizeCity(left.city) === normalizedLocalCity;
+    const rightIsLocal = normalizeCity(right.city) === normalizedLocalCity;
+
+    if (leftIsLocal !== rightIsLocal) {
+      return leftIsLocal ? -1 : 1;
+    }
+  }
+
+  return new Date(left.startAt).getTime() - new Date(right.startAt).getTime();
+};
+
 export const fetchStudentEventsAsync = async (studentId: string): Promise<StudentEventsBuckets> => {
-  const registrations = await fetchStudentRegistrationsAsync(studentId);
+  const [registrations, primaryCity] = await Promise.all([
+    fetchStudentRegistrationsAsync(studentId),
+    fetchStudentPrimaryCityAsync(studentId),
+  ]);
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
   const registeredEventIds = Array.from(
     new Set(
       registrations
@@ -206,7 +261,7 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
     )
   );
   const [publicEvents, registeredEvents] = await Promise.all([
-    fetchVisibleEventsAsync(),
+    fetchVisibleEventsAsync(nowIso),
     fetchRegisteredEventsAsync(registeredEventIds),
   ]);
   const events = Array.from(
@@ -214,10 +269,10 @@ export const fetchStudentEventsAsync = async (studentId: string): Promise<Studen
   );
 
   const registrationsByEventId = createRegistrationMap(registrations);
-  const now = Date.now();
   const visibleEvents = events
     .map((row) => mapEventSummary(row, now, registrationsByEventId))
-    .filter((event): event is StudentEventSummary => event !== null);
+    .filter((event): event is StudentEventSummary => event !== null)
+    .sort(compareStudentEvents(primaryCity));
 
   return createStudentEventsBuckets(visibleEvents);
 };
@@ -230,4 +285,8 @@ export const useStudentEventsQuery = ({
     queryKey: studentEventsQueryKey(studentId),
     queryFn: async () => fetchStudentEventsAsync(studentId),
     enabled: isEnabled,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   submitAnnouncementArchiveRequestAsync,
   submitAnnouncementCreateRequestAsync,
+  submitAnnouncementDeleteRequestAsync,
   submitAnnouncementPushRequestAsync,
   submitAnnouncementUpdateRequestAsync,
 } from "@/features/announcements/client";
@@ -17,6 +18,7 @@ import type {
   AnnouncementSnapshot,
 } from "@/features/announcements/types";
 import type { DashboardLocale } from "@/features/dashboard/i18n";
+import { successNoticeDurationMs, useTransientSuccessKey } from "@/features/shared/use-transient-success-key";
 import { createClient } from "@/lib/supabase/client";
 
 type AnnouncementsPanelProps = {
@@ -33,6 +35,7 @@ type AnnouncementAudienceOption =
 type AnnouncementCopy = {
   actionsHintCreate: string;
   actionsHintEdit: string;
+  allCities: string;
   announcementsTab: string;
   archive: string;
   archiving: string;
@@ -43,11 +46,15 @@ type AnnouncementCopy = {
   composeTab: string;
   ctaLabel: string;
   ctaUrl: string;
+  delete: string;
+  deleteConfirm: string;
+  deleting: string;
   draftStatus: string;
   edit: string;
   emptyAnnouncements: string;
   endsAt: string;
   endsAtEmpty: string;
+  eventScope: string;
   image: string;
   imagePreview: string;
   imageUploaded: string;
@@ -56,6 +63,7 @@ type AnnouncementCopy = {
   latestAnnouncements: string;
   message: string;
   noEndDate: string;
+  noEventScope: string;
   pendingRowsSuffix: string;
   placeholderBody: string;
   placeholderCtaLabel: string;
@@ -86,6 +94,11 @@ type AnnouncementCopy = {
   sourceAnnouncementTitleEdit: string;
   startsAt: string;
   status: string;
+  tableActions: string;
+  tableAudience: string;
+  tablePush: string;
+  tableTitle: string;
+  targetCity: string;
   title: string;
   updateAnnouncement: string;
   updating: string;
@@ -103,6 +116,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
   en: {
     actionsHintCreate: "This creates the source announcement. Send push from the announcement card after publishing.",
     actionsHintEdit: "Update the announcement, archive it, or send push from the card after publishing.",
+    allCities: "All cities",
     announcementsTab: "Announcements",
     archive: "Archive",
     archiving: "Archiving...",
@@ -118,11 +132,15 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     composeTab: "Compose",
     ctaLabel: "CTA label",
     ctaUrl: "CTA URL",
+    delete: "Delete",
+    deleteConfirm: "Delete this announcement permanently? If it has an OmaLeima uploaded image, the image will be deleted too.",
+    deleting: "Deleting...",
     draftStatus: "Draft",
     edit: "Edit",
     emptyAnnouncements: "No announcements are visible for this scope yet.",
     endsAt: "Ends at",
     endsAtEmpty: "No end date",
+    eventScope: "Event scope",
     image: "Image",
     imagePreview: "Announcement image preview",
     imageUploaded: "Announcement image uploaded successfully.",
@@ -131,6 +149,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     latestAnnouncements: "Latest announcements",
     message: "Message",
     noEndDate: "No end date",
+    noEventScope: "No event scope",
     pendingRowsSuffix: "rows",
     placeholderBody: "Write a short, clear message for your audience.",
     placeholderCtaLabel: "Open event",
@@ -140,8 +159,8 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     platformSender: "OmaLeima Support",
     priority: "Priority",
     publishedStatus: "Published",
-    pushAlreadySent: "Push already sent successfully.",
-    pushPartiallySent: "Push was only partially delivered. Retry is allowed for failed recipients.",
+    pushAlreadySent: "Push was sent before. You can send it again.",
+    pushPartiallySent: "Push was only partially delivered. You can send it again.",
     pushReady: "Push is ready to send.",
     pushSent: "Push sent",
     pushUnavailableEnded: "Push window has already ended.",
@@ -161,6 +180,11 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     sourceAnnouncementTitleEdit: "Update announcement",
     startsAt: "Starts at",
     status: "Status",
+    tableActions: "Actions",
+    tableAudience: "Audience",
+    tablePush: "Push",
+    tableTitle: "Title",
+    targetCity: "Target city",
     title: "Title",
     updateAnnouncement: "Update announcement",
     updating: "Updating...",
@@ -171,6 +195,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
   fi: {
     actionsHintCreate: "Luo tiedote ensin luonnoksena. Push-ilmoituksen voi lähettää kortilta julkaisun jälkeen.",
     actionsHintEdit: "Päivitä tiedote, arkistoi se tai lähetä push-ilmoitus kortilta.",
+    allCities: "Kaikki kaupungit",
     announcementsTab: "Tiedotteet",
     archive: "Arkistoi",
     archiving: "Arkistoidaan...",
@@ -186,11 +211,15 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     composeTab: "Kirjoita uusi",
     ctaLabel: "Painikkeen teksti",
     ctaUrl: "Painikkeen osoite",
+    delete: "Poista",
+    deleteConfirm: "Poistetaanko tiedote pysyvästi? Jos siinä on OmaLeimaan ladattu kuva, myös kuva poistetaan.",
+    deleting: "Poistetaan...",
     draftStatus: "Luonnos",
     edit: "Muokkaa",
     emptyAnnouncements: "Tässä näkymässä ei ole vielä tiedotteita.",
     endsAt: "Loppuu",
     endsAtEmpty: "Ei loppuaikaa",
+    eventScope: "Tapahtumarajaus",
     image: "Kuva",
     imagePreview: "Kuvan esikatselu",
     imageUploaded: "Kuva ladattiin onnistuneesti.",
@@ -199,6 +228,7 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     latestAnnouncements: "Viimeisimmät tiedotteet",
     message: "Viesti",
     noEndDate: "Ei loppuaikaa",
+    noEventScope: "Ei tapahtumarajausta",
     pendingRowsSuffix: "riviä",
     placeholderBody: "Kirjoita lyhyt ja selkeä viesti kohderyhmälle.",
     placeholderCtaLabel: "Avaa approt",
@@ -208,8 +238,8 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     platformSender: "OmaLeima-tiimi",
     priority: "Tärkeysaste",
     publishedStatus: "Livenä",
-    pushAlreadySent: "Push-ilmoitus on jo lähetetty onnistuneesti.",
-    pushPartiallySent: "Osa vastaanottajista jäi ilman pushia. Voit yrittää epäonnistuneita uudelleen.",
+    pushAlreadySent: "Push on lähetetty aiemmin. Voit lähettää sen uudelleen.",
+    pushPartiallySent: "Osa vastaanottajista jäi ilman pushia. Voit lähettää sen uudelleen.",
     pushReady: "Push on valmis lähetettäväksi.",
     pushSent: "Push lähetetty",
     pushUnavailableEnded: "Push-ikkuna on jo päättynyt.",
@@ -224,11 +254,16 @@ const copyByLocale: Record<DashboardLocale, AnnouncementCopy> = {
     scopeTitleClub: "Klubin tiedote",
     scopeTitlePlatform: "Alustan tiedote",
     sendPush: "Lähetä push",
-    sendingPush: "Lähetetään pushia...",
+    sendingPush: "Lähetetään push-ilmoitusta...",
     sourceAnnouncementTitleCreate: "Luo uusi popup",
     sourceAnnouncementTitleEdit: "Päivitä popup",
     startsAt: "Alkaa",
     status: "Tila",
+    tableActions: "Toiminnot",
+    tableAudience: "Kohderyhmä",
+    tablePush: "Push",
+    tableTitle: "Otsikko",
+    targetCity: "Kohdekaupunki",
     title: "Otsikko",
     updateAnnouncement: "Päivitä",
     updating: "Päivitetään...",
@@ -249,18 +284,26 @@ const announcementClockRefreshMs = 30_000;
 
 const createInitialPayload = (snapshot: AnnouncementSnapshot): AnnouncementCreatePayload => {
   const startsAt = toLocalDateTimeInput(new Date());
+  const initialClubId = snapshot.scope === "CLUB" ? snapshot.clubOptions[0]?.clubId ?? "" : "";
+  const initialClubEvent =
+    snapshot.scope === "CLUB"
+      ? snapshot.eventOptions.find((eventOption) => eventOption.clubId === initialClubId) ?? null
+      : null;
 
   return {
     audience: snapshot.scope === "CLUB" ? "STUDENTS" : "ALL",
     body: "",
-    clubId: snapshot.scope === "CLUB" ? snapshot.clubOptions[0]?.clubId ?? "" : "",
+    clubId: initialClubId,
     ctaLabel: "",
     ctaUrl: "",
     endsAt: "",
+    eventId: initialClubEvent?.eventId ?? "",
+    imageStagingPath: "",
     imageUrl: "",
     priority: "0",
     startsAt,
     status: "PUBLISHED",
+    targetCity: initialClubEvent?.city ?? "",
     title: "",
   };
 };
@@ -274,12 +317,44 @@ const createPayloadFromAnnouncement = (
   ctaLabel: announcement.ctaLabel ?? "",
   ctaUrl: announcement.ctaUrl ?? "",
   endsAt: announcement.endsAt === null ? "" : toLocalDateTimeInput(new Date(announcement.endsAt)),
+  eventId: announcement.eventId ?? "",
+  imageStagingPath: announcement.imageStagingPath,
   imageUrl: announcement.imageUrl ?? "",
   priority: String(announcement.priority),
   startsAt: toLocalDateTimeInput(new Date(announcement.startsAt)),
   status: announcement.status === "ARCHIVED" ? "DRAFT" : announcement.status,
+  targetCity: announcement.targetCity ?? "",
   title: announcement.title,
 });
+
+const isEventScopedPayload = (payload: AnnouncementCreatePayload): boolean =>
+  payload.eventId.trim().length > 0;
+
+const createSubmitPayload = (
+  payload: AnnouncementCreatePayload,
+  snapshot: AnnouncementSnapshot
+): AnnouncementCreatePayload => {
+  const eventId = payload.eventId.trim();
+  const matchedEvent =
+    eventId.length === 0
+      ? null
+      : snapshot.eventOptions.find((eventOption) => eventOption.eventId === eventId) ?? null;
+  const eventScopedPayload =
+    matchedEvent === null
+      ? payload
+      : {
+        ...payload,
+        clubId: matchedEvent.clubId,
+        targetCity: matchedEvent.city,
+      };
+
+  return matchedEvent === null || eventScopedPayload.audience !== "CLUBS"
+    ? eventScopedPayload
+    : {
+      ...eventScopedPayload,
+      audience: "STUDENTS",
+    };
+};
 
 const formatDate = (locale: DashboardLocale, value: string): string =>
   new Intl.DateTimeFormat(locale === "fi" ? "fi-FI" : "en-GB", {
@@ -297,24 +372,6 @@ const renderState = (state: AnnouncementActionState) => {
   return <p className={state.tone === "success" ? "inline-success" : "inline-error"}>{state.message}</p>;
 };
 
-const isAnnouncementActiveNow = (announcement: AnnouncementRecord, now: number): boolean => {
-  if (announcement.status !== "PUBLISHED") {
-    return false;
-  }
-
-  const startsAtMs = new Date(announcement.startsAt).getTime();
-
-  if (now < startsAtMs) {
-    return false;
-  }
-
-  if (announcement.endsAt === null) {
-    return true;
-  }
-
-  return now < new Date(announcement.endsAt).getTime();
-};
-
 const readPushAvailability = (
   announcement: AnnouncementRecord,
   copy: AnnouncementCopy,
@@ -324,13 +381,6 @@ const readPushAvailability = (
     return {
       canSendPush: false,
       reason: copy.pushUnavailableNotPublished,
-    };
-  }
-
-  if (announcement.pushDeliveryStatus === "SENT") {
-    return {
-      canSendPush: false,
-      reason: copy.pushAlreadySent,
     };
   }
 
@@ -374,21 +424,44 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [pendingArchiveAnnouncementId, setPendingArchiveAnnouncementId] = useState<string | null>(null);
+  const [pendingDeleteAnnouncementId, setPendingDeleteAnnouncementId] = useState<string | null>(null);
   const [pendingPushAnnouncementId, setPendingPushAnnouncementId] = useState<string | null>(null);
   const [actionState, setActionState] = useState<AnnouncementActionState>({
     code: null,
     message: null,
     tone: "idle",
   });
+
+  useTransientSuccessKey(
+    actionState.tone === "success" ? actionState.message : null,
+    () => setActionState({ code: null, message: null, tone: "idle" }),
+    successNoticeDurationMs
+  );
   const [renderedNow, setRenderedNow] = useState<number>(() => Date.now());
   const canCreate = snapshot.scope === "ADMIN" || snapshot.clubOptions.length > 0;
   const scopeTitle = snapshot.scope === "ADMIN" ? copy.scopeTitlePlatform : copy.scopeTitleClub;
+  const hasEventScope = isEventScopedPayload(payload);
   const audienceOptions = useMemo<AnnouncementAudienceOption[]>(
     () =>
       snapshot.scope === "ADMIN"
         ? ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"]
-        : ["ALL", "STUDENTS", "CLUBS"],
+        : ["ALL", "STUDENTS", "BUSINESSES", "CLUBS"],
     [snapshot.scope]
+  );
+  const renderedAudienceOptions: AnnouncementAudienceOption[] = hasEventScope
+    ? ["ALL", "STUDENTS", "BUSINESSES"]
+    : audienceOptions;
+  const selectedClubId = payload.clubId.trim();
+  const eventOptions = useMemo(
+    () =>
+      snapshot.eventOptions.filter((eventOption) => {
+        if (selectedClubId.length === 0) {
+          return snapshot.scope === "ADMIN";
+        }
+
+        return eventOption.clubId === selectedClubId;
+      }),
+    [selectedClubId, snapshot.eventOptions, snapshot.scope]
   );
   const isEditingAnnouncement = editingAnnouncementId !== null;
   const isFormDisabled =
@@ -396,6 +469,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     isPending ||
     isImageUploading ||
     pendingArchiveAnnouncementId !== null ||
+    pendingDeleteAnnouncementId !== null ||
     pendingPushAnnouncementId !== null;
   const [activeTab, setActiveTab] = useState<"compose" | "announcements">("compose");
 
@@ -456,10 +530,11 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
 
       setPayload((current) => ({
         ...current,
-        imageUrl: uploadedImage.publicUrl,
+        imageStagingPath: uploadedImage.stagingPath,
+        imageUrl: uploadedImage.previewUrl,
       }));
       setActionState({
-        code: "IMAGE_UPLOADED",
+        code: "IMAGE_STAGED",
         message: copy.imageUploaded,
         tone: "success",
       });
@@ -484,10 +559,11 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     });
 
     try {
+      const submitPayload = createSubmitPayload(payload, snapshot);
       const response =
         editingAnnouncementId === null
-          ? await submitAnnouncementCreateRequestAsync(payload)
-          : await submitAnnouncementUpdateRequestAsync(editingAnnouncementId, payload);
+          ? await submitAnnouncementCreateRequestAsync(submitPayload)
+          : await submitAnnouncementUpdateRequestAsync(editingAnnouncementId, submitPayload);
       setActionState({
         code: response.status,
         message: response.message,
@@ -546,6 +622,47 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     }
   };
 
+  const handleDeletePress = async (announcement: AnnouncementRecord): Promise<void> => {
+    if (!window.confirm(copy.deleteConfirm)) {
+      return;
+    }
+
+    setPendingDeleteAnnouncementId(announcement.announcementId);
+    setActionState({
+      code: null,
+      message: null,
+      tone: "idle",
+    });
+
+    try {
+      const response = await submitAnnouncementDeleteRequestAsync(
+        announcement.announcementId,
+        announcement.clubId
+      );
+      setActionState({
+        code: response.status,
+        message: response.message,
+        tone: response.status === "SUCCESS" ? "success" : "error",
+      });
+
+      if (response.status === "SUCCESS") {
+        if (editingAnnouncementId === announcement.announcementId) {
+          resetForm();
+        }
+
+        router.refresh();
+      }
+    } catch (error) {
+      setActionState({
+        code: "REQUEST_ERROR",
+        message: error instanceof Error ? error.message : "Unknown announcement delete request error.",
+        tone: "error",
+      });
+    } finally {
+      setPendingDeleteAnnouncementId(null);
+    }
+  };
+
   const handleSendPushPress = async (announcement: AnnouncementRecord): Promise<void> => {
     const pushAvailability = readPushAvailability(announcement, copy, Date.now());
 
@@ -592,57 +709,39 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
     }
   };
 
-  const renderAnnouncementCard = (announcement: AnnouncementRecord) => {
+  const renderAnnouncementRow = (announcement: AnnouncementRecord) => {
     const pushAvailability = readPushAvailability(announcement, copy, renderedNow);
     const canArchive = announcement.status !== "ARCHIVED";
     const canSendPush = pushAvailability.canSendPush;
-    const isAnnouncementActive = isAnnouncementActiveNow(announcement, renderedNow);
 
     return (
-      <article className="panel" key={announcement.announcementId}>
-        <div className="stack-sm">
-          <div className="split-row">
-            <span className="field-label">{getAnnouncementSenderLabel(announcement, copy)}</span>
-            <span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span>
-          </div>
-          <p className="card-title">{announcement.title}</p>
-          {announcement.imageUrl !== null ? (
-            <div
-              aria-hidden="true"
-              className="announcement-card-image"
-              style={{ backgroundImage: `url(${announcement.imageUrl})` }}
-            />
-          ) : null}
-          <p className="muted-text">{announcement.body}</p>
-          <div className="meta-grid">
-            <span>{copy.audienceLabels[announcement.audience]}</span>
-            <span>{`${copy.startsAt} ${formatDate(locale, announcement.startsAt)}`}</span>
-            <span>
-              {announcement.endsAt === null
-                ? copy.endsAtEmpty
-                : `${copy.endsAt} ${formatDate(locale, announcement.endsAt)}`}
-            </span>
-            <span>{`${copy.priority} ${announcement.priority}`}</span>
-          </div>
-          <p className="muted-text">
-            {announcement.pushDeliveryStatus === "SENT"
-              ? copy.pushAlreadySent
-              : announcement.pushDeliveryStatus === "PARTIAL"
-                ? copy.pushPartiallySent
+      <tr key={announcement.announcementId}>
+        <td>
+          <span>{announcement.title}</span>
+          <span className="record-meta">{getAnnouncementSenderLabel(announcement, copy)}</span>
+        </td>
+        <td><span className={`status-pill status-${announcement.status.toLowerCase()}`}>{announcement.status}</span></td>
+        <td className="record-meta">{copy.audienceLabels[announcement.audience]}</td>
+        <td className="record-meta">{formatDate(locale, announcement.startsAt)}</td>
+        <td className="record-meta">
+          {announcement.endsAt === null ? copy.endsAtEmpty : formatDate(locale, announcement.endsAt)}
+        </td>
+        <td className="record-meta">{announcement.priority}</td>
+        <td className="record-meta">
+          {announcement.pushDeliveryStatus === "SENT"
+            ? copy.pushAlreadySent
+            : announcement.pushDeliveryStatus === "PARTIAL"
+              ? copy.pushPartiallySent
               : announcement.pushDeliveryStatus === "FAILED"
                 ? copy.pushWithFailures
-                : isAnnouncementActive
+                : pushAvailability.canSendPush
                   ? copy.pushReady
                   : pushAvailability.reason}
-          </p>
-          {announcement.ctaLabel !== null && announcement.ctaUrl !== null ? (
-            <a className="text-link" href={announcement.ctaUrl} rel="noreferrer" target="_blank">
-              {announcement.ctaLabel}
-            </a>
-          ) : null}
-          <div className="button-row">
+        </td>
+        <td>
+          <div className="admin-users-actions">
             <button
-              className="secondary-action"
+              className="button button-secondary"
               disabled={isFormDisabled}
               onClick={() => handleEditPress(announcement)}
               type="button"
@@ -651,7 +750,7 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             </button>
             {canArchive ? (
               <button
-                className="secondary-action"
+                className="button button-secondary"
                 disabled={isFormDisabled}
                 onClick={() => void handleArchivePress(announcement)}
                 type="button"
@@ -660,16 +759,24 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
               </button>
             ) : null}
             <button
-              className="secondary-action"
-              disabled={!canSendPush || pendingPushAnnouncementId !== null || pendingArchiveAnnouncementId !== null}
+              className="button button-danger"
+              disabled={isFormDisabled}
+              onClick={() => void handleDeletePress(announcement)}
+              type="button"
+            >
+              {pendingDeleteAnnouncementId === announcement.announcementId ? copy.deleting : copy.delete}
+            </button>
+            <button
+              className="button button-secondary"
+              disabled={!canSendPush || pendingPushAnnouncementId !== null || pendingArchiveAnnouncementId !== null || pendingDeleteAnnouncementId !== null}
               onClick={() => void handleSendPushPress(announcement)}
               type="button"
             >
               {pendingPushAnnouncementId === announcement.announcementId ? copy.sendingPush : copy.sendPush}
             </button>
           </div>
-        </div>
-      </article>
+        </td>
+      </tr>
     );
   };
 
@@ -707,7 +814,17 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
               <span className="field-label">{copy.club}</span>
               <select
                 disabled={isFormDisabled || isEditingAnnouncement}
-                onChange={(event) => setPayload((current) => ({ ...current, clubId: event.target.value }))}
+                onChange={(event) => {
+                  const clubId = event.target.value;
+                  const nextEvent = snapshot.eventOptions.find((eventOption) => eventOption.clubId === clubId) ?? null;
+
+                  setPayload((current) => ({
+                    ...current,
+                    clubId,
+                    eventId: nextEvent?.eventId ?? "",
+                    targetCity: nextEvent?.city ?? "",
+                  }));
+                }}
                 value={payload.clubId}
               >
                 {snapshot.clubOptions.map((club) => (
@@ -720,6 +837,60 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
           ) : null}
 
           <label className="field-stack">
+            <span className="field-label">{copy.targetCity}</span>
+            <select
+              disabled={isFormDisabled || snapshot.scope === "CLUB"}
+              onChange={(event) =>
+                setPayload((current) => ({
+                  ...current,
+                  eventId:
+                    current.eventId.length === 0 ||
+                    eventOptions.some((eventOption) => eventOption.eventId === current.eventId && eventOption.city === event.target.value) ||
+                    event.target.value.length === 0
+                      ? current.eventId
+                      : "",
+                  targetCity: event.target.value,
+                }))
+              }
+              value={payload.targetCity}
+            >
+              {snapshot.scope === "ADMIN" ? <option value="">{copy.allCities}</option> : null}
+              {snapshot.cityOptions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-stack">
+            <span className="field-label">{copy.eventScope}</span>
+            <select
+              disabled={isFormDisabled || (snapshot.scope === "CLUB" && selectedClubId.length === 0)}
+              onChange={(event) => {
+                const eventId = event.target.value;
+                const selectedEvent = eventOptions.find((eventOption) => eventOption.eventId === eventId) ?? null;
+
+                setPayload((current) => ({
+                  ...current,
+                  audience: current.audience === "CLUBS" && eventId.length > 0 ? "STUDENTS" : current.audience,
+                  clubId: selectedEvent?.clubId ?? current.clubId,
+                  eventId,
+                  targetCity: selectedEvent?.city ?? current.targetCity,
+                }));
+              }}
+              value={payload.eventId}
+            >
+              {snapshot.scope === "ADMIN" ? <option value="">{copy.noEventScope}</option> : null}
+              {eventOptions.map((eventOption) => (
+                <option key={eventOption.eventId} value={eventOption.eventId}>
+                  {eventOption.eventName} · {eventOption.city}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-stack">
             <span className="field-label">{copy.audience}</span>
             <select
               disabled={isFormDisabled}
@@ -729,9 +900,9 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
                   audience: event.target.value as AnnouncementCreatePayload["audience"],
                 }))
               }
-              value={payload.audience}
+              value={hasEventScope && payload.audience === "CLUBS" ? "STUDENTS" : payload.audience}
             >
-              {audienceOptions.map((audience) => (
+              {renderedAudienceOptions.map((audience) => (
                 <option key={audience} value={audience}>
                   {copy.audienceLabels[audience]}
                 </option>
@@ -891,7 +1062,25 @@ export const AnnouncementsPanel = ({ locale, snapshot }: AnnouncementsPanelProps
             <p className="muted-text">{copy.emptyAnnouncements}</p>
           </article>
         ) : (
-          <div className="card-list">{snapshot.announcements.map(renderAnnouncementCard)}</div>
+          <div className="panel-table-wrap">
+            <table className="panel-table">
+              <thead>
+                <tr>
+                  <th>{copy.tableTitle}</th>
+                  <th>{copy.status}</th>
+                  <th>{copy.tableAudience}</th>
+                  <th>{copy.startsAt}</th>
+                  <th>{copy.endsAt}</th>
+                  <th>{copy.priority}</th>
+                  <th>{copy.tablePush}</th>
+                  <th>{copy.tableActions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.announcements.map(renderAnnouncementRow)}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

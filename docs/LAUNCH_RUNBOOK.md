@@ -30,10 +30,18 @@ As of `2026-04-29`, the following paths are already verified in the current host
 - hosted fixture operator accounts are archived and the hygiene audit is green
 - hosted local secret/password hygiene audit is green for the current Desktop credential file
 
+Additional release hardening verified on `2026-05-10`:
+
+- organization event update/cancel and club department tag update/delete use hardened RPCs instead of final direct writes
+- mobile organizer event create/edit-save RPC smoke passes with the seeded organizer account against local Supabase
+- hosted Supabase migration history reports up to date; organization RPC drift was corrected by reapplying the idempotent migration SQL and verifying the four RPCs exist
+- Edge Functions importing changed shared HTTP/JWT helpers were redeployed and are active in the hosted project
+
 What is **not** yet fully verified:
 
 - Android remote-push physical-device smoke
 - Android student Google sign-in on a real Android development build
+- physical-device mobile organizer edit/save UI tap-through on a staging/native build
 - public App Store or Play Store distribution
 - public custom domain cutover
 - real club/operator email identities replacing the current placeholder pilot operator emails
@@ -57,6 +65,7 @@ What is **not** yet fully verified:
 4. Public store-release steps
 5. Final hosted secret rotation and stronger operator credentials everywhere
 6. Expo store/public-launch readiness gate stays green
+7. iOS login policy gap closed: because the student primary account currently uses Google login, add Sign in with Apple or another equivalent privacy-preserving login option before App Store submission.
 
 ### Later
 
@@ -86,6 +95,25 @@ These are the next user-owned tasks outside the repo. Split them into “needed 
 4. Public Play Store submission
 5. Full visual polish pass across the whole mobile UI
 
+## Observability, alerts, and recovery
+
+Production launch should have an error-observation path, but Sentry is not mandatory. The low-cost private-pilot baseline is Vercel deployment logs, Supabase Edge Function logs, Supabase database logs/advisors, and GitHub Actions notifications. Sentry or an equivalent provider can be added later by setting `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, and `EXPO_PUBLIC_SENTRY_DSN` in Vercel, EAS, or the local native build environment; keep them empty locally when no provider is used.
+
+Minimum private-pilot alert routing:
+
+1. Web dashboard runtime errors: Vercel logs and GitHub/Vercel deployment notifications; add Sentry/equivalent alerting when the owner chooses a provider.
+2. Mobile crashes: device logs/TestFlight or Play Console crash reports for a private pilot; add Sentry/equivalent mobile alerts before broader public distribution if budget allows.
+3. Supabase Edge Function failures: Supabase function logs checked after each event-day dry run and after the first live scan window.
+4. Deployment failures: GitHub Actions and Vercel deployment notifications monitored before any pilot window.
+
+Recovery expectations:
+
+1. Vercel rollback: promote the previous known-good deployment from the Vercel dashboard, then rerun hosted admin smoke.
+2. Supabase schema rollback: do not rewrite migrations; use a forward hotfix migration or Supabase point-in-time restore if data loss occurs.
+3. Edge Function rollback: redeploy the previous commit's function bundle, then run QR/reward/push smoke.
+4. Mobile rollback: raise `mobile_release_requirements` to block unsafe builds, then distribute a fixed native build through EAS or local Xcode/Gradle archive upload to TestFlight/Play internal track.
+5. Database restore: use Supabase automated backups/PITR according to the active paid plan; after restore, rerun the release gate and event scan/reward smokes before reopening live use.
+
 ## Store/public launch owner checklist
 
 These are not required for the current private pilot path. They matter when we start the broader public launch track.
@@ -93,14 +121,53 @@ These are not required for the current private pilot path. They matter when we s
 1. Create the real App Store Connect app record for `fi.omaleima.mobile`.
 2. Create the real Google Play Console app record for `fi.omaleima.mobile`.
 3. Prepare store listing copy, screenshots, app icon marketing assets, privacy-policy URL, and support URL.
-4. Decide the first submission path:
+4. Confirm the privacy policy URL covers the mobile app, QR/leima/reward data, push tokens, scanner location proof, account deletion, and data deletion.
+5. Confirm the mobile app exposes Privacy and Terms links on the login screen and signed-in profile/settings surfaces.
+6. Confirm the privacy policy page is the Google Play web resource for account deletion and associated data deletion requests.
+7. Add Sign in with Apple or another equivalent privacy-preserving login option before submitting the Google-login student app to App Store Review.
+8. Confirm Android release manifest hygiene before uploading the AAB: `SYSTEM_ALERT_WINDOW` and `RECORD_AUDIO` are blocked, and Android backup is disabled.
+9. Confirm App Store Connect privacy nutrition labels match the Expo `ios.privacyManifests` collected-data declarations and the public privacy notice.
+10. If using the local generated iOS workspace, run `OMALEIMA_STORE_BUILD=1 npx expo prebuild --platform ios --no-install`, then `pod install` from `apps/mobile/ios`, and confirm `apps/mobile/ios/OmaLeima/PrivacyInfo.xcprivacy`, `apps/mobile/ios/OmaLeima/Info.plist`, and `apps/mobile/ios/Podfile.lock` are aligned before any Xcode archive. The generated iOS plist must not keep Expo Dev Launcher Bonjour/local-network keys or unused Always/background location keys.
+11. Decide the first submission path:
    - iOS through TestFlight first
    - Android through an internal track first
-5. Configure the final Apple and Google submission credentials outside the repo.
-6. Run the repo gate before any submission work:
+12. Configure the final Apple and Google submission credentials outside the repo.
+13. Run the repo gate before any submission work:
    - `npm run qa:mobile-store-release-readiness`
-7. Keep the required Expo EAS environment variables present for `development`, `preview`, and `production`.
-8. Only after that, move into EAS build + submit execution.
+14. Choose the native release path:
+    - EAS Build + Submit when quota/subscription is available.
+    - Local Xcode archive / Gradle release build + manual App Store Connect / Play Console upload when EAS is unavailable.
+15. For EAS, keep the required Expo EAS environment variables present for `development`, `preview`, and `production`; for local builds, keep the same public env values in the local release environment and run the store gate with `OMALEIMA_NATIVE_RELEASE_MODE=local`.
+
+## Mobile edge security boundary
+
+Cloudflare WAF protects the web app and public website when traffic enters through the Cloudflare-managed domain. Direct Supabase mobile traffic is not protected by Cloudflare WAF, because the native app calls Supabase Auth, Realtime, Storage, and Edge Functions over the Supabase project URL.
+
+Current mobile security controls therefore must stay server-side and source-of-truth based:
+
+- Supabase Auth validates the user session on every protected request.
+- RLS and security-definer RPCs own data authorization; UI hiding is never the permission boundary.
+- QR scan, stamp, reward, fraud, and audit writes stay behind Edge Functions or atomic database functions.
+- Dashboard and mutation routes keep explicit rate limits.
+- Draft event and announcement media now stage in the private `media-staging` bucket and are copied to public buckets only when published.
+- Signed staging URLs are preview-only and short-lived.
+
+Do not put static Cloudflare bypass secrets or service-role secrets into the mobile app. If we need Cloudflare-level protection for mobile mutations later, the production architecture should route selected mobile write endpoints through a Cloudflare Worker or API gateway on an OmaLeima domain, then forward to Supabase with normal user JWT validation plus Worker-side bot/rate controls. Supabase Auth and Realtime can remain direct unless we intentionally redesign those flows.
+
+## Supabase branded API/Auth/Storage domain
+
+If Google login or image URLs still show `*.supabase.co`, that is expected until Supabase Custom Domains is activated for the hosted project. Cloudflare or Vercel custom domains for the web app do not change Supabase Auth callback URLs or Storage public URLs.
+
+Launch timing note: Supabase Custom Domains requires a paid Supabase plan and the Custom Domain add-on, currently planned as a final store/web launch expense. Do not block development on this. Pay for the Pro plan plus the custom domain add-on when the app is otherwise ready to submit to App Store, Google Play, and production web.
+
+Use one Supabase API hostname, for example `https://api.omaleima.fi`, for Auth, Realtime, Edge Functions, and Storage:
+
+1. Enable Supabase Custom Domains for the production project from the Supabase dashboard or CLI.
+2. Add the DNS CNAME from `api.omaleima.fi` to the current Supabase project hostname.
+3. Add the required ACME/TXT verification record and wait for Supabase certificate activation.
+4. Add both callback URLs in Google Cloud OAuth during the cutover: the old `https://<project-ref>.supabase.co/auth/v1/callback` and the new `https://api.omaleima.fi/auth/v1/callback`.
+5. After activation, set production `NEXT_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_URL` to `https://api.omaleima.fi`, rebuild web/mobile, and rerun OAuth + public Storage URL smoke.
+6. Keep the old project hostname available during rollout, but do not store new public media URLs with the old hostname after the env cutover.
 
 ## Senin icin kisa not (TR)
 
@@ -139,11 +206,15 @@ Store hazirligi icin repo icinde artik ayri bir gate var:
 - `npm run qa:mobile-store-release-readiness`
 
 Bu gate sadece bizim repo tarafindan dogrulanabilecek kisimlari kontrol eder. App Store Connect veya Google Play Console icindeki gerçek listing, screenshot, privacy policy, support URL ve submission credential adimlari daha sonra owner isi olarak yapilacak.
-Repo tarafinda buna ek olarak Expo EAS environment variable isimlerinin `development`, `preview`, `production` icinde var olup olmadigi da kontrol edilir.
+Repo tarafinda buna ek olarak varsayilan EAS release modunda Expo EAS environment variable isimlerinin `development`, `preview`, `production` icinde var olup olmadigi kontrol edilir. EAS kullanilamayacaksa ayni gate `OMALEIMA_NATIVE_RELEASE_MODE=local` ile calistirilir ve native build/distribution manuel Xcode/Gradle + store console adimi olarak takip edilir.
+Mobil uygulama icinde Privacy/Terms linkleri login ekraninda ve profil/ayarlar yuzeylerinde gorunur olmali. Google Play account deletion icin privacy sayfasindaki "Account and data deletion requests" bolumu web kaynak linki olarak kullanilir.
+Hosted active mobile login slides da store gate'inin parcasidir: aktif slide varsa Fince/İngilizce copy launch-ready olmali, placeholder/test metin icermemeli ve image URL HTTPS olmali. Aktif slide yoksa mobil uygulama local fallback onboarding slide'larini kullanir.
 
-### Expo EAS env notu
+iOS icin ayrica dikkat: ogrenci birincil girisi Google ile oldugu surece App Store submission oncesinde Sign in with Apple veya Apple'in kabul edecegi esdeger gizlilik-koruyucu giris secenegi eklenmeli. Bu repo gate'i bu riski belgelemeyi kontrol eder, ama Apple provider credential kurulumunu tek basina kanitlamaz.
 
-Store/public launch gate’i yesil saymak icin Expo EAS CLI auth da gerekli. Audit su anda `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ve `EXPO_PUBLIC_EAS_PROJECT_ID` isimlerinin `development`, `preview`, `production` ortamlarinda mevcut oldugunu read-only kontrol eder; degerleri loglamaz.
+### Expo EAS / local native release notu
+
+Store/public launch gate’i varsayilan modda Expo EAS CLI auth bekler ve `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ve `EXPO_PUBLIC_EAS_PROJECT_ID` isimlerinin `development`, `preview`, `production` ortamlarinda mevcut oldugunu read-only kontrol eder; degerleri loglamaz. EAS limiti/subscription yoksa bu blocker degildir: `OMALEIMA_NATIVE_RELEASE_MODE=local npm --prefix apps/mobile run audit:store-release-readiness` komutu repo-owned gate'i calistirir, native artifact ise local Xcode/Gradle release build ile uretilip store console'a manuel yuklenir.
 
 ### Android telefon yoksa ne olacak
 
@@ -307,10 +378,11 @@ Before asking a human tester to do the final remote push proof on a physical dev
 
 1. `npm run qa:mobile-native-simulator-smoke`
 2. `npm run qa:mobile-native-push-readiness`
-3. confirm `apps/mobile/script/build_and_run.sh --help` works
-4. confirm Codex actions inside `apps/mobile/.codex/environments/environment.toml` are present
+3. optionally repeat only the heavy native launch portion with `npm --prefix apps/mobile run smoke:native-simulators`
+4. confirm `apps/mobile/script/build_and_run.sh --help` works
+5. confirm Codex actions inside `apps/mobile/.codex/environments/environment.toml` are present
 
-This handoff does not mean simulator or emulator launch already passed. It only means the repo-owned entrypoints and diagnostics surface are wired and documented.
+The first command proves repo-owned wiring and local Android/iOS simulator launch/crash smoke where SDK tooling is available. It still does not prove real APNs or FCM remote push delivery.
 
 At that point the remaining human step should be only:
 
@@ -319,6 +391,21 @@ At that point the remaining human step should be only:
 - enable notifications from the student profile route
 - trigger a real remote reward-unlocked push
 - confirm the diagnostics surface shows a remote source for both receipt and response
+
+## Leima card save/share smoke handoff
+
+Before App Store or Google Play submission, install a fresh native build that was produced after `expo-media-library`, `expo-sharing`, and `react-native-view-shot` were added. The QR screen must be tested on a real device because Expo Go or an older dev client can load the JavaScript bundle but still miss the native modules.
+
+Required device proof:
+
+1. QR face opens without `Cannot find native module 'ExpoMediaLibrary'`.
+2. QR screenshot or screen recording is blocked while the live QR is visible.
+3. LEIMA side can be screenshotted because it contains no QR code.
+4. `Save image` requests photo-library permission and writes the card to Photos/Gallery.
+5. Permission denial shows an actionable error.
+6. `Share card` opens the native share sheet.
+7. The saved/shared image does not include the live QR token.
+8. Returning from LEIMA to QR generates a fresh QR that the business scanner can validate.
 
 ## Physical device verification status
 

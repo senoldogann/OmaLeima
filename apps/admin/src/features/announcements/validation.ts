@@ -3,6 +3,7 @@ import type {
   AnnouncementCreatePayload,
   AnnouncementStatus,
 } from "@/features/announcements/types";
+import type { AdminAccessArea } from "@/features/auth/access";
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -105,16 +106,33 @@ const parsePriorityOrThrow = (value: string): number => {
   return parsedPriority;
 };
 
+const parseOptionalTargetCityOrThrow = (value: string): string | null => {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    return null;
+  }
+
+  if (trimmedValue.length < 2 || trimmedValue.length > 120) {
+    throw new AnnouncementValidationError("targetCity must be between 2 and 120 characters when provided.");
+  }
+
+  return trimmedValue;
+};
+
 export const parseAnnouncementCreatePayloadOrThrow = (
   body: Partial<AnnouncementCreatePayload>
 ): AnnouncementCreatePayload & {
   audienceValue: AnnouncementAudience;
   clubIdValue: string | null;
   endsAtValue: string | null;
+  eventIdValue: string | null;
   priorityValue: number;
   imageUrlValue: string | null;
+  imageStagingPathValue: string | null;
   startsAtValue: string;
   statusValue: AnnouncementStatus;
+  targetCityValue: string | null;
 } => {
   if (typeof body.title !== "string" || body.title.trim().length < 3 || body.title.trim().length > 120) {
     throw new AnnouncementValidationError("title must be between 3 and 120 characters.");
@@ -137,9 +155,12 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     typeof body.ctaLabel !== "string" ||
     typeof body.ctaUrl !== "string" ||
     typeof body.endsAt !== "string" ||
+    typeof body.eventId !== "string" ||
+    typeof body.imageStagingPath !== "string" ||
     typeof body.imageUrl !== "string" ||
     typeof body.priority !== "string" ||
-    typeof body.startsAt !== "string"
+    typeof body.startsAt !== "string" ||
+    typeof body.targetCity !== "string"
   ) {
     throw new AnnouncementValidationError("announcement creation payload is incomplete.");
   }
@@ -150,17 +171,30 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     throw new AnnouncementValidationError("clubId must be a valid UUID when provided.");
   }
 
+  const eventIdValue = body.eventId.trim().length === 0 ? null : body.eventId.trim();
+
+  if (eventIdValue !== null && !isUuid(eventIdValue)) {
+    throw new AnnouncementValidationError("eventId must be a valid UUID when provided.");
+  }
+
+  if (eventIdValue !== null && (clubIdValue === null || body.audience === "CLUBS")) {
+    throw new AnnouncementValidationError("event-scoped announcements require a clubId and ALL, STUDENTS, or BUSINESSES audience.");
+  }
+
   if (body.ctaLabel.trim().length > 0 && (body.ctaLabel.trim().length < 2 || body.ctaLabel.trim().length > 60)) {
     throw new AnnouncementValidationError("ctaLabel must be between 2 and 60 characters when provided.");
   }
 
-  if (body.ctaUrl.trim().length > 0 && body.ctaUrl.trim().length < 8) {
-    throw new AnnouncementValidationError("ctaUrl must be a full URL when provided.");
-  }
-
+  const ctaUrlValue = parseOptionalUrlOrThrow(body.ctaUrl, "ctaUrl");
   const imageUrlValue = parseOptionalUrlOrThrow(body.imageUrl, "imageUrl");
+  const imageStagingPathValue = body.imageStagingPath.trim().length === 0 ? null : body.imageStagingPath.trim();
   const startsAtValue = parseIsoDateTimeOrThrow(body.startsAt, "startsAt");
   const endsAtValue = parseOptionalIsoDateTimeOrThrow(body.endsAt, "endsAt");
+  const targetCityValue = parseOptionalTargetCityOrThrow(body.targetCity);
+
+  if (body.status === "DRAFT" && imageUrlValue !== null && imageStagingPathValue === null) {
+    throw new AnnouncementValidationError("draft announcement imageUrl must be empty.");
+  }
 
   if (endsAtValue !== null && new Date(endsAtValue).getTime() <= new Date(startsAtValue).getTime()) {
     throw new AnnouncementValidationError("endsAt must be after startsAt.");
@@ -173,9 +207,13 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     clubId: body.clubId,
     clubIdValue,
     ctaLabel: body.ctaLabel.trim(),
-    ctaUrl: body.ctaUrl.trim(),
+    ctaUrl: ctaUrlValue ?? "",
     endsAt: body.endsAt,
     endsAtValue,
+    eventId: body.eventId,
+    eventIdValue,
+    imageStagingPath: body.imageStagingPath,
+    imageStagingPathValue,
     imageUrl: body.imageUrl.trim(),
     imageUrlValue,
     priority: body.priority,
@@ -184,6 +222,38 @@ export const parseAnnouncementCreatePayloadOrThrow = (
     startsAtValue,
     status: body.status,
     statusValue: body.status as AnnouncementStatus,
+    targetCity: body.targetCity,
+    targetCityValue,
     title: body.title.trim(),
   };
+};
+
+export const assertAnnouncementScopeAllowedForAccessOrThrow = (
+  accessArea: AdminAccessArea,
+  payload: {
+    audienceValue: AnnouncementAudience;
+    clubIdValue: string | null;
+    eventIdValue: string | null;
+    targetCityValue: string | null;
+  }
+): void => {
+  if (accessArea !== "club") {
+    return;
+  }
+
+  if (payload.clubIdValue === null) {
+    throw new AnnouncementValidationError("organizer announcements must be scoped to your organization.");
+  }
+
+  if (payload.eventIdValue === null) {
+    throw new AnnouncementValidationError("organizer announcements must be scoped to one of your events.");
+  }
+
+  if (payload.targetCityValue === null) {
+    throw new AnnouncementValidationError("organizer announcements must use the selected event city.");
+  }
+
+  if (payload.audienceValue === "CLUBS") {
+    throw new AnnouncementValidationError("event-scoped organizer announcements can target ALL, STUDENTS, or BUSINESSES.");
+  }
 };

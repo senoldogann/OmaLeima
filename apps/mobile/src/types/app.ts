@@ -48,4 +48,4 @@ export type NativePushDiagnostics = {
   lastNotificationResponse: PushNotificationCapture | null;
 };
 
-export type GoogleSignInState = "idle" | "loading" | "redirecting" | "error";
+export type SocialSignInState = "idle" | "loading" | "redirecting" | "error";

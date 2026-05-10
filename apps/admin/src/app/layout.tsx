@@ -1,4 +1,9 @@
 import type { Metadata } from "next";
+
+import { CookieConsentBanner } from "@/features/privacy/cookie-consent-banner";
+import { MotionProvider } from "@/features/public-site/motion/MotionProvider";
+import { DashboardFetchGuard } from "@/features/security/dashboard-fetch-guard";
+
 import "./globals.css";
 
 const publicSiteUrl = "https://omaleima.fi";
@@ -86,7 +91,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fi">
-      <body className="app-body" suppressHydrationWarning>{children}</body>
+      <body className="app-body" suppressHydrationWarning>
+          <MotionProvider>
+            <DashboardFetchGuard />
+            {children}
+          </MotionProvider>
+          <CookieConsentBanner />
+        </body>
     </html>
   );
 }

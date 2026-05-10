@@ -12,6 +12,29 @@ const isSafeDashboardReturnPath = (value: string): boolean =>
   !value.startsWith("//") &&
   !value.includes("\\");
 
+const isSafeHostHeader = (value: string): boolean =>
+  value.length > 0 &&
+  !value.includes("/") &&
+  !value.includes("\\") &&
+  !value.includes("@") &&
+  !/\s/.test(value);
+
+const getRequestOrigin = (request: Request, requestUrl: URL): string => {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost !== null && isSafeHostHeader(forwardedHost)
+    ? forwardedHost
+    : request.headers.get("host");
+
+  if (host === null || !isSafeHostHeader(host)) {
+    return requestUrl.origin;
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const protocol = forwardedProto === "https" || requestUrl.protocol === "https:" ? "https" : "http";
+
+  return `${protocol}://${host}`;
+};
+
 export const GET = (request: Request): NextResponse => {
   const requestUrl = new URL(request.url);
   const rawLocale = requestUrl.searchParams.get("locale");
@@ -19,7 +42,7 @@ export const GET = (request: Request): NextResponse => {
   const locale = rawLocale !== null && isDashboardLocale(rawLocale) ? rawLocale : "fi";
   const returnTo =
     rawReturnTo !== null && isSafeDashboardReturnPath(rawReturnTo) ? rawReturnTo : fallbackReturnTo;
-  const response = NextResponse.redirect(new URL(returnTo, requestUrl.origin));
+  const response = NextResponse.redirect(new URL(returnTo, getRequestOrigin(request, requestUrl)));
 
   response.cookies.set({
     httpOnly: true,

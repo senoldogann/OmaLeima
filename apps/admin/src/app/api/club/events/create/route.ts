@@ -10,10 +10,18 @@ import {
   parseIsoDateTimeOrThrow,
 } from "@/features/club-events/validation";
 import { resolveAuthenticatedRouteUserIdAsync } from "@/features/auth/route-user";
+import { enforceDashboardMutationRateLimitAsync } from "@/features/security/dashboard-rate-limit";
+import { validateDashboardMutationRequest } from "@/features/security/dashboard-mutation-request";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
+    const requestGuardResponse = validateDashboardMutationRequest(request, { requireJsonContentType: true });
+
+    if (requestGuardResponse !== null) {
+      return requestGuardResponse;
+    }
+
     const supabase = await createRouteHandlerClient();
     const accessError = await requireClubEventCreatorAccessAsync(supabase);
 
@@ -37,6 +45,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const rateLimitResponse = await enforceDashboardMutationRateLimitAsync(userId, "club-event-create");
+
+    if (rateLimitResponse !== null) {
+      return rateLimitResponse;
+    }
+
     const body = parseClubEventCreationPayloadOrThrow(
       (await request.json()) as Record<string, string>
     );
@@ -44,6 +58,7 @@ export async function POST(request: Request) {
       city: body.city,
       clubId: body.clubId,
       country: body.country,
+      coverImageStagingPath: body.coverImageStagingPath,
       coverImageUrl: body.coverImageUrl,
       createdBy: userId,
       description: body.description,
@@ -54,6 +69,7 @@ export async function POST(request: Request) {
       name: body.name,
       rules: body.parsedRules,
       startAtIso: parseIsoDateTimeOrThrow(body.startAt, "startAt"),
+      ticketUrl: body.ticketUrl,
       visibility: body.visibility,
     });
 
