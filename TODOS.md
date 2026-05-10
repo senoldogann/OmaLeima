@@ -8,7 +8,7 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 - [x] Record root causes and REASONS plan in working docs.
 - [x] Fix web club profile submit payload and hide operator URL inputs.
 - [x] Run admin/mobile validation and inspect the final diff.
-- [ ] Merge, deploy web UI, and update handoff.
+- [x] Merge, deploy web UI, and update handoff.
 
 ## Current Todos (Release Gate Drift + CSP Hardening)
 

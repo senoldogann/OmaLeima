@@ -5,11 +5,11 @@ Bu dosya Digital Leima projesinin tüm ince detaylarını, fazların alt görevl
 ## Son Ajan Devri (Latest Agent Handoff)
 
 - **Tarih:** 2026-05-10
-- **Branch:** `fix/hide-operator-url-fields`
+- **Branch:** `main`
 - **Yapılan iş:** Web ve mobil organizasyon/isletme UI'larindaki URL inputlari kaldirildi ve web club profile kaydinda stale draft `clubId` kullanimi kapatildi. Club profile submit artik payload `clubId` degerini secili server-owned club kaydindan aliyor; bu nedenle stale/empty client draft state'i `Club: Invalid UUID` dongusune yol acmiyor. Web announcement compose artik CTA URL ve Image URL inputlarini gostermiyor; upload preview staging path ile kaliyor. Web club event create/update formlarinda ticket URL ve cover image URL inputlari kaldirildi. Admin business/organization manual account formlari, application review kartlari ve public business application formu URL input/link yuzeylerinden temizlendi. Mobil club/business profile, club event ve club announcement formlarinda website/Instagram/ticket/CTA URL alanlari gizlendi.
 - **Neden yapıldı:** Kullanici organizasyon profilinde tekrar `Club: Invalid UUID` hatasi aldigini ve announcement upload sonrasi bos URL alaninin UI'da kalmasinin kafa karistirdigini bildirdi; web ve mobilde organizasyon/isletme tarafinda URL'lerin gosterilmemesini istedi.
-- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `git --no-pager diff --check` ve hedef admin/mobile feature yuzeylerinde `type="url"` / `keyboardType="url"` aramasi gecti.
-- **Sıradaki önerilen adım:** Bu branch main'e merge edilip Vercel production'a deploy edilmeli; canli org profile save ve announcement image upload akisi authenticated browser oturumunda tekrar denenebilir.
+- **Doğrulama:** `npm --prefix apps/admin run typecheck`, `npm --prefix apps/admin run lint`, `npm --prefix apps/admin run build`, `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run lint`, `git --no-pager diff --check`, hedef admin/mobile feature yuzeylerinde `type="url"` / `keyboardType="url"` aramasi, `npx --yes vercel@latest deploy apps/admin --prod --yes` ve `curl -fsSI https://omaleima.fi` gecti. Vercel deploy URL'i `https://omaleima-admin-php2hm2qu-senol-dogans-projects.vercel.app`; production alias `https://omaleima.fi`.
+- **Sıradaki önerilen adım:** Canli org profile save ve announcement image upload akisi authenticated browser oturumunda tekrar denenebilir.
 - **Açık risk/blokaj:** Backend schema/validation alanlari korunuyor; mevcut historical URL degerleri migration ile silinmedi. Public launch external gate'leri degismedi.
 
 - **Tarih:** 2026-05-10
