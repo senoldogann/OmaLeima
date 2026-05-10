@@ -2,6 +2,13 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Store Audit CI Portability)
+
+- [x] Inspect failed GitHub Actions store readiness output.
+- [x] Replace macOS-only PNG dimension checks with a Node PNG header parser.
+- [x] Add explicit offline hosted-login-slides override for CI local env.
+- [x] Run mobile audit/lint validation and update handoff.
+
 ## Current Todos (Review Hardening Patch)
 
 - [x] Read the downloaded patch/report and confirm stale hunks against current `main`.

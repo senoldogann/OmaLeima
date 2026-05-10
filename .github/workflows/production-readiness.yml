@@ -24,6 +24,7 @@ jobs:
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-local-publishable-key
       EXPO_PUBLIC_EAS_PROJECT_ID: 00000000-0000-0000-0000-000000000000
       OMALEIMA_NATIVE_RELEASE_MODE: local
+      OMALEIMA_STORE_AUDIT_ALLOW_OFFLINE_HOSTED_LOGIN_SLIDES: "1"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
