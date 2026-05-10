@@ -2,6 +2,14 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Admin CSP Unsafe Inline)
+
+- [x] Inspect `/Users/dogan/Downloads/omaleima-csp.patch` against current `apps/admin/next.config.ts`.
+- [x] Inventory current inline script/style surfaces that would be blocked by the patch.
+- [x] Decide not to apply the patch as-is because nonce/hash support is not in place.
+- [x] Record a safe phased nonce/hash CSP migration plan.
+- [ ] Implement report-only CSP and nonce migration in a future dedicated branch.
+
 ## Current Todos (Store Audit CI Portability)
 
 - [x] Inspect failed GitHub Actions store readiness output.
