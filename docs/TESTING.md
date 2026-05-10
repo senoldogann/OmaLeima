@@ -759,7 +759,7 @@ The real `audit:hosted-setup` command is read-only and checks:
 The real `audit:custom-domain-cutover` command is read-only and checks:
 
 - latest production deployment is `READY`
-- `admin.omaleima.fi` is attached to the Vercel project
+- `omaleima.fi` is attached to the Vercel project
 - Vercel domain config is no longer marked misconfigured
 - public DNS resolves to the Vercel-recommended record
 
@@ -797,8 +797,16 @@ If it fails with missing Vercel env vars, add them with:
 ```bash
 vercel env add NEXT_PUBLIC_SUPABASE_URL preview --cwd apps/admin
 vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY preview --cwd apps/admin
+vercel env add NEXT_PUBLIC_TURNSTILE_SITE_KEY preview --cwd apps/admin
+vercel env add TURNSTILE_SECRET_KEY preview --cwd apps/admin
+vercel env add CONTACT_IP_HASH_SECRET preview --cwd apps/admin
+vercel env add SUPABASE_SERVICE_ROLE_KEY preview --cwd apps/admin
 vercel env add NEXT_PUBLIC_SUPABASE_URL production --cwd apps/admin
 vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --cwd apps/admin
+vercel env add NEXT_PUBLIC_TURNSTILE_SITE_KEY production --cwd apps/admin
+vercel env add TURNSTILE_SECRET_KEY production --cwd apps/admin
+vercel env add CONTACT_IP_HASH_SECRET production --cwd apps/admin
+vercel env add SUPABASE_SERVICE_ROLE_KEY production --cwd apps/admin
 ```
 
 If it fails with missing GitHub Actions secrets, add them with:
@@ -812,7 +820,7 @@ gh secret set VERCEL_AUTOMATION_BYPASS_SECRET --body 'replace-with-generated-byp
 If `audit:custom-domain-cutover` fails on DNS, follow the exact record it prints. The current expected record is:
 
 ```txt
-A admin.omaleima.fi 76.76.21.21
+A omaleima.fi 76.76.21.21
 ```
 
 If you prefer to use Vercel DNS instead of managing the A record at your registrar, delegate the domain to these nameservers first:

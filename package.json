@@ -10,6 +10,7 @@
     "qa:reward-unlocked-push-readiness": "node tests/run-reward-unlocked-push-readiness.mjs",
     "qa:mobile-reward-notification-readiness": "node tests/run-mobile-reward-notification-readiness.mjs",
     "qa:mobile-realtime-readiness": "node tests/run-mobile-realtime-readiness.mjs",
+    "qa:edge-function-inventory": "node tests/run-edge-function-inventory.mjs",
     "qa:browser-admin-review": "node tests/run-browser-admin-review.mjs",
     "qa:custom-domain-readiness": "node tests/run-custom-domain-readiness.mjs",
     "qa:hosted-admin-readiness": "node tests/run-hosted-admin-readiness.mjs",

@@ -86,6 +86,7 @@ const createSupportReplyPushMessage = (
   body: `We replied to your support request: ${supportRequest.subject}`,
   data: {
     area: supportRequest.area,
+    recipientUserId: supportRequest.user_id,
     supportRequestId: supportRequest.id,
     type: "SUPPORT_REPLY",
   },
@@ -243,6 +244,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
         area: supportRequest.area,
         businessId: supportRequest.business_id,
         clubId: supportRequest.club_id,
+        recipientUserId: supportRequest.user_id,
         supportRequestId: supportRequest.id,
         tokenResults: serializeTokenResults(pushResults),
         type: "SUPPORT_REPLY",

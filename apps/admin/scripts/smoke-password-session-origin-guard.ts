@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 import { validatePasswordSessionRequest } from "../src/features/auth/password-session-guard";
 
-const requestUrl = "https://admin.omaleima.fi/auth/password-session";
+const requestUrl = "https://omaleima.fi/auth/password-session";
 const body = JSON.stringify({
   accessToken: "access-token",
   refreshToken: "refresh-token",
@@ -53,8 +53,8 @@ const runAsync = async (): Promise<void> => {
     "wrong content type",
     createRequest({
       "content-type": "text/plain",
-      origin: "https://admin.omaleima.fi",
-      referer: "https://admin.omaleima.fi/login",
+      origin: "https://omaleima.fi",
+      referer: "https://omaleima.fi/login",
     }),
     415,
     "application/json"

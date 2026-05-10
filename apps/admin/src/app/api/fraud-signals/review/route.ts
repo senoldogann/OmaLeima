@@ -57,9 +57,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[fraud-signal-review] failed", {
+      message: error instanceof Error ? error.message : "Unknown fraud signal review route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown fraud signal review route error.",
+        message: "Fraud signal review could not be saved.",
         status: "ROUTE_ERROR",
       },
       {

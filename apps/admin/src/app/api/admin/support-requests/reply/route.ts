@@ -185,9 +185,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     );
   } catch (error) {
+    console.error("[admin-support-reply] failed", {
+      message: error instanceof Error ? error.message : "Unknown support reply mutation error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown support reply mutation error.",
+        message: "Support reply could not be saved.",
         status: "SUPPORT_REPLY_FAILED",
       },
       {

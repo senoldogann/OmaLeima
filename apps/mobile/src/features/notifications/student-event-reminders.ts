@@ -27,6 +27,15 @@ type FiredReminderRecord = Record<string, string>;
 const createReminderIdentifier = (studentId: string, event: StudentEventSummary): string =>
   `${eventReminderIdentifierPrefix}:${studentId}:${event.id}:${event.startAt}`;
 
+const createStudentReminderIdentifierPrefix = (studentId: string): string =>
+  `${eventReminderIdentifierPrefix}:${studentId}:`;
+
+const isEventReminderIdentifier = (identifier: string): boolean =>
+  identifier.startsWith(`${eventReminderIdentifierPrefix}:`);
+
+const isStudentReminderIdentifier = (identifier: string, studentId: string): boolean =>
+  identifier.startsWith(createStudentReminderIdentifierPrefix(studentId));
+
 const createReminderDate = (event: StudentEventSummary): Date =>
   new Date(new Date(event.startAt).getTime() - eventReminderLeadMs);
 
@@ -89,6 +98,24 @@ const clearStudentReminderStateAsync = async (): Promise<void> => {
   await deviceStorage.deleteItemAsync(eventReminderStoreKey);
 };
 
+const pruneReminderStateForStudentAsync = async (studentId: string): Promise<void> => {
+  const scheduledRequests = await readScheduledNotificationsAsync();
+
+  await Promise.all(
+    scheduledRequests
+      .map((request) => request.identifier)
+      .filter((identifier) => isEventReminderIdentifier(identifier) && !isStudentReminderIdentifier(identifier, studentId))
+      .map((identifier) => cancelScheduledNotificationAsync(identifier))
+  );
+
+  const firedRecord = await readFiredReminderRecordAsync();
+  const nextRecord = Object.fromEntries(
+    Object.entries(firedRecord).filter(([identifier]) => isStudentReminderIdentifier(identifier, studentId))
+  );
+
+  await writeFiredReminderRecordAsync(nextRecord);
+};
+
 const syncFutureReminderSchedulesAsync = async (
   studentId: string,
   events: StudentEventSummary[],
@@ -96,11 +123,18 @@ const syncFutureReminderSchedulesAsync = async (
   language: "fi" | "en"
 ): Promise<void> => {
   const scheduledRequests = await readScheduledNotificationsAsync();
+  const scheduledReminderIdentifiers = scheduledRequests
+    .map((request) => request.identifier)
+    .filter(isEventReminderIdentifier);
   const existingIdentifiers = new Set(
-    scheduledRequests
-      .map((request) => request.identifier)
-      .filter((identifier) => identifier.startsWith(`${eventReminderIdentifierPrefix}:${studentId}:`))
+    scheduledReminderIdentifiers.filter((identifier) => isStudentReminderIdentifier(identifier, studentId))
   );
+  const staleIdentifiers = scheduledReminderIdentifiers.filter(
+    (identifier) => !isStudentReminderIdentifier(identifier, studentId)
+  );
+
+  await Promise.all(staleIdentifiers.map((identifier) => cancelScheduledNotificationAsync(identifier)));
+
   const desiredIdentifiers = new Set<string>();
 
   for (const event of events) {
@@ -154,7 +188,7 @@ const syncImmediateReminderPresentationAsync = async (
   for (const [identifier, startAt] of Object.entries(firedRecord)) {
     const startTime = new Date(startAt).getTime();
 
-    if (startTime > now - eventReminderLeadMs) {
+    if (isStudentReminderIdentifier(identifier, studentId) && startTime > now - eventReminderLeadMs) {
       nextRecord[identifier] = startAt;
     }
   }
@@ -230,6 +264,19 @@ export const StudentEventReminderBridge = (): null => {
 
     void clearStudentReminderStateAsync().catch((error: unknown) => {
       logReminderWarning("student-event-reminder-clear-failed", {
+        studentId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, [accessQuery.isLoading, isStudentSession, studentId]);
+
+  useEffect(() => {
+    if (studentId === null || accessQuery.isLoading || !isStudentSession) {
+      return;
+    }
+
+    void pruneReminderStateForStudentAsync(studentId).catch((error: unknown) => {
+      logReminderWarning("student-event-reminder-prune-failed", {
         studentId,
         message: error instanceof Error ? error.message : String(error),
       });

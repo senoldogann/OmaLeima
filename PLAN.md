@@ -2,6 +2,77 @@
 
 Bu dosya her yeni feature branch'te koddan once tasarimi netlestirmek icin kullanilir.
 
+## Current Plan (Production Review Deploy + Merge)
+
+- **Date:** 2026-05-10
+- **Branch:** `review/production-ready-20260510`
+- **Goal:** Ship the validated production-review hardening patch set through commit, hosted Supabase deploy, Vercel admin deploy, verification, merge, and branch cleanup.
+
+## Architectural Decisions
+
+- Commit the already-validated repo patch set before hosted deploy so production artifacts map to a durable Git revision.
+- Apply Supabase via linked CLI migration push, then deploy the Edge Function bundles touched by this review (`claim-reward`, `scan-qr`, `send-support-reply-push`).
+- Deploy admin from `apps/admin` with Vercel production target so `omaleima.fi` receives the proxy/auth-host changes.
+- Keep external gates explicit: native device/store proofs, secret rotation, and observability routine remain outside this terminal unless credentials/tools are already available.
+
+## Prompt
+
+Sen OmaLeima release engineer olarak calisiyorsun.
+Hedef: Validated production review patch set'ini guvenli sekilde commit et, hosted Supabase ve Vercel'e uygula, verification kos, main'e merge et ve branch cleanup yap.
+Mimari: Git feature branch -> hosted Supabase migration/function deploy -> Vercel production deploy -> smoke/verification -> main merge. Yeni runtime dependency yok.
+Kapsam: yalnizca mevcut review branch degisikliklerinin deploy/merge akisi, dokuman/handoff guncellemesi ve kanit komutlari.
+Cikti: signed-off git commit, hosted migration/function deploy evidence, Vercel production deployment evidence, verification evidence, PROGRESS/TODOS handoff.
+Yasaklar: destructive git komutu yok, migration rewrite yok, secret yazdirma yok, production config'i tahminle degistirme yok, unrelated code edit yok.
+Standartlar: AGENTS.md git workflow, Supabase zero-trust deploy discipline, Vercel production smoke, no silent failures.
+
+## Validation Plan
+
+- `git --no-pager diff --check`
+- `npx --yes supabase@2.98.2 db push --linked --include-all --yes`
+- `npx --yes supabase@2.98.2 functions deploy claim-reward --use-api`
+- `npx --yes supabase@2.98.2 functions deploy scan-qr --use-api`
+- `npx --yes supabase@2.98.2 functions deploy send-support-reply-push --use-api`
+- `npx --yes vercel@latest deploy apps/admin --prod --yes`
+- Hosted/admin smoke scripts available for production environment.
+
+## Current Plan (Subagent Production Code Review)
+
+- **Date:** 2026-05-10
+- **Branch:** `review/production-ready-20260510`
+- **Goal:** Apply verified repo-fixable production-readiness fixes from admin web, mobile, Supabase/RLS/Edge, and release infrastructure subagent reviews.
+
+## Architectural Decisions
+
+- Treat subagent findings as hypotheses until verified in current source; fix concrete P1/P2 risks first and avoid unrelated redesign.
+- Preserve existing dirty changes in auth callback, support reply push binding, and mobile push router, but correct the malformed router diff and strengthen all personalized payload types.
+- Keep Supabase changes forward-only: create a new migration and replace current RPC/helper definitions rather than rewriting historical migrations.
+- Keep Edge rate limiting on `claim-reward` before expensive/privileged RPC execution, using the existing DB-backed limiter helper.
+- Make the admin proxy single-source by composing geofence, Supabase session refresh, and dashboard CSRF cookie in `apps/admin/src/proxy.ts`; remove the duplicate proxy entry point.
+- Align release scripts/docs around the active production admin host `https://omaleima.fi`, while keeping legacy/admin-domain redirect URLs in the allow-list during transition.
+
+## Prompt
+
+Sen OmaLeima production security/release engineer olarak calisiyorsun.
+Hedef: Subagent production review bulgularini dogrula ve repo icinden duzeltilebilen P1/P2 riskleri kapat.
+Mimari: mevcut Next.js proxy/route guards, Expo notification/session bridges, Supabase Edge shared helpers, forward SQL migrations/RPC, GitHub Actions ve release docs. Yeni runtime dependency yok.
+Kapsam: mobile notification/session boundary, Supabase active-profile/provisioning/reward rate-limit hardening, release host/function/env/workflow inventory, admin password-session error/proxy composition, working docs ve validation.
+Cikti: strict TS/TSX/Deno TS/SQL/docs patch, migration validation, admin/mobile/Deno validation evidence, final PROGRESS handoff.
+Yasaklar: eski migration rewrite yok, RLS gevsetmek yok, service_role/secret loglamak yok, raw provider/DB details API response'a dondurmek yok, destructive git komutu yok, unrelated UI redesign yok.
+Standartlar: AGENTS.md, Supabase zero-trust/RLS, explicit error codes, no silent fallbacks, minimal and focused diff.
+
+## Validation Plan
+
+- `npx --yes supabase@2.98.2 migration up --local --include-all`
+- `npx --yes supabase@2.98.2 db lint --local`
+- `npx --yes deno check supabase/functions/_shared/http.ts supabase/functions/claim-reward/index.ts supabase/functions/provision-business-scanner-session/index.ts supabase/functions/scan-qr/index.ts supabase/functions/send-support-reply-push/index.ts`
+- `npm --prefix apps/admin run typecheck`
+- `npm --prefix apps/admin run lint`
+- `npm --prefix apps/admin run build`
+- `npm --prefix apps/mobile run typecheck`
+- `npm --prefix apps/mobile run lint`
+- `npx --yes actionlint .github/workflows/staging-admin-verification.yml .github/workflows/production-readiness.yml`
+- `git --no-pager diff --check`
+
 ## Current Plan (Production Ready Final Sweep)
 
 - **Date:** 2026-05-10

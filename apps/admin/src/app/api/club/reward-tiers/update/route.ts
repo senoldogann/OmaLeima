@@ -81,9 +81,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-reward-tier-update] failed", {
+      message: error instanceof Error ? error.message : "Unknown reward tier route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown reward tier route error.",
+        message: "Reward tier could not be updated.",
         status: "ROUTE_ERROR",
       },
       {

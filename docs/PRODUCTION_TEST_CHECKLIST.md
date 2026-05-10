@@ -8,7 +8,7 @@ Bu dosya App Store, Google Play ve web production cutover oncesi tek tek isaretl
 
 - [ ] Temiz release branch/commit/tag hazir.
 - [ ] Hosted Supabase migration history ve repo migration dosyalari karsilastirildi.
-- [ ] Supabase Edge Functions production version listesi kontrol edildi.
+- [ ] Supabase Edge Functions production version listesi kontrol edildi ve `supabase/functions/*` envanteri `supabase/config.toml` + `docs/EDGE_FUNCTIONS.md` ile eslesti.
 - [ ] Vercel production deploy `READY` ve `https://omaleima.fi` alias dogru.
 - [ ] `npm --prefix apps/admin run typecheck` gecti.
 - [ ] `npm --prefix apps/admin run lint` gecti.

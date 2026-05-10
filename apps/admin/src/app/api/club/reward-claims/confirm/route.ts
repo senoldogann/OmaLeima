@@ -77,9 +77,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-reward-claim-confirm] failed", {
+      message: error instanceof Error ? error.message : "Unknown reward claim route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown reward claim route error.",
+        message: "Reward claim could not be confirmed.",
         status: "ROUTE_ERROR",
       },
       {

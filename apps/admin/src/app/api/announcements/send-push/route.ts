@@ -64,9 +64,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[announcement-send-push] failed", {
+      message: error instanceof Error ? error.message : "Unknown announcement push route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown announcement push route error.",
+        message: "Announcement push could not be sent.",
         status: "ROUTE_ERROR",
       },
       {

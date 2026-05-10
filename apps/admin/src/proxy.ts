@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { updateSession } from "@/lib/supabase/proxy";
+
 const allowedCountry = "FI";
 const dashboardCsrfCookieName = "omaleima_dashboard_csrf";
 const modeValues = ["off", "admin", "all"] as const;
@@ -81,26 +83,24 @@ const shouldApplyGeofence = (mode: GeofenceMode, pathname: string): boolean => {
   return true;
 };
 
-export const proxy = (request: NextRequest): NextResponse => {
+export const proxy = async (request: NextRequest): Promise<NextResponse> => {
   const mode = getGeofenceMode();
   const pathname = request.nextUrl.pathname;
 
-  if (!shouldApplyGeofence(mode, pathname)) {
-    return attachDashboardCsrfCookie(request, NextResponse.next());
+  if (shouldApplyGeofence(mode, pathname)) {
+    const country = getCountry(request);
+
+    if (country !== null && country !== allowedCountry) {
+      return new NextResponse("OmaLeima is currently available in Finland.", {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+        },
+        status: 451,
+      });
+    }
   }
 
-  const country = getCountry(request);
-
-  if (country === null || country === allowedCountry) {
-    return attachDashboardCsrfCookie(request, NextResponse.next());
-  }
-
-  return new NextResponse("OmaLeima is currently available in Finland.", {
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-    },
-    status: 451,
-  });
+  return attachDashboardCsrfCookie(request, await updateSession(request));
 };
 
 export const config = {

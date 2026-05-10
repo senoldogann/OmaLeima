@@ -76,6 +76,26 @@ const setDashboardLocaleCookieAsync = async (page: Page, appBaseUrl: string): Pr
   ]);
 };
 
+const waitForTurnstileTokenIfPresentAsync = async (page: Page, timeoutMs: number): Promise<void> => {
+  const widgetCount = await page.locator(".cf-turnstile").count();
+
+  if (widgetCount === 0) {
+    return;
+  }
+
+  await page.waitForFunction(
+    () => {
+      const input = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]');
+
+      return typeof input?.value === "string" && input.value.trim().length > 0;
+    },
+    undefined,
+    {
+      timeout: timeoutMs,
+    }
+  );
+};
+
 export const signInWithPasswordAsync = async (
   page: Page,
   appBaseUrl: string,
@@ -87,7 +107,7 @@ export const signInWithPasswordAsync = async (
   await setDashboardLocaleCookieAsync(page, appBaseUrl);
 
   await page.goto(`${appBaseUrl}/login`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   });
 
   await page.getByRole("heading", {
@@ -100,6 +120,7 @@ export const signInWithPasswordAsync = async (
 
   await page.getByLabel("Email").fill(credentials.email);
   await page.getByLabel("Password").fill(credentials.password);
+  await waitForTurnstileTokenIfPresentAsync(page, timeoutMs);
 
   await Promise.all([
     page.waitForURL(`**${expectedPath}`, {
@@ -128,7 +149,7 @@ export const assertAnonymousRedirectAsync = async (
   await setDashboardLocaleCookieAsync(page, appBaseUrl);
 
   await page.goto(`${appBaseUrl}${protectedPath}`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   });
 
   await page.waitForURL("**/login", {
@@ -172,7 +193,7 @@ export const openRouteFromSidebarAsync = async (
     );
   } catch {
     await page.goto(new URL(routeHref, page.url()).toString(), {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
     });
   }
 

@@ -8,9 +8,15 @@ OmaLeima uses Supabase Edge Functions for security-critical API actions. Client 
 - `scan-qr`
 - `claim-reward`
 - `admin-approve-business`
+- `admin-create-business-owner-access`
 - `admin-reject-business`
+- `generate-business-scanner-login-qr`
+- `provision-business-scanner-session`
 - `register-device-token`
+- `revoke-business-scanner-access`
+- `send-announcement-push`
 - `send-push-notification`
+- `send-support-reply-push`
 - `send-test-push`
 - `scheduled-event-reminders`
 - `scheduled-leaderboard-refresh`
@@ -64,13 +70,15 @@ supabase secrets set SCHEDULED_JOB_SECRET=replace-with-production-scheduled-secr
 
 ## Auth Model
 
-All current functions set `verify_jwt = false` in `supabase/config.toml` and authenticate explicitly inside the function:
+Every shipped function has a matching `[functions.<name>]` stanza in `supabase/config.toml`. All current functions set `verify_jwt = false` and authenticate explicitly inside the function:
 
 1. Read the Bearer token from `Authorization`.
 2. Call Supabase Auth with the service client to resolve the user.
 3. Apply function-specific authorization checks.
 
 This keeps the auth behavior explicit and compatible with current Supabase Edge Function guidance.
+
+Run `npm run qa:edge-function-inventory` before release to verify `supabase/functions/*`, `supabase/config.toml`, and this document stay in sync.
 
 ## `claim-reward`
 

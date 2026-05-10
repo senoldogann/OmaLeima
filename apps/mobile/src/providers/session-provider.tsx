@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import type { RealtimePostgresChangesPayload, Session } from "@supabase/supabase-js";
 
@@ -12,6 +12,7 @@ type SessionContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   bootstrapError: string | null;
+  retryBootstrap: () => void;
 };
 
 type ProfileStatusPayload = {
@@ -88,6 +89,14 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [bootstrapAttempt, setBootstrapAttempt] = useState<number>(0);
+
+  const retryBootstrap = useCallback((): void => {
+    setSession(null);
+    setBootstrapError(null);
+    setIsLoading(true);
+    setBootstrapAttempt((currentAttempt) => currentAttempt + 1);
+  }, []);
 
   const reportBootstrapError = (error: unknown): void => {
     const message = error instanceof Error
@@ -179,7 +188,7 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
       isActive = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [bootstrapAttempt]);
 
   useEffect(() => {
     const userId = session?.user.id;
@@ -232,8 +241,9 @@ export const SessionProvider = ({ children }: PropsWithChildren) => {
       isAuthenticated: session !== null,
       isLoading,
       bootstrapError,
+      retryBootstrap,
     }),
-    [bootstrapError, isLoading, session]
+    [bootstrapError, isLoading, retryBootstrap, session]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

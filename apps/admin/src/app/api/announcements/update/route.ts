@@ -92,9 +92,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[announcement-update] failed", {
+      message: error instanceof Error ? error.message : "Unknown announcement update route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown announcement update route error.",
+        message: "Announcement could not be updated.",
         status: "ROUTE_ERROR",
       },
       {

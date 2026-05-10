@@ -80,9 +80,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[club-reward-tier-create] failed", {
+      message: error instanceof Error ? error.message : "Unknown reward tier route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown reward tier route error.",
+        message: "Reward tier could not be created.",
         status: "ROUTE_ERROR",
       },
       {

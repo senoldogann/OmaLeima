@@ -1,24 +1,23 @@
 name: staging admin verification
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       admin_app_base_url:
         description: "Hosted admin base URL to verify"
         required: true
         type: string
+      auth_smoke_mode:
+        description: "Run authenticated browser smoke or production-safe preflight checks"
+        required: false
+        default: "authenticated"
+        type: choice
+        options:
+          - authenticated
+          - preflight-only
   deployment_status:
 
 jobs:
-  push-noop:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "staging admin verification waits for deployment_status or manual dispatch"
-
   verify:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && github.event.deployment_status.target_url != '') }}
     runs-on: ubuntu-latest
@@ -27,6 +26,7 @@ jobs:
     timeout-minutes: 30
     env:
       ADMIN_APP_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.admin_app_base_url || github.event.deployment_status.target_url }}
+      STAGING_ADMIN_VERIFICATION_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.auth_smoke_mode || 'authenticated' }}
       STAGING_ADMIN_EMAIL: ${{ secrets.STAGING_ADMIN_EMAIL }}
       STAGING_ADMIN_PASSWORD: ${{ secrets.STAGING_ADMIN_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

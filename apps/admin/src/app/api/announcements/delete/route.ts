@@ -67,9 +67,13 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[announcement-delete] failed", {
+      message: error instanceof Error ? error.message : "Unknown announcement delete route error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown announcement delete route error.",
+        message: "Announcement could not be deleted.",
         status: "ROUTE_ERROR",
       },
       {

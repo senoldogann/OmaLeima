@@ -147,9 +147,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       status: 200,
     });
   } catch (error) {
+    console.error("[admin-user-status] failed", {
+      message: error instanceof Error ? error.message : "Unknown user status mutation error.",
+    });
+
     return NextResponse.json(
       {
-        message: error instanceof Error ? error.message : "Unknown user status mutation error.",
+        message: "User status could not be updated.",
         status: "USER_STATUS_UPDATE_FAILED",
       },
       {
