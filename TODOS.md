@@ -2,6 +2,15 @@
 
 Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bolmek icin kullanilir.
 
+## Current Todos (Finland Location Fields)
+
+- [x] Re-read required docs and inspect country/city inputs.
+- [x] Record review and REASONS plan before code edits.
+- [x] Add Finland country/city constants and wire admin web selects/read-only country fields.
+- [x] Add mobile business city selector without new dependencies.
+- [x] Run admin/mobile validation and inspect final diff.
+- [ ] Commit, merge, deploy web UI, and update handoff.
+
 ## Current Todos (Hide Operator URL Fields)
 
 - [x] Re-read required docs and inspect web/mobile organization/business URL surfaces.

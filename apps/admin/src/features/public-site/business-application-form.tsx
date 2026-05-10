@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import type { BusinessApplicationContent } from "@/features/public-site/business-application-content";
+import { FINLAND_CITY_OPTIONS, FINLAND_COUNTRY } from "@/features/location/finland";
 
 type BusinessApplicationFormProps = {
   apiPath: string;
@@ -176,7 +177,7 @@ export const BusinessApplicationForm = ({
       consent: formData.get("consent") === "yes" ? "yes" : "",
       contactEmail: String(formData.get("contactEmail") ?? ""),
       contactName: String(formData.get("contactName") ?? ""),
-      country: String(formData.get("country") ?? "Finland"),
+      country: FINLAND_COUNTRY,
       elapsedMs: Date.now() - startedAtRef.current,
       instagramUrl: String(formData.get("instagramUrl") ?? ""),
       message: String(formData.get("message") ?? ""),
@@ -281,7 +282,16 @@ export const BusinessApplicationForm = ({
             {content.cityLabel}
             <span aria-hidden="true" className="contact-required">*</span>
           </span>
-          <input id={fieldId("city")} name="city" required type="text" />
+          <select defaultValue="" id={fieldId("city")} name="city" required>
+            <option disabled value="">
+              {content.cityLabel}
+            </option>
+            {FINLAND_CITY_OPTIONS.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
           <span className="contact-hint">{fieldErrors.city ?? content.cityHint}</span>
         </label>
 
@@ -290,7 +300,7 @@ export const BusinessApplicationForm = ({
             {content.countryLabel}
             <span aria-hidden="true" className="contact-required">*</span>
           </span>
-          <input defaultValue="Finland" id={fieldId("country")} name="country" required type="text" />
+          <input id={fieldId("country")} name="country" readOnly required type="text" value={FINLAND_COUNTRY} />
           <span className="contact-hint">{fieldErrors.country ?? content.requiredHint}</span>
         </label>
       </div>
