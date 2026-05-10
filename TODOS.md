@@ -4,11 +4,11 @@ Bu dosya her branch'te plani kucuk, uygulanabilir ve dogrulanabilir adimlara bol
 
 ## Current Todos (Production Review Deploy + Merge)
 
-- [ ] Commit verified production review patch set with required trailer.
-- [ ] Apply hosted Supabase migration and deploy changed Edge Functions.
-- [ ] Deploy admin app to Vercel production for `https://omaleima.fi`.
-- [ ] Run hosted verification checks after deploy.
-- [ ] Merge reviewed branch to `main`, push, delete feature branch, and update handoff.
+- [x] Commit verified production review patch set with required trailer.
+- [x] Apply hosted Supabase migration and deploy changed Edge Functions.
+- [x] Deploy admin app to Vercel production for `https://omaleima.fi`.
+- [x] Run hosted verification checks after deploy.
+- [x] Merge reviewed branch to `main`, push, delete feature branch, and update handoff.
 
 ## Current Todos (Subagent Production Code Review)
 
